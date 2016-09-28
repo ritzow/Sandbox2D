@@ -1,0 +1,13 @@
+#version 410 core
+
+in vec2 passTextureCoord;
+out vec4 pixelColor;
+
+uniform sampler2D textureSampler;
+uniform float opacity;
+
+void main() {
+	vec4 color = texture(textureSampler, passTextureCoord);
+	color.a = color.a * opacity;
+	pixelColor = color;
+}
