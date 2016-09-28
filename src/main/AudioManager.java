@@ -4,7 +4,6 @@ import static org.lwjgl.openal.ALC10.*;
 import static org.lwjgl.openal.AL10.*;
 
 import audio.Sound;
-import audio.SoundBuffer;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.LinkedList;
@@ -24,20 +23,20 @@ public class AudioManager implements Runnable, Installable, Exitable {
 		
 		soundQueue = new LinkedList<Sound>();
 		
-		SoundBuffer buffer = new SoundBuffer("resources/assets/audio/bloopityBloop.flac");
-		
-		int testSource = alGenSources();
+//		SoundBuffer buffer = new SoundBuffer("resources/assets/audio/bloopityBloop.flac");
+//		
+//		int testSource = alGenSources();
 //		alListenerfv(AL_POSITION, new float[] {0f, 0f, 0f});
-		alSourcei(testSource, AL_BUFFER, buffer.getID()); //makes the source a static source, rather than a streaming source (alSourceQueueBuffers)
+//		alSourcei(testSource, AL_BUFFER, buffer.getID()); //makes the source a static source, rather than a streaming source (alSourceQueueBuffers)
 //		alSourcefv(testSource, AL_POSITION, new float[] {0.0f, 0.0f, 0.0f});
 //		alSourcef(testSource, AL_GAIN, 1.0f);
 //		alSourcei(testSource, AL_LOOPING, AL_TRUE);
-		System.out.println("Buffer Info: " + alGetBufferi(buffer.getID(), AL_CHANNELS));
-		alSourcePlay(testSource);
-		
-		System.out.println("Source playing: " + (alGetSourcei(testSource, AL_SOURCE_STATE) == AL_PLAYING));
-		
-		int error; while((error = alGetError()) != AL_NO_ERROR) {System.out.println("OpenAL error: " + error);}
+//		System.out.println("Buffer Info: " + alGetBufferi(buffer.getID(), AL_CHANNELS));
+//		alSourcePlay(testSource);
+//		
+//		System.out.println("Source playing: " + (alGetSourcei(testSource, AL_SOURCE_STATE) == AL_PLAYING));
+//		
+//		int error; while((error = alGetError()) != AL_NO_ERROR) {System.out.println("OpenAL error: " + error);}
 		
 		synchronized(this) {
 			setupComplete = true;
