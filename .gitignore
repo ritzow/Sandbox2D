@@ -1,5 +1,5 @@
-#################
-## Project
-#################
-
+#Project
 old/
+
+#Mac system files
+.DS_Store
