@@ -1,5 +1,6 @@
 #Project
 old/
+bin/
 
 #Mac system files
 .DS_Store
