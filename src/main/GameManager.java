@@ -35,15 +35,11 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 	
 	public void run() {
 		Synchronizer.waitForSetup(eventManager);
-		
 		new Thread(graphicsManager = new GraphicsManager(eventManager.getDisplay()), "Graphics Manager").start();
 		new Thread(audioManager = new AudioManager(), "Audio Manager").start();
-		
 		eventManager.getDisplay().getInputManager().getWindowCloseHandlers().add(this);
 		eventManager.getDisplay().getInputManager().getKeyHandlers().add(this);
-		
 		Synchronizer.waitForSetup(graphicsManager);
-		
 		setup();
 		
 		synchronized(eventManager) {
