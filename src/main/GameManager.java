@@ -90,9 +90,9 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 	}
 	
 	private void exit() {
-		Synchronizer.waitForExit(worldManager);
 		Synchronizer.waitForExit(clientUpdateManager);
 		Synchronizer.waitForExit(audioManager);
+		worldManager.exit();
 		Synchronizer.waitForExit(graphicsManager);
 		eventManager.exit();
 	}

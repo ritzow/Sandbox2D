@@ -1,8 +1,9 @@
 package main;
 
-import static org.lwjgl.openal.ALC10.*;
 import static org.lwjgl.openal.AL10.*;
+import static org.lwjgl.openal.ALC10.*;
 
+import audio.AudioBuffer;
 import audio.Sound;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
@@ -20,23 +21,31 @@ public class AudioManager implements Runnable, Installable, Exitable {
 	public void run() {
 		alcMakeContextCurrent(alcCreateContext(alcOpenDevice((ByteBuffer)null), (IntBuffer)null));
 		AL.createCapabilities(ALC.createCapabilities(alcGetContextsDevice(alcGetCurrentContext())));
-		
 		soundQueue = new LinkedList<Sound>();
 		
-//		SoundBuffer buffer = new SoundBuffer("resources/assets/audio/bloopityBloop.flac");
+		int error;
+		while((error = alGetError()) != 0) {
+			System.err.println("OpenAL Error " + error);
+		}
+		
+//		File audioFile = new File("resources/assets/audio/bloopBloop.wav");
 //		
-//		int testSource = alGenSources();
-//		alListenerfv(AL_POSITION, new float[] {0f, 0f, 0f});
-//		alSourcei(testSource, AL_BUFFER, buffer.getID()); //makes the source a static source, rather than a streaming source (alSourceQueueBuffers)
-//		alSourcefv(testSource, AL_POSITION, new float[] {0.0f, 0.0f, 0.0f});
-//		alSourcef(testSource, AL_GAIN, 1.0f);
-//		alSourcei(testSource, AL_LOOPING, AL_TRUE);
-//		System.out.println("Buffer Info: " + alGetBufferi(buffer.getID(), AL_CHANNELS));
-//		alSourcePlay(testSource);
-//		
-//		System.out.println("Source playing: " + (alGetSourcei(testSource, AL_SOURCE_STATE) == AL_PLAYING));
-//		
-//		int error; while((error = alGetError()) != AL_NO_ERROR) {System.out.println("OpenAL error: " + error);}
+//		try {
+//			AudioInputStream stream = AudioSystem.getAudioInputStream(audioFile);
+//			byte[] data = new byte[2];
+//			while(stream.available() > 0) {
+//				stream.read(data);
+//				System.out.println(Arrays.toString(data) + ", ");
+//				if(stream.available() % 4 == 0) System.out.println();
+//			}
+//			stream.close();
+//		} catch (UnsupportedAudioFileException e1) {
+//			e1.printStackTrace();
+//		} catch (IOException e1) {
+//			e1.printStackTrace();
+//		}
+
+		soundQueue.add(new Sound(new AudioBuffer("resources/assets/audio/bloopBloop.wav"), 0, 0, 0, 0, 1.0f, 1.0f));
 		
 		synchronized(this) {
 			setupComplete = true;
@@ -45,8 +54,7 @@ public class AudioManager implements Runnable, Installable, Exitable {
 		
 		while(!exit) {
 			while(!soundQueue.isEmpty()) {
-				//play sound at index 0 using soundQueue.getFirst()
-				System.out.println("played a sound");
+				soundQueue.getFirst().play();
 				soundQueue.removeFirst();
 			}
 			
@@ -58,8 +66,6 @@ public class AudioManager implements Runnable, Installable, Exitable {
 				}
 			}
 		}
-		
-		int error2; while((error2 = alGetError()) != AL_NO_ERROR) {System.out.println("OpenAL error: " + error2);}
 		
 		long context = alcGetCurrentContext();
 		long device = alcGetContextsDevice(context);
@@ -75,11 +81,25 @@ public class AudioManager implements Runnable, Installable, Exitable {
 		}
 	}
 	
+	public void setListenerParameters(float x, float y, float velocityX, float velocityY) {
+		alListener3f(AL_POSITION, x, y, 0);
+		alListener3f(AL_VELOCITY, velocityX, velocityY, 0);
+	}
+	
+	public void setVolume(float gain) {
+		alListenerf(AL_GAIN, gain);
+	}
+	
 	public void playSound(Sound sound) {
 		soundQueue.add(sound);
 		synchronized(this) {
 			notifyAll();
 		}
+	}
+	
+	public void stopSound(Sound sound) {
+		soundQueue.remove(sound);
+		sound.stop();
 	}
 	
 	public void exit() {

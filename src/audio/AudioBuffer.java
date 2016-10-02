@@ -12,12 +12,12 @@ import org.kc7bfi.jflac.metadata.StreamInfo;
 import org.kc7bfi.jflac.util.ByteData;
 import org.lwjgl.BufferUtils;
 
-public final class SoundBuffer implements PCMProcessor { //about audio format: http://stackoverflow.com/questions/3957025/what-does-a-audio-frame-contain
+public final class AudioBuffer implements PCMProcessor { //about audio format: http://stackoverflow.com/questions/3957025/what-does-a-audio-frame-contain
     private ArrayList<Short> sampleData;
 	private ShortBuffer decodedData;
     private int bufferID;
     
-    public SoundBuffer(String file) { 
+    public AudioBuffer(String file) { 
     	bufferID = alGenBuffers();
     	loadData(file);
     }
