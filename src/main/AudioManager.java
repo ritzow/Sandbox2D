@@ -3,10 +3,14 @@ package main;
 import static org.lwjgl.openal.AL10.*;
 import static org.lwjgl.openal.ALC10.*;
 
-import audio.AudioBuffer;
 import audio.Sound;
+import audio.WaveformReader;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.LinkedList;
 import org.lwjgl.openal.AL;
 import org.lwjgl.openal.ALC;
@@ -28,24 +32,16 @@ public class AudioManager implements Runnable, Installable, Exitable {
 			System.err.println("OpenAL Error " + error);
 		}
 		
-//		File audioFile = new File("resources/assets/audio/bloopBloop.wav");
-//		
-//		try {
-//			AudioInputStream stream = AudioSystem.getAudioInputStream(audioFile);
-//			byte[] data = new byte[2];
-//			while(stream.available() > 0) {
-//				stream.read(data);
-//				System.out.println(Arrays.toString(data) + ", ");
-//				if(stream.available() % 4 == 0) System.out.println();
-//			}
-//			stream.close();
-//		} catch (UnsupportedAudioFileException e1) {
-//			e1.printStackTrace();
-//		} catch (IOException e1) {
-//			e1.printStackTrace();
-//		}
+		try {
+			WaveformReader bloop = new WaveformReader(new FileInputStream(new File("resources/assets/audio/bloopBloop.wav")));
+			bloop.decode();
+		} catch (FileNotFoundException e1) {
+			e1.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 
-		soundQueue.add(new Sound(new AudioBuffer("resources/assets/audio/bloopBloop.wav"), 0, 0, 0, 0, 1.0f, 1.0f));
+		//soundQueue.add(new Sound(new AudioBuffer("resources/assets/audio/bloopityBloop.flac"), 0, 0, 0, 0, 1.0f, 1.0f));
 		
 		synchronized(this) {
 			setupComplete = true;
