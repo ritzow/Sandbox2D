@@ -6,7 +6,15 @@ import java.io.InputStream;
 public final class WaveformReader {
 	
 	private InputStream input;
-	private int dataSizeBytes;
+	
+	private int chunkSize;
+	
+	private int format; //1 for PCM audio, other numbers indicate compression
+	private int numChannels; //1 = mono, 2 = stereo
+	private int sampleRate; //8000, 44100
+	private int byteRate; //sampleRate * numChannels * bitsPerSample/8
+	private int blockAlign; //numChannels * bitsPerSample/8
+	private int bitsPerSample; //8 bits = 8, 16 bits = 16, etc.
 	
 	public WaveformReader(InputStream input) {
 		this.input = input;
@@ -17,40 +25,42 @@ public final class WaveformReader {
 		readFormat();
 	}
 	
-	private String readChunkID() throws IOException {
-		byte[] chunkID = new byte[4]; input.read(chunkID, 0, 4);
-		return new String(chunkID);
-	}
-	
 	private void checkHeader() throws IOException {
-		if(!readChunkID().equals("RIFF"))
+		if(!readString(4).equals("RIFF"))
 			throw new IOException("file does not begin with the RIFF header");
 		
-		byte[] chunkSize = new byte[4]; input.read(chunkSize, 0, 4);
-		this.dataSizeBytes = toInteger(flip(chunkSize));
+		chunkSize = readIntegerLittleEndian();
 		
 		byte[] format = new byte[4]; input.read(format, 0, 4);
 		if(!(new String(format).equals("WAVE")))
 			throw new IOException("file format is not WAVE");
-	} 
+	}
 	
 	private void readFormat() throws IOException {
-		if(!readChunkID().equals("fmt "))
+		if(!readString(4).equals("fmt "))
 			throw new IOException("chunk id not fmt ");
+		
+		readIntegerLittleEndian(); //skip subchunk1size for now
+		
+		System.out.println(readShortLittleEndian());
 		
 	}
 	
-	private static int toInteger(byte[] data) {
-		return  (((data[0] & 0xff) << 24) | ((data[1] & 0xff) << 16) | ((data[2] & 0xff) << 8) | (data[3] & 0xff));
+	private String readString(int numBytes) throws IOException {
+		byte[] data = new byte[numBytes]; input.read(data); return new String(data);
 	}
 	
-	private static byte[] flip(byte[] data) {
-		byte temp;
-		for(int i = 0; i < data.length/2; i++) {
-			temp = data[i];
-			data[i] = data[data.length - i - 1];
-			data[data.length - i - 1] = temp;
-		}
-		return data;
+	private short readShortLittleEndian() throws IOException { //TODO this probably doesnt work correctly
+		byte[] data = new byte[2]; input.read(data);
+		return (short) (((data[1] & 0xFF) << 8) | (data[0] & 0xFF));
+	}
+	
+	private int readIntegerBigEndian() throws IOException {
+		return (((input.read() & 0xff) << 24) | ((input.read() & 0xff) << 16) | ((input.read() & 0xff) << 8) | (input.read() & 0xff));
+	}
+	
+	private int readIntegerLittleEndian() throws IOException {
+		byte[] data = new byte[4]; input.read(data);
+		return (((data[3] & 0xff) << 24) | ((data[2] & 0xff) << 16) | ((data[1] & 0xff) << 8) | (data[0] & 0xff));
 	}
 }
