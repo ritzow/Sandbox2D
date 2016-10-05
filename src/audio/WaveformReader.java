@@ -26,7 +26,7 @@ public final class WaveformReader {
 	}
 	
 	private void checkHeader() throws IOException {
-		if(!readString(4).equals("RIFF"))
+		if(!readStringBigEndian(4).equals("RIFF"))
 			throw new IOException("file does not begin with the RIFF header");
 		
 		chunkSize = readIntegerLittleEndian();
@@ -37,7 +37,7 @@ public final class WaveformReader {
 	}
 	
 	private void readFormat() throws IOException {
-		if(!readString(4).equals("fmt "))
+		if(!readStringBigEndian(4).equals("fmt "))
 			throw new IOException("chunk id not fmt ");
 		
 		readIntegerLittleEndian(); //skip subchunk1size for now
@@ -46,7 +46,7 @@ public final class WaveformReader {
 		
 	}
 	
-	private String readString(int numBytes) throws IOException {
+	private String readStringBigEndian(int numBytes) throws IOException {
 		byte[] data = new byte[numBytes]; input.read(data); return new String(data);
 	}
 	
