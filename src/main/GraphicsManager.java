@@ -3,11 +3,11 @@ package main;
 import static org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT;
 import static org.lwjgl.opengl.GL11.glClear;
 import static org.lwjgl.opengl.GL11.glViewport;
+import org.lwjgl.glfw.GLFWErrorCallback;
 
 import graphics.*;
 import input.handler.FramebufferSizeHandler;
 import java.util.ArrayList;
-import org.lwjgl.glfw.GLFWErrorCallback;
 import util.ResourceManager;
 import world.Camera;
 
@@ -72,11 +72,7 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 			while(!exit) {
 				glViewport(0, 0, (int)frameWidth, (int)frameHeight);
 				glClear(GL_COLOR_BUFFER_BIT);
-				
-				for(int i = 0; i < renderables.size(); i++) {
-					renderables.get(i).render(renderer);
-				}
-				
+				for(int i = 0; i < renderables.size(); i++) renderables.get(i).render(renderer);
 				display.refresh();
 				Thread.sleep(1);
 			}

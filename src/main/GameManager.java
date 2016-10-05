@@ -29,6 +29,8 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 	private WorldManager worldManager;
 	private ClientUpdateManager clientUpdateManager;
 	
+	public static CameraController cameraController;
+	
 	public GameManager(EventManager eventManager) {
 		this.eventManager = eventManager;
 	}
@@ -70,7 +72,7 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		
 		PlayerController playerController = new PlayerController(eventManager.getDisplay().getInputManager(), player, world, 0.2f);
 		CursorController cursorController = new CursorController(eventManager.getDisplay().getInputManager(), player, world, graphicsManager.getRenderer().getCamera());
-		CameraController cameraController = new CameraController(eventManager.getDisplay().getInputManager(), graphicsManager.getRenderer().getCamera(), player, 0.005f);
+		cameraController = new CameraController(eventManager.getDisplay().getInputManager(), graphicsManager.getRenderer().getCamera(), player, 0.005f);
 		
 		new Thread(worldManager = new WorldManager(world), "World Manager " + world.hashCode()).start();
 		new Thread(clientUpdateManager = new ClientUpdateManager(), "Client Updater").start();
@@ -90,9 +92,9 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 	}
 	
 	private void exit() {
+		Synchronizer.waitForExit(clientUpdateManager);
+		Synchronizer.waitForExit(audioManager);
 		Synchronizer.waitForExit(worldManager);
-		clientUpdateManager.exit();
-		audioManager.exit();
 		Synchronizer.waitForExit(graphicsManager);
 		eventManager.exit();
 	}
