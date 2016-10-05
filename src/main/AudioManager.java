@@ -3,14 +3,13 @@ package main;
 import static org.lwjgl.openal.AL10.*;
 import static org.lwjgl.openal.ALC10.*;
 
+import audio.AudioBuffer;
 import audio.Sound;
 import audio.WaveformReader;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.util.LinkedList;
 import org.lwjgl.openal.AL;
 import org.lwjgl.openal.ALC;
@@ -33,16 +32,19 @@ public class AudioManager implements Runnable, Installable, Exitable {
 		}
 		
 		try {
-			WaveformReader bloop = new WaveformReader(new FileInputStream(new File("resources/assets/audio/bloopBloop.wav")));
-			bloop.decode();
-		} catch (FileNotFoundException e1) {
-			e1.printStackTrace();
-		} catch (IOException e) {
+			setListenerParameters(0, 0, 0, 0, 0, 0);
+			WaveformReader reader = new WaveformReader(new FileInputStream(new File("resources/assets/audio/bloopBloop.wav")));
+			reader.decode();
+			System.out.println(reader);
+			AudioBuffer buffer = new AudioBuffer(reader);
+			Sound testSound = new Sound(buffer, 0, 0, 0, 0, 1, 1);
+			testSound.play();
+			System.out.println("Sound playing: " + testSound.isPlaying());
+			buffer.delete();
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 
-		//soundQueue.add(new Sound(new AudioBuffer("resources/assets/audio/bloopityBloop.flac"), 0, 0, 0, 0, 1.0f, 1.0f));
-		
 		synchronized(this) {
 			setupComplete = true;
 			notifyAll();
@@ -77,9 +79,10 @@ public class AudioManager implements Runnable, Installable, Exitable {
 		}
 	}
 	
-	public void setListenerParameters(float x, float y, float velocityX, float velocityY) {
+	public void setListenerParameters(float x, float y, float velocityX, float velocityY, float directionX, float directionY) {
 		alListener3f(AL_POSITION, x, y, 0);
 		alListener3f(AL_VELOCITY, velocityX, velocityY, 0);
+		alListenerfv(AL_ORIENTATION, new float[] {directionX, directionY, 0, 0, 1, 0});
 	}
 	
 	public void setVolume(float gain) {
