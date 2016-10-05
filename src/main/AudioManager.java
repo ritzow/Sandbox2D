@@ -9,8 +9,6 @@ import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.util.LinkedList;
 import org.lwjgl.openal.AL;
 import org.lwjgl.openal.ALC;
@@ -35,14 +33,11 @@ public class AudioManager implements Runnable, Installable, Exitable {
 		try {
 			WaveformReader bloop = new WaveformReader(new FileInputStream(new File("resources/assets/audio/bloopBloop.wav")));
 			bloop.decode();
-		} catch (FileNotFoundException e1) {
-			e1.printStackTrace();
-		} catch (IOException e) {
+			bloop.printInfo();
+		} catch(Exception e) {
 			e.printStackTrace();
 		}
 
-		//soundQueue.add(new Sound(new AudioBuffer("resources/assets/audio/bloopityBloop.flac"), 0, 0, 0, 0, 1.0f, 1.0f));
-		
 		synchronized(this) {
 			setupComplete = true;
 			notifyAll();
