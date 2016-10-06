@@ -23,8 +23,16 @@ public final class Sound {
 		alSourceStop(sourceID);
 	}
 	
+	public void pause() {
+		alSourcePause(sourceID);
+	}
+	
 	public void delete() {
 		alDeleteSources(sourceID);
+	}
+	
+	public int getState() {
+		return alGetSourcei(sourceID, AL_SOURCE_STATE);
 	}
 	
 	public boolean isPlaying() {

@@ -55,7 +55,7 @@ public final class WaveformReader {
 		format = readShortLittleEndian(); //read the format, 1 for PCM
 		
 		if(format != 1)
-			throw new IOException("format is not PCM");
+			throw new IOException("audio format is not PCM data");
 		
 		numChannels = readShortLittleEndian(); //read number of channels (1 or 2)
 		sampleRate = readIntegerLittleEndian(); //read sample rate (ie 44100 44100 Hz)
