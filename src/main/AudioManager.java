@@ -24,22 +24,22 @@ public class AudioManager implements Runnable, Installable, Exitable {
 	public void run() {
 		alcMakeContextCurrent(alcCreateContext(alcOpenDevice((ByteBuffer)null), (IntBuffer)null));
 		AL.createCapabilities(ALC.createCapabilities(alcGetContextsDevice(alcGetCurrentContext())));
+		System.out.println(alcGetString(alcGetContextsDevice(alcGetCurrentContext()), ALC_DEVICE_SPECIFIER));
 		soundQueue = new LinkedList<Sound>();
 		
-		int error;
-		while((error = alGetError()) != 0) {
-			System.err.println("OpenAL Error " + error);
-		}
-		
 		try {
-			WaveformReader reader = new WaveformReader(new FileInputStream(new File("resources/assets/audio/bloopBloop.wav")));
+			WaveformReader reader = new WaveformReader(new FileInputStream(new File("resources/assets/audio/monoTest.wav")));
 			reader.decode(); System.out.println(reader);
 			AudioBuffer buffer = new AudioBuffer(reader);
 			Sound testSound = new Sound(buffer, 0, 0, 0, 0, 1, 1);
 			setListenerParameters(0, 0, 0, 0, 0, 0);
-			testSound.play();
-			System.out.println("Sound playing: " + testSound.isPlaying());
-			buffer.delete();
+			testSound.play(); //TODO sound does not play, immediately "stops", which means it does start, but also doesnt play
+			System.out.println("Sound playing: " + testSound.isPlaying() + " (currently: " + testSound.getState() + ")");
+			
+			int error;
+			while((error = alGetError()) != AL_NO_ERROR) {
+				System.out.println("OpenAL error " + error);
+			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
