@@ -26,4 +26,16 @@ public final class Sound {
 	public void delete() {
 		alDeleteSources(sourceID);
 	}
+	
+	public boolean isPlaying() {
+		return alGetSourcei(sourceID, AL_SOURCE_STATE) == AL_PLAYING;
+	}
+	
+	public boolean isPaused() {
+		return alGetSourcei(sourceID, AL_SOURCE_STATE) == AL_PAUSED;
+	}
+	
+	public boolean isStopped() {
+		return alGetSourcei(sourceID, AL_SOURCE_STATE) == AL_STOPPED;
+	}
 }

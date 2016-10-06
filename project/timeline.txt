@@ -1,0 +1,24 @@
+October 4th:
+	Audio playing system complete:
+	Can load and play sound files at a world location using OpenAL.
+	Perhaps ability to play simple sound effects without file data.
+	Stretch: Sound manipulation (if it isn’t too difficult, which it shouldn’t be in OpenAL).
+October 18th:
+	Resource manager for audio files, textures, vertex data complete
+	Text rendering from .png character atlas
+	Objects can be associated with resources at runtime even before they are loaded.
+	Stretch: Resources can be stored in animation frames.
+November 1st:
+	Modular entities, and entities within entities.
+	Optimize physics using quadtrees or other method.
+November 15th:
+	Networking: ability to send and update world data between client and server.
+	World saving and loading from file.
+November 22nd/24th (Thanksgiving):
+	Improve rendering, particle system.
+	Stretch: world lighting.
+	Game engine complete, content/game creation begins.
+Christmas:
+	
+End of year:
+	Game complete with all features from specification, well polished.
