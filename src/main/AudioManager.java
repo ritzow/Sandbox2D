@@ -2,17 +2,17 @@ package main;
 
 import static org.lwjgl.openal.AL10.*;
 import static org.lwjgl.openal.ALC10.*;
+import static org.lwjgl.openal.ALC11.ALC_ALL_DEVICES_SPECIFIER;
 
 import audio.AudioBuffer;
 import audio.Sound;
 import audio.WaveformReader;
-import java.nio.ByteBuffer;
-import java.nio.IntBuffer;
 import java.io.File;
 import java.io.FileInputStream;
+import java.nio.IntBuffer;
 import java.util.LinkedList;
-import org.lwjgl.openal.AL;
-import org.lwjgl.openal.ALC;
+import java.util.List;
+import org.lwjgl.openal.*;
 
 public class AudioManager implements Runnable, Installable, Exitable {
 	private volatile boolean setupComplete;
@@ -22,16 +22,26 @@ public class AudioManager implements Runnable, Installable, Exitable {
 
 	@Override
 	public void run() {
-		alcMakeContextCurrent(alcCreateContext(alcOpenDevice((ByteBuffer)null), (IntBuffer)null));
-		AL.createCapabilities(ALC.createCapabilities(alcGetContextsDevice(alcGetCurrentContext())));
-		System.out.println(alcGetString(alcGetContextsDevice(alcGetCurrentContext()), ALC_DEVICE_SPECIFIER));
 		soundQueue = new LinkedList<Sound>();
+		
+		List<String> deviceList = ALUtil.getStringList(0, ALC_ALL_DEVICES_SPECIFIER);
+		System.out.println("OpenAL Device List:");
+		for(String device : deviceList) {
+			System.out.println("	" + device);
+		}
+		long alDevice = alcOpenDevice(deviceList.get(0)); //TODO select first device
+		System.out.println("Selected Device: " + alcGetString(alDevice, ALC_DEVICE_SPECIFIER));
+		long alContext = alcCreateContext(alDevice, (IntBuffer)null);
+		ALCCapabilities alcCaps = ALC.createCapabilities(alDevice);
+		alcMakeContextCurrent(alContext);
+		ALCapabilities alCaps = AL.createCapabilities(alcCaps);
 		
 		try {
 			WaveformReader reader = new WaveformReader(new FileInputStream(new File("resources/assets/audio/monoTest.wav")));
-			reader.decode(); System.out.println(reader);
+			reader.decode(); //System.out.println(reader);
 			AudioBuffer buffer = new AudioBuffer(reader);
 			Sound testSound = new Sound(buffer, 0, 0, 0, 0, 1, 1);
+			testSound.setLooping(true);
 			setListenerParameters(0, 0, 0, 0, 0, 0);
 			testSound.play(); //TODO sound does not play, immediately "stops", which means it does start, but also doesnt play
 			System.out.println("Sound playing: " + testSound.isPlaying() + " (currently: " + testSound.getState() + ")");
