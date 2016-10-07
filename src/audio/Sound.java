@@ -31,6 +31,10 @@ public final class Sound {
 		alDeleteSources(sourceID);
 	}
 	
+	public void setLooping(boolean loop) {
+		alSourcei(sourceID, AL_LOOPING, loop ? AL_TRUE : AL_FALSE);
+	}
+	
 	public int getState() {
 		return alGetSourcei(sourceID, AL_SOURCE_STATE);
 	}
