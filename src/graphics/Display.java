@@ -1,11 +1,9 @@
 package graphics;
 
 import static org.lwjgl.glfw.GLFW.*;
-import static org.lwjgl.opengl.GL11.*;
 
 import input.*;
 import org.lwjgl.glfw.GLFWErrorCallback;
-import org.lwjgl.opengl.GL;
 
 public final class Display {
 	
@@ -47,17 +45,11 @@ public final class Display {
 		input = new InputManager(displayID);
 	}
 	
-	public void setupContext() {
+	public void setContext() {
 		glfwMakeContextCurrent(displayID);
-		GL.createCapabilities();
-		glfwSwapInterval(0);
-		glClearColor(1.0f,1.0f,1.0f,1.0f);
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	}
 	
-	public void destroyContext() {
-		GL.destroy();
+	public void closeContext() {
 		glfwMakeContextCurrent(0);
 	}
 	

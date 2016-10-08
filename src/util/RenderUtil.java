@@ -2,7 +2,7 @@ package util;
 
 import static util.MatrixMath.multiply;
 
-import world.Camera;
+import graphics.Camera;
 
 public class RenderUtil {
 	public static float[] getTransformationMatrix(float posX, float posY, float scaleX, float scaleY, float rotation) {		

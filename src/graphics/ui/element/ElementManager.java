@@ -24,7 +24,7 @@ public final class ElementManager extends HashMap<Element, DynamicLocation> impl
 	
 	@Override
 	public void render(Renderer renderer) {
-		renderer.loadView(renderer.getAspectMatrix());
+		renderer.loadViewMatrix(false);
 		for(Entry<Element, DynamicLocation> entry : entrySet()) {
 			if(entry.getValue() != null)
 				entry.getKey().render(renderer, getX(entry.getValue(), frameHeight/frameWidth), getY(entry.getValue()));

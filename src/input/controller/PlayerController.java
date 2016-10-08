@@ -8,12 +8,12 @@ import input.InputManager;
 import input.handler.KeyHandler;
 import main.Updatable;
 import world.World;
-import world.entity.Entity;
+import world.entity.GenericEntity;
 
 public final class PlayerController implements KeyHandler, Updatable {
 	
 	private World world;
-	private Entity player;
+	private GenericEntity player;
 	private float movementSpeed;
 	
 	private boolean upPressed;
@@ -21,7 +21,7 @@ public final class PlayerController implements KeyHandler, Updatable {
 	private boolean downPressed;
 	private boolean leftPressed;
 	
-	public PlayerController(InputManager manager, Entity player, World world, float movementSpeed) {
+	public PlayerController(InputManager manager, GenericEntity player, World world, float movementSpeed) {
 		this.world = world;
 		this.player = player;
 		this.movementSpeed = movementSpeed;
@@ -34,11 +34,11 @@ public final class PlayerController implements KeyHandler, Updatable {
 		}
 		
 		if(downPressed) {
-			player.hitbox().setHeight(0.75f);
-			player.graphics().scale().setY(0.75f);
+			player.getHitbox().setHeight(0.75f);
+			player.getGraphics().scale().setY(0.75f);
 		} else {
-			player.hitbox().setHeight(1);
-			player.graphics().scale().setY(1);
+			player.getHitbox().setHeight(1);
+			player.getGraphics().scale().setY(1);
 		}
 		
 		if(rightPressed && !world.blockRight(player)) {

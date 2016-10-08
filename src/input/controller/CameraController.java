@@ -4,13 +4,13 @@ import static org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_MIDDLE;
 import static org.lwjgl.glfw.GLFW.GLFW_PRESS;
 import static org.lwjgl.glfw.GLFW.GLFW_RELEASE;
 
+import graphics.Camera;
 import input.Controls;
 import input.InputManager;
 import input.handler.KeyHandler;
 import input.handler.MouseButtonHandler;
 import input.handler.ScrollHandler;
 import main.Updatable;
-import world.Camera;
 import world.entity.Entity;
 
 public class CameraController implements KeyHandler, ScrollHandler, MouseButtonHandler, Updatable {

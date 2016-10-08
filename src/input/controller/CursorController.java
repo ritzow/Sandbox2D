@@ -1,5 +1,6 @@
 package input.controller;
 
+import graphics.Camera;
 import input.Controls;
 import input.InputManager;
 import input.handler.CursorPosHandler;
@@ -9,10 +10,10 @@ import input.handler.MouseButtonHandler;
 import main.Updatable;
 import org.lwjgl.glfw.GLFW;
 import util.ResourceManager;
-import world.Camera;
 import world.World;
 import world.block.RedBlock;
 import world.entity.Entity;
+import world.entity.GenericEntity;
 
 public final class CursorController implements MouseButtonHandler, CursorPosHandler, FramebufferSizeHandler, KeyHandler, Updatable {
 	private boolean leftMouseDown;
@@ -72,7 +73,7 @@ public final class CursorController implements MouseButtonHandler, CursorPosHand
 		
 		if(activatePressed) {
 			activatePressed = false;
-			Entity entity = new Entity(ResourceManager.getModel("blue_square"));
+			Entity entity = new GenericEntity(ResourceManager.getModel("blue_square"));
 			entity.position().setX((float)worldX);
 			entity.position().setY((float)worldY);
 			world.getEntities().add(entity);

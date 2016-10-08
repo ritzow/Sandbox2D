@@ -41,12 +41,12 @@ public class World implements Renderable {
 			e.velocity().setAccelerationY(-gravity);
 			e.update(milliseconds);
 
-			if(e.hitbox().getPriority() >= 0) {
+			if(e.getHitbox().getPriority() >= 0) {
 				//Check for entity collisions with other entities
 				for(int j = i; j < entities.size(); j++) {
 					Entity o = entities.get(j);
-					if(e != null && o != null && e != o && o.hitbox().getPriority() >= 0) {
-						if(e.hitbox().getPriority() > o.hitbox().getPriority()) {
+					if(e != null && o != null && e != o && o.getHitbox().getPriority() >= 0) {
+						if(e.getHitbox().getPriority() > o.getHitbox().getPriority()) {
 							resolveCollision(e, o);
 						} else {
 							resolveCollision(o, e);
@@ -84,13 +84,13 @@ public class World implements Renderable {
 	}
 	
 	public boolean resolveCollision(Entity e, Entity o) {
-		return resolveCollision(e, o.position().getX(), o.position().getY(), o.hitbox().getWidth(), o.hitbox().getHeight());
+		return resolveCollision(e, o.position().getX(), o.position().getY(), o.getHitbox().getWidth(), o.getHitbox().getHeight());
 	}
 	
 	/** Returns true if a collision occurred **/
 	public boolean resolveCollision(Entity entity, float otherX, float otherY, float otherWidth, float otherHeight) {		
-		float width = 0.5f * (entity.hitbox().getWidth() + otherWidth);
-		float height = 0.5f * (entity.hitbox().getHeight() + otherHeight);
+		float width = 0.5f * (entity.getHitbox().getWidth() + otherWidth);
+		float height = 0.5f * (entity.getHitbox().getHeight() + otherHeight);
 		float deltaX = otherX - entity.position().getX();
 		float deltaY = otherY - entity.position().getY();
 		if (Math.abs(deltaX) < width && Math.abs(deltaY) < height) { /* collision! replace < in intersection detection with <= for previous behavior */
@@ -133,7 +133,7 @@ public class World implements Renderable {
 	public boolean entityBelow(Entity e) {
 		for(int i = 0; i < entities.size(); i++) {
 			Entity o = entities.get(i);
-			if(o != null && e != o && o.hitbox().getPriority() >= 0 && HitboxUtil.intersection(e.position().getX(), e.position().getY() - e.hitbox().getHeight()/2, e.hitbox().getWidth() - 0.01f, 0.1f, o.position().getX(), o.position().getY(), o.hitbox().getWidth(), o.hitbox().getHeight())) {
+			if(o != null && e != o && o.getHitbox().getPriority() >= 0 && HitboxUtil.intersection(e.position().getX(), e.position().getY() - e.getHitbox().getHeight()/2, e.getHitbox().getWidth() - 0.01f, 0.1f, o.position().getX(), o.position().getY(), o.getHitbox().getWidth(), o.getHitbox().getHeight())) {
 				return true;
 			}
 		}
@@ -141,30 +141,30 @@ public class World implements Renderable {
 	}
 	
 	public boolean blockBelow(Entity e) {
-		return blocks.isBlock(e.position().getX() - e.hitbox().getWidth()/2 + 0.01f, e.position().getY() - e.hitbox().getHeight()/2 - 0.05f) || 
-			   blocks.isBlock(e.position().getX() + e.hitbox().getWidth()/2 - 0.01f, e.position().getY() - e.hitbox().getHeight()/2 - 0.05f);
+		return blocks.isBlock(e.position().getX() - e.getHitbox().getWidth()/2 + 0.01f, e.position().getY() - e.getHitbox().getHeight()/2 - 0.05f) || 
+			   blocks.isBlock(e.position().getX() + e.getHitbox().getWidth()/2 - 0.01f, e.position().getY() - e.getHitbox().getHeight()/2 - 0.05f);
 	}
 	
 	public boolean blockLeft(Entity e) {
-		return blocks.isBlock(e.position().getX() - e.hitbox().getWidth()/2 - 0.01f, e.position().getY() + e.hitbox().getHeight()/2 - 0.05f) || 
-			   blocks.isBlock(e.position().getX() - e.hitbox().getWidth()/2 - 0.01f, e.position().getY() - e.hitbox().getHeight()/2 + 0.05f);
+		return blocks.isBlock(e.position().getX() - e.getHitbox().getWidth()/2 - 0.01f, e.position().getY() + e.getHitbox().getHeight()/2 - 0.05f) || 
+			   blocks.isBlock(e.position().getX() - e.getHitbox().getWidth()/2 - 0.01f, e.position().getY() - e.getHitbox().getHeight()/2 + 0.05f);
 	}
 	
 	public boolean blockRight(Entity e) {
-		return blocks.isBlock(e.position().getX() + e.hitbox().getWidth()/2 + 0.01f, e.position().getY() + e.hitbox().getHeight()/2 - 0.05f) || 
-			   blocks.isBlock(e.position().getX() + e.hitbox().getWidth()/2 + 0.01f, e.position().getY() - e.hitbox().getHeight()/2 + 0.05f);
+		return blocks.isBlock(e.position().getX() + e.getHitbox().getWidth()/2 + 0.01f, e.position().getY() + e.getHitbox().getHeight()/2 - 0.05f) || 
+			   blocks.isBlock(e.position().getX() + e.getHitbox().getWidth()/2 + 0.01f, e.position().getY() - e.getHitbox().getHeight()/2 + 0.05f);
 	}
 
 	@Override
 	public void render(Renderer renderer) {
 		renderer.loadOpacity(1);
-		renderer.loadView(renderer.getViewMatrix(renderer.getCamera()));
+		renderer.loadViewMatrix(true);
 		
 		for(int row = 0; row < blocks.getHeight(); row++) {
 			for(int column = 0; column < blocks.getWidth(); column++) {
 				if(blocks.isBlock(column, row) && !blocks.isHidden(column, row)) {
 					Model blockModel = blocks.get(column, row).getModel();
-					renderer.loadTransformation(renderer.getTransformationMatrix(column, row, 1, 1, 0));
+					renderer.loadTransformationMatrix(column, row, 1, 1, 0);
 					blockModel.render();
 				}
 			}

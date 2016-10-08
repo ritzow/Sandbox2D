@@ -36,6 +36,13 @@ public class AudioManager implements Runnable, Installable, Exitable {
 		alcMakeContextCurrent(alContext);
 		ALCapabilities alCaps = AL.createCapabilities(alcCaps);
 		
+		if(!alCaps.OpenAL10)
+			try {
+				throw new Exception("OpenAL 1.0 not supported!");
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		
 		try {
 			WaveformReader reader = new WaveformReader(new FileInputStream(new File("resources/assets/audio/monoTest.wav")));
 			reader.decode(); //System.out.println(reader);

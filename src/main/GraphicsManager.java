@@ -1,15 +1,15 @@
 package main;
 
-import static org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT;
-import static org.lwjgl.opengl.GL11.glClear;
-import static org.lwjgl.opengl.GL11.glViewport;
 import org.lwjgl.glfw.GLFWErrorCallback;
+import org.lwjgl.opengl.GL;
+
+import static org.lwjgl.glfw.GLFW.glfwSwapInterval;
+import static org.lwjgl.opengl.GL11.*;
 
 import graphics.*;
 import input.handler.FramebufferSizeHandler;
 import java.util.ArrayList;
 import util.ResourceManager;
-import world.Camera;
 
 public final class GraphicsManager implements Runnable, Installable, Exitable, FramebufferSizeHandler {
 	private volatile boolean setupComplete;
@@ -17,8 +17,6 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 	private volatile boolean finished;
 	
 	private Renderer renderer;
-	private Camera camera;
-	private ShaderProgram shaderProgram;
 	private Display display;
 	
 	private float frameWidth;
@@ -27,50 +25,41 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 	private final ArrayList<Renderable> renderables;
 	
 	public GraphicsManager(Display display) {
-		this.renderables = new ArrayList<Renderable>();
 		this.display = display;
+		this.renderables = new ArrayList<Renderable>();
 		display.getInputManager().getFramebufferSizeHandlers().add(this);
 	}
 
 	@Override
 	public void run() {
-		setup();
-		loop();
+		display.setContext();
+		GL.createCapabilities();
+		glfwSwapInterval(0);
+		glClearColor(1.0f,1.0f,1.0f,1.0f);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		
-		renderables.clear();
-		ResourceManager.deleteAll();
-		display.destroyContext();
-		
-		synchronized(this) {
-			finished = true;
-			this.notifyAll();
-		}
-	}
-	
-	private void setup() {
-		display.setupContext();
 		GLFWErrorCallback.createPrint(System.err).set();
 		
-		ResourceManager.loadResources("resources/assets/"); //create "Models" and buffer data to GPU
+		ResourceManager.loadResources("resources/assets/");
 		
-		shaderProgram = new ShaderProgram( //create the shader program
+		ShaderProgram shaderProgram = new ShaderProgram( //create the shader program
 				new Shader("resources/shaders/vertexShader", org.lwjgl.opengl.GL20.GL_VERTEX_SHADER), 
 				new Shader("resources/shaders/fragmentShader", org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER)
 		);
 		
-		camera = new Camera( 0, 0, 0.07f, 1.5f);
+		Camera camera = new Camera( 0, 0, 0.07f, 1.5f);
 		renderer = new Renderer(shaderProgram, camera, display);
 		
 		synchronized(this) {
 			setupComplete = true;
 			this.notifyAll();
 		}
-	}
-	
-	private void loop() {
+		
 		try {			
 			while(!exit) {
 				glViewport(0, 0, (int)frameWidth, (int)frameHeight);
+				renderer.setResolution((int)frameWidth, (int)frameHeight);
 				glClear(GL_COLOR_BUFFER_BIT);
 				for(int i = 0; i < renderables.size(); i++) renderables.get(i).render(renderer);
 				display.refresh();
@@ -78,6 +67,16 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 			}
 		} catch(InterruptedException e) {
 			e.printStackTrace();
+		}
+		
+		renderables.clear();
+		ResourceManager.deleteAll();
+		GL.destroy();
+		display.closeContext();
+		
+		synchronized(this) {
+			finished = true;
+			this.notifyAll();
 		}
 	}
 	
@@ -87,14 +86,6 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 	
 	public ArrayList<Renderable> getRenderables() {
 		return renderables;
-	}
-	
-	public void setRenderer(Renderer renderer) {
-		this.renderer = renderer;
-	}
-	
-	public void setDisplay(Display display) {
-		this.display = display;
 	}
 	
 	public boolean isSetupComplete() {

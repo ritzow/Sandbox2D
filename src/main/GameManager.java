@@ -19,7 +19,7 @@ import world.block.Block;
 import world.block.DirtBlock;
 import world.block.GrassBlock;
 import world.block.RedBlock;
-import world.entity.Entity;
+import world.entity.GenericEntity;
 
 public final class GameManager implements Runnable, WindowCloseHandler, KeyHandler {
 	private EventManager eventManager;
@@ -64,8 +64,8 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 			}
 		}
 		
-		Entity player = new Entity(ResourceManager.getModel("green_face"));
-		player.hitbox().setPriority(0.1f);
+		GenericEntity player = new GenericEntity(ResourceManager.getModel("green_face"));
+		player.getHitbox().setPriority(0.1f);
 		player.position().setX(world.getBlocks().getWidth()/2);
 		player.position().setY(world.getBlocks().getHeight());
 		world.getEntities().add(player);
