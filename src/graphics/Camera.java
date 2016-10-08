@@ -1,4 +1,4 @@
-package world;
+package graphics;
 
 public class Camera {
 	protected float posX;
