@@ -157,15 +157,21 @@ public class World implements Renderable {
 
 	@Override
 	public void render(Renderer renderer) {
-		renderer.loadOpacity(1);
 		renderer.loadViewMatrix(true);
 		
 		for(int row = 0; row < blocks.getHeight(); row++) {
 			for(int column = 0; column < blocks.getWidth(); column++) {
-				if(blocks.isBlock(column, row) && !blocks.isHidden(column, row)) {
+				if(blocks.isBlock(column, row)) {
 					Model blockModel = blocks.get(column, row).getModel();
-					renderer.loadTransformationMatrix(column, row, 1, 1, 0);
-					blockModel.render();
+					if(!blocks.isHidden(column, row)) {
+						renderer.loadOpacity(1);
+						renderer.loadTransformationMatrix(column, row, 1, 1, 0);
+						blockModel.render();
+					} else {
+						renderer.loadOpacity((row * 0.9f / blocks.getHeight()) + 0.1f);
+						renderer.loadTransformationMatrix(column, row, 1, 1, 0);
+						blockModel.render();
+					}
 				}
 			}
 		}

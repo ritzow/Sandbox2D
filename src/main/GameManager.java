@@ -70,6 +70,17 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		player.position().setY(world.getBlocks().getHeight());
 		world.getEntities().add(player);
 		
+//		ContainerEntity test = new ContainerEntity();
+//		test.position().setX(player.position().getX());
+//		test.position().setY(player.position().getY());
+//		GenericEntity entity1 = new GenericEntity(ResourceManager.getModel("blue_square"));
+//		entity1.position().setX(2);
+//		entity1.position().setY(2);
+//		GenericEntity entity2 = new GenericEntity(ResourceManager.getModel("red_square"));
+//		test.getEntities().add(entity1);
+//		test.getEntities().add(entity2);
+//		world.getEntities().add(test);
+		
 		PlayerController playerController = new PlayerController(eventManager.getDisplay().getInputManager(), player, world, 0.2f);
 		CursorController cursorController = new CursorController(eventManager.getDisplay().getInputManager(), player, world, graphicsManager.getRenderer().getCamera());
 		cameraController = new CameraController(eventManager.getDisplay().getInputManager(), graphicsManager.getRenderer().getCamera(), player, 0.005f);
