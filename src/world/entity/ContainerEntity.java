@@ -11,6 +11,18 @@ public class ContainerEntity extends Entity {
 		entities = new ArrayList<Entity>();
 	}
 	
+//	public void update(float milliseconds) {
+//		
+//		super.update(milliseconds);
+//		
+//		for(int i = 0; i < entities.size(); i++) {
+//			Entity e = entities.get(i);
+//			e.position().setX(this.position().getX() + e.position().getX());
+//			e.position().setY(this.position().getY() + e.position().getY());
+//			e.update(milliseconds);
+//		}
+//	}
+	
 	public ArrayList<Entity> getEntities() {
 		return entities;
 	}
