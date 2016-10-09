@@ -1,14 +1,13 @@
 package main;
 
-import org.lwjgl.glfw.GLFWErrorCallback;
-import org.lwjgl.opengl.GL;
-
 import static org.lwjgl.glfw.GLFW.glfwSwapInterval;
 import static org.lwjgl.opengl.GL11.*;
 
 import graphics.*;
 import input.handler.FramebufferSizeHandler;
 import java.util.ArrayList;
+import org.lwjgl.glfw.GLFWErrorCallback;
+import org.lwjgl.opengl.GL;
 import util.ResourceManager;
 
 public final class GraphicsManager implements Runnable, Installable, Exitable, FramebufferSizeHandler {
@@ -38,7 +37,6 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 		glClearColor(1.0f,1.0f,1.0f,1.0f);
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		
 		GLFWErrorCallback.createPrint(System.err).set();
 		
 		ResourceManager.loadResources("resources/assets/");

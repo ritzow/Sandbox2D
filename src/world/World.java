@@ -64,6 +64,7 @@ public class World implements Renderable {
 				}
 			}
 
+			//remove all entities that are below the world
 			if(e.position().getY() < 0) {
 				entities.set(i, null);
 				entities.remove(i);
