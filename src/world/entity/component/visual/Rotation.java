@@ -1,6 +1,10 @@
 package world.entity.component.visual;
 
-public final class Rotation {
+import java.io.Serializable;
+
+public final class Rotation implements Serializable {
+	private static final long serialVersionUID = -7669660459348343660L;
+	
 	private float rotation;
 	private float velocity;
 	

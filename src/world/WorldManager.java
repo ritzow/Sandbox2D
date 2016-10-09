@@ -1,7 +1,7 @@
-package main;
+package world;
 
+import main.Exitable;
 import util.TimeUtil;
-import world.World;
 
 public final class WorldManager implements Runnable, Exitable {
 	private final long MILLISECONDS_PER_UPDATE = 16;

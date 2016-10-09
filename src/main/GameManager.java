@@ -3,6 +3,8 @@ package main;
 import static org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE;
 import static org.lwjgl.glfw.GLFW.GLFW_PRESS;
 
+import audio.AudioManager;
+import graphics.GraphicsManager;
 import graphics.ui.DynamicLocation;
 import graphics.ui.element.ElementManager;
 import graphics.ui.element.button.BlockSwitcherButton;
@@ -15,6 +17,7 @@ import input.handler.WindowCloseHandler;
 import util.ResourceManager;
 import util.Synchronizer;
 import world.World;
+import world.WorldManager;
 import world.block.Block;
 import world.block.DirtBlock;
 import world.block.GrassBlock;
@@ -56,13 +59,28 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 			for(int j = 0; j < world.getBlocks().getWidth(); j++) {
 				if(i == world.getBlocks().getHeight()/2 - 1) {
 					world.getBlocks().set(j, i, new GrassBlock());
-				} else if(Math.random() < 0.05f) {
+				} else if(Math.random() < 0.005f) {
 					world.getBlocks().set(j, i, new RedBlock());
 				} else {
 					world.getBlocks().set(j, i, new DirtBlock());
 				}
 			}
 		}
+		
+//		World world = null;
+//		try {
+//			FileInputStream worldInput = new FileInputStream("testWorld");
+//			ObjectInputStream objectInput = new ObjectInputStream(worldInput);
+//			world = (World)objectInput.readObject();
+//			objectInput.close();
+//			worldInput.close();
+//		} catch (ClassNotFoundException e) {
+//			e.printStackTrace();
+//		} catch(NotSerializableException e) {
+//			System.err.println("Could not serialize " + e.getMessage());
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//		}
 		
 		GenericEntity player = new GenericEntity(ResourceManager.getModel("green_face"));
 		player.getHitbox().setPriority(0.1f);
@@ -95,6 +113,21 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		clientUpdateManager.exit();
 		Synchronizer.waitForExit(audioManager);
 		Synchronizer.waitForExit(worldManager);
+		
+//		try {
+//			FileOutputStream worldOutput = new FileOutputStream("testWorld");
+//			ObjectOutputStream objectStream = new ObjectOutputStream(worldOutput);
+//			objectStream.writeObject(worldManager.getWorld());
+//			objectStream.close();
+//			worldOutput.close();
+//		} catch (FileNotFoundException e) {
+//			e.printStackTrace();
+//		} catch(NotSerializableException e) {
+//			System.err.println("Could not serialize " + e.getMessage());
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//		}
+		
 		Synchronizer.waitForExit(graphicsManager);
 		eventManager.exit();
 	}

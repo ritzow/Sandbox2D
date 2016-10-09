@@ -1,6 +1,10 @@
 package world.entity.component.spacial;
 
-public final class Hitbox {
+import java.io.Serializable;
+
+public final class Hitbox implements Serializable {
+	private static final long serialVersionUID = -5196752210244941936L;
+	
 	private float width;
 	private float height;
 	private float priority;

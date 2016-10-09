@@ -1,8 +1,11 @@
 package world.entity.component.visual;
 
 import graphics.Model;
+import java.io.Serializable;
 
-public class Graphics {
+public class Graphics implements Serializable {
+	private static final long serialVersionUID = 4497437671840075738L;
+	
 	protected Model model;
 	protected Scale scale;
 	protected Rotation rotation;

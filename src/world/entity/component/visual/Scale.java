@@ -1,6 +1,10 @@
 package world.entity.component.visual;
 
-public final class Scale {
+import java.io.Serializable;
+
+public final class Scale implements Serializable {
+	private static final long serialVersionUID = -6051593995919509687L;
+	
 	private float x;
 	private float y;
 	

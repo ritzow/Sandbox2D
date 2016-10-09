@@ -1,8 +1,11 @@
 package world;
 
+import java.io.Serializable;
 import world.block.Block;
 
-public class BlockGrid  {
+public class BlockGrid implements Serializable {
+	private static final long serialVersionUID = -6699666931303107158L;
+
 	protected final Block[][] blocks;
 	
 	protected World world;

@@ -5,6 +5,7 @@ import graphics.Renderer;
 import world.entity.component.visual.Graphics;
 
 public class GenericEntity extends Entity {
+	private static final long serialVersionUID = 6938705771360005876L;
 	
 	protected final Graphics graphics;
 	
