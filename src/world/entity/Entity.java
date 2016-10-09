@@ -1,11 +1,14 @@
 package world.entity;
 
 import graphics.Renderer;
+import java.io.Serializable;
 import world.entity.component.spacial.Hitbox;
 import world.entity.component.spacial.Position;
 import world.entity.component.spacial.Velocity;
 
-public abstract class Entity {
+public abstract class Entity implements Serializable {
+	private static final long serialVersionUID = 7177412000462430179L;
+	
 	protected final Position position;
 	protected final Velocity velocity;
 	protected final Hitbox hitbox;

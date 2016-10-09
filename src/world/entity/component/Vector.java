@@ -1,6 +1,10 @@
 package world.entity.component;
 
-public abstract class Vector {
+import java.io.Serializable;
+
+public abstract class Vector implements Serializable {
+	private static final long serialVersionUID = -3308518601748576201L;
+	
 	protected float x;
 	protected float y;
 	

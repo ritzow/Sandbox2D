@@ -3,6 +3,7 @@ package world.entity.component.spacial;
 import world.entity.component.Vector;
 
 public final class Velocity extends Vector {
+	private static final long serialVersionUID = -7193764413143491680L;
 	
 	private float accelerationX;
 	private float accelerationY;

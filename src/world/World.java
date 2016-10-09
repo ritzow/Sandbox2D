@@ -7,7 +7,11 @@ import java.util.ArrayList;
 import util.HitboxUtil;
 import world.entity.Entity;
 
-public class World implements Renderable {	
+import java.io.Serializable;
+
+public class World implements Renderable, Serializable {	
+	private static final long serialVersionUID = 8941044044393756575L;
+	
 	protected final ArrayList<Entity> entities;
 	protected final BlockGrid blocks;
 	protected float gravity;

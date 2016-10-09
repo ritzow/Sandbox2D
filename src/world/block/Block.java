@@ -1,10 +1,13 @@
 package world.block;
 
 import graphics.Model;
+import java.io.Serializable;
 import world.World;
 import world.entity.GenericEntity;
 
-public abstract class Block {
+public abstract class Block implements Serializable {
+	private static final long serialVersionUID = -5852957760473837301L;
+	
 	protected int integrity;
 	
 	public abstract Model getModel();
