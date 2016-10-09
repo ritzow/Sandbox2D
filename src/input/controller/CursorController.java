@@ -66,8 +66,9 @@ public final class CursorController implements MouseButtonHandler, CursorPosHand
 				world.getBlocks().destroy(blockX, blockY);
 			}
 			
-			else if(rightMouseDown) { 
-				world.getBlocks().place(blockX, blockY, new RedBlock()); //TODO this places the same block in multiple spots in the world, not good!
+			else if(rightMouseDown) {
+				if(world.getBlocks().isValid(blockX, blockY))
+					world.getBlocks().place(blockX, blockY, new RedBlock());
 			}
 		}
 		
