@@ -4,10 +4,8 @@ import static org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE;
 import static org.lwjgl.glfw.GLFW.GLFW_PRESS;
 
 import audio.AudioManager;
+import graphics.Background;
 import graphics.GraphicsManager;
-import graphics.ui.DynamicLocation;
-import graphics.ui.element.ElementManager;
-import graphics.ui.element.button.BlockSwitcherButton;
 import input.Controls;
 import input.controller.CameraController;
 import input.controller.CursorController;
@@ -18,7 +16,6 @@ import util.ResourceManager;
 import util.Synchronizer;
 import world.World;
 import world.WorldManager;
-import world.block.Block;
 import world.block.DirtBlock;
 import world.block.GrassBlock;
 import world.block.RedBlock;
@@ -67,21 +64,6 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 			}
 		}
 		
-//		World world = null;
-//		try {
-//			FileInputStream worldInput = new FileInputStream("testWorld");
-//			ObjectInputStream objectInput = new ObjectInputStream(worldInput);
-//			world = (World)objectInput.readObject();
-//			objectInput.close();
-//			worldInput.close();
-//		} catch (ClassNotFoundException e) {
-//			e.printStackTrace();
-//		} catch(NotSerializableException e) {
-//			System.err.println("Could not serialize " + e.getMessage());
-//		} catch (IOException e) {
-//			e.printStackTrace();
-//		}
-		
 		GenericEntity player = new GenericEntity(ResourceManager.getModel("green_face"));
 		player.getHitbox().setPriority(0.1f);
 		player.position().setX(world.getBlocks().getWidth()/2);
@@ -95,39 +77,18 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		new Thread(worldManager = new WorldManager(world), "World Manager " + world.hashCode()).start();
 		new Thread(clientUpdateManager = new ClientUpdateManager(), "Client Updater").start();
 		
-		ElementManager elements = new ElementManager();
-		eventManager.getDisplay().getInputManager().add(elements);
-		
-		elements.put(new BlockSwitcherButton(new Block[] {new DirtBlock(), new GrassBlock(), new RedBlock()}), new DynamicLocation(-1f, -1f, 0.25f, 0.25f));
-		
 		clientUpdateManager.getUpdatables().add(playerController);
 		clientUpdateManager.getUpdatables().add(cursorController);
 		clientUpdateManager.getUpdatables().add(cameraController);
-		clientUpdateManager.getUpdatables().add(elements);
 		
+		graphicsManager.getRenderables().add(new Background(ResourceManager.getModel("hills_background")));
 		graphicsManager.getRenderables().add(world);
-		graphicsManager.getRenderables().add(elements);
 	}
 	
 	private void exit() {
 		clientUpdateManager.exit();
 		Synchronizer.waitForExit(audioManager);
 		Synchronizer.waitForExit(worldManager);
-		
-//		try {
-//			FileOutputStream worldOutput = new FileOutputStream("testWorld");
-//			ObjectOutputStream objectStream = new ObjectOutputStream(worldOutput);
-//			objectStream.writeObject(worldManager.getWorld());
-//			objectStream.close();
-//			worldOutput.close();
-//		} catch (FileNotFoundException e) {
-//			e.printStackTrace();
-//		} catch(NotSerializableException e) {
-//			System.err.println("Could not serialize " + e.getMessage());
-//		} catch (IOException e) {
-//			e.printStackTrace();
-//		}
-		
 		Synchronizer.waitForExit(graphicsManager);
 		eventManager.exit();
 	}
