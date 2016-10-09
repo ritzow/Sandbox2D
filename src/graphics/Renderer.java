@@ -12,6 +12,13 @@ public final class Renderer {
 	private float framebufferWidth;
 	private float framebufferHeight;
 	
+	private static float[] identityMatrix = new float[] {
+			1, 0, 0, 0,
+			0, 1, 0, 0,
+			0, 0, 0, 0,
+			0, 0, 0, 1,
+	};
+	
 	public Renderer(ShaderProgram program, Camera camera, Display display) {	
 		this.program = program;
 		this.camera = camera;
@@ -24,6 +31,10 @@ public final class Renderer {
 		program.loadFloat(uniform_opacity, opacity);
 	}
 	
+	public final void loadTransformationMatrixIndentity() {
+		program.loadMatrix(uniform_transform, identityMatrix);
+	}
+	
 	public final void loadTransformationMatrix(float posX, float posY, float scaleX, float scaleY, float rotation) {
 		program.loadMatrix(uniform_transform, 
 			new float[] {
@@ -33,6 +44,10 @@ public final class Renderer {
 				0, 0, 0, 1,
 			}
 		);
+	}
+	
+	public final void loadViewMatrixIdentity() {
+		program.loadMatrix(uniform_view, identityMatrix);
 	}
 	
 	public final void loadViewMatrix(boolean includeCamera) {
@@ -65,6 +80,14 @@ public final class Renderer {
 
 	public final void setCamera(Camera camera) {
 		this.camera = camera;
+	}
+	
+	public final float getFramebufferWidth() {
+		return framebufferWidth;
+	}
+	
+	public final float getFramebufferHeight() {
+		return framebufferHeight;
 	}
 	
 	public final void setResolution(float framebufferWidth, float framebufferHeight) {
