@@ -44,7 +44,6 @@ public class Model {
 		indices.bind();
 		texture.bind();
 		glDrawElements(GL_TRIANGLES, indices.getNumElements(), GL_UNSIGNED_INT, 0);
-		glBindVertexArray(0);
 	}
 	
 	public void delete() {
