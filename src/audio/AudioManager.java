@@ -1,17 +1,16 @@
-package main;
+package audio;
 
 import static org.lwjgl.openal.AL10.*;
 import static org.lwjgl.openal.ALC10.*;
 import static org.lwjgl.openal.ALC11.ALC_ALL_DEVICES_SPECIFIER;
 
-import audio.AudioBuffer;
-import audio.Sound;
-import audio.WaveformReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.nio.IntBuffer;
 import java.util.LinkedList;
 import java.util.List;
+import main.Exitable;
+import main.Installable;
 import org.lwjgl.openal.*;
 
 public class AudioManager implements Runnable, Installable, Exitable {
@@ -45,13 +44,13 @@ public class AudioManager implements Runnable, Installable, Exitable {
 		
 		try {
 			WaveformReader reader = new WaveformReader(new FileInputStream(new File("resources/assets/audio/monoTest.wav")));
-			reader.decode(); //System.out.println(reader);
+			reader.decode(); System.out.println(reader);
 			AudioBuffer buffer = new AudioBuffer(reader);
 			Sound testSound = new Sound(buffer, 0, 0, 0, 0, 1, 1);
 			testSound.setLooping(true);
 			setListenerParameters(0, 0, 0, 0, 0, 0);
 			testSound.play(); //TODO sound does not play, immediately "stops", which means it does start, but also doesnt play
-			System.out.println("Sound playing: " + testSound.isPlaying() + " (currently: " + testSound.getState() + ")");
+			//System.out.println("Sound playing: " + testSound.isPlaying() + " (currently: " + testSound.getState() + ")");
 			
 			int error;
 			while((error = alGetError()) != AL_NO_ERROR) {
