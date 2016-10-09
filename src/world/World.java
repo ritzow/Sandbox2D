@@ -168,15 +168,9 @@ public class World implements Renderable, Serializable {
 			for(int column = 0; column < blocks.getWidth(); column++) {
 				if(blocks.isBlock(column, row)) {
 					Model blockModel = blocks.get(column, row).getModel();
-					if(!blocks.isHidden(column, row)) {
-						renderer.loadOpacity(1);
-						renderer.loadTransformationMatrix(column, row, 1, 1, 0);
-						blockModel.render();
-					} else {
-						renderer.loadOpacity((row * 0.9f / blocks.getHeight()) + 0.1f);
-						renderer.loadTransformationMatrix(column, row, 1, 1, 0);
-						blockModel.render();
-					}
+					renderer.loadOpacity(1);
+					renderer.loadTransformationMatrix(column, row, 1, 1, 0);
+					blockModel.render();
 				}
 			}
 		}
