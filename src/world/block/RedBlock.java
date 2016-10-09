@@ -4,7 +4,8 @@ import graphics.Model;
 import util.ResourceManager;
 
 public class RedBlock extends Block {
-	
+	private static final long serialVersionUID = 9112806922906010577L;
+
 	public RedBlock() {
 		this.integrity = 100;
 	}
