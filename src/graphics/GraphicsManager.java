@@ -1,11 +1,12 @@
-package main;
+package graphics;
 
 import static org.lwjgl.glfw.GLFW.glfwSwapInterval;
 import static org.lwjgl.opengl.GL11.*;
 
-import graphics.*;
 import input.handler.FramebufferSizeHandler;
 import java.util.ArrayList;
+import main.Exitable;
+import main.Installable;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import org.lwjgl.opengl.GL;
 import util.ResourceManager;
