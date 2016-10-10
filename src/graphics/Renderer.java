@@ -69,6 +69,36 @@ public final class Renderer {
 		
 		program.loadMatrix(uniform_view, view);
 	}
+	
+	public final float getWorldViewportLeftBound() {
+		float worldX = -1;
+		worldX /= framebufferHeight/framebufferWidth; //apply aspect ratio
+		worldX /= camera.getZoom();
+		worldX += camera.getX();
+		return worldX;
+	}
+	
+	public final float getWorldViewportRightBound() {
+		float worldX = 1;
+		worldX /= framebufferHeight/framebufferWidth; //apply aspect ratio
+		worldX /= camera.getZoom();
+		worldX += camera.getX();
+		return worldX;
+	}
+	
+	public final float getWorldViewportTopBound() {
+		float worldY = 1;
+		worldY /= camera.getZoom();
+		worldY += camera.getY();
+		return worldY;
+	}
+	
+	public final float getWorldViewportBottomBound() {
+		float worldY = -1;
+		worldY /= camera.getZoom();
+		worldY += camera.getY();
+		return worldY;
+	}
 
 	public final ShaderProgram getProgram() {
 		return program;
@@ -88,6 +118,14 @@ public final class Renderer {
 	
 	public final float getFramebufferHeight() {
 		return framebufferHeight;
+	}
+	
+	public final float getViewportWidth() {
+		return 0;
+	}
+	
+	public final float getViewportHeight() {
+		return 0;
 	}
 	
 	public final void setResolution(float framebufferWidth, float framebufferHeight) {

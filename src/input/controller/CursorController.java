@@ -45,9 +45,9 @@ public final class CursorController implements MouseButtonHandler, CursorPosHand
 	private void update(Camera camera, float frameWidth, float frameHeight) {
 		double worldX = mouseX;
 		double worldY = mouseY;
-		worldX = (2f * worldX) / frameWidth - 1f;
-		worldY = -((2f * worldY) / frameHeight - 1f);
-		worldX /= frameHeight/frameWidth;
+		worldX = (2f * worldX) / frameWidth - 1f; //normalize the mouse coordinate
+		worldY = -((2f * worldY) / frameHeight - 1f); //normalize the mouse coordinate
+		worldX /= frameHeight/frameWidth; //apply aspect ratio
 		worldX /= camera.getZoom();
 		worldY /= camera.getZoom();
 		worldX += camera.getX();

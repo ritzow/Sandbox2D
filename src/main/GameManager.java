@@ -51,7 +51,7 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 	}
 	
 	public void setup() {
-		World world = new World(200, 50, 0.015f);
+		World world = new World(200, 200, 0.015f);
 		for(int i = 0; i < world.getBlocks().getHeight()/2; i++) {
 			for(int j = 0; j < world.getBlocks().getWidth(); j++) {
 				if(i == world.getBlocks().getHeight()/2 - 1) {

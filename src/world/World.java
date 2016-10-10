@@ -97,6 +97,8 @@ public class World implements Renderable, Serializable {
 			}
 		}
 		
+		
+		//TODO add culling to entities based on position and hitbox
 		for(int i = 0; i < entities.size(); i++) {
 			Entity e = entities.get(i);
 			if(e == null) continue;
