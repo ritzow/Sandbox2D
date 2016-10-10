@@ -14,7 +14,7 @@ import util.HitboxUtil;
 import static org.lwjgl.glfw.GLFW.*;
 
 public final class ElementManager extends HashMap<Element, DynamicLocation> implements Renderable, Updatable, CursorPosHandler, MouseButtonHandler, FramebufferSizeHandler {
-	private static final long serialVersionUID = 5834245054752212816L;
+	private static final long serialVersionUID = 1509124666145321593L;
 	
 	protected volatile float cursorX;
 	protected volatile float cursorY;

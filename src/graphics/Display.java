@@ -39,7 +39,7 @@ public final class Display {
 		glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 		
 		displayID = glfwCreateWindow(screenWidth/2, screenHeight/2, title, 0, 0);
-		glfwSetWindowSizeLimits(displayID, screenWidth/2, screenHeight/2, screenWidth, screenHeight);
+		//glfwSetWindowSizeLimits(displayID, screenWidth/2, screenHeight/2, screenWidth, screenHeight);
 		glfwSetWindowPos(displayID, screenWidth - screenWidth/2 - screenWidth/4, screenHeight - screenHeight/2 - screenHeight/4);		
 		
 		input = new InputManager(displayID);
