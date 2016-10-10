@@ -71,16 +71,14 @@ public final class Renderer {
 	}
 	
 	public final float getWorldViewportLeftBound() {
-		float worldX = -1;
-		worldX /= framebufferHeight/framebufferWidth; //apply aspect ratio
+		float worldX = -framebufferWidth/framebufferHeight; //far left of screen after accounting for aspect ratio
 		worldX /= camera.getZoom();
 		worldX += camera.getX();
 		return worldX;
 	}
 	
 	public final float getWorldViewportRightBound() {
-		float worldX = 1;
-		worldX /= framebufferHeight/framebufferWidth; //apply aspect ratio
+		float worldX = framebufferWidth/framebufferHeight; //far right of screen, after accounting for aspect ratio
 		worldX /= camera.getZoom();
 		worldX += camera.getX();
 		return worldX;
@@ -118,14 +116,6 @@ public final class Renderer {
 	
 	public final float getFramebufferHeight() {
 		return framebufferHeight;
-	}
-	
-	public final float getViewportWidth() {
-		return 0;
-	}
-	
-	public final float getViewportHeight() {
-		return 0;
 	}
 	
 	public final void setResolution(float framebufferWidth, float framebufferHeight) {
