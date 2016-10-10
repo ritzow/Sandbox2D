@@ -1,10 +1,11 @@
 package world;
 
 import main.Exitable;
+import util.Synchronizer;
 import util.TimeUtil;
 
 public final class WorldManager implements Runnable, Exitable {
-	private final long MILLISECONDS_PER_UPDATE = 16;
+	private static final long MILLISECONDS_PER_UPDATE = 16;
 	private volatile World world;
 	private volatile boolean exit;
 	private volatile boolean finished;
@@ -15,7 +16,11 @@ public final class WorldManager implements Runnable, Exitable {
 	
 	@Override
 	public void run() {
-		try {
+		BlockGridManager blockManager = new BlockGridManager(world.getBlocks());
+		
+		new Thread(blockManager).start();
+		
+		try {	
 			long start;
 			while(!exit) {
 				start = System.nanoTime();
@@ -25,6 +30,8 @@ public final class WorldManager implements Runnable, Exitable {
 		} catch(InterruptedException e) {
 			e.printStackTrace();
 		}
+		
+		Synchronizer.waitForExit(blockManager);
 		
 		synchronized(this) {
 			finished = true;
