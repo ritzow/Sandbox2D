@@ -11,7 +11,11 @@ public class Background implements Renderable {
 	@Override
 	public void render(Renderer renderer) {
 		renderer.loadViewMatrixIdentity();
-		renderer.loadTransformationMatrix(0, 0, 2, 2 * renderer.getFramebufferWidth()/renderer.getFramebufferHeight(), 0);
+		if(renderer.getFramebufferWidth() > renderer.getFramebufferHeight()) {
+			renderer.loadTransformationMatrix(0, 0, 2, 2 * renderer.getFramebufferWidth()/renderer.getFramebufferHeight(), 0);
+		} else {
+			renderer.loadTransformationMatrix(0, 0, 2 * renderer.getFramebufferHeight()/renderer.getFramebufferWidth(), 2, 0);
+		}
 		model.render();
 	}
 }
