@@ -72,19 +72,35 @@ public class World implements Renderable, Serializable {
 			if(e.position().getY() < 0) {
 				entities.set(i, null);
 				entities.remove(i);
-				i--;
+				i--;    
 			}
 		}
-
-		//Update all of the blocks
-		for(int row = 0; row < blocks.getHeight(); row++) {
-			for(int column = 0; column < blocks.getWidth(); column++) {
-				if(blocks.isBlock(column, row) && !blocks.isHidden(column, row)) {
-					if(row != 0 && !blocks.isStable(column, row)) { //destroy loose blocks
-						blocks.destroy(column, row);
-					}
+	}
+	
+	@Override
+	public void render(Renderer renderer) {
+		renderer.loadViewMatrix(true);
+		
+		int leftBound = 	Math.max(0, (int)Math.floor(renderer.getWorldViewportLeftBound()));
+		int rightBound = 	Math.min(blocks.getWidth(), (int)Math.ceil(renderer.getWorldViewportRightBound()) + 1);
+		int topBound = 		Math.min(blocks.getHeight(), (int)Math.ceil(renderer.getWorldViewportTopBound()) + 1);
+		int bottomBound = 	Math.max(0, (int)Math.floor(renderer.getWorldViewportBottomBound()));
+		
+		for(int row = bottomBound; row < topBound; row++) {
+			for(int column = leftBound; column < Math.min(blocks.getWidth(), rightBound); column++) {
+				if(blocks.isBlock(column, row)) {
+					Model blockModel = blocks.get(column, row).getModel();
+					renderer.loadOpacity(1);
+					renderer.loadTransformationMatrix(column, row, 1, 1, 0);
+					blockModel.render();
 				}
 			}
+		}
+		
+		for(int i = 0; i < entities.size(); i++) {
+			Entity e = entities.get(i);
+			if(e == null) continue;
+			entities.get(i).render(renderer);
 		}
 	}
 	
@@ -158,27 +174,5 @@ public class World implements Renderable, Serializable {
 	public boolean blockRight(Entity e) {
 		return blocks.isBlock(e.position().getX() + e.getHitbox().getWidth()/2 + 0.01f, e.position().getY() + e.getHitbox().getHeight()/2 - 0.05f) || 
 			   blocks.isBlock(e.position().getX() + e.getHitbox().getWidth()/2 + 0.01f, e.position().getY() - e.getHitbox().getHeight()/2 + 0.05f);
-	}
-
-	@Override
-	public void render(Renderer renderer) {
-		renderer.loadViewMatrix(true);
-		
-		for(int row = 0; row < blocks.getHeight(); row++) {
-			for(int column = 0; column < blocks.getWidth(); column++) {
-				if(blocks.isBlock(column, row)) {
-					Model blockModel = blocks.get(column, row).getModel();
-					renderer.loadOpacity(1);
-					renderer.loadTransformationMatrix(column, row, 1, 1, 0);
-					blockModel.render();
-				}
-			}
-		}
-		
-		for(int i = 0; i < entities.size(); i++) {
-			Entity e = entities.get(i);
-			if(e == null) continue;
-			entities.get(i).render(renderer);
-		}
 	}
 }
