@@ -61,6 +61,7 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 				renderer.setResolution((int)frameWidth, (int)frameHeight);
 				glClear(GL_COLOR_BUFFER_BIT);
 				for(int i = 0; i < renderables.size(); i++) renderables.get(i).render(renderer);
+				glFinish(); //wait until rendering is complete
 				display.refresh();
 				Thread.sleep(1);
 			}
