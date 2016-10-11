@@ -25,10 +25,8 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 	private EventManager eventManager;
 	private GraphicsManager graphicsManager;
 	private AudioManager audioManager;
-	
 	private WorldManager worldManager;
 	private ClientUpdateManager clientUpdateManager;
-	
 	public static CameraController cameraController;
 	
 	public GameManager(EventManager eventManager) {
