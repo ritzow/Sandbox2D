@@ -45,14 +45,14 @@ public final class ResourceManager {
 		Texture blueBlockTexture = new Texture(directory + "textures/blueSquare.png");
 		Texture dirtTexture = new Texture(directory + "textures/dirt.png");
 		Texture grassTexture = new Texture(directory + "textures/grass.png");
-		Texture hillsTexture = new Texture(directory + "textures/hills.png");
+		Texture cloudsTexture = new Texture(directory + "textures/clouds.png");
 		IndexBuffer rectangleIndicesBuffer = new IndexBuffer(rectangleIndices);
 		ResourceManager.add("green_face", new Model(squarePositionsBuffer, greenFaceTexture, squareTexCoordsBuffer, rectangleIndicesBuffer));
 		ResourceManager.add("red_square", new Model(squarePositionsBuffer, redBlockTexture, squareTexCoordsBuffer, rectangleIndicesBuffer));
 		ResourceManager.add("blue_square", new Model(squarePositionsBuffer, blueBlockTexture, squareTexCoordsBuffer, rectangleIndicesBuffer));
 		ResourceManager.add("dirt", new Model(squarePositionsBuffer, dirtTexture, squareTexCoordsBuffer, rectangleIndicesBuffer));
 		ResourceManager.add("grass", new Model(squarePositionsBuffer, grassTexture, squareTexCoordsBuffer, rectangleIndicesBuffer));
-		ResourceManager.add("hills_background", new Model(squarePositionsBuffer, hillsTexture, squareTexCoordsBuffer, rectangleIndicesBuffer));
+		ResourceManager.add("clouds_background", new Model(squarePositionsBuffer, cloudsTexture, squareTexCoordsBuffer, rectangleIndicesBuffer));
 	}
 	
 	public static void deleteAll() {
