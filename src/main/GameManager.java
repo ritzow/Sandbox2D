@@ -79,7 +79,7 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		clientUpdateManager.getUpdatables().add(cursorController);
 		clientUpdateManager.getUpdatables().add(cameraController);
 		
-		graphicsManager.getRenderables().add(new Background(ResourceManager.getModel("hills_background")));
+		graphicsManager.getRenderables().add(new Background(ResourceManager.getModel("clouds_background")));
 		graphicsManager.getRenderables().add(world);
 	}
 	
