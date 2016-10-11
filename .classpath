@@ -2,7 +2,6 @@
 <classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry kind="lib" path="libraries/archives/jflac/jflac-1.3.jar" sourcepath="libraries/archives/jflac/jflac-1.3-src.zip"/>
 	<classpathentry kind="lib" path="libraries/archives/lwjgl/lwjgl.jar" sourcepath="libraries/archives/lwjgl/lwjgl-sources.jar">
 		<attributes>
 			<attribute name="javadoc_location" value="jar:platform:/resource/GameEngine2D/libraries/archives/lwjgl/lwjgl-javadoc.jar!/"/>
@@ -26,6 +25,12 @@
 	<classpathentry kind="lib" path="libraries/archives/lwjgl/lwjgl-stb.jar" sourcepath="libraries/archives/lwjgl/lwjgl-stb-sources.jar">
 		<attributes>
 			<attribute name="javadoc_location" value="jar:platform:/resource/GameEngine2D/libraries/archives/lwjgl/lwjgl-stb-javadoc.jar!/"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="lib" path="libraries/archives/lwjgl/lwjgl-jemalloc.jar" sourcepath="libraries/archives/lwjgl/lwjgl-jemalloc-sources.jar">
+		<attributes>
+			<attribute name="javadoc_location" value="jar:platform:/resource/GameEngine2D/libraries/archives/lwjgl/lwjgl-jemalloc-javadoc.jar!/"/>
+			<attribute name="org.eclipse.jdt.launching.CLASSPATH_ATTR_LIBRARY_PATH_ENTRY" value="GameEngine2D/libraries/archives/lwjgl/natives"/>
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="output" path="bin"/>
