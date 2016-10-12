@@ -104,17 +104,18 @@ public class World implements Renderable, Serializable {
 		}
 		
 		for(int i = 0; i < entities.size(); i++) {
-			Entity e = entities.get(i);
-			if(e == null) continue;
+			Entity e = null;
 			try {
-				if(e.position().getX() < renderer.getWorldViewportRightBound() + e.getHitbox().getWidth()/2 
-						&& e.position().getX() > renderer.getWorldViewportLeftBound() - e.getHitbox().getWidth()/2 
-						&& e.position().getY() < renderer.getWorldViewportTopBound() + e.getHitbox().getHeight()/2
-						&& e.position().getY() > renderer.getWorldViewportBottomBound() - e.getHitbox().getHeight()/2)
-					entities.get(i).render(renderer);
-			} catch(NullPointerException ex) {
-				
+				e = entities.get(i);
+			} catch(IndexOutOfBoundsException exception ) {
+				System.err.println("Attempted to access invalid index while rendering entities");
 			}
+			
+			if(e != null && e.position().getX() < renderer.getWorldViewportRightBound() + e.getHitbox().getWidth()/2 
+					&& e.position().getX() > renderer.getWorldViewportLeftBound() - e.getHitbox().getWidth()/2 
+					&& e.position().getY() < renderer.getWorldViewportTopBound() + e.getHitbox().getHeight()/2
+					&& e.position().getY() > renderer.getWorldViewportBottomBound() - e.getHitbox().getHeight()/2)
+				e.render(renderer);
 		}
 	}
 	
