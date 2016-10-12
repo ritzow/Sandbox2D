@@ -49,7 +49,7 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 	}
 	
 	public void setup() {
-		World world = new World(200, 200, 0.015f);
+		World world = new World(2000, 200, 0.015f);
 		for(int i = 0; i < world.getBlocks().getHeight()/2; i++) {
 			for(int j = 0; j < world.getBlocks().getWidth(); j++) {
 				if(i == world.getBlocks().getHeight()/2 - 1) {
@@ -64,6 +64,10 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		
 		GenericEntity player = new GenericEntity(ResourceManager.getModel("green_face"));
 		player.getHitbox().setPriority(0.1f);
+		player.getHitbox().setWidth(0.75f);
+		player.getHitbox().setHeight(2.3f);
+		player.getGraphics().scale().setX(0.75f);
+		player.getGraphics().scale().setY(2.3f);
 		player.position().setX(world.getBlocks().getWidth()/2);
 		player.position().setY(world.getBlocks().getHeight());
 		world.getEntities().add(player);
