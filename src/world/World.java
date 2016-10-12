@@ -47,6 +47,7 @@ public class World implements Renderable, Serializable {
 
 			if(e.getHitbox().getPriority() >= 0) {
 				//Check for entity collisions with other entities
+				//TODO optimize entity vs. entity collisions by using distance between entities as an eliminator?
 				for(int j = i; j < entities.size(); j++) {
 					Entity o = entities.get(j);
 					if(e != null && o != null && e != o && o.getHitbox().getPriority() >= 0) {
@@ -59,8 +60,13 @@ public class World implements Renderable, Serializable {
 				}
 
 				//Check for entity collisions with blocks, starting in the bottom left, moving to the top right
-				for(int row = 0; row < blocks.getHeight(); row++) {
-					for(int column = 0; column < blocks.getWidth(); column++) {
+				int leftBound = Math.max(0, (int)Math.floor(e.position().getX() - e.getHitbox().getWidth()));
+				int topBound = Math.min(blocks.getHeight(), (int)Math.ceil(e.position().getY() + e.getHitbox().getHeight()));
+				int rightBound = Math.min(blocks.getWidth(), (int)Math.ceil(e.position().getX() + e.getHitbox().getWidth()));
+				int bottomBound = Math.max(0, (int)Math.floor(e.position().getY() - e.getHitbox().getHeight()));
+				
+				for(int row = bottomBound; row < topBound; row++) {
+					for(int column = leftBound; column < rightBound; column++) {
 						if(blocks.isBlock(column, row) && !blocks.isHidden(column, row)) {
 							resolveCollision(e, column, row, 1, 1);
 						}
@@ -97,12 +103,18 @@ public class World implements Renderable, Serializable {
 			}
 		}
 		
-		
-		//TODO add culling to entities based on position and hitbox
 		for(int i = 0; i < entities.size(); i++) {
 			Entity e = entities.get(i);
 			if(e == null) continue;
-			entities.get(i).render(renderer);
+			try {
+				if(e.position().getX() < renderer.getWorldViewportRightBound() + e.getHitbox().getWidth()/2 
+						&& e.position().getX() > renderer.getWorldViewportLeftBound() - e.getHitbox().getWidth()/2 
+						&& e.position().getY() < renderer.getWorldViewportTopBound() + e.getHitbox().getHeight()/2
+						&& e.position().getY() > renderer.getWorldViewportBottomBound() - e.getHitbox().getHeight()/2)
+					entities.get(i).render(renderer);
+			} catch(NullPointerException ex) {
+				
+			}
 		}
 	}
 	
