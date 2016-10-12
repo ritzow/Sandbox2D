@@ -4,8 +4,6 @@ import static org.lwjgl.openal.AL10.*;
 import static org.lwjgl.openal.ALC10.*;
 import static org.lwjgl.openal.ALC11.ALC_ALL_DEVICES_SPECIFIER;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.nio.IntBuffer;
 import java.util.LinkedList;
 import java.util.List;
