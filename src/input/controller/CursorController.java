@@ -74,9 +74,13 @@ public final class CursorController implements MouseButtonHandler, CursorPosHand
 		
 		if(activatePressed) {
 			activatePressed = false;
-			Entity entity = new GenericEntity(ResourceManager.getModel("blue_square"));
+			GenericEntity entity = new GenericEntity(ResourceManager.getModel("blue_square"));
 			entity.position().setX((float)worldX);
 			entity.position().setY((float)worldY);
+			entity.getHitbox().setWidth(5f);
+			entity.getHitbox().setHeight(5f);
+			entity.getGraphics().scale().setX(5f);
+			entity.getGraphics().scale().setY(5f);
 			world.getEntities().add(entity);
 		}
 	}
