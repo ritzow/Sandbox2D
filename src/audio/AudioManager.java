@@ -42,23 +42,23 @@ public class AudioManager implements Runnable, Installable, Exitable {
 				e.printStackTrace();
 			}
 		
-		try {
-			WaveformReader reader = new WaveformReader(new FileInputStream(new File("resources/assets/audio/monoTest.wav")));
-			reader.decode(); System.out.println(reader);
-			AudioBuffer buffer = new AudioBuffer(reader);
-			Sound testSound = new Sound(buffer, 0, 0, 0, 0, 1, 1);
-			testSound.setLooping(true);
-			setListenerParameters(0, 0, 0, 0, 0, 0);
-			testSound.play(); //TODO sound does not play, immediately "stops", which means it does start, but also doesnt play
-			//System.out.println("Sound playing: " + testSound.isPlaying() + " (currently: " + testSound.getState() + ")");
-			
-			int error;
-			while((error = alGetError()) != AL_NO_ERROR) {
-				System.out.println("OpenAL error " + error);
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+//		try {
+//			WaveformReader reader = new WaveformReader(new FileInputStream(new File("resources/assets/audio/monoTest.wav")));
+//			reader.decode(); System.out.println(reader);
+//			AudioBuffer buffer = new AudioBuffer(reader);
+//			Sound testSound = new Sound(buffer, 0, 0, 0, 0, 1, 1);
+//			testSound.setLooping(true);
+//			setListenerParameters(0, 0, 0, 0, 0, 0);
+//			testSound.play(); //TODO sound does not play, immediately "stops", which means it does start, but also doesnt play
+//			//System.out.println("Sound playing: " + testSound.isPlaying() + " (currently: " + testSound.getState() + ")");
+//			
+//			int error;
+//			while((error = alGetError()) != AL_NO_ERROR) {
+//				System.out.println("OpenAL error " + error);
+//			}
+//		} catch (Exception e) {
+//			e.printStackTrace();
+//		}
 
 		synchronized(this) {
 			setupComplete = true;
