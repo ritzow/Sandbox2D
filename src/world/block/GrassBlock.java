@@ -15,4 +15,9 @@ public class GrassBlock extends Block {
 	public int getHardness() {
 		return 5;
 	}
+
+	@Override
+	public float getFriction() {
+		return 0.04f;
+	}
 }
