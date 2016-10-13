@@ -2,39 +2,9 @@
 <classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry kind="lib" path="libraries/jar/lwjgl/lwjgl.jar" sourcepath="libraries/jar/lwjgl/lwjgl-sources.jar">
+	<classpathentry kind="lib" path="libraries/lwjgl/jar/lwjgl.jar" sourcepath="libraries/lwjgl/src.zip">
 		<attributes>
-			<attribute name="javadoc_location" value="jar:platform:/resource/GameEngine2D/libraries/jar/lwjgl/lwjgl-javadoc.jar!/"/>
-		</attributes>
-	</classpathentry>
-	<classpathentry kind="lib" path="libraries/jar/lwjgl/lwjgl-glfw.jar" sourcepath="libraries/jar/lwjgl/lwjgl-glfw-sources.jar">
-		<attributes>
-			<attribute name="javadoc_location" value="jar:platform:/resource/GameEngine2D/libraries/jar/lwjgl/lwjgl-glfw-javadoc.jar!/"/>
-		</attributes>
-	</classpathentry>
-	<classpathentry kind="lib" path="libraries/jar/lwjgl/lwjgl-opengl.jar" sourcepath="libraries/jar/lwjgl/lwjgl-opengl-sources.jar">
-		<attributes>
-			<attribute name="javadoc_location" value="jar:platform:/resource/GameEngine2D/libraries/jar/lwjgl/lwjgl-opengl-javadoc.jar!/"/>
-		</attributes>
-	</classpathentry>
-	<classpathentry kind="lib" path="libraries/jar/lwjgl/lwjgl-openal.jar" sourcepath="libraries/jar/lwjgl/lwjgl-openal-sources.jar">
-		<attributes>
-			<attribute name="javadoc_location" value="jar:platform:/resource/GameEngine2D/libraries/jar/lwjgl/lwjgl-openal-javadoc.jar!/"/>
-		</attributes>
-	</classpathentry>
-	<classpathentry kind="lib" path="libraries/jar/lwjgl/lwjgl-stb.jar" sourcepath="libraries/jar/lwjgl/lwjgl-stb-sources.jar">
-		<attributes>
-			<attribute name="javadoc_location" value="jar:platform:/resource/GameEngine2D/libraries/jar/lwjgl/lwjgl-stb-javadoc.jar!/"/>
-		</attributes>
-	</classpathentry>
-	<classpathentry kind="lib" path="libraries/jar/lwjgl/lwjgl-jemalloc.jar" sourcepath="libraries/jar/lwjgl/lwjgl-jemalloc-sources.jar">
-		<attributes>
-			<attribute name="javadoc_location" value="jar:platform:/resource/GameEngine2D/libraries/jar/lwjgl/lwjgl-jemalloc-javadoc.jar!/"/>
-		</attributes>
-	</classpathentry>
-	<classpathentry kind="lib" path="libraries/jar/lwjgl/lwjgl-ovr.jar" sourcepath="libraries/jar/lwjgl/lwjgl-ovr-sources.jar">
-		<attributes>
-			<attribute name="javadoc_location" value="jar:platform:/resource/GameEngine2D/libraries/jar/lwjgl/lwjgl-ovr-javadoc.jar!/"/>
+			<attribute name="javadoc_location" value="jar:platform:/resource/GameEngine2D/libraries/lwjgl/doc/javadoc.zip!/"/>
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="output" path="bin"/>
