@@ -1,7 +1,6 @@
 package main;
 
 import static org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE;
-import static org.lwjgl.glfw.GLFW.GLFW_KEY_G;
 import static org.lwjgl.glfw.GLFW.GLFW_PRESS;
 
 import audio.AudioManager;
@@ -111,12 +110,6 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		
         else if(key == Controls.KEYBIND_FULLSCREEN && action == GLFW_PRESS) {
             eventManager.getDisplay().setFullscreen(!eventManager.getDisplay().getFullscreen());
-        }
-		
-        else if(key == GLFW_KEY_G && action == GLFW_PRESS) {
-        	//player.velocity().setY(3);
-        	System.out.println(player.velocity().getAccelerationY());
-        	player.velocity().setAccelerationY(20);
         }
 	}
 }

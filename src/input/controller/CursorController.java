@@ -74,29 +74,16 @@ public final class CursorController implements MouseButtonHandler, CursorPosHand
 		
 		if(activatePressed) {
 			activatePressed = false;
-//			GenericEntity entity = new GenericEntity(ResourceManager.getModel("blue_square"));
-//			entity.position().setX(worldX);
-//			entity.position().setY(worldY);
-//			entity.getHitbox().setWidth(5f);
-//			entity.getHitbox().setHeight(5f);
-//			entity.getGraphics().scale().setX(5f);
-//			entity.getGraphics().scale().setY(5f);
-//			world.getEntities().add(entity);
-			
-			for(int i = 0; i < 20; i++) {
-				GenericEntity particle = new GenericEntity(ResourceManager.getModel("red_square"));
-				particle.getGraphics().scale().setX(0.2f);
-				particle.getGraphics().scale().setY(0.2f);
-				particle.getHitbox().setWidth(0.2f);
-				particle.getHitbox().setHeight(0.2f);
-				particle.position().setX(worldX);
-				particle.position().setY(worldY);
-				particle.getHitbox().setPriority((float)Math.random());
-				particle.getGraphics().rotation().setVelocity((float)Math.random() - 0.5f);
-				particle.velocity().setX(-0.2f + ((float)Math.random() * (0.4f))); //min + ((float)Math.random() * (max - min))
-				particle.velocity().setY((float)Math.random() * (0.35f));
-				world.getEntities().add(particle);
-			}
+			GenericEntity entity = new GenericEntity(ResourceManager.getModel("blue_square"));
+			entity.position().setX(worldX);
+			entity.position().setY(worldY);
+			entity.getHitbox().setWidth(3f);
+			entity.getHitbox().setHeight(3f);
+			entity.getGraphics().scale().setX(3f);
+			entity.getGraphics().scale().setY(3f);
+			//entity.velocity().setX((float)Math.random() * 2 - 1);
+			//entity.velocity().setY((float)Math.random() * 2 - 1);	
+			world.getEntities().add(entity);
 		}
 	}
 	
