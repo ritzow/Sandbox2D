@@ -19,4 +19,9 @@ public class RedBlock extends Block {
 	public int getHardness() {
 		return 10;
 	}
+
+	@Override
+	public float getFriction() {
+		return 0.01f;
+	}
 }

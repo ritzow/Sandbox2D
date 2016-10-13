@@ -12,6 +12,7 @@ public abstract class Block implements Serializable {
 	
 	public abstract Model getModel();
 	public abstract int getHardness();
+	public abstract float getFriction();
 	
 	public void onBreak(World world, float x, float y) {
 		GenericEntity particle = new GenericEntity(getModel());

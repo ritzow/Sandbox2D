@@ -16,7 +16,7 @@ public abstract class Entity implements Serializable {
 	public Entity() {
 		this.position = new Position(0, 0);
 		this.velocity = new Velocity(0, 0);
-		this.hitbox = new Hitbox(1, 1);
+		this.hitbox = new Hitbox(1, 1, 0.0f);
 	}
 	
 	public void update(float milliseconds) {
