@@ -18,7 +18,7 @@ public class Texture extends Buffer {
 
 	public Texture(String file) {
 		this.objectID = glGenTextures();
-		stbi_set_flip_vertically_on_load(true);
+		stbi_set_flip_vertically_on_load(1);
 		this.pixels = stbi_load(file, width, height, numComponents, 4);
 		this.textureUnit = 0;
 		specifyParameters();
