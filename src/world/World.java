@@ -1,10 +1,11 @@
 package world;
 
+import static util.HitboxUtil.*;
+
 import graphics.Model;
 import graphics.Renderable;
 import graphics.Renderer;
 import java.util.ArrayList;
-import util.HitboxUtil;
 import world.entity.Entity;
 
 import java.io.Serializable;
@@ -25,10 +26,24 @@ public class World implements Renderable, Serializable {
 		entities = new ArrayList<Entity>();
 		blocks = new BlockGrid(this, width, height);
 		leftBarrier = 0;
-		rightBarrier = width;
+		rightBarrier = width - 1;
 		topBarrier = height;
 		bottomBarrier = 0;
 		this.gravity = gravity;
+	}
+	
+	public void setBarrier(float left, float right, float top, float bottom) {
+		this.leftBarrier = left;
+		this.rightBarrier = right;
+		this.topBarrier = top;
+		this.bottomBarrier = bottom;
+	}
+	
+	public void resetBarrier() {
+		this.leftBarrier = 0;
+		this.rightBarrier = blocks.getWidth();
+		this.topBarrier = blocks.getHeight();
+		this.bottomBarrier = 0;
 	}
 	
 	public BlockGrid getBlocks() {
@@ -51,6 +66,16 @@ public class World implements Renderable, Serializable {
 		for(int i = 0; i < entities.size(); i++) {
 			Entity e = entities.get(i);
 			if(e == null) continue;
+			
+			//remove all entities that are below the world
+			if(e.position().getY() < 0) {
+				entities.set(i, null);
+				entities.remove(i);
+				i--;    
+			}
+			
+			e.update(milliseconds);
+			
 			e.velocity().setAccelerationY(-gravity);
 			
 			if(e.position().getX() <= leftBarrier)
@@ -62,12 +87,8 @@ public class World implements Renderable, Serializable {
 			else if(e.position().getY() >= topBarrier)
 				e.velocity().setAccelerationY(e.velocity().getY() - gravity * 30);
 			
-			e.update(milliseconds);
-			
 			if(e.getHitbox().getPriority() >= 0) {
-				//Check for entity collisions with other entities
-				//TODO optimize entity vs. entity collisions by using distance between entities as an eliminator?
-				for(int j = i; j < entities.size(); j++) {
+				for(int j = i; j < entities.size(); j++) { //check for entity vs. entity collisions
 					Entity o = entities.get(j);
 					if(e != null && o != null && e != o && o.getHitbox().getPriority() >= 0) {
 						if(e.getHitbox().getPriority() > o.getHitbox().getPriority()) {
@@ -91,13 +112,6 @@ public class World implements Renderable, Serializable {
 						}
 					}
 				}
-			}
-
-			//remove all entities that are below the world
-			if(e.position().getY() < 0) {
-				entities.set(i, null);
-				entities.remove(i);
-				i--;    
 			}
 		}
 	}
@@ -139,7 +153,12 @@ public class World implements Renderable, Serializable {
 	}
 	
 	public boolean resolveCollision(Entity e, Entity o) {
-		return resolveCollision(e, o.position().getX(), o.position().getY(), o.getHitbox().getWidth(), o.getHitbox().getHeight(), (e.getHitbox().getFriction() + o.getHitbox().getFriction())/2);
+		return resolveCollision(e, 
+				o.position().getX(),
+				o.position().getY(), 
+				o.getHitbox().getWidth(), 
+				o.getHitbox().getHeight(), 
+				combineFriction(e.getHitbox().getFriction(), o.getHitbox().getFriction()));
 	}
 	
 	/** Returns true if a collision occurred **/
@@ -153,49 +172,85 @@ public class World implements Renderable, Serializable {
 		    float hx = height * deltaX;
 		    if (wy > hx) {
 		        if (wy > -hx) { /* collision on the top of e */
-		        	entity.position().setY(otherY - height);        	
-					if(entity.velocity().getY() > 0) entity.velocity().setY(0);
+		        	entity.position().setY(otherY - height);
+		        	
+					if(entity.velocity().getY() > 0) {
+						entity.velocity().setY(0);
+					}
 					
-		        	//apply friction
-		        	if(entity.velocity().getAccelerationX() > 0) entity.velocity().setAccelerationX(Math.max(0, entity.velocity().getAccelerationX() - friction));
-		        	else if(entity.velocity().getAccelerationX() < 0) entity.velocity().setAccelerationX(Math.min(0, entity.velocity().getAccelerationX() + friction));
+					if(entity.velocity().getAccelerationY() > 0) {
+						entity.velocity().setAccelerationY(0);
+					}
 					
-					if(entity.velocity().getAccelerationY() > 0) entity.velocity().setAccelerationY(0);
+		        	if(entity.velocity().getAccelerationX() > 0) {
+		        		entity.velocity().setAccelerationX(Math.max(0, entity.velocity().getAccelerationX() - friction));
+		        	}
+		        	
+		        	else if(entity.velocity().getAccelerationX() < 0) {
+		        		entity.velocity().setAccelerationX(Math.min(0, entity.velocity().getAccelerationX() + friction));
+		        	}
 		        }
 
 		        else { /* collision on the left of e */
 		        	entity.position().setX(otherX + width);
-					if(entity.velocity().getX() < 0) entity.velocity().setX(0);
 					
-		        	//apply friction
-		        	if(entity.velocity().getAccelerationY() > 0) entity.velocity().setAccelerationY(Math.max(0, entity.velocity().getAccelerationY() - friction));
-		        	else if(entity.velocity().getAccelerationY() < 0) entity.velocity().setAccelerationY(Math.min(0, entity.velocity().getAccelerationY() + friction));
+		        	if(entity.velocity().getX() < 0) {
+						entity.velocity().setX(0);
+					}
 					
-					if(entity.velocity().getAccelerationX() < 0) entity.velocity().setAccelerationX(0);
+		        	if(entity.velocity().getAccelerationX() < 0) {
+		        		entity.velocity().setAccelerationX(0);
+		        	}
+		        	
+		        	if(entity.velocity().getAccelerationY() > 0) {
+		        		entity.velocity().setAccelerationY(Math.max(0, entity.velocity().getAccelerationY() - friction));
+		        	}
+		        	
+		        	else if(entity.velocity().getAccelerationY() < 0) {
+		        		entity.velocity().setAccelerationY(Math.min(0, entity.velocity().getAccelerationY() + friction));
+		        	}
 		        }
 		    }
 		    
 		    else {
 		        if (wy > -hx) { /* collision on the right of e */
 		        	entity.position().setX(otherX - width);
-					if(entity.velocity().getX() > 0) entity.velocity().setX(0);
 					
-		        	//apply friction
-		        	if(entity.velocity().getAccelerationY() > 0) entity.velocity().setAccelerationY(Math.max(0, entity.velocity().getAccelerationY() - friction));
-		        	else if(entity.velocity().getAccelerationY() < 0) entity.velocity().setAccelerationY(Math.min(0, entity.velocity().getAccelerationY() + friction));
+		        	if(entity.velocity().getX() > 0) {
+						entity.velocity().setX(0);
+					}
 					
-					if(entity.velocity().getAccelerationX() > 0) entity.velocity().setAccelerationX(0);
+					if(entity.velocity().getAccelerationX() > 0) {
+						entity.velocity().setAccelerationX(0);
+					}
+					
+					if(entity.velocity().getAccelerationY() > 0) {
+						entity.velocity().setAccelerationY(Math.max(0, entity.velocity().getAccelerationY() - friction));
+					}
+					
+					else if(entity.velocity().getAccelerationY() < 0) {
+						entity.velocity().setAccelerationY(Math.min(0, entity.velocity().getAccelerationY() + friction));
+					}
 		        }
 		        
 		        else { /* collision on the bottom of e */
 		        	entity.position().setY(otherY + height);
 		        	
-		        	//apply friction
-		        	if(entity.velocity().getAccelerationX() > 0) entity.velocity().setAccelerationX(Math.max(0, entity.velocity().getAccelerationX() - friction));
-		        	else if(entity.velocity().getAccelerationX() < 0) entity.velocity().setAccelerationX(Math.min(0, entity.velocity().getAccelerationX() + friction));
+		        	if(entity.velocity().getY() < 0) {
+		        		entity.velocity().setY(0);
+		        	}
 		        	
-					if(entity.velocity().getY() < 0) entity.velocity().setY(0);
-					if(entity.velocity().getY() < 0) entity.velocity().setY(0);
+		        	if(entity.velocity().getAccelerationY() < 0) {
+		        		entity.velocity().setAccelerationY(0);
+		        	}
+		        	
+		        	if(entity.velocity().getAccelerationX() > 0) {
+		        		entity.velocity().setAccelerationX(Math.max(0, entity.velocity().getAccelerationX() - friction));
+		        	}
+		        	
+		        	else if(entity.velocity().getAccelerationX() < 0) {
+		        		entity.velocity().setAccelerationX(Math.min(0, entity.velocity().getAccelerationX() + friction));
+		        	}
 		        }
 		    }
 		    
@@ -208,7 +263,17 @@ public class World implements Renderable, Serializable {
 	public boolean entityBelow(Entity e) {
 		for(int i = 0; i < entities.size(); i++) {
 			Entity o = entities.get(i);
-			if(o != null && e != o && o.getHitbox().getPriority() >= 0 && HitboxUtil.intersection(e.position().getX(), e.position().getY() - e.getHitbox().getHeight()/2, e.getHitbox().getWidth() - 0.01f, 0.1f, o.position().getX(), o.position().getY(), o.getHitbox().getWidth(), o.getHitbox().getHeight())) {
+			if(o != null 
+					&& e != o 
+					&& o.getHitbox().getPriority() >= 0 
+					&& intersection(e.position().getX(), 
+							e.position().getY() - e.getHitbox().getHeight()/2, 
+							e.getHitbox().getWidth() - 0.01f,
+							0.1f, 
+							o.position().getX(), 
+							o.position().getY(), 
+							o.getHitbox().getWidth(), 
+							o.getHitbox().getHeight())) {
 				return true;
 			}
 		}
