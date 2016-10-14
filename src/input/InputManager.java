@@ -28,26 +28,6 @@ public final class InputManager {
 		glfwSetWindowCloseCallback(window, glfwWindowCloseCallback);
 	}
 	
-	public void add(InputHandler handler) {
-		if(handler instanceof FramebufferSizeHandler) framebufferSizeHandlers.add((FramebufferSizeHandler)handler);
-		if(handler instanceof KeyHandler) keyHandlers.add((KeyHandler)handler);
-		if(handler instanceof ScrollHandler) scrollHandlers.add((ScrollHandler)handler);
-		if(handler instanceof WindowCloseHandler) windowCloseHandlers.add((WindowCloseHandler)handler);
-		if(handler instanceof WindowRefreshHandler) windowRefreshHandlers.add((WindowRefreshHandler)handler);
-		if(handler instanceof MouseButtonHandler) mouseButtonHandlers.add((MouseButtonHandler)handler);
-		if(handler instanceof CursorPosHandler) cursorPosHandlers.add((CursorPosHandler)handler);
-	}
-	
-	public void remove(InputHandler handler) {
-		if(handler instanceof FramebufferSizeHandler) framebufferSizeHandlers.remove((FramebufferSizeHandler)handler);
-		if(handler instanceof KeyHandler) keyHandlers.remove((KeyHandler)handler);
-		if(handler instanceof ScrollHandler) scrollHandlers.remove((ScrollHandler)handler);
-		if(handler instanceof WindowCloseHandler) windowCloseHandlers.remove((WindowCloseHandler)handler);
-		if(handler instanceof WindowRefreshHandler) windowRefreshHandlers.remove((WindowRefreshHandler)handler);
-		if(handler instanceof MouseButtonHandler) mouseButtonHandlers.remove((MouseButtonHandler)handler);
-		if(handler instanceof CursorPosHandler) cursorPosHandlers.remove((CursorPosHandler)handler);
-	}
-	
 	public final ArrayList<WindowCloseHandler> getWindowCloseHandlers() {
 		return windowCloseHandlers;
 	}

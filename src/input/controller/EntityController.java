@@ -29,21 +29,19 @@ public final class EntityController implements KeyHandler, Updatable {
 	public void update() {
 		
 		if(leftPressed && !world.blockLeft(entity)) {
-			//entity.velocity().addX(-0.003f);
-			entity.velocity().setAccelerationX(-0.05f);
+			entity.velocity().addX(-movementSpeed);
 		}
 		
 		else {
-			//entity.velocity().setAccelerationX(0);
+			
 		}
 		
 		if(rightPressed && !world.blockRight(entity)) {
-			//entity.velocity().addX(0.003f);
-			entity.velocity().setAccelerationX(0.05f);
+			entity.velocity().addX(movementSpeed);
 		}
 		
 		else {
-			//entity.velocity().setAccelerationX(0);
+			
 		}
 		
 		if(upPressed && (world.blockBelow(entity) || world.entityBelow(entity))) {

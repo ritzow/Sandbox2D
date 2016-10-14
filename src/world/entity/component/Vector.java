@@ -28,4 +28,12 @@ public abstract class Vector implements Serializable {
 	public void setY(float y) {
 		this.y = y;
 	}
+	
+	public void addX(float x) {
+		this.x += x;
+	}
+	
+	public void addY(float y) {
+		this.y += y;
+	}
 }
