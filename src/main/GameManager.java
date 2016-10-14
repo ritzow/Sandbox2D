@@ -9,7 +9,7 @@ import graphics.GraphicsManager;
 import input.Controls;
 import input.controller.CameraController;
 import input.controller.CursorController;
-import input.controller.PlayerController;
+import input.controller.EntityController;
 import input.handler.KeyHandler;
 import input.handler.WindowCloseHandler;
 import util.ResourceManager;
@@ -28,8 +28,6 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 	private WorldManager worldManager;
 	private ClientUpdateManager clientUpdateManager;
 	public static CameraController cameraController;
-	
-	GenericEntity player;
 	
 	public GameManager(EventManager eventManager) {
 		this.eventManager = eventManager;
@@ -51,7 +49,7 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 	}
 	
 	public void setup() {
-		World world = new World(100, 200, 0.015f);
+		World world = new World(2000, 200, 0.015f);
 		for(int i = 0; i < world.getBlocks().getHeight()/2; i++) {
 			for(int j = 0; j < world.getBlocks().getWidth(); j++) {
 				if(i == world.getBlocks().getHeight()/2 - 1) {
@@ -64,17 +62,14 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 			}
 		}
 		
-		player = new GenericEntity(ResourceManager.getModel("green_face"));
+		GenericEntity player = new GenericEntity(ResourceManager.getModel("green_face"));
 		player.getHitbox().setPriority(0.1f);
-		player.getHitbox().setWidth(0.75f);
-		player.getHitbox().setHeight(2.3f);
-		player.getGraphics().scale().setX(0.75f);
-		player.getGraphics().scale().setY(2.3f);
 		player.position().setX(world.getBlocks().getWidth()/2);
 		player.position().setY(world.getBlocks().getHeight());
 		world.getEntities().add(player);
 		
-		PlayerController playerController = new PlayerController(eventManager.getDisplay().getInputManager(), player, world, 0.2f);
+		EntityController playerController = new EntityController(player, world, 0.02f);
+		eventManager.getDisplay().getInputManager().getKeyHandlers().add(playerController);
 		CursorController cursorController = new CursorController(eventManager.getDisplay().getInputManager(), player, world, graphicsManager.getRenderer().getCamera());
 		cameraController = new CameraController(eventManager.getDisplay().getInputManager(), graphicsManager.getRenderer().getCamera(), player, 0.005f);
 		

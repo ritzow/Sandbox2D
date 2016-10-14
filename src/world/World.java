@@ -65,11 +65,13 @@ public class World implements Renderable, Serializable {
 	public void update(float milliseconds) {
 		for(int i = 0; i < entities.size(); i++) {
 			Entity e = entities.get(i);
-			if(e == null) continue;
+			
+			if(e == null) {
+				continue;
+			}
 			
 			//remove all entities that are below the world
 			if(e.position().getY() < 0) {
-				entities.set(i, null);
 				entities.remove(i);
 				i--;    
 			}
@@ -78,23 +80,42 @@ public class World implements Renderable, Serializable {
 			
 			e.velocity().setAccelerationY(-gravity);
 			
+//			//air resistance (friction)
+//			if(e.velocity().getAccelerationX() < 0) {
+//				e.velocity().setAccelerationX(e.velocity().getAccelerationX() + 0.015f);
+//			}
+//			
+//			else if(e.velocity().getAccelerationX() > 0) {
+//				e.velocity().setAccelerationX(e.velocity().getAccelerationX() - 0.015f);
+//			}
+//			
+//			if(e.velocity().getAccelerationY() < 0) {
+//				e.velocity().setAccelerationY(e.velocity().getAccelerationY() + 0.015f);
+//			}
+//			
+//			else if(e.velocity().getAccelerationY() > 0) {
+//				e.velocity().setAccelerationY(e.velocity().getAccelerationY() - 0.015f);
+//			}
+			
 			if(e.position().getX() <= leftBarrier)
-				e.velocity().setAccelerationX(e.velocity().getAccelerationX() + gravity * 30);
+				e.velocity().setAccelerationX(e.velocity().getAccelerationX() + gravity);
 			else if(e.position().getX() >= rightBarrier)
-				e.velocity().setAccelerationX(e.velocity().getAccelerationX() - gravity * 30);
+				e.velocity().setAccelerationX(e.velocity().getAccelerationX() - gravity);
 			if(e.position().getY() <= bottomBarrier)
-				e.velocity().setAccelerationY(e.velocity().getAccelerationY() + gravity * 30);
+				e.velocity().setAccelerationY(e.velocity().getAccelerationY() + gravity);
 			else if(e.position().getY() >= topBarrier)
-				e.velocity().setAccelerationY(e.velocity().getY() - gravity * 30);
+				e.velocity().setAccelerationY(e.velocity().getY() - gravity);
 			
 			if(e.getHitbox().getPriority() >= 0) {
 				for(int j = i; j < entities.size(); j++) { //check for entity vs. entity collisions
-					Entity o = entities.get(j);
-					if(e != null && o != null && e != o && o.getHitbox().getPriority() >= 0) {
-						if(e.getHitbox().getPriority() > o.getHitbox().getPriority()) {
-							resolveCollision(e, o);
-						} else {
-							resolveCollision(o, e);
+					if(j > -1) {
+						Entity o = entities.get(j);
+						if(e != null && o != null && e != o && o.getHitbox().getPriority() >= 0) {
+							if(e.getHitbox().getPriority() > o.getHitbox().getPriority()) {
+								resolveCollision(e, o);
+							} else {
+								resolveCollision(o, e);
+							}
 						}
 					}
 				}
@@ -108,47 +129,11 @@ public class World implements Renderable, Serializable {
 				for(int row = bottomBound; row < topBound; row++) {
 					for(int column = leftBound; column < rightBound; column++) {
 						if(blocks.isBlock(column, row) && !blocks.isHidden(column, row)) {
-							resolveCollision(e, column, row, 1, 1, (blocks.get(column, row).getFriction() + e.getHitbox().getFriction())/2);
+							resolveCollision(e, column, row, 1, 1, blocks.get(column, row).getFriction());
 						}
 					}
 				}
 			}
-		}
-	}
-	
-	@Override
-	public void render(Renderer renderer) {
-		renderer.loadViewMatrix(true);
-		
-		int leftBound = 	Math.max(0, (int)Math.floor(renderer.getWorldViewportLeftBound()));
-		int rightBound = 	Math.min(blocks.getWidth(), (int)Math.ceil(renderer.getWorldViewportRightBound()) + 1);
-		int topBound = 		Math.min(blocks.getHeight(), (int)Math.ceil(renderer.getWorldViewportTopBound()) + 1);
-		int bottomBound = 	Math.max(0, (int)Math.floor(renderer.getWorldViewportBottomBound()));
-		
-		for(int row = bottomBound; row < topBound; row++) {
-			for(int column = leftBound; column < Math.min(blocks.getWidth(), rightBound); column++) {
-				if(blocks.isBlock(column, row)) {
-					Model blockModel = blocks.get(column, row).getModel();
-					renderer.loadOpacity(1);
-					renderer.loadTransformationMatrix(column, row, 1, 1, 0);
-					blockModel.render();
-				}
-			}
-		}
-		
-		for(int i = 0; i < entities.size(); i++) {
-			Entity e = null;
-			try {
-				e = entities.get(i);
-			} catch(IndexOutOfBoundsException exception ) {
-				System.err.println("Attempted to access invalid index while rendering entities");
-			}
-			
-			if(e != null && e.position().getX() < renderer.getWorldViewportRightBound() + e.getHitbox().getWidth()/2 
-					&& e.position().getX() > renderer.getWorldViewportLeftBound() - e.getHitbox().getWidth()/2 
-					&& e.position().getY() < renderer.getWorldViewportTopBound() + e.getHitbox().getHeight()/2
-					&& e.position().getY() > renderer.getWorldViewportBottomBound() - e.getHitbox().getHeight()/2)
-				e.render(renderer);
 		}
 	}
 	
@@ -157,8 +142,7 @@ public class World implements Renderable, Serializable {
 				o.position().getX(),
 				o.position().getY(), 
 				o.getHitbox().getWidth(), 
-				o.getHitbox().getHeight(), 
-				combineFriction(e.getHitbox().getFriction(), o.getHitbox().getFriction()));
+				o.getHitbox().getHeight(), o.getHitbox().getFriction());
 	}
 	
 	/** Returns true if a collision occurred **/
@@ -235,7 +219,7 @@ public class World implements Renderable, Serializable {
 		        
 		        else { /* collision on the bottom of e */
 		        	entity.position().setY(otherY + height);
-		        	
+
 		        	if(entity.velocity().getY() < 0) {
 		        		entity.velocity().setY(0);
 		        	}
@@ -244,12 +228,20 @@ public class World implements Renderable, Serializable {
 		        		entity.velocity().setAccelerationY(0);
 		        	}
 		        	
-		        	if(entity.velocity().getAccelerationX() > 0) {
-		        		entity.velocity().setAccelerationX(Math.max(0, entity.velocity().getAccelerationX() - friction));
+		        	if(entity.velocity().getX() > 0) {
+		        		entity.velocity().addX(-combineFriction(entity.getHitbox().getFriction(), friction));
+		        		
+		        		if(entity.velocity().getX() < 0) {
+		        			entity.velocity().setX(0);
+		        		}
 		        	}
 		        	
-		        	else if(entity.velocity().getAccelerationX() < 0) {
-		        		entity.velocity().setAccelerationX(Math.min(0, entity.velocity().getAccelerationX() + friction));
+		        	else if(entity.velocity().getX() < 0) {
+		        		entity.velocity().addX(combineFriction(entity.getHitbox().getFriction(), friction));
+		        		
+		        		if(entity.velocity().getX() > 0) {
+		        			entity.velocity().setX(0);
+		        		}
 		        	}
 		        }
 		    }
@@ -258,6 +250,42 @@ public class World implements Renderable, Serializable {
 		}
 		
 		return false;
+	}
+	
+	@Override
+	public void render(Renderer renderer) {
+		renderer.loadViewMatrix(true);
+		
+		int leftBound = 	Math.max(0, (int)Math.floor(renderer.getWorldViewportLeftBound()));
+		int rightBound = 	Math.min(blocks.getWidth(), (int)Math.ceil(renderer.getWorldViewportRightBound()) + 1);
+		int topBound = 		Math.min(blocks.getHeight(), (int)Math.ceil(renderer.getWorldViewportTopBound()) + 1);
+		int bottomBound = 	Math.max(0, (int)Math.floor(renderer.getWorldViewportBottomBound()));
+		
+		for(int row = bottomBound; row < topBound; row++) {
+			for(int column = leftBound; column < Math.min(blocks.getWidth(), rightBound); column++) {
+				if(blocks.isBlock(column, row)) {
+					Model blockModel = blocks.get(column, row).getModel();
+					renderer.loadOpacity(1);
+					renderer.loadTransformationMatrix(column, row, 1, 1, 0);
+					blockModel.render();
+				}
+			}
+		}
+		
+		for(int i = 0; i < entities.size(); i++) {
+			Entity e = null;
+			try {
+				e = entities.get(i);
+			} catch(IndexOutOfBoundsException exception ) {
+				System.err.println("Attempted to access invalid index while rendering entities");
+			}
+			
+			if(e != null && e.position().getX() < renderer.getWorldViewportRightBound() + e.getHitbox().getWidth()/2 
+					&& e.position().getX() > renderer.getWorldViewportLeftBound() - e.getHitbox().getWidth()/2 
+					&& e.position().getY() < renderer.getWorldViewportTopBound() + e.getHitbox().getHeight()/2
+					&& e.position().getY() > renderer.getWorldViewportBottomBound() - e.getHitbox().getHeight()/2)
+				e.render(renderer);
+		}
 	}
 	
 	public boolean entityBelow(Entity e) {
