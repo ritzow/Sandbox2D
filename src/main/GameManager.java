@@ -3,7 +3,7 @@ package main;
 import static org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE;
 import static org.lwjgl.glfw.GLFW.GLFW_PRESS;
 
-import audio.AudioManager;
+//import audio.AudioManager;
 import graphics.Background;
 import graphics.GraphicsManager;
 import input.Controls;
@@ -24,7 +24,7 @@ import world.entity.GenericEntity;
 public final class GameManager implements Runnable, WindowCloseHandler, KeyHandler {
 	private EventManager eventManager;
 	private GraphicsManager graphicsManager;
-	private AudioManager audioManager;
+	//private AudioManager audioManager;
 	private WorldManager worldManager;
 	private ClientUpdateManager clientUpdateManager;
 	public static CameraController cameraController;
@@ -36,20 +36,14 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 	public void run() {
 		Synchronizer.waitForSetup(eventManager);
 		new Thread(graphicsManager = new GraphicsManager(eventManager.getDisplay()), "Graphics Manager").start();
-		new Thread(audioManager = new AudioManager(), "Audio Manager").start();
+		//new Thread(audioManager = new AudioManager(), "Audio Manager").start();
+		
 		eventManager.getDisplay().getInputManager().getWindowCloseHandlers().add(this);
 		eventManager.getDisplay().getInputManager().getKeyHandlers().add(this);
-		Synchronizer.waitForSetup(graphicsManager);
-		setup();
 		
-		synchronized(eventManager) {
-			eventManager.setReadyToDisplay();
-			eventManager.notifyAll();
-		}
-	}
-	
-	public void setup() {
-		World world = new World(2000, 200, 0.015f);
+		Synchronizer.waitForSetup(graphicsManager);
+		
+		World world = new World(200, 200, 0.015f);
 		for(int i = 0; i < world.getBlocks().getHeight()/2; i++) {
 			for(int j = 0; j < world.getBlocks().getWidth(); j++) {
 				if(i == world.getBlocks().getHeight()/2 - 1) {
@@ -66,11 +60,12 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		player.getHitbox().setPriority(0.1f);
 		player.position().setX(world.getBlocks().getWidth()/2);
 		player.position().setY(world.getBlocks().getHeight());
+		player.getHitbox().setFriction(0.0f);
 		world.getEntities().add(player);
 		
-		EntityController playerController = new EntityController(player, world, 0.02f);
+		EntityController playerController = new EntityController(player, world, 0.2f);
 		eventManager.getDisplay().getInputManager().getKeyHandlers().add(playerController);
-		CursorController cursorController = new CursorController(eventManager.getDisplay().getInputManager(), player, world, graphicsManager.getRenderer().getCamera());
+		CursorController cursorController = new CursorController(eventManager.getDisplay().getInputManager(), player, world, graphicsManager.getRenderer().getCamera(), 200);
 		cameraController = new CameraController(eventManager.getDisplay().getInputManager(), graphicsManager.getRenderer().getCamera(), player, 0.005f);
 		
 		new Thread(worldManager = new WorldManager(world), "World Manager " + world.hashCode()).start();
@@ -82,11 +77,16 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		
 		graphicsManager.getRenderables().add(new Background(ResourceManager.getModel("clouds_background")));
 		graphicsManager.getRenderables().add(world);
+		
+		synchronized(eventManager) {
+			eventManager.setReadyToDisplay();
+			eventManager.notifyAll();
+		}
 	}
 	
 	private void exit() {
 		clientUpdateManager.exit();
-		Synchronizer.waitForExit(audioManager);
+		//Synchronizer.waitForExit(audioManager);
 		Synchronizer.waitForExit(worldManager);
 		Synchronizer.waitForExit(graphicsManager);
 		eventManager.exit();
