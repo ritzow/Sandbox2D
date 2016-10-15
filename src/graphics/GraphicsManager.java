@@ -5,10 +5,10 @@ import static org.lwjgl.opengl.GL11.*;
 
 import input.handler.FramebufferSizeHandler;
 import java.util.ArrayList;
-import main.Exitable;
-import main.Installable;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import org.lwjgl.opengl.GL;
+import util.Exitable;
+import util.Installable;
 import util.ResourceManager;
 
 public final class GraphicsManager implements Runnable, Installable, Exitable, FramebufferSizeHandler {
@@ -21,6 +21,7 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 	
 	private float frameWidth;
 	private float frameHeight;
+	private boolean updateFrame;
 	
 	private final ArrayList<Renderable> renderables;
 	
@@ -55,12 +56,17 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 			this.notifyAll();
 		}
 		
-		try {			
+		try {
 			while(!exit) {
-				glViewport(0, 0, (int)frameWidth, (int)frameHeight);
+				if(updateFrame) {
+					glViewport(0, 0, (int)frameWidth, (int)frameHeight);
+					updateFrame = false;
+				}
 				renderer.setResolution((int)frameWidth, (int)frameHeight);
 				glClear(GL_COLOR_BUFFER_BIT);
-				for(int i = 0; i < renderables.size(); i++) renderables.get(i).render(renderer);
+				for(int i = 0; i < renderables.size(); i++) {
+					renderables.get(i).render(renderer);
+				}
 				glFinish();
 				display.refresh();
 				Thread.sleep(1);
@@ -70,7 +76,6 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 		}
 		
 		renderables.clear();
-		ResourceManager.deleteAll();
 		GL.destroy();
 		display.closeContext();
 		
@@ -104,5 +109,6 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 	public void framebufferSize(int width, int height) {
 		frameWidth = width;
 		frameHeight = height;
+		updateFrame = true;
 	}
 }

@@ -5,7 +5,7 @@ import static org.lwjgl.glfw.GLFW.GLFW_RELEASE;
 
 import input.Controls;
 import input.handler.KeyHandler;
-import main.Updatable;
+import util.Updatable;
 import world.World;
 import world.entity.Entity;
 
@@ -20,10 +20,13 @@ public final class EntityController implements KeyHandler, Updatable {
 	private boolean up;
 	private boolean down;
 	
+	private float friction;
+	
 	public EntityController(Entity entity, World world, float movementSpeed) {
 		this.world = world;
 		this.entity = entity;
 		this.movementSpeed = movementSpeed;
+		this.friction = entity.getHitbox().getFriction();
 	}
 	
 	@Override
@@ -42,7 +45,11 @@ public final class EntityController implements KeyHandler, Updatable {
 		}
 		
 		if(down) {
-			
+			entity.getHitbox().setFriction(1);
+		}
+		
+		else {
+			entity.getHitbox().setFriction(friction);
 		}
 	}
 

@@ -7,9 +7,9 @@ import static org.lwjgl.openal.ALC11.ALC_ALL_DEVICES_SPECIFIER;
 import java.nio.IntBuffer;
 import java.util.LinkedList;
 import java.util.List;
-import main.Exitable;
-import main.Installable;
 import org.lwjgl.openal.*;
+import util.Exitable;
+import util.Installable;
 
 public class AudioManager implements Runnable, Installable, Exitable {
 	private volatile boolean setupComplete;

@@ -1,6 +1,6 @@
 package world;
 
-import main.Exitable;
+import util.Exitable;
 
 public final class BlockGridManager implements Runnable, Exitable {
 	private volatile boolean exit;

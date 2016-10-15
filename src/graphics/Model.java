@@ -24,14 +24,6 @@ public class Model {
 		setup();
 	}
 	
-	public void setTexture(Texture texture) {
-		this.texture = texture;
-	}
-	
-	public Texture getTexture() {
-		return texture;
-	}
-	
 	public void setup() {
 		glBindVertexArray(vao);
 		positions.specifyAttributeFormat();

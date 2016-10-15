@@ -1,6 +1,6 @@
 package world;
 
-import main.Exitable;
+import util.Exitable;
 import util.Synchronizer;
 import util.TimeUtil;
 

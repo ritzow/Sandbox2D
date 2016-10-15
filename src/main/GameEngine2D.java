@@ -1,5 +1,7 @@
 package main;
 
+import input.EventManager;
+
 public class GameEngine2D {
 	public static void main(String[] args) {
 		EventManager eventManager = new EventManager();

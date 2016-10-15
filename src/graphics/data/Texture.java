@@ -23,7 +23,7 @@ public class Texture extends Buffer {
 		this.textureUnit = 0;
 		specifyParameters();
 		buffer();
-
+		stbi_image_free(pixels);
 	}
 	
 	public void specifyParameters() {
@@ -57,7 +57,6 @@ public class Texture extends Buffer {
 	@Override
 	public void delete() {
 		glDeleteTextures(objectID);
-		stbi_image_free(pixels);
 	}
 	
 	public int getWidth() {

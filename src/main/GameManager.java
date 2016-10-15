@@ -7,6 +7,7 @@ import static org.lwjgl.glfw.GLFW.GLFW_PRESS;
 import graphics.Background;
 import graphics.GraphicsManager;
 import input.Controls;
+import input.EventManager;
 import input.controller.CameraController;
 import input.controller.CursorController;
 import input.controller.EntityController;
@@ -35,11 +36,11 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 	
 	public void run() {
 		Synchronizer.waitForSetup(eventManager);
-		new Thread(graphicsManager = new GraphicsManager(eventManager.getDisplay()), "Graphics Manager").start();
-		//new Thread(audioManager = new AudioManager(), "Audio Manager").start();
-		
 		eventManager.getDisplay().getInputManager().getWindowCloseHandlers().add(this);
 		eventManager.getDisplay().getInputManager().getKeyHandlers().add(this);
+		
+		new Thread(graphicsManager = new GraphicsManager(eventManager.getDisplay()), "Graphics Manager").start();
+		//new Thread(audioManager = new AudioManager(), "Audio Manager").start();
 		
 		Synchronizer.waitForSetup(graphicsManager);
 		
@@ -56,7 +57,7 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 			}
 		}
 		
-		GenericEntity player = new GenericEntity(ResourceManager.getModel("green_face"));
+		GenericEntity player = new GenericEntity(ResourceManager.GREEN_FACE);
 		player.getHitbox().setPriority(0.1f);
 		player.position().setX(world.getBlocks().getWidth()/2);
 		player.position().setY(world.getBlocks().getHeight());
@@ -75,7 +76,7 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		clientUpdateManager.getUpdatables().add(cursorController);
 		clientUpdateManager.getUpdatables().add(cameraController);
 		
-		graphicsManager.getRenderables().add(new Background(ResourceManager.getModel("clouds_background")));
+		graphicsManager.getRenderables().add(new Background(ResourceManager.CLOUDS_BACKGROUND));
 		graphicsManager.getRenderables().add(world);
 		
 		synchronized(eventManager) {
