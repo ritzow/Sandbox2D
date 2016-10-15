@@ -47,7 +47,7 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 				new Shader("resources/shaders/fragmentShader", org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER)
 		);
 		
-		Camera camera = new Camera( 0, 0, 0.007f, 1.5f);
+		Camera camera = new Camera( 0, 0, 0.07f, 1.5f);
 		renderer = new Renderer(shaderProgram, camera, display);
 		
 		synchronized(this) {
@@ -61,7 +61,7 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 				renderer.setResolution((int)frameWidth, (int)frameHeight);
 				glClear(GL_COLOR_BUFFER_BIT);
 				for(int i = 0; i < renderables.size(); i++) renderables.get(i).render(renderer);
-				glFinish(); //wait until rendering is complete
+				glFinish();
 				display.refresh();
 				Thread.sleep(1);
 			}
