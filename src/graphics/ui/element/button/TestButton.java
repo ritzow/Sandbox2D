@@ -14,19 +14,19 @@ public class TestButton extends GraphicsElement implements Button {
 	}
 	
 	public TestButton() {
-		super(ResourceManager.getModel("blue_square"), 0, 0);
+		super(ResourceManager.BLUE_SQUARE, 0, 0);
 	}
 	
 	@Override
 	public void onPress() {
 		pressed = true;
-		graphics.setModel(ResourceManager.getModel("red_square"));
+		graphics.setModel(ResourceManager.RED_SQUARE);
 	}
 
 	@Override
 	public void onRelease() {
 		pressed = false;
-		graphics.setModel(ResourceManager.getModel("blue_square"));
+		graphics.setModel(ResourceManager.BLUE_SQUARE);
 	}
 
 	@Override

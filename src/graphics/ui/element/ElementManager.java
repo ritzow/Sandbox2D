@@ -8,8 +8,8 @@ import input.handler.CursorPosHandler;
 import input.handler.FramebufferSizeHandler;
 import input.handler.MouseButtonHandler;
 import java.util.HashMap;
-import main.Updatable;
 import util.HitboxUtil;
+import util.Updatable;
 
 import static org.lwjgl.glfw.GLFW.*;
 

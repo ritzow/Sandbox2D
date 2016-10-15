@@ -1,8 +1,10 @@
-package main;
+package input;
 
 import static org.lwjgl.glfw.GLFW.glfwTerminate;
 
 import graphics.Display;
+import util.Exitable;
+import util.Installable;
 
 /**
  * EventThread objects must only be run on the main thread

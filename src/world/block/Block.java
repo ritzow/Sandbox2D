@@ -26,7 +26,7 @@ public abstract class Block implements Serializable {
 	}
 	
 	public void onPlace(World world, float x, float y) {
-		for(int i = 0; i < 10; i++) {
+		for(int i = 0; i < 5; i++) {
 			GenericEntity particle = new GenericEntity(getModel());
 			particle.getGraphics().scale().setX(0.2f);
 			particle.getGraphics().scale().setY(0.2f);

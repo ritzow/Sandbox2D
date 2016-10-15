@@ -1,4 +1,4 @@
-package main;
+package util;
 
 public interface Exitable {
 	public void exit();

@@ -1,8 +1,5 @@
 package util;
 
-import main.Exitable;
-import main.Installable;
-
 public class Synchronizer {
 	public static void waitForSetup(Installable installable) {
 		synchronized(installable) {

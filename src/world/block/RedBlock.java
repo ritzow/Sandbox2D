@@ -12,7 +12,7 @@ public class RedBlock extends Block {
 
 	@Override
 	public Model getModel() {
-		return ResourceManager.getModel("red_square");
+		return ResourceManager.RED_SQUARE;
 	}
 
 	@Override

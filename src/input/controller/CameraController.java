@@ -10,7 +10,7 @@ import input.InputManager;
 import input.handler.KeyHandler;
 import input.handler.MouseButtonHandler;
 import input.handler.ScrollHandler;
-import main.Updatable;
+import util.Updatable;
 import world.entity.Entity;
 
 public class CameraController implements KeyHandler, ScrollHandler, MouseButtonHandler, Updatable {

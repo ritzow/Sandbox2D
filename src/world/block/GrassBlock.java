@@ -8,7 +8,7 @@ public class GrassBlock extends Block {
 
 	@Override
 	public Model getModel() {
-		return ResourceManager.getModel("grass");
+		return ResourceManager.GRASS_MODEL;
 	}
 
 	@Override

@@ -54,23 +54,6 @@ public class World implements Renderable, Serializable {
 			
 			e.velocity().addY(-gravity);
 			
-			//air resistance TODO account for direction, instead of handling each axis separately
-//			if(e.velocity().getX() > 0) {
-//				e.velocity().addX(-0.005f);
-//			}
-//			
-//			else if(e.velocity().getX() < 0) {
-//				e.velocity().addX(0.005f);
-//			}
-//			
-//			if(e.velocity().getY() > 0) {
-//				e.velocity().addY(-0.005f);
-//			}
-//			
-//			else if(e.velocity().getY() < 0) {
-//				e.velocity().addY(0.005f);
-//			}
-			
 			//if collision is enabled on the entity
 			if(!(e.getHitbox().getPriority() < 0)) {
 				

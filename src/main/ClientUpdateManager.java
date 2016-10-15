@@ -1,6 +1,8 @@
 package main;
 
 import java.util.ArrayList;
+import util.Exitable;
+import util.Updatable;
 
 public final class ClientUpdateManager implements Runnable, Exitable {
 	private volatile boolean finished;

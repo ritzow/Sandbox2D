@@ -7,9 +7,9 @@ import input.handler.CursorPosHandler;
 import input.handler.FramebufferSizeHandler;
 import input.handler.KeyHandler;
 import input.handler.MouseButtonHandler;
-import main.Updatable;
 import org.lwjgl.glfw.GLFW;
 import util.ResourceManager;
+import util.Updatable;
 import world.World;
 import world.block.RedBlock;
 import world.entity.Entity;
@@ -68,13 +68,13 @@ public final class CursorController implements MouseButtonHandler, CursorPosHand
 		
 		if(distance <= 4) {
 			if(leftMouseDown && (System.currentTimeMillis() - lastBreak > cooldown)) {
-				if(world.getBlocks().destroy(blockX, blockY)) {
+				if(world.getBlocks().isValid(blockX, blockY) && world.getBlocks().destroy(blockX, blockY)) {
 					lastBreak = System.currentTimeMillis();
 				}
 			}
 			
 			else if(rightMouseDown && (System.currentTimeMillis() - lastPlacement > cooldown)) {
-				if(world.getBlocks().place(blockX, blockY, new RedBlock())) {
+				if(world.getBlocks().isValid(blockX, blockY) && world.getBlocks().place(blockX, blockY, new RedBlock())) {
 					lastPlacement = System.currentTimeMillis();
 				}
 			}
@@ -82,7 +82,7 @@ public final class CursorController implements MouseButtonHandler, CursorPosHand
 		
 		if(activatePressed) {
 			activatePressed = false;
-			GenericEntity entity = new GenericEntity(ResourceManager.getModel("blue_square"));
+			GenericEntity entity = new GenericEntity(ResourceManager.BLUE_SQUARE);
 			entity.position().setX(worldX);
 			entity.position().setY(worldY);
 			entity.getHitbox().setWidth(3f);

@@ -8,7 +8,7 @@ public class DirtBlock extends Block {
 
 	@Override
 	public Model getModel() {
-		return ResourceManager.getModel("dirt");
+		return ResourceManager.DIRT_MODEL;
 	}
 
 	@Override
