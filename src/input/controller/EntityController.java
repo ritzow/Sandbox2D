@@ -15,10 +15,10 @@ public final class EntityController implements KeyHandler, Updatable {
 	private Entity entity;
 	private float movementSpeed;
 	
-	private boolean upPressed;
-	private boolean rightPressed;
-	private boolean downPressed;
-	private boolean leftPressed;
+	private boolean left;
+	private boolean right;
+	private boolean up;
+	private boolean down;
 	
 	public EntityController(Entity entity, World world, float movementSpeed) {
 		this.world = world;
@@ -26,29 +26,22 @@ public final class EntityController implements KeyHandler, Updatable {
 		this.movementSpeed = movementSpeed;
 	}
 	
+	@Override
 	public void update() {
-		
-		if(leftPressed && !world.blockLeft(entity)) {
-			entity.velocity().addX(-movementSpeed);
+
+		if(left && !(world.blockLeft(entity))) {
+			entity.velocity().setX(-movementSpeed);
 		}
 		
-		else {
-			
+		if(right && !(world.blockRight(entity))) {
+			entity.velocity().setX(movementSpeed);
 		}
 		
-		if(rightPressed && !world.blockRight(entity)) {
-			entity.velocity().addX(movementSpeed);
+		if(up && (world.entityBelow(entity) || world.blockBelow(entity))) {
+			entity.velocity().setY(movementSpeed);
 		}
 		
-		else {
-			
-		}
-		
-		if(upPressed && (world.blockBelow(entity) || world.entityBelow(entity))) {
-			entity.velocity().setAccelerationY(world.getGravity() * 20);
-		}
-		
-		if(downPressed) {
+		if(down) {
 			
 		}
 	}
@@ -57,41 +50,41 @@ public final class EntityController implements KeyHandler, Updatable {
 	public void keyboardButton(int key, int scancode, int action, int mods) {
 		if(key == Controls.KEYBIND_UP) {
 			if(action == GLFW_PRESS) {
-				upPressed = true;
+				up = true;
 			}
 			
 			else if(action == GLFW_RELEASE) {
-				upPressed = false;
+				up = false;
 			}
 		}
 		
 		else if(key == Controls.KEYBIND_DOWN) {
 			if(action == GLFW_PRESS) {
-				downPressed = true;
+				down = true;
 			}
 			
 			else if(action == GLFW_RELEASE) {
-				downPressed = false;
+				down = false;
 			}
 		}
 		
 		else if(key == Controls.KEYBIND_LEFT) {
 			if(action == GLFW_PRESS) {
-				leftPressed = true;
+				left = true;
 			}
 			
 			else if(action == GLFW_RELEASE) {
-				leftPressed = false;
+				left = false;
 			}
 		}
 		
 		else if(key == Controls.KEYBIND_RIGHT) {
 			if(action == GLFW_PRESS) {
-				rightPressed = true;
+				right = true;
 			}
 			
 			else if(action == GLFW_RELEASE) {
-				rightPressed = false;
+				right = false;
 			}
 		}
 	}
