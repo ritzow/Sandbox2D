@@ -21,6 +21,8 @@ public final class CursorController implements MouseButtonHandler, CursorPosHand
 	private boolean activatePressed;
 	private volatile double mouseX;
 	private volatile double mouseY;
+	private long lastPlacement;
+	private long lastBreak;
 	
 	private World world;
 	private Entity player;
@@ -28,10 +30,13 @@ public final class CursorController implements MouseButtonHandler, CursorPosHand
 	
 	private float frameWidth, frameHeight;
 	
-	public CursorController(InputManager manager, Entity player, World world, Camera camera) {
+	private float cooldown;
+	
+	public CursorController(InputManager manager, Entity player, World world, Camera camera, float cooldownMilliseconds) {
 		this.world = world;
 		this.player = player;
 		this.camera = camera;
+		this.cooldown = cooldownMilliseconds;
 		manager.getMouseButtonHandlers().add(this);
 		manager.getCursorPosHandlers().add(this);
 		manager.getFramebufferSizeHandlers().add(this);
@@ -62,13 +67,16 @@ public final class CursorController implements MouseButtonHandler, CursorPosHand
 		double distance = Math.sqrt((playerX - blockX) * (playerX - blockX) + (playerY - blockY) * (playerY - blockY));
 		
 		if(distance <= 4) {
-			if(leftMouseDown) {
-				world.getBlocks().destroy(blockX, blockY);
+			if(leftMouseDown && (System.currentTimeMillis() - lastBreak > cooldown)) {
+				if(world.getBlocks().destroy(blockX, blockY)) {
+					lastBreak = System.currentTimeMillis();
+				}
 			}
 			
-			else if(rightMouseDown) {
-				if(world.getBlocks().isValid(blockX, blockY))
-					world.getBlocks().place(blockX, blockY, new RedBlock());
+			else if(rightMouseDown && (System.currentTimeMillis() - lastPlacement > cooldown)) {
+				if(world.getBlocks().place(blockX, blockY, new RedBlock())) {
+					lastPlacement = System.currentTimeMillis();
+				}
 			}
 		}
 		
@@ -81,8 +89,8 @@ public final class CursorController implements MouseButtonHandler, CursorPosHand
 			entity.getHitbox().setHeight(3f);
 			entity.getGraphics().scale().setX(3f);
 			entity.getGraphics().scale().setY(3f);
-			//entity.velocity().setX((float)Math.random() * 2 - 1);
-			//entity.velocity().setY((float)Math.random() * 2 - 1);	
+			entity.velocity().setX((float)Math.random() * 2 - 1);
+			entity.velocity().setY((float)Math.random() * 2 - 1);	
 			world.getEntities().add(entity);
 		}
 	}
