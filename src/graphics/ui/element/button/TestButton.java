@@ -8,8 +8,8 @@ public class TestButton extends GraphicsElement implements Button {
 	protected boolean pressed;
 	
 	{
-		graphics.scale().setX(0.25f);
-		graphics.scale().setY(0.25f);
+		graphics.getScale().setX(0.25f);
+		graphics.getScale().setY(0.25f);
 		
 	}
 	
@@ -32,25 +32,25 @@ public class TestButton extends GraphicsElement implements Button {
 	@Override
 	public void onHover() {
 		hovered = true;
-		this.graphics.scale().setX(this.graphics.scale().getX() + 0.05f);
-		this.graphics.scale().setY(this.graphics.scale().getY() + 0.05f);
+		this.graphics.getScale().setX(this.graphics.getScale().getX() + 0.05f);
+		this.graphics.getScale().setY(this.graphics.getScale().getY() + 0.05f);
 	}
 
 	@Override
 	public void onUnHover() {
 		hovered = false;
-		graphics.scale().setX(this.graphics.scale().getX() - 0.05f);
-		graphics.scale().setY(this.graphics.scale().getY() - 0.05f);
+		graphics.getScale().setX(this.graphics.getScale().getX() - 0.05f);
+		graphics.getScale().setY(this.graphics.getScale().getY() - 0.05f);
 	}
 
 	@Override
 	public float getWidth() {
-		return graphics.scale().getX();
+		return graphics.getScale().getX();
 	}
 
 	@Override
 	public float getHeight() {
-		return graphics.scale().getY();
+		return graphics.getScale().getY();
 	}
 	
 	@Override

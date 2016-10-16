@@ -2,7 +2,7 @@ package world.entity;
 
 import graphics.Model;
 import graphics.Renderer;
-import world.entity.component.visual.Graphics;
+import world.entity.component.Graphics;
 
 public class GenericEntity extends Entity {
 	private static final long serialVersionUID = 6938705771360005876L;
@@ -19,12 +19,12 @@ public class GenericEntity extends Entity {
 	
 	public void update(float milliseconds) {
 		super.update(milliseconds);
-		graphics.rotation().update(milliseconds);
+		graphics.getRotation().update(milliseconds);
 	}
 	
 	public void render(Renderer renderer) {
 		renderer.loadOpacity(graphics.getOpacity());
-		renderer.loadTransformationMatrix(positionX, positionY, graphics.scale().getX(), graphics.scale().getY(), graphics.rotation().getRotation());
+		renderer.loadTransformationMatrix(positionX, positionY, graphics.getScale().getX(), graphics.getScale().getY(), graphics.getRotation().getRotation());
 		graphics.getModel().render();
 	}
 
