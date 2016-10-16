@@ -2,30 +2,44 @@ package graphics.ui.element;
 
 import graphics.Model;
 import graphics.Renderer;
-import world.entity.component.spacial.Position;
 import world.entity.component.visual.Graphics;
 
 public class GraphicsElement extends Element {
 	
 	protected final Graphics graphics;
-	protected final Position offset;
+	
+	protected float offsetX;
+	protected float offsetY;
 	
 	public GraphicsElement(Model model, float offsetX, float offsetY) {
 		graphics = new Graphics(model);
-		offset = new Position(offsetX, offsetY);
+		this.offsetX = offsetX;
+		this.offsetY = offsetY;
 	}
 	
 	public Graphics graphics() {
 		return graphics;
 	}
-	
-	public Position offset() {
-		return offset;
+
+	public final float getOffsetX() {
+		return offsetX;
+	}
+
+	public final float getOffsetY() {
+		return offsetY;
+	}
+
+	public final void setOffsetX(float offsetX) {
+		this.offsetX = offsetX;
+	}
+
+	public final void setOffsetY(float offsetY) {
+		this.offsetY = offsetY;
 	}
 
 	@Override
 	public void render(Renderer renderer, float x, float y) {
-		renderer.loadTransformationMatrix(x + offset.getX(), y + offset.getY(), graphics.scale().getX(), graphics.scale().getY(), graphics.rotation().getRotation());
+		renderer.loadTransformationMatrix(x + offsetX, y + offsetY, graphics.scale().getX(), graphics.scale().getY(), graphics.rotation().getRotation());
 		renderer.loadOpacity(graphics.getOpacity());
 		graphics.getModel().render();
 	}

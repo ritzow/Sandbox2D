@@ -30,8 +30,8 @@ public class CameraController implements KeyHandler, ScrollHandler, MouseButtonH
 	}
 	
 	public void update() {
-		camera.setX(target.position().getX());
-		camera.setY(target.position().getY());
+		camera.setX(target.getPositionX());
+		camera.setY(target.getPositionY());
 		camera.update();
 	}
 
