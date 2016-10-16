@@ -13,26 +13,37 @@ import input.handler.ScrollHandler;
 import util.Updatable;
 import world.entity.Entity;
 
-public class CameraController implements KeyHandler, ScrollHandler, MouseButtonHandler, Updatable {
+public class CameraController extends Controller implements KeyHandler, ScrollHandler, MouseButtonHandler, Updatable {
 	
 	protected Camera camera;
 	protected float zoomSpeed;
 	
 	protected Entity target;
 	
-	public CameraController(InputManager manager, Camera camera, Entity target, float zoomSpeed) {
+	public CameraController(Camera camera, Entity target, float zoomSpeed) {
 		this.camera = camera;
 		this.zoomSpeed = zoomSpeed;
 		this.target = target;
-		manager.getKeyHandlers().add(this);
-		manager.getScrollHandlers().add(this);
-		manager.getMouseButtonHandlers().add(this);
 	}
 	
 	public void update() {
 		camera.setX(target.getPositionX());
 		camera.setY(target.getPositionY());
 		camera.update();
+	}
+	
+	@Override
+	public void link(InputManager input) {
+		input.getKeyHandlers().add(this);
+		input.getScrollHandlers().add(this);
+		input.getMouseButtonHandlers().add(this);
+	}
+
+	@Override
+	public void unlink(InputManager input) {
+		input.getKeyHandlers().remove(this);
+		input.getScrollHandlers().remove(this);
+		input.getMouseButtonHandlers().remove(this);
 	}
 
 	@Override
