@@ -61,14 +61,14 @@ public class World implements Renderable, Serializable {
 			e.setVelocityY(e.getVelocityY() - gravity);
 			
 			//if collision is enabled on the entity
-			if(!(e.getHitbox().getPriority() < 0)) {
+			if(e.getMass() > 0) {
 				
 				//check for entity vs. entity collisions
 				for(int j = i; j < entities.size(); j++) {
 					if(j > -1) {
 						Entity o = entities.get(j);
-						if(e != null && o != null && e != o && o.getHitbox().getPriority() >= 0) {
-							if(e.getHitbox().getPriority() > o.getHitbox().getPriority()) {
+						if(e != null && o != null && e != o && o.getMass() > 0) {
+							if(e.getMass() < o.getMass()) {
 								resolveCollision(e, o);
 							} else {
 								resolveCollision(o, e);
@@ -78,10 +78,10 @@ public class World implements Renderable, Serializable {
 				}
 
 				//Check for entity collisions with blocks
-				int leftBound = Math.max(0, (int)Math.floor(e.getPositionX() - e.getHitbox().getWidth()));
-				int topBound = Math.min(blocks.getHeight(), (int)Math.ceil(e.getPositionY() + e.getHitbox().getHeight()));
-				int rightBound = Math.min(blocks.getWidth(), (int)Math.ceil(e.getPositionX() + e.getHitbox().getWidth()));
-				int bottomBound = Math.max(0, (int)Math.floor(e.getPositionY() - e.getHitbox().getHeight()));
+				int leftBound = Math.max(0, (int)Math.floor(e.getPositionX() - e.getWidth()));
+				int topBound = Math.min(blocks.getHeight(), (int)Math.ceil(e.getPositionY() + e.getHeight()));
+				int rightBound = Math.min(blocks.getWidth(), (int)Math.ceil(e.getPositionX() + e.getWidth()));
+				int bottomBound = Math.max(0, (int)Math.floor(e.getPositionY() - e.getHeight()));
 				
 				for(int row = bottomBound; row < topBound; row++) {
 					for(int column = leftBound; column < rightBound; column++) {
@@ -95,13 +95,13 @@ public class World implements Renderable, Serializable {
 	}
 	
 	public boolean resolveCollision(Entity e, Entity o) {
-		return resolveCollision(e, o.getPositionX(), o.getPositionY(), o.getHitbox().getWidth(), o.getHitbox().getHeight(), o.getHitbox().getFriction());
+		return resolveCollision(e, o.getPositionX(), o.getPositionY(), o.getWidth(), o.getHeight(), o.getFriction());
 	}
 	
 	/** Returns true if a collision occurred **/
 	public boolean resolveCollision(Entity entity, float otherX, float otherY, float otherWidth, float otherHeight, float otherFriction) {	
-		float width = 0.5f * (entity.getHitbox().getWidth() + otherWidth);
-		float height = 0.5f * (entity.getHitbox().getHeight() + otherHeight);
+		float width = 0.5f * (entity.getWidth() + otherWidth);
+		float height = 0.5f * (entity.getHeight() + otherHeight);
 		float deltaX = otherX - entity.getPositionX();
 		float deltaY = otherY - entity.getPositionY();
 		if (Math.abs(deltaX) < width && Math.abs(deltaY) < height) { /* collision! replace < in intersection detection with <= for previous behavior */
@@ -116,11 +116,11 @@ public class World implements Renderable, Serializable {
 					}
 					
 		        	if(entity.getVelocityX() > 0) {
-		        		entity.setVelocityX(Math.max(0, entity.getVelocityX() - combineFriction(entity.getHitbox().getFriction(), otherFriction)));
+		        		entity.setVelocityX(Math.max(0, entity.getVelocityX() - combineFriction(entity.getFriction(), otherFriction)));
 		        	}
 		        	
 		        	else if(entity.getVelocityX() < 0) {
-		        		entity.setVelocityX(Math.min(0, entity.getVelocityX() + combineFriction(entity.getHitbox().getFriction(), otherFriction)));
+		        		entity.setVelocityX(Math.min(0, entity.getVelocityX() + combineFriction(entity.getFriction(), otherFriction)));
 		        	}
 		        }
 
@@ -132,11 +132,11 @@ public class World implements Renderable, Serializable {
 					}
 		        	
 		        	if(entity.getVelocityY() > 0) {
-		        		entity.setVelocityY(Math.max(0, entity.getVelocityY() - combineFriction(entity.getHitbox().getFriction(), otherFriction)));
+		        		entity.setVelocityY(Math.max(0, entity.getVelocityY() - combineFriction(entity.getFriction(), otherFriction)));
 		        	}
 		        	
 		        	else if(entity.getVelocityY() < 0) {
-		        		entity.setVelocityY(Math.min(0, entity.getVelocityY() + combineFriction(entity.getHitbox().getFriction(), otherFriction)));
+		        		entity.setVelocityY(Math.min(0, entity.getVelocityY() + combineFriction(entity.getFriction(), otherFriction)));
 		        	}
 		        }
 		    }
@@ -150,11 +150,11 @@ public class World implements Renderable, Serializable {
 					}
 					
 		        	if(entity.getVelocityY() > 0) {
-		        		entity.setVelocityY(Math.max(0, entity.getVelocityY() - combineFriction(entity.getHitbox().getFriction(), otherFriction)));
+		        		entity.setVelocityY(Math.max(0, entity.getVelocityY() - combineFriction(entity.getFriction(), otherFriction)));
 		        	}
 		        	
 		        	else if(entity.getVelocityY() < 0) {
-		        		entity.setVelocityY(Math.min(0, entity.getVelocityY() + combineFriction(entity.getHitbox().getFriction(), otherFriction)));
+		        		entity.setVelocityY(Math.min(0, entity.getVelocityY() + combineFriction(entity.getFriction(), otherFriction)));
 		        	}
 		        }
 		        
@@ -166,11 +166,11 @@ public class World implements Renderable, Serializable {
 		        	}
 		        	
 		        	if(entity.getVelocityX() > 0) {
-		        		entity.setVelocityX(Math.max(0, entity.getVelocityX() - combineFriction(entity.getHitbox().getFriction(), otherFriction)));
+		        		entity.setVelocityX(Math.max(0, entity.getVelocityX() - combineFriction(entity.getFriction(), otherFriction)));
 		        	}
 		        	
 		        	else if(entity.getVelocityX() < 0) {
-		        		entity.setVelocityX(Math.min(0, entity.getVelocityX() + combineFriction(entity.getHitbox().getFriction(), otherFriction)));
+		        		entity.setVelocityX(Math.min(0, entity.getVelocityX() + combineFriction(entity.getFriction(), otherFriction)));
 		        	}
 		        }
 		    }
@@ -217,10 +217,10 @@ public class World implements Renderable, Serializable {
 				System.err.println("Attempted to access invalid index while rendering entities");
 			}
 			
-			if(e != null && e.getPositionX() < renderer.getWorldViewportRightBound() + e.getHitbox().getWidth()/2 
-					&& e.getPositionX() > renderer.getWorldViewportLeftBound() - e.getHitbox().getWidth()/2 
-					&& e.getPositionY() < renderer.getWorldViewportTopBound() + e.getHitbox().getHeight()/2
-					&& e.getPositionY() > renderer.getWorldViewportBottomBound() - e.getHitbox().getHeight()/2)
+			if(e != null && e.getPositionX() < renderer.getWorldViewportRightBound() + e.getWidth()/2 
+					&& e.getPositionX() > renderer.getWorldViewportLeftBound() - e.getWidth()/2 
+					&& e.getPositionY() < renderer.getWorldViewportTopBound() + e.getHeight()/2
+					&& e.getPositionY() > renderer.getWorldViewportBottomBound() - e.getHeight()/2)
 				e.render(renderer);
 		}
 	}
@@ -228,17 +228,9 @@ public class World implements Renderable, Serializable {
 	public boolean entityBelow(Entity e) {
 		for(int i = 0; i < entities.size(); i++) {
 			Entity o = entities.get(i);
-			if(o != null 
-					&& e != o 
-					&& o.getHitbox().getPriority() >= 0 
-					&& intersection(e.getPositionX(), 
-							e.getPositionY() - e.getHitbox().getHeight()/2, 
-							e.getHitbox().getWidth() - 0.01f,
-							0.1f, 
-							o.getPositionX(), 
-							o.getPositionY(), 
-							o.getHitbox().getWidth(), 
-							o.getHitbox().getHeight())) {
+			if(o != null && e != o && o.getMass() > 0 && 
+					intersection(e.getPositionX(), e.getPositionY() - e.getHeight()/2, e.getWidth() - 0.01f, 0.1f, 
+							o.getPositionX(), o.getPositionY(), o.getWidth(), o.getHeight())) {
 				return true;
 			}
 		}
@@ -246,17 +238,17 @@ public class World implements Renderable, Serializable {
 	}
 	
 	public boolean blockBelow(Entity e) {
-		return blocks.isBlock(e.getPositionX() - e.getHitbox().getWidth()/2 + 0.01f, e.getPositionY() - e.getHitbox().getHeight()/2 - 0.05f) || 
-			   blocks.isBlock(e.getPositionX() + e.getHitbox().getWidth()/2 - 0.01f, e.getPositionY() - e.getHitbox().getHeight()/2 - 0.05f);
+		return blocks.isBlock(e.getPositionX() - e.getWidth()/2 + 0.01f, e.getPositionY() - e.getHeight()/2 - 0.05f) || 
+			   blocks.isBlock(e.getPositionX() + e.getWidth()/2 - 0.01f, e.getPositionY() - e.getHeight()/2 - 0.05f);
 	}
 	
 	public boolean blockLeft(Entity e) {
-		return blocks.isBlock(e.getPositionX() - e.getHitbox().getWidth()/2 - 0.01f, e.getPositionY() + e.getHitbox().getHeight()/2 - 0.05f) || 
-			   blocks.isBlock(e.getPositionX() - e.getHitbox().getWidth()/2 - 0.01f, e.getPositionY() - e.getHitbox().getHeight()/2 + 0.05f);
+		return blocks.isBlock(e.getPositionX() - e.getWidth()/2 - 0.01f, e.getPositionY() + e.getHeight()/2 - 0.05f) || 
+			   blocks.isBlock(e.getPositionX() - e.getWidth()/2 - 0.01f, e.getPositionY() - e.getHeight()/2 + 0.05f);
 	}
 	
 	public boolean blockRight(Entity e) {
-		return blocks.isBlock(e.getPositionX() + e.getHitbox().getWidth()/2 + 0.01f, e.getPositionY() + e.getHitbox().getHeight()/2 - 0.05f) || 
-			   blocks.isBlock(e.getPositionX() + e.getHitbox().getWidth()/2 + 0.01f, e.getPositionY() - e.getHitbox().getHeight()/2 + 0.05f);
+		return blocks.isBlock(e.getPositionX() + e.getWidth()/2 + 0.01f, e.getPositionY() + e.getHeight()/2 - 0.05f) || 
+			   blocks.isBlock(e.getPositionX() + e.getWidth()/2 + 0.01f, e.getPositionY() - e.getHeight()/2 + 0.05f);
 	}
 }
