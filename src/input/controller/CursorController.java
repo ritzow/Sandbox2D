@@ -8,9 +8,10 @@ import input.handler.FramebufferSizeHandler;
 import input.handler.KeyHandler;
 import input.handler.MouseButtonHandler;
 import org.lwjgl.glfw.GLFW;
-import util.ResourceManager;
+import util.ModelManager;
 import util.Updatable;
 import world.World;
+import world.block.Block;
 import world.block.RedBlock;
 import world.entity.Entity;
 import world.entity.GenericEntity;
@@ -24,6 +25,8 @@ public final class CursorController implements MouseButtonHandler, CursorPosHand
 	private long lastPlacement;
 	private long lastBreak;
 	
+	private Block block;
+	
 	private World world;
 	private Entity player;
 	private Camera camera;
@@ -33,6 +36,7 @@ public final class CursorController implements MouseButtonHandler, CursorPosHand
 	private float cooldown;
 	
 	public CursorController(InputManager manager, Entity player, World world, Camera camera, float cooldownMilliseconds) {
+		this.block = new RedBlock();
 		this.world = world;
 		this.player = player;
 		this.camera = camera;
@@ -41,6 +45,10 @@ public final class CursorController implements MouseButtonHandler, CursorPosHand
 		manager.getCursorPosHandlers().add(this);
 		manager.getFramebufferSizeHandlers().add(this);
 		manager.getKeyHandlers().add(this);
+	}
+	
+	public void setBlock(Block block) {
+		this.block = block;
 	}
 	
 	public void update() {
@@ -61,8 +69,8 @@ public final class CursorController implements MouseButtonHandler, CursorPosHand
 		int blockX = (int) Math.round(worldX);
 		int blockY = (int) Math.round(worldY);
 		
-		float playerX = player.position().getX();
-		float playerY = player.position().getY();
+		float playerX = player.getPositionX();
+		float playerY = player.getPositionY();
 		
 		double distance = Math.sqrt((playerX - blockX) * (playerX - blockX) + (playerY - blockY) * (playerY - blockY));
 		
@@ -74,7 +82,7 @@ public final class CursorController implements MouseButtonHandler, CursorPosHand
 			}
 			
 			else if(rightMouseDown && (System.currentTimeMillis() - lastPlacement > cooldown)) {
-				if(world.getBlocks().isValid(blockX, blockY) && world.getBlocks().place(blockX, blockY, new RedBlock())) {
+				if(world.getBlocks().isValid(blockX, blockY) && world.getBlocks().place(blockX, blockY, block.createNew())) {
 					lastPlacement = System.currentTimeMillis();
 				}
 			}
@@ -82,15 +90,15 @@ public final class CursorController implements MouseButtonHandler, CursorPosHand
 		
 		if(activatePressed) {
 			activatePressed = false;
-			GenericEntity entity = new GenericEntity(ResourceManager.BLUE_SQUARE);
-			entity.position().setX(worldX);
-			entity.position().setY(worldY);
+			GenericEntity entity = new GenericEntity(ModelManager.BLUE_SQUARE);
+			entity.setPositionX(worldX);
+			entity.setPositionY(worldY);
 			entity.getHitbox().setWidth(3f);
 			entity.getHitbox().setHeight(3f);
 			entity.getGraphics().scale().setX(3f);
 			entity.getGraphics().scale().setY(3f);
-			entity.velocity().setX((float)Math.random() * 2 - 1);
-			entity.velocity().setY((float)Math.random() * 2 - 1);	
+			entity.setVelocityX((float)Math.random() * 2 - 1);
+			entity.setVelocityY((float)Math.random() * 2 - 1);	
 			world.getEntities().add(entity);
 		}
 	}
