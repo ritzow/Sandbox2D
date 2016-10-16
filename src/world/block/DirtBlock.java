@@ -1,14 +1,14 @@
 package world.block;
 
 import graphics.Model;
-import util.ResourceManager;
+import util.ModelManager;
 
 public class DirtBlock extends Block {
 	private static final long serialVersionUID = 8184830643245426503L;
 
 	@Override
 	public Model getModel() {
-		return ResourceManager.DIRT_MODEL;
+		return ModelManager.DIRT_MODEL;
 	}
 
 	@Override
@@ -19,6 +19,11 @@ public class DirtBlock extends Block {
 	@Override
 	public float getFriction() {
 		return 0.05f;
+	}
+
+	@Override
+	public Block createNew() {
+		return new DirtBlock();
 	}
 
 }
