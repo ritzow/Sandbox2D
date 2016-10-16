@@ -1,18 +1,14 @@
 package world.block;
 
 import graphics.Model;
-import util.ResourceManager;
+import util.ModelManager;
 
 public class RedBlock extends Block {
-	private static final long serialVersionUID = 9112806922906010577L;
-
-	public RedBlock() {
-		this.integrity = 100;
-	}
+	private static final long serialVersionUID = 8312467601285312374L;
 
 	@Override
 	public Model getModel() {
-		return ResourceManager.RED_SQUARE;
+		return ModelManager.RED_SQUARE;
 	}
 
 	@Override
@@ -23,5 +19,10 @@ public class RedBlock extends Block {
 	@Override
 	public float getFriction() {
 		return 0.01f;
+	}
+
+	@Override
+	public Block createNew() {
+		return new RedBlock();
 	}
 }

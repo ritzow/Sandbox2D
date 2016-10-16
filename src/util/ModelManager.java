@@ -6,7 +6,7 @@ import graphics.data.PositionBuffer;
 import graphics.data.Texture;
 import graphics.data.TextureCoordinateBuffer;
 
-public final class ResourceManager {
+public final class ModelManager {
 	
 	public static Model GRASS_MODEL;
 	public static Model DIRT_MODEL;
@@ -15,7 +15,7 @@ public final class ResourceManager {
 	public static Model BLUE_SQUARE;
 	public static Model RED_SQUARE;
 	
-	public static void loadResources(String directory) {
+	public static void load(String directory) {
 		
 		float[] squarePositions = {
 				-0.5f,	 0.5f,
