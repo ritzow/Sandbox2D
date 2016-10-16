@@ -10,6 +10,7 @@ public class Background implements Renderable {
 	
 	@Override
 	public void render(Renderer renderer) {
+		renderer.loadOpacity(1.0f);
 		renderer.loadViewMatrixIdentity();
 		if(renderer.getFramebufferWidth() > renderer.getFramebufferHeight()) {
 			renderer.loadTransformationMatrix(0, 0, 2, 2 * renderer.getFramebufferWidth()/renderer.getFramebufferHeight(), 0);
