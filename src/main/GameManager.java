@@ -32,7 +32,6 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 	private AudioManager audioManager;
 	private WorldManager worldManager;
 	private ClientUpdateManager clientUpdateManager;
-	public static CameraController cameraController;
 	
 	public GameManager(EventManager eventManager) {
 		this.eventManager = eventManager;
@@ -66,16 +65,20 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		System.out.println("World creation took " + ((System.currentTimeMillis() - time)/1000.0f) + " seconds");
 		
 		GenericEntity player = new GenericEntity(ModelManager.GREEN_FACE);
-		player.getHitbox().setPriority(0.1f);
+		player.setMass(1.0f);
 		player.setPositionX(world.getBlocks().getWidth()/2);
 		player.setPositionY(world.getBlocks().getHeight());
-		player.getHitbox().setFriction(0.02f);
+		player.setFriction(0.02f);
 		world.getEntities().add(player);
 		
 		EntityController playerController = new EntityController(player, world, 0.2f);
-		eventManager.getDisplay().getInputManager().getKeyHandlers().add(playerController);
-		CursorController cursorController = new CursorController(eventManager.getDisplay().getInputManager(), player, world, graphicsManager.getRenderer().getCamera(), 200);
-		cameraController = new CameraController(eventManager.getDisplay().getInputManager(), graphicsManager.getRenderer().getCamera(), player, 0.005f);
+		playerController.link(eventManager.getDisplay().getInputManager());
+		
+		CursorController cursorController = new CursorController(player, world, graphicsManager.getRenderer().getCamera(), 200);
+		cursorController.link(eventManager.getDisplay().getInputManager());
+		
+		CameraController cameraController = new CameraController(graphicsManager.getRenderer().getCamera(), player, 0.005f);
+		cameraController.link(eventManager.getDisplay().getInputManager());
 		
 		ElementManager manager = new ElementManager();
 		eventManager.getDisplay().getInputManager().getCursorPosHandlers().add(manager);
