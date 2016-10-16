@@ -4,12 +4,13 @@ import static org.lwjgl.glfw.GLFW.GLFW_PRESS;
 import static org.lwjgl.glfw.GLFW.GLFW_RELEASE;
 
 import input.Controls;
+import input.InputManager;
 import input.handler.KeyHandler;
 import util.Updatable;
 import world.World;
 import world.entity.Entity;
 
-public final class EntityController implements KeyHandler, Updatable {
+public final class EntityController extends Controller implements KeyHandler, Updatable {
 	
 	private World world;
 	private Entity entity;
@@ -26,7 +27,7 @@ public final class EntityController implements KeyHandler, Updatable {
 		this.world = world;
 		this.entity = entity;
 		this.movementSpeed = movementSpeed;
-		this.friction = entity.getHitbox().getFriction();
+		this.friction = entity.getFriction();
 	}
 	
 	@Override
@@ -45,12 +46,22 @@ public final class EntityController implements KeyHandler, Updatable {
 		}
 		
 		if(down) {
-			entity.getHitbox().setFriction(1);
+			entity.setFriction(1);
 		}
 		
 		else {
-			entity.getHitbox().setFriction(friction);
+			entity.setFriction(friction);
 		}
+	}
+	
+	@Override
+	public void link(InputManager input) {
+		input.getKeyHandlers().add(this);
+	}
+
+	@Override
+	public void unlink(InputManager input) {
+		input.getKeyHandlers().remove(this);
 	}
 
 	@Override

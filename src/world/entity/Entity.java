@@ -2,31 +2,37 @@ package world.entity;
 
 import graphics.Renderer;
 import java.io.Serializable;
-import world.entity.component.spacial.Hitbox;
 
 public abstract class Entity implements Serializable {
 	private static final long serialVersionUID = 7177412000462430179L;
-	
-	protected final Hitbox hitbox;
 	
 	protected float positionX;
 	protected float positionY;
 	protected float velocityX;
 	protected float velocityY;
+	protected float width;
+	protected float height;
+	protected float mass;
+	protected float friction;
 	
 	public Entity() {
 		positionX = 0;
 		positionY = 0;
-		this.hitbox = new Hitbox(1, 1, 0.0f);
+		velocityX = 0;
+		velocityY = 0;
+		width = 1;
+		height = 1;
+		mass = 1;
+		friction = 0;
 	}
+	
+	public abstract void render(Renderer renderer);
 	
 	public void update(float milliseconds) {
 		positionX += velocityX * milliseconds;
 		positionY += velocityY * milliseconds;
 	}
-	
-	public abstract void render(Renderer renderer);
-	
+
 	public final float getPositionX() {
 		return positionX;
 	}
@@ -41,6 +47,22 @@ public abstract class Entity implements Serializable {
 
 	public final float getVelocityY() {
 		return velocityY;
+	}
+
+	public final float getWidth() {
+		return width;
+	}
+
+	public final float getHeight() {
+		return height;
+	}
+
+	public final float getMass() {
+		return mass;
+	}
+
+	public final float getFriction() {
+		return friction;
 	}
 
 	public final void setPositionX(float positionX) {
@@ -59,7 +81,20 @@ public abstract class Entity implements Serializable {
 		this.velocityY = velocityY;
 	}
 
-	public Hitbox getHitbox() {
-		return hitbox;
+	public final void setWidth(float width) {
+		this.width = width;
 	}
+
+	public final void setHeight(float height) {
+		this.height = height;
+	}
+
+	public final void setMass(float mass) {
+		this.mass = mass;
+	}
+
+	public final void setFriction(float friction) {
+		this.friction = friction;
+	}
+	
 }

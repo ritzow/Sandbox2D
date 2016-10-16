@@ -16,35 +16,29 @@ import world.block.RedBlock;
 import world.entity.Entity;
 import world.entity.GenericEntity;
 
-public final class CursorController implements MouseButtonHandler, CursorPosHandler, FramebufferSizeHandler, KeyHandler, Updatable {
+public final class CursorController extends Controller implements MouseButtonHandler, CursorPosHandler, FramebufferSizeHandler, KeyHandler, Updatable {
 	private boolean leftMouseDown;
 	private boolean rightMouseDown;
 	private boolean activatePressed;
-	private volatile double mouseX;
-	private volatile double mouseY;
+	
+	private float frameWidth, frameHeight;
+	private volatile double mouseX, mouseY;
+	
 	private long lastPlacement;
 	private long lastBreak;
-	
+	private float cooldown;
 	private Block block;
 	
 	private World world;
 	private Entity player;
 	private Camera camera;
 	
-	private float frameWidth, frameHeight;
-	
-	private float cooldown;
-	
-	public CursorController(InputManager manager, Entity player, World world, Camera camera, float cooldownMilliseconds) {
+	public CursorController(Entity player, World world, Camera camera, float cooldownMilliseconds) {
 		this.block = new RedBlock();
 		this.world = world;
 		this.player = player;
 		this.camera = camera;
 		this.cooldown = cooldownMilliseconds;
-		manager.getMouseButtonHandlers().add(this);
-		manager.getCursorPosHandlers().add(this);
-		manager.getFramebufferSizeHandlers().add(this);
-		manager.getKeyHandlers().add(this);
 	}
 	
 	public void setBlock(Block block) {
@@ -93,14 +87,30 @@ public final class CursorController implements MouseButtonHandler, CursorPosHand
 			GenericEntity entity = new GenericEntity(ModelManager.BLUE_SQUARE);
 			entity.setPositionX(worldX);
 			entity.setPositionY(worldY);
-			entity.getHitbox().setWidth(3f);
-			entity.getHitbox().setHeight(3f);
-			entity.getGraphics().scale().setX(3f);
-			entity.getGraphics().scale().setY(3f);
-			entity.setVelocityX((float)Math.random() * 2 - 1);
-			entity.setVelocityY((float)Math.random() * 2 - 1);	
+			entity.setWidth(3);
+			entity.setHeight(3);
+			entity.setMass(10);
+			entity.getGraphics().getScale().setX(3f);
+			entity.getGraphics().getScale().setY(3f);
 			world.getEntities().add(entity);
 		}
+	}
+	
+
+	@Override
+	public void link(InputManager input) {
+		input.getCursorPosHandlers().add(this);
+		input.getFramebufferSizeHandlers().add(this);
+		input.getKeyHandlers().add(this);
+		input.getMouseButtonHandlers().add(this);
+	}
+	
+	@Override
+	public void unlink(InputManager input) {
+		input.getCursorPosHandlers().remove(this);
+		input.getFramebufferSizeHandlers().remove(this);
+		input.getKeyHandlers().remove(this);
+		input.getMouseButtonHandlers().remove(this);
 	}
 	
 	@Override
