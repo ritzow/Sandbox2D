@@ -9,7 +9,7 @@ import org.lwjgl.glfw.GLFWErrorCallback;
 import org.lwjgl.opengl.GL;
 import util.Exitable;
 import util.Installable;
-import util.ResourceManager;
+import util.ModelManager;
 
 public final class GraphicsManager implements Runnable, Installable, Exitable, FramebufferSizeHandler {
 	private volatile boolean setupComplete;
@@ -41,7 +41,7 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		GLFWErrorCallback.createPrint(System.err).set();
 		
-		ResourceManager.loadResources("resources/assets/");
+		ModelManager.load("resources/assets/");
 		
 		ShaderProgram shaderProgram = new ShaderProgram( //create the shader program
 				new Shader("resources/shaders/vertexShader", org.lwjgl.opengl.GL20.GL_VERTEX_SHADER), 
