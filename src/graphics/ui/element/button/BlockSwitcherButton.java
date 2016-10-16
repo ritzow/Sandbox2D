@@ -20,13 +20,14 @@ public final class BlockSwitcherButton extends GraphicsElement implements Button
 	
 	public BlockSwitcherButton(Block[] blockTypes, CursorController controller) {
 		super(blockTypes[0].getModel(), 0, 0);
-		graphics.scale().setX(SIZE_X);
-		graphics.scale().setY(SIZE_Y);
+		graphics.getScale().setX(SIZE_X);
+		graphics.getScale().setY(SIZE_Y);
 		graphics.setOpacity(0.75f);
 		this.width = SIZE_X;
 		this.height = SIZE_Y;
 		this.blockTypes = blockTypes;
 		this.cursorController = controller;
+		cursorController.setBlock(blockTypes[index]);
 	}
 	
 	public Block getBlock() {
@@ -35,17 +36,19 @@ public final class BlockSwitcherButton extends GraphicsElement implements Button
 
 	@Override
 	public void onPress() {
-		graphics.setOpacity(1);
+		graphics.getScale().setX(ENLARGED_SIZE_X);
+		graphics.getScale().setY(ENLARGED_SIZE_Y);
 		pressed = true;
 	}
 
 	@Override
 	public void onRelease() {
+		graphics.getScale().setX(SIZE_X);
+		graphics.getScale().setY(SIZE_Y);
 		if(index == blockTypes.length - 1) 
 			index = 0;
 		else index++;
 		graphics.setModel(blockTypes[index].getModel());
-		graphics.setOpacity(0.5f);
 		cursorController.setBlock(blockTypes[index]);
 		pressed = false;
 	}
@@ -53,9 +56,7 @@ public final class BlockSwitcherButton extends GraphicsElement implements Button
 	@Override
 	public void onHover() {
 		hovered = true;
-		graphics.scale().setX(ENLARGED_SIZE_X);
-		graphics.scale().setY(ENLARGED_SIZE_Y);
-		graphics.rotation().setRotation((float)Math.PI/4);
+		graphics.setOpacity(1);
 		width = ENLARGED_SIZE_X;
 		height = ENLARGED_SIZE_Y;
 	}
@@ -63,9 +64,7 @@ public final class BlockSwitcherButton extends GraphicsElement implements Button
 	@Override
 	public void onUnHover() {
 		hovered = false;
-		graphics.scale().setX(SIZE_X);
-		graphics.scale().setY(SIZE_Y);
-		graphics.rotation().setRotation(0);
+		graphics.setOpacity(0.5f);
 		width = SIZE_X;
 		height = SIZE_Y;
 	}

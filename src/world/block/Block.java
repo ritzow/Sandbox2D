@@ -23,8 +23,9 @@ public abstract class Block implements Serializable {
 		GenericEntity particle = new GenericEntity(getModel());
 		particle.setPositionX(x);
 		particle.setPositionY(y);
-		particle.getHitbox().setPriority(-1);
-		particle.getGraphics().rotation().setVelocity((float)Math.random() - 0.5f);
+		//particle.getHitbox().setPriority(-1);
+		particle.setMass(0);
+		particle.getGraphics().getRotation().setVelocity((float)Math.random() - 0.5f);
 		particle.setVelocityX(-0.2f + ((float)Math.random() * (0.4f))); //min + ((float)Math.random() * (max - min))
 		particle.setVelocityY((float)Math.random() * (0.35f));
 		world.getEntities().add(particle);
@@ -33,12 +34,13 @@ public abstract class Block implements Serializable {
 	public void onPlace(World world, float x, float y) {
 		for(int i = 0; i < 5; i++) {
 			GenericEntity particle = new GenericEntity(getModel());
-			particle.getGraphics().scale().setX(0.2f);
-			particle.getGraphics().scale().setY(0.2f);
+			particle.getGraphics().getScale().setX(0.2f);
+			particle.getGraphics().getScale().setY(0.2f);
 			particle.setPositionX(x);
 			particle.setPositionY(y);
-			particle.getHitbox().setPriority(-1);
-			particle.getGraphics().rotation().setVelocity((float)Math.random() - 0.5f);
+			//particle.getHitbox().setPriority(-1);
+			particle.setMass(0);
+			particle.getGraphics().getRotation().setVelocity((float)Math.random() - 0.5f);
 			particle.setVelocityX(-0.2f + ((float)Math.random() * (0.4f))); //min + ((float)Math.random() * (max - min))
 			particle.setVelocityY((float)Math.random() * (0.35f));
 			world.getEntities().add(particle);
