@@ -1,8 +1,8 @@
-package graphics.ui.element;
+package graphics.ui;
 
 import graphics.Renderable;
 import graphics.Renderer;
-import graphics.ui.DynamicLocation;
+import graphics.ui.element.Element;
 import graphics.ui.element.button.Button;
 import input.handler.CursorPosHandler;
 import input.handler.FramebufferSizeHandler;
