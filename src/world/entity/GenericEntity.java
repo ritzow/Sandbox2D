@@ -24,7 +24,7 @@ public class GenericEntity extends Entity {
 	
 	public void render(Renderer renderer) {
 		renderer.loadOpacity(graphics.getOpacity());
-		renderer.loadTransformationMatrix(position.getX(), position.getY(), graphics.scale().getX(), graphics.scale().getY(), graphics.rotation().getRotation());
+		renderer.loadTransformationMatrix(positionX, positionY, graphics.scale().getX(), graphics.scale().getY(), graphics.rotation().getRotation());
 		graphics.getModel().render();
 	}
 

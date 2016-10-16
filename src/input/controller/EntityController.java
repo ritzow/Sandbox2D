@@ -33,15 +33,15 @@ public final class EntityController implements KeyHandler, Updatable {
 	public void update() {
 
 		if(left && !(world.blockLeft(entity))) {
-			entity.velocity().setX(-movementSpeed);
+			entity.setVelocityX(-movementSpeed);
 		}
 		
 		if(right && !(world.blockRight(entity))) {
-			entity.velocity().setX(movementSpeed);
+			entity.setVelocityX(movementSpeed);
 		}
 		
 		if(up && (world.entityBelow(entity) || world.blockBelow(entity))) {
-			entity.velocity().setY(movementSpeed);
+			entity.setVelocityY(movementSpeed);
 		}
 		
 		if(down) {

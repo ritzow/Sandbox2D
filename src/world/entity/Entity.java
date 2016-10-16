@@ -3,37 +3,62 @@ package world.entity;
 import graphics.Renderer;
 import java.io.Serializable;
 import world.entity.component.spacial.Hitbox;
-import world.entity.component.spacial.Position;
-import world.entity.component.spacial.Velocity;
 
 public abstract class Entity implements Serializable {
 	private static final long serialVersionUID = 7177412000462430179L;
 	
-	protected final Position position;
-	protected final Velocity velocity;
 	protected final Hitbox hitbox;
 	
+	protected float positionX;
+	protected float positionY;
+	protected float velocityX;
+	protected float velocityY;
+	
 	public Entity() {
-		this.position = new Position(0, 0);
-		this.velocity = new Velocity(0, 0);
+		positionX = 0;
+		positionY = 0;
 		this.hitbox = new Hitbox(1, 1, 0.0f);
 	}
 	
 	public void update(float milliseconds) {
-		velocity.update(milliseconds);
-		position.update(velocity, milliseconds);
+		positionX += velocityX * milliseconds;
+		positionY += velocityY * milliseconds;
 	}
 	
 	public abstract void render(Renderer renderer);
 	
-	public Position position() {
-		return position;
+	public final float getPositionX() {
+		return positionX;
 	}
-	
-	public Velocity velocity() {
-		return velocity;
+
+	public final float getPositionY() {
+		return positionY;
 	}
-	
+
+	public final float getVelocityX() {
+		return velocityX;
+	}
+
+	public final float getVelocityY() {
+		return velocityY;
+	}
+
+	public final void setPositionX(float positionX) {
+		this.positionX = positionX;
+	}
+
+	public final void setPositionY(float positionY) {
+		this.positionY = positionY;
+	}
+
+	public final void setVelocityX(float velocityX) {
+		this.velocityX = velocityX;
+	}
+
+	public final void setVelocityY(float velocityY) {
+		this.velocityY = velocityY;
+	}
+
 	public Hitbox getHitbox() {
 		return hitbox;
 	}
