@@ -15,6 +15,8 @@ public final class ModelManager {
 	public static Model BLUE_SQUARE;
 	public static Model RED_SQUARE;
 	
+	private static Model[] characters = new Model[100];
+	
 	public static void load(String directory) {
 		
 		float[] squarePositions = {
@@ -57,5 +59,9 @@ public final class ModelManager {
 		GREEN_FACE = new Model(squarePositionsBuffer, greenFaceTexture, squareTexCoordsBuffer, rectangleIndicesBuffer);
 		GRASS_MODEL = new Model(squarePositionsBuffer, grassTexture, squareTexCoordsBuffer, rectangleIndicesBuffer);
 		CLOUDS_BACKGROUND = new Model(squarePositionsBuffer, cloudsTexture, squareTexCoordsBuffer, rectangleIndicesBuffer);
+	}
+	
+	public static Model lookupCharacter(char c) {
+		return characters[(int)c];
 	}
 }
