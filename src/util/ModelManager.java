@@ -15,7 +15,7 @@ public final class ModelManager {
 	public static Model BLUE_SQUARE;
 	public static Model RED_SQUARE;
 	
-	private static Model[] characters = new Model[100];
+	private static Model[] characters = new Model[200];
 	
 	public static void load(String directory) {
 		
@@ -62,6 +62,12 @@ public final class ModelManager {
 	}
 	
 	public static Model lookupCharacter(char c) {
-		return characters[(int)c];
+		if((int)c < characters.length && characters[(int)c] != null) {
+			return characters[(int)c];
+		}
+		
+		else {
+			return ModelManager.RED_SQUARE; //return an error model
+		}
 	}
 }

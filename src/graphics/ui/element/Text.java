@@ -16,7 +16,8 @@ public class Text extends Element {
 	@Override
 	public void render(Renderer renderer, float x, float y) {
 		for(int i = 0; i < text.length(); i++) {
-			ModelManager.lookupCharacter(text.charAt(i));
+			renderer.loadTransformationMatrix(x + i/20.0f, y, size/20.0f, size/20.0f, 0);
+			ModelManager.lookupCharacter(text.charAt(i)).render();
 		}
 	}
 
