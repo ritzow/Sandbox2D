@@ -14,19 +14,19 @@ public class World implements Renderable, Serializable {
 	private static final long serialVersionUID = 8941044044393756575L;
 	
 	protected final ArrayList<Entity> entities;
-	protected final BlockGrid blocks;
+	protected final BlockGrid foreground;
 	protected final BlockGrid background;
 	protected float gravity;
 	
 	public World(int width, int height, float gravity) {
 		entities = new ArrayList<Entity>();
-		blocks = new BlockGrid(this, width, height);
+		foreground = new BlockGrid(this, width, height);
 		background = new BlockGrid(this, width, height);
 		this.gravity = gravity;
 	}
 	
-	public BlockGrid getBlocks() {
-		return blocks;
+	public BlockGrid getForeground() {
+		return foreground;
 	}
 	
 	public BlockGrid getBackground() {
@@ -79,14 +79,14 @@ public class World implements Renderable, Serializable {
 
 				//Check for entity collisions with blocks
 				int leftBound = Math.max(0, (int)Math.floor(e.getPositionX() - e.getWidth()));
-				int topBound = Math.min(blocks.getHeight(), (int)Math.ceil(e.getPositionY() + e.getHeight()));
-				int rightBound = Math.min(blocks.getWidth(), (int)Math.ceil(e.getPositionX() + e.getWidth()));
+				int topBound = Math.min(foreground.getHeight(), (int)Math.ceil(e.getPositionY() + e.getHeight()));
+				int rightBound = Math.min(foreground.getWidth(), (int)Math.ceil(e.getPositionX() + e.getWidth()));
 				int bottomBound = Math.max(0, (int)Math.floor(e.getPositionY() - e.getHeight()));
 				
 				for(int row = bottomBound; row < topBound; row++) {
 					for(int column = leftBound; column < rightBound; column++) {
-						if(blocks.isBlock(column, row) && !blocks.isHidden(column, row)) {
-							resolveCollision(e, column, row, 1, 1, blocks.get(column, row).getFriction());
+						if(foreground.isBlock(column, row) && !foreground.isHidden(column, row)) {
+							resolveCollision(e, column, row, 1, 1, foreground.get(column, row).getFriction());
 						}
 					}
 				}
@@ -186,22 +186,22 @@ public class World implements Renderable, Serializable {
 		renderer.loadViewMatrix(true);
 		
 		int leftBound = 	Math.max(0, (int)Math.floor(renderer.getWorldViewportLeftBound()));
-		int rightBound = 	Math.min(blocks.getWidth(), (int)Math.ceil(renderer.getWorldViewportRightBound()) + 1);
-		int topBound = 		Math.min(blocks.getHeight(), (int)Math.ceil(renderer.getWorldViewportTopBound()) + 1);
+		int rightBound = 	Math.min(foreground.getWidth(), (int)Math.ceil(renderer.getWorldViewportRightBound()) + 1);
+		int topBound = 		Math.min(foreground.getHeight(), (int)Math.ceil(renderer.getWorldViewportTopBound()) + 1);
 		int bottomBound = 	Math.max(0, (int)Math.floor(renderer.getWorldViewportBottomBound()));
 		
 		for(int row = bottomBound; row < topBound; row++) {
-			for(int column = leftBound; column < Math.min(blocks.getWidth(), rightBound); column++) {
+			for(int column = leftBound; column < Math.min(foreground.getWidth(), rightBound); column++) {
 				
-				if(background.isBlock(column, row) && !blocks.isBlock(column, row)) {
+				if(background.isBlock(column, row) && !foreground.isBlock(column, row)) {
 					Model blockModel = background.get(column, row).getModel();
 					renderer.loadOpacity(0.5f);
 					renderer.loadTransformationMatrix(column, row, 1, 1, 0);
 					blockModel.render();
 				}
 				
-				if(blocks.isBlock(column, row)) {
-					Model blockModel = blocks.get(column, row).getModel();
+				if(foreground.isBlock(column, row)) {
+					Model blockModel = foreground.get(column, row).getModel();
 					renderer.loadOpacity(1);
 					renderer.loadTransformationMatrix(column, row, 1, 1, 0);
 					blockModel.render();
@@ -238,17 +238,17 @@ public class World implements Renderable, Serializable {
 	}
 	
 	public boolean blockBelow(Entity e) {
-		return blocks.isBlock(e.getPositionX() - e.getWidth()/2 + 0.01f, e.getPositionY() - e.getHeight()/2 - 0.05f) || 
-			   blocks.isBlock(e.getPositionX() + e.getWidth()/2 - 0.01f, e.getPositionY() - e.getHeight()/2 - 0.05f);
+		return foreground.isBlock(e.getPositionX() - e.getWidth()/2 + 0.01f, e.getPositionY() - e.getHeight()/2 - 0.05f) || 
+			   foreground.isBlock(e.getPositionX() + e.getWidth()/2 - 0.01f, e.getPositionY() - e.getHeight()/2 - 0.05f);
 	}
 	
 	public boolean blockLeft(Entity e) {
-		return blocks.isBlock(e.getPositionX() - e.getWidth()/2 - 0.01f, e.getPositionY() + e.getHeight()/2 - 0.05f) || 
-			   blocks.isBlock(e.getPositionX() - e.getWidth()/2 - 0.01f, e.getPositionY() - e.getHeight()/2 + 0.05f);
+		return foreground.isBlock(e.getPositionX() - e.getWidth()/2 - 0.01f, e.getPositionY() + e.getHeight()/2 - 0.05f) || 
+			   foreground.isBlock(e.getPositionX() - e.getWidth()/2 - 0.01f, e.getPositionY() - e.getHeight()/2 + 0.05f);
 	}
 	
 	public boolean blockRight(Entity e) {
-		return blocks.isBlock(e.getPositionX() + e.getWidth()/2 + 0.01f, e.getPositionY() + e.getHeight()/2 - 0.05f) || 
-			   blocks.isBlock(e.getPositionX() + e.getWidth()/2 + 0.01f, e.getPositionY() - e.getHeight()/2 + 0.05f);
+		return foreground.isBlock(e.getPositionX() + e.getWidth()/2 + 0.01f, e.getPositionY() + e.getHeight()/2 - 0.05f) || 
+			   foreground.isBlock(e.getPositionX() + e.getWidth()/2 + 0.01f, e.getPositionY() - e.getHeight()/2 + 0.05f);
 	}
 }

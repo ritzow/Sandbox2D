@@ -70,13 +70,13 @@ public final class CursorController extends Controller implements MouseButtonHan
 		
 		if(distance <= 4) {
 			if(leftMouseDown && (System.currentTimeMillis() - lastBreak > cooldown)) {
-				if(world.getBlocks().isValid(blockX, blockY) && world.getBlocks().destroy(blockX, blockY)) {
+				if(world.getForeground().isValid(blockX, blockY) && world.getForeground().destroy(blockX, blockY)) {
 					lastBreak = System.currentTimeMillis();
 				}
 			}
 			
 			else if(rightMouseDown && (System.currentTimeMillis() - lastPlacement > cooldown)) {
-				if(world.getBlocks().isValid(blockX, blockY) && world.getBlocks().place(blockX, blockY, block.createNew())) {
+				if(world.getForeground().isValid(blockX, blockY) && world.getForeground().place(blockX, blockY, block.createNew())) {
 					lastPlacement = System.currentTimeMillis();
 				}
 			}
