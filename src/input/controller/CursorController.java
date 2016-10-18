@@ -84,7 +84,7 @@ public final class CursorController extends Controller implements MouseButtonHan
 		
 		if(activatePressed) {
 			activatePressed = false;
-			GenericEntity entity = new GenericEntity(ModelManager.BLUE_SQUARE);
+			GraphicsEntity entity = new GraphicsEntity(ModelManager.BLUE_SQUARE);
 			entity.setPositionX(worldX);
 			entity.setPositionY(worldY);
 			entity.setWidth(3);
