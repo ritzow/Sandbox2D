@@ -7,17 +7,23 @@ public class Text extends Element {
 	
 	protected String text;
 	protected int size;
+	protected float spacing;
 	
-	public Text(String text, int size) {
+	public Text(String text, int size, float spacing) {
 		this.text = text;
 		this.size = size;
+		this.spacing = spacing;
 	}
 
-	@Override
+	@Override 
 	public void render(Renderer renderer, float x, float y) {
-		for(int i = 0; i < text.length(); i++) {
-			renderer.loadTransformationMatrix(x + i/20.0f, y, size/20.0f, size/20.0f, 0);
-			ModelManager.lookupCharacter(text.charAt(i)).render();
+		renderer.loadOpacity(1.0f);
+		int index = 0;
+		float charWidth = size * 0.02f + spacing * size * 0.02f;
+		for(float pos = x; index < text.length(); pos += charWidth) {
+			renderer.loadTransformationMatrix(pos, y, size * 0.02f, size * 0.02f, 0);
+			ModelManager.lookupCharacter(text.charAt(index)).render();
+			index++;
 		}
 	}
 
@@ -25,16 +31,28 @@ public class Text extends Element {
 		return text;
 	}
 
-	public final void setText(String text) {
-		this.text = text;
-	}
-
 	public final int getSize() {
 		return size;
 	}
 
+	public final float getSpacing() {
+		return spacing;
+	}
+
+	public final void setText(String text) {
+		this.text = text;
+	}
+
 	public final void setSize(int size) {
 		this.size = size;
+	}
+
+	public final void setSpacing(float spacing) {
+		this.spacing = spacing;
+	}
+	
+	public float getWidth() {
+		return 0;
 	}
 
 }
