@@ -9,7 +9,6 @@ import graphics.GraphicsManager;
 import graphics.ui.DynamicLocation;
 import graphics.ui.ElementManager;
 import graphics.ui.element.Text;
-import graphics.ui.element.button.BlockSwitcherButton;
 import input.Controls;
 import input.EventManager;
 import input.controller.CameraController;
@@ -21,7 +20,6 @@ import util.ModelManager;
 import util.Synchronizer;
 import world.World;
 import world.WorldManager;
-import world.block.Block;
 import world.block.DirtBlock;
 import world.block.GrassBlock;
 import world.block.RedBlock;
@@ -90,8 +88,8 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		eventManager.getDisplay().getInputManager().getCursorPosHandlers().add(manager);
 		eventManager.getDisplay().getInputManager().getMouseButtonHandlers().add(manager);
 		eventManager.getDisplay().getInputManager().getFramebufferSizeHandlers().add(manager);
-		manager.put(new BlockSwitcherButton(new Block[] {new DirtBlock(), new RedBlock(), new GrassBlock()}, cursorController), new DynamicLocation(-1f, -1f, 0.25f, 0.25f));
-		manager.put(new Text("Hello, world!", 11), new DynamicLocation(0,0,0,0));
+		//manager.put(new BlockSwitcherButton(new Block[] {new DirtBlock(), new RedBlock(), new GrassBlock()}, cursorController), new DynamicLocation(-1f, -1f, 0.25f, 0.25f));
+		manager.put(new Text("Hello, world!", 9, 0.2f), new DynamicLocation(-1,-1,0.3f,0.3f));
 		
 		new Thread(worldManager = new WorldManager(world), "World Manager " + world.hashCode()).start();
 		new Thread(clientUpdateManager = new ClientUpdateManager(), "Client Updater").start();

@@ -61,6 +61,10 @@ public final class ModelManager {
 		CLOUDS_BACKGROUND = new Model(squarePositionsBuffer, cloudsTexture, squareTexCoordsBuffer, rectangleIndicesBuffer);
 	}
 	
+	public static void loadFontModels() {
+		
+	}
+	
 	public static Model lookupCharacter(char c) {
 		if((int)c < characters.length && characters[(int)c] != null) {
 			return characters[(int)c];
@@ -69,5 +73,14 @@ public final class ModelManager {
 		else {
 			return ModelManager.RED_SQUARE; //return an error model
 		}
+	}
+	
+	public static float[] getTextureCoordinates(float textureWidth, float textureHeight, float horizontalPadding, float verticalPadding, int index) {
+		float[] coords = new float[8];
+		
+		
+		
+		
+		return coords;
 	}
 }
