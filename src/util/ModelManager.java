@@ -1,5 +1,7 @@
 package util;
 
+import java.util.Arrays;
+
 import graphics.Model;
 import graphics.data.IndexBuffer;
 import graphics.data.PositionBuffer;
@@ -16,6 +18,12 @@ public final class ModelManager {
 	public static Model RED_SQUARE;
 	
 	private static Model[] characters = new Model[200];
+	
+	private static PositionBuffer squarePositionsBuffer;
+	private static IndexBuffer rectangleIndicesBuffer;
+	private static TextureCoordinateBuffer fullTextureCoordsBuffer;
+	
+	private static Texture characterSheet01;
 	
 	public static void load(String directory) {
 		
@@ -42,9 +50,9 @@ public final class ModelManager {
 				3,	
 		};
 		
-		PositionBuffer squarePositionsBuffer = new PositionBuffer(squarePositions);
-		TextureCoordinateBuffer squareTexCoordsBuffer = new TextureCoordinateBuffer(textureCoordinatesEntireImage);
-		IndexBuffer rectangleIndicesBuffer = new IndexBuffer(rectangleIndices);
+		squarePositionsBuffer = new PositionBuffer(squarePositions);
+		rectangleIndicesBuffer = new IndexBuffer(rectangleIndices);
+		fullTextureCoordsBuffer = new TextureCoordinateBuffer(textureCoordinatesEntireImage);
 		
 		Texture greenFaceTexture = 	new Texture(directory + "textures/greenFace.png");
 		Texture redBlockTexture = 	new Texture(directory + "textures/redSquare.png");
@@ -53,16 +61,21 @@ public final class ModelManager {
 		Texture grassTexture = 		new Texture(directory + "textures/grass.png");
 		Texture cloudsTexture = 	new Texture(directory + "textures/clouds.png");
 		
-		BLUE_SQUARE = new Model(squarePositionsBuffer, blueBlockTexture, squareTexCoordsBuffer, rectangleIndicesBuffer);
-		RED_SQUARE = new Model(squarePositionsBuffer, redBlockTexture, squareTexCoordsBuffer, rectangleIndicesBuffer);
-		DIRT_MODEL = new Model(squarePositionsBuffer, dirtTexture, squareTexCoordsBuffer, rectangleIndicesBuffer);
-		GREEN_FACE = new Model(squarePositionsBuffer, greenFaceTexture, squareTexCoordsBuffer, rectangleIndicesBuffer);
-		GRASS_MODEL = new Model(squarePositionsBuffer, grassTexture, squareTexCoordsBuffer, rectangleIndicesBuffer);
-		CLOUDS_BACKGROUND = new Model(squarePositionsBuffer, cloudsTexture, squareTexCoordsBuffer, rectangleIndicesBuffer);
+		characterSheet01 = new Texture(directory + "textures/font/font page 1.png");
+		
+		BLUE_SQUARE = new Model(squarePositionsBuffer, blueBlockTexture, fullTextureCoordsBuffer, rectangleIndicesBuffer);
+		RED_SQUARE = new Model(squarePositionsBuffer, redBlockTexture, fullTextureCoordsBuffer, rectangleIndicesBuffer);
+		DIRT_MODEL = new Model(squarePositionsBuffer, dirtTexture, fullTextureCoordsBuffer, rectangleIndicesBuffer);
+		GREEN_FACE = new Model(squarePositionsBuffer, greenFaceTexture, fullTextureCoordsBuffer, rectangleIndicesBuffer);
+		GRASS_MODEL = new Model(squarePositionsBuffer, grassTexture, fullTextureCoordsBuffer, rectangleIndicesBuffer);
+		CLOUDS_BACKGROUND = new Model(squarePositionsBuffer, cloudsTexture, fullTextureCoordsBuffer, rectangleIndicesBuffer);
+		
+		loadFontModels();
 	}
 	
 	public static void loadFontModels() {
-		
+		System.out.println(Arrays.toString(getTextureCoordinates(0.03515625f, 0.03515625f, 0.00390625f, 0.00390625f, 0)));
+		loadCharacter('!', characterSheet01, getTextureCoordinates(0.03515625f, 0.03515625f, 0.00390625f, 0.00390625f, 0));
 	}
 	
 	public static Model lookupCharacter(char c) {
@@ -75,12 +88,19 @@ public final class ModelManager {
 		}
 	}
 	
+	public static void loadCharacter(char c, Texture characterSheet, float[] textureCoordinates) {
+		characters[(int)c] = new Model(squarePositionsBuffer, characterSheet, new TextureCoordinateBuffer(textureCoordinates), rectangleIndicesBuffer);
+	}
+	
 	public static float[] getTextureCoordinates(float textureWidth, float textureHeight, float horizontalPadding, float verticalPadding, int index) {
-		float[] coords = new float[8];
-		
-		
-		
-		
-		return coords;
+		int charsPerRow = (int)Math.floor(1.0f / (horizontalPadding + textureWidth));
+		row    = (int)(index / width);
+		column = index % width;
+		float top = 1 - verticalPadding;
+		float bottom = 1 - (verticalPadding + textureHeight);
+		float left = horizontalPadding;
+		float right = horizontalPadding + textureWidth;
+		System.out.println("character row: " + row);
+		return new float[] {left, top, left, bottom, right, bottom, right, top};
 	}
 }
