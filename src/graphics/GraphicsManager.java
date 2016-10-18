@@ -48,7 +48,7 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 				new Shader("resources/shaders/fragmentShader", org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER)
 		);
 		
-		Camera camera = new Camera( 0, 0, 0.07f, 1.5f);
+		Camera camera = new Camera( 0, 0, 0.05f, 1.5f);
 		renderer = new Renderer(shaderProgram, camera, display);
 		
 		synchronized(this) {
