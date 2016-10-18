@@ -5,6 +5,7 @@
 	<classpathentry kind="lib" path="libraries/lwjgl/jar/lwjgl.jar" sourcepath="libraries/lwjgl/src.zip">
 		<attributes>
 			<attribute name="javadoc_location" value="jar:platform:/resource/GameEngine2D/libraries/lwjgl/doc/javadoc.zip!/"/>
+			<attribute name="org.eclipse.jdt.launching.CLASSPATH_ATTR_LIBRARY_PATH_ENTRY" value="GameEngine2D/libraries/lwjgl/native"/>
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="output" path="bin"/>
