@@ -45,11 +45,13 @@ public final class BlockSwitcherButton extends GraphicsElement implements Button
 	public void onRelease() {
 		graphics.getScale().setX(SIZE_X);
 		graphics.getScale().setY(SIZE_Y);
-		if(index == blockTypes.length - 1) 
-			index = 0;
-		else index++;
-		graphics.setModel(blockTypes[index].getModel());
-		cursorController.setBlock(blockTypes[index]);
+		if(hovered) {
+			if(index == blockTypes.length - 1) 
+				index = 0;
+			else index++;
+			graphics.setModel(blockTypes[index].getModel());
+			cursorController.setBlock(blockTypes[index]);
+		}
 		pressed = false;
 	}
 
