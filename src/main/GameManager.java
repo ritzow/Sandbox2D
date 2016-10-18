@@ -50,15 +50,15 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		System.out.println("Creating world...");
 		long time = System.currentTimeMillis();
 		World world = new World(2000, 2000, 0.015f);
-		for(int i = 0; i < world.getBlocks().getHeight(); i++) {
-			for(int j = 0; j < world.getBlocks().getWidth(); j++) {
+		for(int i = 0; i < world.getForeground().getHeight(); i++) {
+			for(int j = 0; j < world.getForeground().getWidth(); j++) {
 				world.getBackground().set(j, i, new DirtBlock());
-				if(i == world.getBlocks().getHeight() - 1) {
-					world.getBlocks().set(j, i, new GrassBlock());
+				if(i == world.getForeground().getHeight() - 1) {
+					world.getForeground().set(j, i, new GrassBlock());
 				} else if(Math.random() < 0.005f) {
-					world.getBlocks().set(j, i, new RedBlock());
+					world.getForeground().set(j, i, new RedBlock());
 				} else {
-					world.getBlocks().set(j, i, new DirtBlock());
+					world.getForeground().set(j, i, new DirtBlock());
 				}
 			}
 		}
@@ -66,8 +66,8 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		
 		GenericEntity player = new GenericEntity(ModelManager.GREEN_FACE);
 		player.setMass(1.0f);
-		player.setPositionX(world.getBlocks().getWidth()/2);
-		player.setPositionY(world.getBlocks().getHeight());
+		player.setPositionX(world.getForeground().getWidth()/2);
+		player.setPositionY(world.getForeground().getHeight());
 		player.setFriction(0.02f);
 		world.getEntities().add(player);
 		

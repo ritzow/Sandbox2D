@@ -16,7 +16,7 @@ public final class WorldManager implements Runnable, Exitable {
 	
 	@Override
 	public void run() {
-		BlockGridManager blockManager = new BlockGridManager(world.getBlocks());
+		BlockGridManager blockManager = new BlockGridManager(world.getForeground());
 		
 		new Thread(blockManager).start();
 		
