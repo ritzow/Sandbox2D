@@ -8,6 +8,7 @@ import graphics.Background;
 import graphics.GraphicsManager;
 import graphics.ui.DynamicLocation;
 import graphics.ui.ElementManager;
+import graphics.ui.element.Text;
 import graphics.ui.element.button.BlockSwitcherButton;
 import input.Controls;
 import input.EventManager;
@@ -49,23 +50,28 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		
 		System.out.println("Creating world...");
 		long time = System.currentTimeMillis();
-		World world = new World(2000, 2000, 0.015f);
-		for(int i = 0; i < world.getForeground().getHeight(); i++) {
-			for(int j = 0; j < world.getForeground().getWidth(); j++) {
-				world.getBackground().set(j, i, new DirtBlock());
-				if(i == world.getForeground().getHeight() - 1) {
-					world.getForeground().set(j, i, new GrassBlock());
-				} else if(Math.random() < 0.005f) {
-					world.getForeground().set(j, i, new RedBlock());
+		World world = new World(500, 200, 0.015f);
+		for(int column = 0; column < world.getForeground().getWidth(); column++) {
+			double height = world.getForeground().getHeight()/10;
+			height += (Math.sin(column * 0.1f) + 1) * (world.getForeground().getHeight() - height)/10;
+			
+			for(int row = 0; row < height; row++) {
+				if(Math.random() < 0.005) {
+					world.getForeground().set(column, row, new RedBlock());
 				} else {
-					world.getForeground().set(j, i, new DirtBlock());
+					world.getForeground().set(column, row, new DirtBlock());
 				}
+				world.getBackground().set(column, row, new DirtBlock());
 			}
+			world.getForeground().set(column, (int)height, new GrassBlock());
+			world.getBackground().set(column, (int)height, new DirtBlock());
 		}
+		
 		System.out.println("World creation took " + ((System.currentTimeMillis() - time)/1000.0f) + " seconds");
 		
 		GenericEntity player = new GenericEntity(ModelManager.GREEN_FACE);
 		player.setMass(1.0f);
+		player.setMass(100.0f);
 		player.setPositionX(world.getForeground().getWidth()/2);
 		player.setPositionY(world.getForeground().getHeight());
 		player.setFriction(0.02f);
@@ -85,6 +91,7 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		eventManager.getDisplay().getInputManager().getMouseButtonHandlers().add(manager);
 		eventManager.getDisplay().getInputManager().getFramebufferSizeHandlers().add(manager);
 		manager.put(new BlockSwitcherButton(new Block[] {new DirtBlock(), new RedBlock(), new GrassBlock()}, cursorController), new DynamicLocation(-1f, -1f, 0.25f, 0.25f));
+		manager.put(new Text("Hello, world!", 11), new DynamicLocation(0,0,0,0));
 		
 		new Thread(worldManager = new WorldManager(world), "World Manager " + world.hashCode()).start();
 		new Thread(clientUpdateManager = new ClientUpdateManager(), "Client Updater").start();
