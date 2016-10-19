@@ -53,7 +53,7 @@ public class Text extends Element {
 	}
 	
 	public float getWidth() {
-		return 0;
+		return (size * 0.02f + spacing) * text.length();
 	}
 
 }
