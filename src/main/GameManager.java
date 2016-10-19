@@ -40,7 +40,6 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		Synchronizer.waitForSetup(eventManager);
 		eventManager.getDisplay().getInputManager().getWindowCloseHandlers().add(this);
 		eventManager.getDisplay().getInputManager().getKeyHandlers().add(this);
-		
 		new Thread(graphicsManager = new GraphicsManager(eventManager.getDisplay()), "Graphics Manager").start();
 		new Thread(audioManager = new AudioManager(), "Audio Manager").start();
 		
@@ -69,7 +68,6 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		
 		GenericEntity player = new GenericEntity(ModelManager.GREEN_FACE);
 		player.setMass(1.0f);
-		player.setMass(100.0f);
 		player.setPositionX(world.getForeground().getWidth()/2);
 		player.setPositionY(world.getForeground().getHeight());
 		player.setFriction(0.02f);
@@ -89,7 +87,7 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		eventManager.getDisplay().getInputManager().getMouseButtonHandlers().add(manager);
 		eventManager.getDisplay().getInputManager().getFramebufferSizeHandlers().add(manager);
 		//manager.put(new BlockSwitcherButton(new Block[] {new DirtBlock(), new RedBlock(), new GrassBlock()}, cursorController), new DynamicLocation(-1f, -1f, 0.25f, 0.25f));
-		manager.put(new Text("Hello world!", 11, 0.2f), new DynamicLocation(-1,-1,0.3f,0.3f));
+		manager.put(new Text("howdy folks :)", 4, 0.2f), new DynamicLocation(-1,-1,0.3f,0.3f));
 		
 		new Thread(worldManager = new WorldManager(world), "World Manager " + world.hashCode()).start();
 		new Thread(clientUpdateManager = new ClientUpdateManager(), "Client Updater").start();

@@ -18,10 +18,11 @@ public class Text extends Element {
 	@Override 
 	public void render(Renderer renderer, float x, float y) {
 		renderer.loadOpacity(1.0f);
+		
 		int index = 0;
 		float charWidth = size * 0.02f + spacing * size * 0.02f;
 		for(float pos = x; index < text.length(); pos += charWidth) {
-			renderer.loadTransformationMatrix(pos, y, size * 0.02f, size * 0.02f, 0);
+			renderer.loadTransformationMatrix(pos, y, size * 0.02f, size * 0.021f, 0);
 			ModelManager.lookupCharacter(text.charAt(index)).render();
 			index++;
 		}
