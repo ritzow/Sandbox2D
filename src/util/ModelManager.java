@@ -1,7 +1,5 @@
 package util;
 
-import java.util.Arrays;
-
 import graphics.Model;
 import graphics.data.IndexBuffer;
 import graphics.data.PositionBuffer;
@@ -73,11 +71,6 @@ public final class ModelManager {
 		loadFontModels();
 	}
 	
-	public static void loadFontModels() {
-		System.out.println(Arrays.toString(getTextureCoordinates(0.03515625f, 0.03515625f, 0.00390625f, 0.00390625f, 0)));
-		loadCharacter('!', characterSheet01, getTextureCoordinates(0.03515625f, 0.03515625f, 0.00390625f, 0.00390625f, 0));
-	}
-	
 	public static Model lookupCharacter(char c) {
 		if((int)c < characters.length && characters[(int)c] != null) {
 			return characters[(int)c];
@@ -88,19 +81,38 @@ public final class ModelManager {
 		}
 	}
 	
+	public static void loadFontModels() {
+		float textureWidth = 0.03515625f;
+		float textureHeight = 0.03515625f;
+		float horizontalPadding = 0.00390625f;
+		float verticalPadding = 0.00390625f;
+		
+		char[] characters = new char[] {
+				'!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 
+				':', ';', '<', '=', '>', '?', '@', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R',
+				'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '[', '\\', ']', '^', '-', '`', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k',
+				'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '{', '|', '}', '~', ' ' 
+		};
+		
+		for(int i = 0; i < characters.length; i++) {
+			loadCharacter(characters[i], characterSheet01, getTextureCoordinates(textureWidth, textureHeight, horizontalPadding, verticalPadding, i));
+		}
+	}
+	
 	public static void loadCharacter(char c, Texture characterSheet, float[] textureCoordinates) {
 		characters[(int)c] = new Model(squarePositionsBuffer, characterSheet, new TextureCoordinateBuffer(textureCoordinates), rectangleIndicesBuffer);
 	}
 	
 	public static float[] getTextureCoordinates(float textureWidth, float textureHeight, float horizontalPadding, float verticalPadding, int index) {
 		int charsPerRow = (int)Math.floor(1.0f / (horizontalPadding + textureWidth));
-		row    = (int)(index / width);
-		column = index % width;
-		float top = 1 - verticalPadding;
-		float bottom = 1 - (verticalPadding + textureHeight);
-		float left = horizontalPadding;
-		float right = horizontalPadding + textureWidth;
-		System.out.println("character row: " + row);
+		int row = (int)(index / charsPerRow);
+		int column = index % charsPerRow;
+		
+		float top = 1 - (verticalPadding + (textureHeight + verticalPadding) * row);
+		float left = horizontalPadding + (textureWidth + horizontalPadding) * column;
+		float bottom = top - textureHeight;
+		float right = left + textureWidth;
+		System.out.println(column);
 		return new float[] {left, top, left, bottom, right, bottom, right, top};
 	}
 }
