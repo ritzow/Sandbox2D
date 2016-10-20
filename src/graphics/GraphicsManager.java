@@ -56,23 +56,26 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 			this.notifyAll();
 		}
 		
-		try {
-			while(!exit) {
-				if(updateFrame) {
-					glViewport(0, 0, (int)frameWidth, (int)frameHeight);
-					renderer.setResolution((int)frameWidth, (int)frameHeight);
-					updateFrame = false;
-				}
-				glClear(GL_COLOR_BUFFER_BIT);
-				for(int i = 0; i < renderables.size(); i++) {
-					renderables.get(i).render(renderer);
-				}
-				glFinish();
-				display.refresh();
-				Thread.sleep(1);
+		while(!exit) {
+			if(updateFrame) {
+				glViewport(0, 0, (int)frameWidth, (int)frameHeight);
+				renderer.setResolution((int)frameWidth, (int)frameHeight);
+				updateFrame = false;
 			}
-		} catch(InterruptedException e) {
-			e.printStackTrace();
+			
+			glClear(GL_COLOR_BUFFER_BIT);
+			
+			for(int i = 0; i < renderables.size(); i++) {
+				renderables.get(i).render(renderer);
+			}
+			
+			glFinish();
+			display.refresh();
+			try {
+				Thread.sleep(1);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
 		}
 		
 		renderables.clear();
