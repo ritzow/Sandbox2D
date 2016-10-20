@@ -87,8 +87,10 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		eventManager.getDisplay().getInputManager().getMouseButtonHandlers().add(manager);
 		eventManager.getDisplay().getInputManager().getFramebufferSizeHandlers().add(manager);
 		//manager.put(new BlockSwitcherButton(new Block[] {new DirtBlock(), new RedBlock(), new GrassBlock()}, cursorController), new DynamicLocation(-1f, -1f, 0.25f, 0.25f));
-		Text text = new Text("www.google.com", 4, 0.0f);
-		manager.put(text, new DynamicLocation(-1,-1,0.3f,0.3f));
+		Text text = new Text("the quick brown fox jumped over the lazy dog", 2, 0.0f);
+		Text text2 = new Text("The Quick Brown Fox Jumped Over The Lazy Dog", 2, 0.0f);
+		manager.put(text, new DynamicLocation(-1,-1,0.1f,0.1f));
+		manager.put(text2, new DynamicLocation(1 - text2.getWidth(),1,0.1f,0.1f));
 		
 		new Thread(worldManager = new WorldManager(world), "World Manager " + world.hashCode()).start();
 		new Thread(clientUpdateManager = new ClientUpdateManager(), "Client Updater").start();
