@@ -50,7 +50,7 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		World world = new World(500, 200, 0.015f);
 		for(int column = 0; column < world.getForeground().getWidth(); column++) {
 			double height = world.getForeground().getHeight()/10;
-			height += (Math.sin(column * 0.1f) + 1) * (world.getForeground().getHeight() - height)/10;
+			height += (Math.sin(column * 0.1f) + 1) * (world.getForeground().getHeight() - height) * 0.05f;
 			
 			for(int row = 0; row < height; row++) {
 				if(Math.random() < 0.005) {
@@ -87,7 +87,8 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		eventManager.getDisplay().getInputManager().getMouseButtonHandlers().add(manager);
 		eventManager.getDisplay().getInputManager().getFramebufferSizeHandlers().add(manager);
 		//manager.put(new BlockSwitcherButton(new Block[] {new DirtBlock(), new RedBlock(), new GrassBlock()}, cursorController), new DynamicLocation(-1f, -1f, 0.25f, 0.25f));
-		manager.put(new Text("Hello, world!", 8, 0.0f), new DynamicLocation(-1,-1,0.3f,0.3f));
+		Text text = new Text("www.google.com", 4, 0.0f);
+		manager.put(text, new DynamicLocation(-1,-1,0.3f,0.3f));
 		
 		new Thread(worldManager = new WorldManager(world), "World Manager " + world.hashCode()).start();
 		new Thread(clientUpdateManager = new ClientUpdateManager(), "Client Updater").start();

@@ -83,15 +83,15 @@ public final class ModelManager {
 	
 	public static void loadFontModels() {
 		float textureWidth = 0.03515625f;
-		float textureHeight = 0.03515625f;
-		float horizontalPadding = 0.00390625f;
-		float verticalPadding = 0.00390625f;
+		float textureHeight = 0.03515625f; //0.03515625f
+		float horizontalPadding = 0.00390626f; //exact 0.00390625f
+		float verticalPadding = 0.00390625f; //exact 0.00390625f
 		
 		char[] characters = new char[] {
 				'!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 
 				':', ';', '<', '=', '>', '?', '@', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R',
 				'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '[', '\\', ']', '^', '_', '`', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k',
-				'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '{', '|', '}', '~', ' ' 
+				'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '{', '|', '}', '~', ' ',
 		};
 		
 		for(int i = 0; i < characters.length; i++) {
