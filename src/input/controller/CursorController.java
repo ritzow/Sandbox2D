@@ -8,7 +8,7 @@ import input.handler.FramebufferSizeHandler;
 import input.handler.KeyHandler;
 import input.handler.MouseButtonHandler;
 import org.lwjgl.glfw.GLFW;
-import util.ModelManager;
+import resource.ModelManager;
 import util.Updatable;
 import world.World;
 import world.block.Block;

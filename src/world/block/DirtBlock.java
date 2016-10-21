@@ -1,7 +1,7 @@
 package world.block;
 
 import graphics.Model;
-import util.ModelManager;
+import resource.ModelManager;
 
 public class DirtBlock extends Block {
 	private static final long serialVersionUID = 8184830643245426503L;

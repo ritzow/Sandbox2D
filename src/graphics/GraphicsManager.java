@@ -7,9 +7,9 @@ import input.handler.FramebufferSizeHandler;
 import java.util.ArrayList;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import org.lwjgl.opengl.GL;
+import resource.ModelManager;
 import util.Exitable;
 import util.Installable;
-import util.ModelManager;
 
 public final class GraphicsManager implements Runnable, Installable, Exitable, FramebufferSizeHandler {
 	private volatile boolean setupComplete;

@@ -1,7 +1,7 @@
 package world.block;
 
 import graphics.Model;
-import util.ModelManager;
+import resource.ModelManager;
 
 public class GrassBlock extends Block {
 	private static final long serialVersionUID = -4649749819597297793L;
