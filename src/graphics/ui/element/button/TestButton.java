@@ -1,7 +1,7 @@
 package graphics.ui.element.button;
 
 import graphics.ui.element.GraphicsElement;
-import util.ModelManager;
+import resource.ModelManager;
 
 public class TestButton extends GraphicsElement implements Button {
 	protected boolean hovered;
