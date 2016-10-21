@@ -1,16 +1,18 @@
 package graphics.ui.element;
 
 import graphics.Renderer;
-import util.ModelManager;
+import resource.Font;
 
 public class Text extends Element {
 	
 	protected String text;
+	protected Font font;
 	protected int size;
 	protected float spacing;
 	
-	public Text(String text, int size, float spacing) {
+	public Text(String text, Font font, int size, float spacing) {
 		this.text = text;
+		this.font = font;
 		this.size = size;
 		this.spacing = spacing;
 	}
@@ -23,7 +25,7 @@ public class Text extends Element {
 		float charWidth = size * 0.02f + spacing * size * 0.02f;
 		for(float pos = x; index < text.length(); pos += charWidth) {
 			renderer.loadTransformationMatrix(pos, y, size * 0.02f, size * 0.021f, 0);
-			ModelManager.lookupCharacter(text.charAt(index)).render();
+			font.getModel(text.charAt(index)).render();
 			index++;
 		}
 	}
@@ -53,7 +55,8 @@ public class Text extends Element {
 	}
 	
 	public float getWidth() {
-		return (size * 0.02f + spacing) * text.length();
+		return 0;
+		//TODO implement this method
 	}
 
 }
