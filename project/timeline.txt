@@ -7,10 +7,8 @@ October 18th:
 	Resource manager for audio files, textures, vertex data complete
 	Text rendering from .png character atlas
 	Objects can be associated with resources at runtime even before they are loaded.
-	Stretch: Resources can be stored in animation frames.
 November 1st:
-	Modular entities, and entities within entities.
-	Optimize physics using quadtrees or other method.
+	Optimize physics/begin networking.
 November 15th:
 	Networking: ability to send and update world data between client and server.
 	World saving and loading from file.
@@ -19,6 +17,6 @@ November 22nd/24th (Thanksgiving):
 	Stretch: world lighting.
 	Game engine complete, content/game creation begins.
 Christmas:
-	
+	Content/gameplay/interface complete, only bugfixes and minor tweaks remaining.
 End of year:
 	Game complete with all features from specification, well polished.
