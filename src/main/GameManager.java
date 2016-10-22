@@ -6,9 +6,6 @@ import static org.lwjgl.glfw.GLFW.GLFW_PRESS;
 import audio.AudioManager;
 import graphics.Background;
 import graphics.GraphicsManager;
-import graphics.ui.DynamicLocation;
-import graphics.ui.ElementManager;
-import graphics.ui.element.Text;
 import input.Controls;
 import input.EventManager;
 import input.controller.CameraController;
@@ -16,10 +13,17 @@ import input.controller.CursorController;
 import input.controller.EntityController;
 import input.handler.KeyHandler;
 import input.handler.WindowCloseHandler;
-import resource.ModelManager;
+import java.io.IOException;
+import resource.Models;
+import resource.Sounds;
+import ui.DynamicLocation;
+import ui.ElementManager;
+import ui.element.Text;
+import ui.element.button.BlockSwitcherButton;
 import util.Synchronizer;
 import world.World;
 import world.WorldManager;
+import world.block.Block;
 import world.block.DirtBlock;
 import world.block.GrassBlock;
 import world.block.RedBlock;
@@ -45,6 +49,12 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		
 		Synchronizer.waitForSetup(graphicsManager);
 		
+		try {
+			Sounds.loadAll("resources/assets/audio");
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
 		System.out.print("Creating world... ");
 		long time = System.currentTimeMillis();
 		World world = new World(500, 200, 0.015f);
@@ -66,7 +76,7 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		
 		System.out.println("world creation took " + ((System.currentTimeMillis() - time)/1000.0f) + " seconds");
 		
-		GenericEntity player = new GenericEntity(ModelManager.GREEN_FACE);
+		GenericEntity player = new GenericEntity(Models.GREEN_FACE);
 		player.setMass(1.0f);
 		player.setPositionX(world.getForeground().getWidth()/2);
 		player.setPositionY(world.getForeground().getHeight());
@@ -86,8 +96,8 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		eventManager.getDisplay().getInputManager().getCursorPosHandlers().add(manager);
 		eventManager.getDisplay().getInputManager().getMouseButtonHandlers().add(manager);
 		eventManager.getDisplay().getInputManager().getFramebufferSizeHandlers().add(manager);
-		//manager.put(new BlockSwitcherButton(new Block[] {new DirtBlock(), new RedBlock(), new GrassBlock()}, cursorController), new DynamicLocation(-1f, -1f, 0.25f, 0.25f));
-		Text text = new Text("the quick brown fox jumped over the lazy dog", ModelManager.DEFAULT_FONT, 2, 0.0f);
+		manager.put(new BlockSwitcherButton(new Block[] {new DirtBlock(), new RedBlock(), new GrassBlock()}, cursorController), new DynamicLocation(1f, -1f, 0.25f, 0.25f));
+		Text text = new Text("the quick brown fox jumped over the lazy dog", Models.DEFAULT_FONT, 2, 0.0f);
 		manager.put(text, new DynamicLocation(-1,-1,0.1f,0.1f));
 		
 		new Thread(worldManager = new WorldManager(world), "World Manager " + world.hashCode()).start();
@@ -98,7 +108,7 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		clientUpdateManager.getUpdatables().add(cameraController);
 		clientUpdateManager.getUpdatables().add(manager);
 		
-		graphicsManager.getRenderables().add(new Background(ModelManager.CLOUDS_BACKGROUND));
+		graphicsManager.getRenderables().add(new Background(Models.CLOUDS_BACKGROUND));
 		graphicsManager.getRenderables().add(world);
 		graphicsManager.getRenderables().add(manager);
 		

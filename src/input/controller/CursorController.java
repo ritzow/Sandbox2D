@@ -8,7 +8,7 @@ import input.handler.FramebufferSizeHandler;
 import input.handler.KeyHandler;
 import input.handler.MouseButtonHandler;
 import org.lwjgl.glfw.GLFW;
-import resource.ModelManager;
+import resource.Models;
 import util.Updatable;
 import world.World;
 import world.block.Block;
@@ -84,7 +84,7 @@ public final class CursorController extends Controller implements MouseButtonHan
 		
 		if(activatePressed) {
 			activatePressed = false;
-			GraphicsEntity entity = new GraphicsEntity(ModelManager.BLUE_SQUARE);
+			GraphicsEntity entity = new GraphicsEntity(Models.BLUE_SQUARE);
 			entity.setPositionX(worldX);
 			entity.setPositionY(worldY);
 			entity.setWidth(3);
