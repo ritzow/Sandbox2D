@@ -1,7 +1,9 @@
 package world.block;
 
+import audio.Sound;
 import graphics.Model;
 import java.io.Serializable;
+import resource.Sounds;
 import world.World;
 import world.entity.GenericEntity;
 
@@ -23,12 +25,12 @@ public abstract class Block implements Serializable {
 		GenericEntity particle = new GenericEntity(getModel());
 		particle.setPositionX(x);
 		particle.setPositionY(y);
-		//particle.getHitbox().setPriority(-1);
 		particle.setMass(0);
 		particle.getGraphics().getRotation().setVelocity((float)Math.random() - 0.5f);
 		particle.setVelocityX(-0.2f + ((float)Math.random() * (0.4f))); //min + ((float)Math.random() * (max - min))
 		particle.setVelocityY((float)Math.random() * (0.35f));
 		world.getEntities().add(particle);
+		new Sound(Sounds.BLOCK_BREAK, x, y, 0, 0, 1, 1).play(); //TODO delete sounds when done, send to audio manager instead?
 	}
 	
 	public void onPlace(World world, float x, float y) {
@@ -38,7 +40,6 @@ public abstract class Block implements Serializable {
 			particle.getGraphics().getScale().setY(0.2f);
 			particle.setPositionX(x);
 			particle.setPositionY(y);
-			//particle.getHitbox().setPriority(-1);
 			particle.setMass(0);
 			particle.getGraphics().getRotation().setVelocity((float)Math.random() - 0.5f);
 			particle.setVelocityX(-0.2f + ((float)Math.random() * (0.4f))); //min + ((float)Math.random() * (max - min))

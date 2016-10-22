@@ -1,14 +1,14 @@
 package world.block;
 
 import graphics.Model;
-import resource.ModelManager;
+import resource.Models;
 
 public class RedBlock extends Block {
 	private static final long serialVersionUID = 8312467601285312374L;
 
 	@Override
 	public Model getModel() {
-		return ModelManager.RED_SQUARE;
+		return Models.RED_SQUARE;
 	}
 
 	@Override

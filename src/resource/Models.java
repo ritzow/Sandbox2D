@@ -7,7 +7,7 @@ import graphics.data.Texture;
 import graphics.data.TextureCoordinateBuffer;
 import java.io.File;
 
-public final class ModelManager {
+public final class Models {
 	
 	public static Model GRASS_MODEL;
 	public static Model DIRT_MODEL;
@@ -22,7 +22,12 @@ public final class ModelManager {
 	public static IndexBuffer RECTANGLE_INDICES_BUFFER;
 	public static TextureCoordinateBuffer FULL_TEXTURE_COORDINATES;
 	
-	public static void load(String directory) {
+	public static void loadAll(String directory) {
+		
+		if(!directory.endsWith("/")) {
+			directory += "/";
+		}
+		System.out.println(directory);
 		
 		float[] squarePositions = {
 				-0.5f,	 0.5f,
@@ -46,14 +51,14 @@ public final class ModelManager {
 		RECTANGLE_INDICES_BUFFER = new IndexBuffer(rectangleIndices);
 		FULL_TEXTURE_COORDINATES = new TextureCoordinateBuffer(textureCoordinatesEntireImage);
 		
-		Texture greenFaceTexture = 	new Texture(directory + "textures/greenFace.png");
-		Texture redBlockTexture = 	new Texture(directory + "textures/redSquare.png");
-		Texture blueBlockTexture = 	new Texture(directory + "textures/blueSquare.png");
-		Texture dirtTexture = 		new Texture(directory + "textures/dirt.png");
-		Texture grassTexture = 		new Texture(directory + "textures/grass.png");
-		Texture cloudsTexture = 	new Texture(directory + "textures/clouds.png");
+		Texture greenFaceTexture = 	new Texture(directory + "greenFace.png");
+		Texture redBlockTexture = 	new Texture(directory + "redSquare.png");
+		Texture blueBlockTexture = 	new Texture(directory + "blueSquare.png");
+		Texture dirtTexture = 		new Texture(directory + "dirt.png");
+		Texture grassTexture = 		new Texture(directory + "grass.png");
+		Texture cloudsTexture = 	new Texture(directory + "clouds.png");
 		
-		(DEFAULT_FONT = new Font(new File(directory + "textures/fonts/default"))).load();
+		(DEFAULT_FONT = new Font(new File(directory + "fonts/default"))).load();
 		
 		BLUE_SQUARE = new Model(SQUARE_POSITIONS_BUFFER, blueBlockTexture, FULL_TEXTURE_COORDINATES, RECTANGLE_INDICES_BUFFER);
 		RED_SQUARE = new Model(SQUARE_POSITIONS_BUFFER, redBlockTexture, FULL_TEXTURE_COORDINATES, RECTANGLE_INDICES_BUFFER);

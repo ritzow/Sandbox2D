@@ -30,7 +30,7 @@ public class Font {
 		}
 		
 		else {
-			return ModelManager.RED_SQUARE; //return an error model
+			return Models.RED_SQUARE; //return an error model
 		}
 	}
 	
@@ -53,7 +53,7 @@ public class Font {
 	}
 	
 	protected void loadCharacter(char c, Texture characterSheet, float[] textureCoordinates) {
-		characterModels[(int)c] = new Model(ModelManager.SQUARE_POSITIONS_BUFFER, characterSheet, new TextureCoordinateBuffer(textureCoordinates), ModelManager.RECTANGLE_INDICES_BUFFER);
+		characterModels[(int)c] = new Model(Models.SQUARE_POSITIONS_BUFFER, characterSheet, new TextureCoordinateBuffer(textureCoordinates), Models.RECTANGLE_INDICES_BUFFER);
 	}
 	
 	protected float[] getTextureCoordinates(float textureWidth, float textureHeight, float horizontalPadding, float verticalPadding, int index) {

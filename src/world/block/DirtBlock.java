@@ -1,14 +1,14 @@
 package world.block;
 
 import graphics.Model;
-import resource.ModelManager;
+import resource.Models;
 
 public class DirtBlock extends Block {
 	private static final long serialVersionUID = 8184830643245426503L;
 
 	@Override
 	public Model getModel() {
-		return ModelManager.DIRT_MODEL;
+		return Models.DIRT_MODEL;
 	}
 
 	@Override
