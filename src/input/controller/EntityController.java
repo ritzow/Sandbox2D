@@ -33,15 +33,27 @@ public final class EntityController extends Controller implements KeyHandler, Up
 	@Override
 	public void update() {
 
-		if(left && !(world.blockLeft(entity))) {
-			entity.setVelocityX(-movementSpeed);
+		if(left) {
+			if(!world.blockLeft(entity)) {
+				entity.setVelocityX(-movementSpeed);
+			}
+			
+			else if(entity.getVelocityY() <= 0 && !world.getForeground().isBlock(entity.getPositionX() - 1, entity.getPositionY() + 1) && canJump()) {
+				entity.setVelocityY(movementSpeed);
+			}
 		}
 		
-		if(right && !(world.blockRight(entity))) {
-			entity.setVelocityX(movementSpeed);
+		if(right) {
+			if(!world.blockRight(entity)) {
+				entity.setVelocityX(movementSpeed);
+			}
+			
+			else if(entity.getVelocityY() <= 0 && !world.getForeground().isBlock(entity.getPositionX() + 1, entity.getPositionY() + 1) && canJump()) {
+				entity.setVelocityY(movementSpeed);
+			}
 		}
 		
-		if(up && (world.entityBelow(entity) || world.blockBelow(entity))) {
+		if(up && canJump()) {
 			entity.setVelocityY(movementSpeed);
 		}
 		
@@ -52,6 +64,10 @@ public final class EntityController extends Controller implements KeyHandler, Up
 		else {
 			entity.setFriction(friction);
 		}
+	}
+	
+	private boolean canJump() {
+		return entity.getVelocityY() <= 0 && (world.entityBelow(entity) || world.blockBelow(entity));
 	}
 	
 	@Override
