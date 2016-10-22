@@ -4,6 +4,8 @@ import static org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_MIDDLE;
 import static org.lwjgl.glfw.GLFW.GLFW_PRESS;
 import static org.lwjgl.glfw.GLFW.GLFW_RELEASE;
 
+import static org.lwjgl.openal.AL10.*;
+
 import graphics.Camera;
 import input.Controls;
 import input.InputManager;
@@ -30,6 +32,8 @@ public class CameraController extends Controller implements KeyHandler, ScrollHa
 		camera.setX(target.getPositionX());
 		camera.setY(target.getPositionY());
 		camera.update();
+		alListener3f(AL_POSITION, camera.getX(), camera.getY(), 0);
+		alListenerf(AL_GAIN, camera.getZoom() * 5);
 	}
 	
 	@Override
