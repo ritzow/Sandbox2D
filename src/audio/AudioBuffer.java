@@ -32,6 +32,7 @@ public final class AudioBuffer  {
     		}
     	}
     	
+    	data.position(0);
     	alBufferData(bufferID, format, data, frequency);
     }
 
