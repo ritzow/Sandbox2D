@@ -26,6 +26,7 @@ public final class WaveformReader {
 		checkHeader();
 		readFormat();
 		readData();
+		data.position(0);
 	}
 
 	public String toString() {
