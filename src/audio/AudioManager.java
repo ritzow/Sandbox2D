@@ -42,10 +42,6 @@ public class AudioManager implements Runnable, Installable, Exitable {
 		while(!exit) {
 			while(!soundQueue.isEmpty()) {
 				soundQueue.getFirst().play();
-				
-				if(soundQueue.getFirst().isDisposable())
-					soundQueue.getFirst().delete();
-				
 				soundQueue.removeFirst();
 			}
 			

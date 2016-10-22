@@ -7,7 +7,7 @@ import input.handler.FramebufferSizeHandler;
 import java.util.ArrayList;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import org.lwjgl.opengl.GL;
-import resource.ModelManager;
+import resource.Models;
 import util.Exitable;
 import util.Installable;
 
@@ -41,7 +41,7 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		GLFWErrorCallback.createPrint(System.err).set();
 		
-		ModelManager.load("resources/assets/");
+		Models.loadAll("resources/assets/textures");
 		
 		ShaderProgram shaderProgram = new ShaderProgram( //create the shader program
 				new Shader("resources/shaders/vertexShader", org.lwjgl.opengl.GL20.GL_VERTEX_SHADER), 
@@ -56,27 +56,28 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 			this.notifyAll();
 		}
 		
-		while(!exit) {
-			if(updateFrame) {
-				glViewport(0, 0, (int)frameWidth, (int)frameHeight);
-				renderer.setResolution((int)frameWidth, (int)frameHeight);
-				updateFrame = false;
-			}
-			
-			glClear(GL_COLOR_BUFFER_BIT);
-			
-			for(int i = 0; i < renderables.size(); i++) {
-				renderables.get(i).render(renderer);
-			}
-			
-			glFinish();
-			display.refresh();
-			try {
+		try {
+			while(!exit) {
+				if(updateFrame) {
+					glViewport(0, 0, (int)frameWidth, (int)frameHeight);
+					renderer.setResolution((int)frameWidth, (int)frameHeight);
+					updateFrame = false;
+				}
+				
+				glClear(GL_COLOR_BUFFER_BIT);
+				
+				for(int i = 0; i < renderables.size(); i++) {
+					renderables.get(i).render(renderer);
+				}
+				
+				glFinish();
+				display.refresh();
 				Thread.sleep(1);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
 			}
+		} catch(InterruptedException e) {
+			
 		}
+
 		
 		renderables.clear();
 		GL.destroy();
