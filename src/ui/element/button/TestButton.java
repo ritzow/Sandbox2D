@@ -1,7 +1,7 @@
-package graphics.ui.element.button;
+package ui.element.button;
 
-import graphics.ui.element.GraphicsElement;
-import resource.ModelManager;
+import resource.Models;
+import ui.element.GraphicsElement;
 
 public class TestButton extends GraphicsElement implements Button {
 	protected boolean hovered;
@@ -14,19 +14,19 @@ public class TestButton extends GraphicsElement implements Button {
 	}
 	
 	public TestButton() {
-		super(ModelManager.BLUE_SQUARE, 0, 0);
+		super(Models.BLUE_SQUARE, 0, 0);
 	}
 	
 	@Override
 	public void onPress() {
 		pressed = true;
-		graphics.setModel(ModelManager.RED_SQUARE);
+		graphics.setModel(Models.RED_SQUARE);
 	}
 
 	@Override
 	public void onRelease() {
 		pressed = false;
-		graphics.setModel(ModelManager.BLUE_SQUARE);
+		graphics.setModel(Models.BLUE_SQUARE);
 	}
 
 	@Override
