@@ -1,4 +1,4 @@
-package graphics.ui;
+package ui;
 
 public class DynamicLocation {
 	

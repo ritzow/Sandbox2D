@@ -1,7 +1,7 @@
-package graphics.ui.element.button;
+package ui.element.button;
 
-import graphics.ui.element.GraphicsElement;
 import input.controller.CursorController;
+import ui.element.GraphicsElement;
 import world.block.Block;
 
 public final class BlockSwitcherButton extends GraphicsElement implements Button {

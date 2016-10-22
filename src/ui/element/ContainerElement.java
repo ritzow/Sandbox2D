@@ -1,4 +1,4 @@
-package graphics.ui.element;
+package ui.element;
 
 import graphics.Renderer;
 import java.util.ArrayList;

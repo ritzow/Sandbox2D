@@ -1,13 +1,13 @@
-package graphics.ui;
+package ui;
 
 import graphics.Renderable;
 import graphics.Renderer;
-import graphics.ui.element.Element;
-import graphics.ui.element.button.Button;
 import input.handler.CursorPosHandler;
 import input.handler.FramebufferSizeHandler;
 import input.handler.MouseButtonHandler;
 import java.util.HashMap;
+import ui.element.Element;
+import ui.element.button.Button;
 import util.HitboxUtil;
 import util.Updatable;
 

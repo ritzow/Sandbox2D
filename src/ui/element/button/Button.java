@@ -1,4 +1,4 @@
-package graphics.ui.element.button;
+package ui.element.button;
 
 public interface Button {
 	public void onPress();
