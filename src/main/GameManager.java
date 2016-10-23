@@ -13,6 +13,7 @@ import input.controller.CursorController;
 import input.controller.EntityController;
 import input.handler.KeyHandler;
 import input.handler.WindowCloseHandler;
+import java.io.File;
 import java.io.IOException;
 import resource.Models;
 import resource.Sounds;
@@ -50,7 +51,7 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		Synchronizer.waitForSetup(graphicsManager);
 		
 		try {
-			Sounds.loadAll("resources/assets/audio");
+			Sounds.loadAll(new File("resources/assets/audio"));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

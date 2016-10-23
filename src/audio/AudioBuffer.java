@@ -6,16 +6,26 @@ import java.nio.ByteBuffer;
 public final class AudioBuffer  {
     private int bufferID;
     
-    public AudioBuffer() { 
-    	bufferID = alGenBuffers();
+    private ByteBuffer data;
+    private int channels;
+    private int bitsPerSample;
+    private int frequency;
+    
+    public AudioBuffer(WAVEDecoder decoder) {
+    	this(decoder.getData(), decoder.getChannels(), decoder.getBitsPerSample(), decoder.getSampleRate());
     }
     
-    public AudioBuffer(WAVEDecoder reader) {
-    	this();
-    	buffer(reader.getData(), reader.getNumChannels(), reader.getBitsPerSample(), reader.getSampleRate());
+    public AudioBuffer(ByteBuffer data, short channels, int bitsPerSample, int frequency) {
+    	this.bufferID = alGenBuffers();
+    	this.data = data;
+    	this.channels = channels;
+    	this.bitsPerSample = bitsPerSample;
+    	this.frequency = frequency;
+    	
+    	buffer();
     }
     
-    public void buffer(ByteBuffer data, short channels, int bitsPerSample, int frequency) {
+    public void buffer() {
     	int format = AL_FORMAT_STEREO16;
     	
     	if(bitsPerSample == 8) {

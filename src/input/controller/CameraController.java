@@ -19,6 +19,7 @@ public class CameraController extends Controller implements KeyHandler, ScrollHa
 	
 	protected Camera camera;
 	protected float zoomSpeed;
+	protected float soundFalloff;
 	
 	protected Entity target;
 	
@@ -26,14 +27,14 @@ public class CameraController extends Controller implements KeyHandler, ScrollHa
 		this.camera = camera;
 		this.zoomSpeed = zoomSpeed;
 		this.target = target;
+		this.soundFalloff = 1.5f;
 	}
 	
 	public void update() {
 		camera.setX(target.getPositionX());
 		camera.setY(target.getPositionY());
 		camera.update();
-		alListener3f(AL_POSITION, camera.getX(), camera.getY(), 0);
-		alListenerf(AL_GAIN, camera.getZoom() * 5);
+		alListener3f(AL_POSITION, camera.getX(), camera.getY(), -(camera.getMaxZoom() - camera.getZoom()) * soundFalloff);
 	}
 	
 	@Override

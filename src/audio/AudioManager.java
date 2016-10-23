@@ -4,11 +4,14 @@ import static org.lwjgl.openal.AL10.*;
 import static org.lwjgl.openal.ALC10.*;
 import static org.lwjgl.openal.ALC11.ALC_ALL_DEVICES_SPECIFIER;
 
+import java.io.File;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.LinkedList;
 import java.util.List;
 import org.lwjgl.openal.*;
+import resource.Sounds;
 import util.Exitable;
 import util.Installable;
 
@@ -33,6 +36,12 @@ public class AudioManager implements Runnable, Installable, Exitable {
 			closeContext();
 			exit = true;
 		}
+		
+//		try {
+//			new Sound(Sounds.loadAudio(new File("resources/assets/audio/birdland.wav")), 0, 0, 0, 0, 1, 0.5f).play();
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//		};
 
 		synchronized(this) {
 			setupComplete = true;
