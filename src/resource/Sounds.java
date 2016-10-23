@@ -9,13 +9,13 @@ import java.io.IOException;
 public class Sounds {
 	public static AudioBuffer BLOCK_BREAK;
 	
-	public static void loadAll(String directory) throws IOException {
-		
-		if(!directory.endsWith("/"))
-			directory += "/";
-		
-		WAVEDecoder reader = new WAVEDecoder(new FileInputStream(new File(directory + "bzzzt.wav")));
-		reader.decode();
-		Sounds.BLOCK_BREAK = new AudioBuffer(reader);
+	public static void loadAll(File directory) throws IOException {
+		Sounds.BLOCK_BREAK = loadAudio(new File(directory.getPath(), "bzzzt.wav"));
+	}
+	
+	public static AudioBuffer loadAudio(File file) throws IOException {
+		WAVEDecoder decoder = new WAVEDecoder(new FileInputStream(file));
+		decoder.decode();
+		return new AudioBuffer(decoder);
 	}
 }

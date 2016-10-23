@@ -26,7 +26,7 @@ public final class WAVEDecoder {
 		return format;
 	}
 
-	public final short getNumChannels() {
+	public final short getChannels() {
 		return numChannels;
 	}
 
