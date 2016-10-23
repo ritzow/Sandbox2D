@@ -10,7 +10,7 @@ public final class AudioBuffer  {
     	bufferID = alGenBuffers();
     }
     
-    public AudioBuffer(WaveformReader reader) {
+    public AudioBuffer(WAVEDecoder reader) {
     	this();
     	buffer(reader.getData(), reader.getNumChannels(), reader.getBitsPerSample(), reader.getSampleRate());
     }

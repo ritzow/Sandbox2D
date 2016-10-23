@@ -1,7 +1,7 @@
 package resource;
 
 import audio.AudioBuffer;
-import audio.WaveformReader;
+import audio.WAVEDecoder;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -14,7 +14,7 @@ public class Sounds {
 		if(!directory.endsWith("/"))
 			directory += "/";
 		
-		WaveformReader reader = new WaveformReader(new FileInputStream(new File(directory + "blockBreak.wav")));
+		WAVEDecoder reader = new WAVEDecoder(new FileInputStream(new File(directory + "bzzzt.wav")));
 		reader.decode();
 		Sounds.BLOCK_BREAK = new AudioBuffer(reader);
 	}
