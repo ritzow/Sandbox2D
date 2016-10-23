@@ -4,6 +4,7 @@ import graphics.Model;
 import graphics.data.Texture;
 import graphics.data.TextureCoordinateBuffer;
 import java.io.File;
+import java.io.IOException;
 
 public class Font {
 	
@@ -11,17 +12,21 @@ public class Font {
 	
 	protected Texture characterSheet01;
 	
-	/** A class for loading and managing fonts, should only be used in GraphicsManager **/
-	public Font(File directory) {
+	/** A class for loading and managing fonts, should only be used in GraphicsManager 
+	 * @throws IOException if unable to load texture 
+	 * **/
+	public Font(File directory) throws IOException {
 		characterModels = new Model[200];
 		
 		File[] files = directory.listFiles();
 		
 		for(File f : files) {
 			if(characterSheet01 == null && f.canRead() && f.getName().equals("sheet01.png")) {
-				characterSheet01 = new Texture(f.getPath());
+				characterSheet01 = Textures.loadTexture(f);
 			}
 		}
+		
+		load();
 	}
 	
 	public Model getModel(char c) {
