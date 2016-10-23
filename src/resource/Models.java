@@ -3,9 +3,9 @@ package resource;
 import graphics.Model;
 import graphics.data.IndexBuffer;
 import graphics.data.PositionBuffer;
-import graphics.data.Texture;
 import graphics.data.TextureCoordinateBuffer;
 import java.io.File;
+import java.io.IOException;
 
 public final class Models {
 	
@@ -22,12 +22,11 @@ public final class Models {
 	public static IndexBuffer RECTANGLE_INDICES_BUFFER;
 	public static TextureCoordinateBuffer FULL_TEXTURE_COORDINATES;
 	
-	public static void loadAll(String directory) {
-		
-		if(!directory.endsWith("/")) {
-			directory += "/";
-		}
-		System.out.println(directory);
+	public static void loadDefaultFont(File directory) throws IOException {
+		DEFAULT_FONT = new Font(directory);
+	}
+	
+	public static void loadAll(File directory) throws IOException {
 		
 		float[] squarePositions = {
 				-0.5f,	 0.5f,
@@ -51,20 +50,11 @@ public final class Models {
 		RECTANGLE_INDICES_BUFFER = new IndexBuffer(rectangleIndices);
 		FULL_TEXTURE_COORDINATES = new TextureCoordinateBuffer(textureCoordinatesEntireImage);
 		
-		Texture greenFaceTexture = 	new Texture(directory + "greenFace.png");
-		Texture redBlockTexture = 	new Texture(directory + "redSquare.png");
-		Texture blueBlockTexture = 	new Texture(directory + "blueSquare.png");
-		Texture dirtTexture = 		new Texture(directory + "dirt.png");
-		Texture grassTexture = 		new Texture(directory + "grass.png");
-		Texture cloudsTexture = 	new Texture(directory + "clouds.png");
-		
-		(DEFAULT_FONT = new Font(new File(directory + "fonts/default"))).load();
-		
-		BLUE_SQUARE = new Model(SQUARE_POSITIONS_BUFFER, blueBlockTexture, FULL_TEXTURE_COORDINATES, RECTANGLE_INDICES_BUFFER);
-		RED_SQUARE = new Model(SQUARE_POSITIONS_BUFFER, redBlockTexture, FULL_TEXTURE_COORDINATES, RECTANGLE_INDICES_BUFFER);
-		DIRT_MODEL = new Model(SQUARE_POSITIONS_BUFFER, dirtTexture, FULL_TEXTURE_COORDINATES, RECTANGLE_INDICES_BUFFER);
-		GREEN_FACE = new Model(SQUARE_POSITIONS_BUFFER, greenFaceTexture, FULL_TEXTURE_COORDINATES, RECTANGLE_INDICES_BUFFER);
-		GRASS_MODEL = new Model(SQUARE_POSITIONS_BUFFER, grassTexture, FULL_TEXTURE_COORDINATES, RECTANGLE_INDICES_BUFFER);
-		CLOUDS_BACKGROUND = new Model(SQUARE_POSITIONS_BUFFER, cloudsTexture, FULL_TEXTURE_COORDINATES, RECTANGLE_INDICES_BUFFER);
+		BLUE_SQUARE = new Model(SQUARE_POSITIONS_BUFFER, Textures.BLUE_SQUARE, FULL_TEXTURE_COORDINATES, RECTANGLE_INDICES_BUFFER);
+		RED_SQUARE = new Model(SQUARE_POSITIONS_BUFFER, Textures.RED_SQUARE, FULL_TEXTURE_COORDINATES, RECTANGLE_INDICES_BUFFER);
+		DIRT_MODEL = new Model(SQUARE_POSITIONS_BUFFER, Textures.DIRT, FULL_TEXTURE_COORDINATES, RECTANGLE_INDICES_BUFFER);
+		GREEN_FACE = new Model(SQUARE_POSITIONS_BUFFER, Textures.GREEN_FACE, FULL_TEXTURE_COORDINATES, RECTANGLE_INDICES_BUFFER);
+		GRASS_MODEL = new Model(SQUARE_POSITIONS_BUFFER, Textures.GRASS_BLOCK, FULL_TEXTURE_COORDINATES, RECTANGLE_INDICES_BUFFER);
+		CLOUDS_BACKGROUND = new Model(SQUARE_POSITIONS_BUFFER, Textures.CLOUDS, FULL_TEXTURE_COORDINATES, RECTANGLE_INDICES_BUFFER);
 	}
 }

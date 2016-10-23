@@ -4,10 +4,13 @@ import static org.lwjgl.glfw.GLFW.glfwSwapInterval;
 import static org.lwjgl.opengl.GL11.*;
 
 import input.handler.FramebufferSizeHandler;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import org.lwjgl.opengl.GL;
 import resource.Models;
+import resource.Textures;
 import util.Exitable;
 import util.Installable;
 
@@ -41,7 +44,13 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		GLFWErrorCallback.createPrint(System.err).set();
 		
-		Models.loadAll("resources/assets/textures");
+		try {
+			Textures.loadAll(new File("resources/assets/textures"));
+			Models.loadAll(new File("resources/assets/textures"));
+			Models.loadDefaultFont(new File("resources/assets/fonts/default"));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		
 		ShaderProgram shaderProgram = new ShaderProgram( //create the shader program
 				new Shader("resources/shaders/vertexShader", org.lwjgl.opengl.GL20.GL_VERTEX_SHADER), 

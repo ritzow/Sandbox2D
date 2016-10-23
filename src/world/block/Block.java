@@ -30,7 +30,8 @@ public abstract class Block implements Serializable {
 		particle.setVelocityX(-0.2f + ((float)Math.random() * (0.4f))); //min + ((float)Math.random() * (max - min))
 		particle.setVelocityY((float)Math.random() * (0.35f));
 		world.getEntities().add(particle);
-		new Sound(Sounds.BLOCK_BREAK, x, y, 0, 0, 1, 1).play(); //TODO delete sounds when done, send to audio manager instead?
+		new Sound(Sounds.BLOCK_BREAK, x, y, particle.getVelocityX(), particle.getVelocityY(), 1, (float)(Math.random() * 0.25 + 0.75)).play(); 
+		//TODO delete sounds when done, send to audio manager instead?
 	}
 	
 	public void onPlace(World world, float x, float y) {
