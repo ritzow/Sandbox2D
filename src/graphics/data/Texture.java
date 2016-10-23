@@ -3,27 +3,23 @@ package graphics.data;
 import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.GL12.*;
 import static org.lwjgl.opengl.GL13.*;
-import static org.lwjgl.stb.STBImage.*;
-import org.lwjgl.BufferUtils;
 import java.nio.ByteBuffer;
-import java.nio.IntBuffer;
 
-public class Texture extends Buffer {
-	IntBuffer width			= BufferUtils.createIntBuffer(1);
-	IntBuffer height		= BufferUtils.createIntBuffer(1);
-	IntBuffer numComponents	= BufferUtils.createIntBuffer(1);
-	protected int textureUnit;
+public final class Texture extends Buffer {
+	private int textureUnit;
+	private ByteBuffer pixels;
+	private int width;
+	private int height;
 	
-	protected ByteBuffer pixels;
-
-	public Texture(String file) {
+	public Texture(ByteBuffer pixels, int width, int height) {
+		this.pixels = pixels;
+		this.width = width;
+		this.height = height;
+		
 		this.objectID = glGenTextures();
-		stbi_set_flip_vertically_on_load(1);
-		this.pixels = stbi_load(file, width, height, numComponents, 4);
 		this.textureUnit = 0;
 		specifyParameters();
 		buffer();
-		stbi_image_free(pixels);
 	}
 	
 	public void specifyParameters() {
@@ -38,7 +34,7 @@ public class Texture extends Buffer {
 	@Override
 	public void buffer() {
 		bind();
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, getWidth(), getHeight(), 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 		unbind();
 	}
 
@@ -57,13 +53,5 @@ public class Texture extends Buffer {
 	@Override
 	public void delete() {
 		glDeleteTextures(objectID);
-	}
-	
-	public int getWidth() {
-		return width.get(0);
-	}
-	
-	public int getHeight() {
-		return height.get(0);
 	}
 }
