@@ -1,21 +1,51 @@
 package resource;
 
-import audio.AudioBuffer;
+import static org.lwjgl.openal.AL10.*;
+
 import audio.WAVEDecoder;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 
 public class Sounds {
-	public static AudioBuffer BLOCK_BREAK;
+	public static int BLOCK_BREAK;
+	public static int BLOCK_PLACE;
 	
 	public static void loadAll(File directory) throws IOException {
-		Sounds.BLOCK_BREAK = loadAudio(new File(directory.getPath(), "bzzzt.wav"));
+		Sounds.BLOCK_BREAK = loadAudio(new File(directory.getPath(), "blockBreak.wav"));
+		Sounds.BLOCK_PLACE = loadAudio(new File(directory.getPath(), "blockPlace.wav"));
 	}
 	
-	public static AudioBuffer loadAudio(File file) throws IOException {
+	public static int loadAudio(File file) throws IOException {
 		WAVEDecoder decoder = new WAVEDecoder(new FileInputStream(file));
 		decoder.decode();
-		return new AudioBuffer(decoder);
+		
+    	int format = AL_FORMAT_STEREO16;
+    	
+    	if(decoder.getBitsPerSample() == 8) {
+    		if(decoder.getChannels() == 1) {
+    			format = AL_FORMAT_MONO8;
+    		} else if(decoder.getChannels() == 2) {
+    			format = AL_FORMAT_STEREO8;
+    		}
+    	} else if(decoder.getBitsPerSample() == 16) {
+    		if(decoder.getChannels() == 1) {
+    			format = AL_FORMAT_MONO16;
+    		} else if(decoder.getChannels() == 2) {
+    			format = AL_FORMAT_STEREO16;
+    		}
+    	}
+    	
+    	decoder.getData().position(0);
+    	
+    	int buffer = alGenBuffers();
+    	alBufferData(buffer, format, decoder.getData(), decoder.getSampleRate());
+    	
+    	return buffer;
+	}
+	
+	public static void deleteAll() {
+		alDeleteBuffers(Sounds.BLOCK_BREAK);
+		alDeleteBuffers(Sounds.BLOCK_PLACE);
 	}
 }
