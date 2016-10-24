@@ -49,7 +49,7 @@ public class World implements Renderable, Serializable {
 		for(int i = 0; i < entities.size(); i++) {
 			Entity e = entities.get(i);
 			
-			//remove all entities that are below the world
+			//remove entities that are below the world
 			if(e == null || e.getPositionY() < 0) {
 				entities.remove(i);
 				i--;
@@ -193,7 +193,7 @@ public class World implements Renderable, Serializable {
 		for(int row = bottomBound; row < topBound; row++) {
 			for(int column = leftBound; column < Math.min(foreground.getWidth(), rightBound); column++) {
 				
-				if(background.isBlock(column, row) && !foreground.isBlock(column, row)) {
+				if(!foreground.isBlock(column, row) && background.isBlock(column, row)) {
 					Model blockModel = background.get(column, row).getModel();
 					renderer.loadOpacity(0.5f);
 					renderer.loadTransformationMatrix(column, row, 1, 1, 0);

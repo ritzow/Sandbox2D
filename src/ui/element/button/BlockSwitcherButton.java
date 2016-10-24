@@ -20,8 +20,8 @@ public final class BlockSwitcherButton extends GraphicsElement implements Button
 	
 	public BlockSwitcherButton(Block[] blockTypes, CursorController controller) {
 		super(blockTypes[0].getModel(), 0, 0);
-		graphics.getScale().setX(SIZE_X);
-		graphics.getScale().setY(SIZE_Y);
+		graphics.setScaleX(SIZE_X);
+		graphics.setScaleY(SIZE_Y);
 		graphics.setOpacity(0.75f);
 		this.width = SIZE_X;
 		this.height = SIZE_Y;
@@ -36,15 +36,15 @@ public final class BlockSwitcherButton extends GraphicsElement implements Button
 
 	@Override
 	public void onPress() {
-		graphics.getScale().setX(ENLARGED_SIZE_X);
-		graphics.getScale().setY(ENLARGED_SIZE_Y);
+		graphics.setScaleX(ENLARGED_SIZE_X);
+		graphics.setScaleY(ENLARGED_SIZE_Y);
 		pressed = true;
 	}
 
 	@Override
 	public void onRelease() {
-		graphics.getScale().setX(SIZE_X);
-		graphics.getScale().setY(SIZE_Y);
+		graphics.setScaleX(SIZE_X);
+		graphics.setScaleY(SIZE_Y);
 		if(hovered) {
 			if(index == blockTypes.length - 1) 
 				index = 0;
