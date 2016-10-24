@@ -3,7 +3,7 @@ package main;
 import static org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE;
 import static org.lwjgl.glfw.GLFW.GLFW_PRESS;
 
-import audio.AudioManager;
+import audio.AudioSystem;
 import graphics.Background;
 import graphics.GraphicsManager;
 import input.Controls;
@@ -13,10 +13,7 @@ import input.controller.CursorController;
 import input.controller.EntityController;
 import input.handler.KeyHandler;
 import input.handler.WindowCloseHandler;
-import java.io.File;
-import java.io.IOException;
 import resource.Models;
-import resource.Sounds;
 import ui.DynamicLocation;
 import ui.ElementManager;
 import ui.element.Text;
@@ -28,12 +25,11 @@ import world.block.Block;
 import world.block.DirtBlock;
 import world.block.GrassBlock;
 import world.block.RedBlock;
-import world.entity.GenericEntity;
+import world.entity.Player;
 
 public final class GameManager implements Runnable, WindowCloseHandler, KeyHandler {
 	private EventManager eventManager;
 	private GraphicsManager graphicsManager;
-	private AudioManager audioManager;
 	private WorldManager worldManager;
 	private ClientUpdateManager clientUpdateManager;
 	
@@ -46,15 +42,10 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		eventManager.getDisplay().getInputManager().getWindowCloseHandlers().add(this);
 		eventManager.getDisplay().getInputManager().getKeyHandlers().add(this);
 		new Thread(graphicsManager = new GraphicsManager(eventManager.getDisplay()), "Graphics Manager").start();
-		new Thread(audioManager = new AudioManager(), "Audio Manager").start();
+		
+		AudioSystem.start();
 		
 		Synchronizer.waitForSetup(graphicsManager);
-		
-		try {
-			Sounds.loadAll(new File("resources/assets/audio"));
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
 		
 		System.out.print("Creating world... ");
 		long time = System.currentTimeMillis();
@@ -77,11 +68,9 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		
 		System.out.println("world creation took " + ((System.currentTimeMillis() - time)/1000.0f) + " seconds");
 		
-		GenericEntity player = new GenericEntity(Models.GREEN_FACE);
-		player.setMass(1.0f);
+		Player player = new Player();
 		player.setPositionX(world.getForeground().getWidth()/2);
 		player.setPositionY(world.getForeground().getHeight());
-		player.setFriction(0.02f);
 		world.getEntities().add(player);
 		
 		EntityController playerController = new EntityController(player, world, 0.2f);
@@ -121,7 +110,7 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 	
 	private void exit() {
 		clientUpdateManager.exit();
-		Synchronizer.waitForExit(audioManager);
+		AudioSystem.stop();
 		Synchronizer.waitForExit(worldManager);
 		Synchronizer.waitForExit(graphicsManager);
 		eventManager.exit();

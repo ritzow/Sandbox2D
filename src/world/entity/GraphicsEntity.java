@@ -19,13 +19,11 @@ public class GraphicsEntity extends Entity {
 	
 	public void update(float milliseconds) {
 		super.update(milliseconds);
-		graphics.getRotation().update(milliseconds);
+		graphics.setRotation(graphics.getRotation() + graphics.getRotationVelocity());
 	}
 	
 	public void render(Renderer renderer) {
-		renderer.loadOpacity(graphics.getOpacity());
-		renderer.loadTransformationMatrix(positionX, positionY, graphics.getScale().getX(), graphics.getScale().getY(), graphics.getRotation().getRotation());
-		graphics.getModel().render();
+		graphics.render(renderer, positionX, positionY);
 	}
 
 }

@@ -90,8 +90,8 @@ public final class CursorController extends Controller implements MouseButtonHan
 			entity.setWidth(3);
 			entity.setHeight(3);
 			entity.setMass(10);
-			entity.getGraphics().getScale().setX(3f);
-			entity.getGraphics().getScale().setY(3f);
+			entity.getGraphics().setScaleX(3);
+			entity.getGraphics().setScaleY(3);
 			world.getEntities().add(entity);
 		}
 	}

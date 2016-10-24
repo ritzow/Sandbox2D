@@ -39,7 +39,7 @@ public class GraphicsElement extends Element {
 
 	@Override
 	public void render(Renderer renderer, float x, float y) {
-		renderer.loadTransformationMatrix(x + offsetX, y + offsetY, graphics.getScale().getX(), graphics.getScale().getY(), graphics.getRotation().getRotation());
+		renderer.loadTransformationMatrix(x + offsetX, y + offsetY, graphics.getScaleX(), graphics.getScaleY(), graphics.getRotation());
 		renderer.loadOpacity(graphics.getOpacity());
 		graphics.getModel().render();
 	}
