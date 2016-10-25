@@ -57,4 +57,14 @@ public final class Models {
 		GRASS_MODEL = new Model(SQUARE_POSITIONS_BUFFER, Textures.GRASS_BLOCK, FULL_TEXTURE_COORDINATES, RECTANGLE_INDICES_BUFFER);
 		CLOUDS_BACKGROUND = new Model(SQUARE_POSITIONS_BUFFER, Textures.CLOUDS, FULL_TEXTURE_COORDINATES, RECTANGLE_INDICES_BUFFER);
 	}
+	
+	public static void deleteAll() {
+		GRASS_MODEL.delete();
+		DIRT_MODEL.delete();
+		CLOUDS_BACKGROUND.delete();
+		GREEN_FACE.delete();
+		BLUE_SQUARE.delete();
+		RED_SQUARE.delete();
+		DEFAULT_FONT.delete();
+	}
 }
