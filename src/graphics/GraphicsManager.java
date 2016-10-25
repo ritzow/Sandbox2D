@@ -4,27 +4,28 @@ import static org.lwjgl.glfw.GLFW.glfwSwapInterval;
 import static org.lwjgl.opengl.GL11.*;
 
 import input.handler.FramebufferSizeHandler;
+import input.handler.WindowIconifyHandler;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import org.lwjgl.glfw.GLFWErrorCallback;
 import org.lwjgl.opengl.GL;
 import resource.Models;
 import resource.Textures;
 import util.Exitable;
 import util.Installable;
 
-public final class GraphicsManager implements Runnable, Installable, Exitable, FramebufferSizeHandler {
+public final class GraphicsManager implements Runnable, Installable, Exitable, FramebufferSizeHandler, WindowIconifyHandler {
 	private volatile boolean setupComplete;
 	private volatile boolean exit;
 	private volatile boolean finished;
 	
+	private volatile float framebufferWidth;
+	private volatile float framebufferHeight;
+	private volatile boolean updateFrameSize;
+	private volatile boolean iconified;
+	
 	private Renderer renderer;
 	private Display display;
-	
-	private float frameWidth;
-	private float frameHeight;
-	private boolean updateFrame;
 	
 	private final ArrayList<Renderable> renderables;
 	
@@ -32,6 +33,7 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 		this.display = display;
 		this.renderables = new ArrayList<Renderable>();
 		display.getInputManager().getFramebufferSizeHandlers().add(this);
+		display.getInputManager().getWindowIconifyHandlers().add(this);
 	}
 
 	@Override
@@ -39,10 +41,9 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 		display.setContext();
 		GL.createCapabilities();
 		glfwSwapInterval(0);
-		glClearColor(1.0f,1.0f,1.0f,1.0f);
+		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		GLFWErrorCallback.createPrint(System.err).set();
 		
 		try {
 			Textures.loadAll(new File("resources/assets/textures"));
@@ -52,7 +53,7 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 			e.printStackTrace();
 		}
 		
-		ShaderProgram shaderProgram = new ShaderProgram( //create the shader program
+		ShaderProgram shaderProgram = new ShaderProgram(
 				new Shader("resources/shaders/vertexShader", org.lwjgl.opengl.GL20.GL_VERTEX_SHADER), 
 				new Shader("resources/shaders/fragmentShader", org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER)
 		);
@@ -67,30 +68,41 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 		
 		try {
 			while(!exit) {
-				if(updateFrame) {
-					glViewport(0, 0, (int)frameWidth, (int)frameHeight);
-					renderer.setResolution((int)frameWidth, (int)frameHeight);
-					updateFrame = false;
+				if(!iconified) {
+					if(updateFrameSize) {
+						glViewport(0, 0, (int)framebufferWidth, (int)framebufferHeight);
+						renderer.setResolution((int)framebufferWidth, (int)framebufferHeight);
+						updateFrameSize = false;
+					}
+					
+					glClear(GL_COLOR_BUFFER_BIT);
+					
+					for(int i = 0; i < renderables.size(); i++) {
+						renderables.get(i).render(renderer);
+					}
+					
+					glFinish();
+					display.refresh();
+					Thread.sleep(1);
 				}
 				
-				glClear(GL_COLOR_BUFFER_BIT);
-				
-				for(int i = 0; i < renderables.size(); i++) {
-					renderables.get(i).render(renderer);
+				else {
+					synchronized(this) {
+						while(iconified) {
+							this.wait(); //TODO screen is white when de-iconified most of the time, chance of being white changes with time slept after waiting
+						}
+					}
 				}
-				
-				glFinish();
-				display.refresh();
-				Thread.sleep(1);
 			}
 		} catch(InterruptedException e) {
-			
+			e.printStackTrace();
 		}
 
 		
 		renderables.clear();
-		GL.destroy();
+		Models.deleteAll();
 		display.closeContext();
+		GL.destroy();
 		
 		synchronized(this) {
 			finished = true;
@@ -119,9 +131,19 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 	}
 
 	@Override
-	public void framebufferSize(int width, int height) {
-		frameWidth = width;
-		frameHeight = height;
-		updateFrame = true;
+	public synchronized void framebufferSize(int width, int height) {
+		framebufferWidth = width;
+		framebufferHeight = height;
+		updateFrameSize = true;
+	}
+
+	@Override
+	public synchronized void windowIconify(boolean iconified) {
+		this.iconified = iconified;
+
+		if(!iconified) {
+			updateFrameSize = true;
+			this.notifyAll();
+		}
 	}
 }
