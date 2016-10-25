@@ -1,16 +1,14 @@
 package input;
 
+import static org.lwjgl.glfw.GLFW.glfwInit;
 import static org.lwjgl.glfw.GLFW.glfwTerminate;
 
 import graphics.Display;
+import org.lwjgl.glfw.GLFWErrorCallback;
+import resource.Cursors;
 import util.Exitable;
 import util.Installable;
 
-/**
- * EventThread objects must only be run on the main thread
- * @author Solomon
- *
- */
 public final class EventManager implements Runnable, Installable, Exitable {
 	private volatile boolean setupComplete;
 	private volatile boolean finished;
@@ -21,7 +19,18 @@ public final class EventManager implements Runnable, Installable, Exitable {
 	
 	@Override
 	public void run() {
+		
+		if(!glfwInit()) {
+			System.err.println("GLFW failed to initialize");
+			System.exit(1);
+		}
+		
+		GLFWErrorCallback.createPrint(System.err).set();
+		
+		Cursors.loadAll();
+		
 		display = new Display("2D Game");
+		display.setCursor(Cursors.LEAFY_STICK);
 		
 		synchronized(this) {
 			setupComplete = true;
