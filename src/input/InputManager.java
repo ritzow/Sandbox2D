@@ -17,6 +17,7 @@ public final class InputManager {
 	private ArrayList<ScrollHandler> scrollHandlers = new ArrayList<ScrollHandler>();
 	private ArrayList<WindowRefreshHandler> windowRefreshHandlers = new ArrayList<WindowRefreshHandler>();
 	private ArrayList<WindowCloseHandler> windowCloseHandlers = new ArrayList<WindowCloseHandler>();
+	private ArrayList<WindowIconifyHandler> windowIconifyHandlers = new ArrayList<WindowIconifyHandler>();
 	
 	public InputManager(long window) {
 		glfwSetKeyCallback(window, glfwKeyCallback);
@@ -26,6 +27,7 @@ public final class InputManager {
 		glfwSetFramebufferSizeCallback(window, glfwFramebufferSizeCallback);
 		glfwSetWindowRefreshCallback(window, glfwWindowRefreshCallback);
 		glfwSetWindowCloseCallback(window, glfwWindowCloseCallback);
+		glfwSetWindowIconifyCallback(window, glfwWindowIconifyCallback);
 	}
 	
 	public final ArrayList<WindowCloseHandler> getWindowCloseHandlers() {
@@ -54,6 +56,10 @@ public final class InputManager {
 	
 	public final ArrayList<WindowRefreshHandler> getWindowRefreshHandlers() {
 		return windowRefreshHandlers;
+	}
+	
+	public final ArrayList<WindowIconifyHandler> getWindowIconifyHandlers() {
+		return windowIconifyHandlers;
 	}
 	
 	private GLFWWindowCloseCallback glfwWindowCloseCallback = new GLFWWindowCloseCallback() {
@@ -108,6 +114,14 @@ public final class InputManager {
 		public void invoke(long window) {
 			for(WindowRefreshHandler handler : windowRefreshHandlers) {
 				handler.windowRefresh();
+			}
+		}
+	};
+	
+	private GLFWWindowIconifyCallback glfwWindowIconifyCallback = new GLFWWindowIconifyCallback() {
+		public void invoke(long window, boolean iconified) {
+			for(WindowIconifyHandler handler : windowIconifyHandlers) {
+				handler.windowIconify(iconified);
 			}
 		}
 	};
