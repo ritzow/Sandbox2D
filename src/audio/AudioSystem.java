@@ -83,7 +83,15 @@ public class AudioSystem {
 		alDeleteSources(sources);
 	}
 	
-	public static void setListenerParameters(float x, float y, float z, float velocityX, float velocityY, float directionX, float directionY) {
+	public static void setListenerPosition(float x, float y, float z) {
+		alListener3f(AL_POSITION, x, y, z);
+	}
+	
+	public static void setListenerVelocity(float velocityX, float velocityY) {
+		alListener3f(AL_VELOCITY, velocityX, velocityY, 0);
+	}
+	
+	public static void setListenerProperties(float x, float y, float z, float velocityX, float velocityY, float directionX, float directionY) {
 		alListener3f(AL_POSITION, x, y, z);
 		alListener3f(AL_VELOCITY, velocityX, velocityY, 0);
 		alListenerfv(AL_ORIENTATION, new float[] {directionX, directionY, 0, 0, 1, 0});
