@@ -22,7 +22,7 @@ public class Text extends Element {
 		renderer.loadOpacity(1.0f);
 		
 		int index = 0;
-		float charWidth = size * 0.02f + spacing * size * 0.02f;
+		float charWidth = (size * 0.02f) + (size * 0.02f * spacing);
 		for(float pos = x; index < text.length(); pos += charWidth) {
 			renderer.loadTransformationMatrix(pos, y, size * 0.02f, size * 0.021f, 0);
 			font.getModel(text.charAt(index)).render();
@@ -55,8 +55,11 @@ public class Text extends Element {
 	}
 	
 	public float getWidth() {
-		return 0;
-		//TODO implement this method
+		return 1; //TODO implement
 	}
 
+	@Override
+	public float getHeight() {
+		return size * 0.02f;
+	}
 }

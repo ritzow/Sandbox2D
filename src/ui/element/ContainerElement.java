@@ -20,4 +20,16 @@ public class ContainerElement extends Element {
 			e.render(renderer, x, y);
 		}
 	}
+
+	@Override
+	public float getWidth() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public float getHeight() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
 }
