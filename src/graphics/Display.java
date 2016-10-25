@@ -2,49 +2,36 @@ package graphics;
 
 import static org.lwjgl.glfw.GLFW.*;
 
-import input.*;
-import org.lwjgl.glfw.GLFWErrorCallback;
+import input.InputManager;
 
 public final class Display {
 	
-	protected InputManager input;
-	
 	protected long displayID;
-	protected int screenWidth;
-	protected int screenHeight;
+	protected InputManager input;
 	
 	protected int windowedX;
 	protected int windowedY;
 	protected int windowedWidth;
 	protected int windowedHeight;
 	
-	protected volatile boolean shouldClose;
-	
-	protected int[] framebufferWidth = new int[1];
-	protected int[] framebufferHeight = new int[1];
-	protected double[] cursorX = new double[1];
-	protected double[] cursorY = new double[1];
-	
 	public Display(String title) {
-		if(!glfwInit()) {
-			System.err.println("GLFW failed to initialize");
-		}
-		
-		GLFWErrorCallback.createPrint(System.err).set();
-
-		screenWidth = glfwGetVideoMode(glfwGetPrimaryMonitor()).width();
-		screenHeight = glfwGetVideoMode(glfwGetPrimaryMonitor()).height();
-		
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
 		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 		glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);	
 		glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 		
+		int screenWidth = glfwGetVideoMode(glfwGetPrimaryMonitor()).width();
+		int screenHeight = glfwGetVideoMode(glfwGetPrimaryMonitor()).height();
+		
 		displayID = glfwCreateWindow(screenWidth/2, screenHeight/2, title, 0, 0);
-		glfwSetWindowPos(displayID, screenWidth - screenWidth/2 - screenWidth/4, screenHeight - screenHeight/2 - screenHeight/4);		
+		glfwSetWindowPos(displayID, screenWidth/4, screenHeight/4);
 		
 		input = new InputManager(displayID);
+	}
+	
+	public void setCursor(long cursor) {
+		glfwSetCursor(displayID, cursor);
 	}
 	
 	public void setContext() {
@@ -71,10 +58,6 @@ public final class Display {
 		glfwDestroyWindow(displayID);
 	}
 	
-	public boolean getShouldClose() {
-		return shouldClose;
-	}
-	
 	public boolean getFullscreen() {
 		return glfwGetWindowMonitor(displayID) != 0;
 	}
@@ -97,16 +80,15 @@ public final class Display {
 
 	public void setFullscreen(boolean fullscreen) {
 		if(fullscreen) {
-			int[] storeH = new int[1];
-			int[] storeV = new int[1];
+			int[] storeH = new int[1], storeV = new int[1];
 			glfwGetWindowSize(displayID, storeH, storeV);
-			windowedWidth = storeH[0];
-			windowedHeight = storeV[0];
+			windowedWidth = storeH[0]; windowedHeight = storeV[0];
 			glfwGetWindowPos(displayID, storeH, storeV);
-			windowedX = storeH[0];
-			windowedY = storeV[0];
+			windowedX = storeH[0]; windowedY = storeV[0];
 			
-			glfwSetWindowMonitor(displayID, glfwGetPrimaryMonitor(), 0, 0, screenWidth, screenHeight, GLFW_DONT_CARE);
+			glfwSetWindowMonitor(displayID, glfwGetPrimaryMonitor(), 0, 0,
+					glfwGetVideoMode(glfwGetPrimaryMonitor()).width(), 
+					glfwGetVideoMode(glfwGetPrimaryMonitor()).height(), GLFW_DONT_CARE);
 			glfwFocusWindow(displayID);
 		}
 		
