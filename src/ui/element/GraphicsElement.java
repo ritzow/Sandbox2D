@@ -28,7 +28,7 @@ public class GraphicsElement extends Element {
 	public final float getOffsetY() {
 		return offsetY;
 	}
-
+	
 	public final void setOffsetX(float offsetX) {
 		this.offsetX = offsetX;
 	}
@@ -42,5 +42,15 @@ public class GraphicsElement extends Element {
 		renderer.loadTransformationMatrix(x + offsetX, y + offsetY, graphics.getScaleX(), graphics.getScaleY(), graphics.getRotation());
 		renderer.loadOpacity(graphics.getOpacity());
 		graphics.getModel().render();
+	}
+
+	@Override
+	public float getWidth() {
+		return graphics.getScaleX();
+	}
+
+	@Override
+	public float getHeight() {
+		return graphics.getScaleY();
 	}
 }

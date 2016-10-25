@@ -18,60 +18,63 @@ public final class ElementManager extends HashMap<Element, DynamicLocation> impl
 	
 	protected volatile float cursorX;
 	protected volatile float cursorY;
-	protected volatile float frameWidth;
-	protected volatile float frameHeight;
+	protected volatile float framebufferWidth;
+	protected volatile float framebufferHeight;
 	protected volatile boolean mouseDown;
+	private boolean updatePositions;
 	
 	@Override
 	public void render(Renderer renderer) {
 		renderer.loadViewMatrix(false);
 		for(Entry<Element, DynamicLocation> entry : entrySet()) {
-			if(entry.getValue() != null)
-				entry.getKey().render(renderer, getX(entry.getValue(), frameHeight/frameWidth), getY(entry.getValue()));
-		}
-	}
-	
-	public void update() {
-		update(frameWidth, frameHeight, cursorX, cursorY, mouseDown);
-	}
-	
-	protected void update(float frameWidth, float frameHeight, float mouseX, float mouseY, boolean mouseDown) {
-		mouseX = (2f * mouseX) / frameWidth - 1f;
-		mouseX /= (frameWidth != 0 ? frameHeight/frameWidth : 1);
-		mouseY = -((2f * mouseY) / frameHeight - 1f);
-
-		for(Entry<Element, DynamicLocation> entry : entrySet()) {
-			if(entry.getKey() instanceof Button && entry.getValue() != null) {
-				Button button = (Button)entry.getKey();
-				boolean onButton = HitboxUtil.intersection(
-						getX(entry.getValue(), frameWidth != 0 ? frameHeight/frameWidth : 1), getY(entry.getValue()),
-						button.getWidth(), button.getHeight(), mouseX, mouseY);
-				
-				if(button.getHovered() && !onButton) button.onUnHover();
-				else if(!button.getHovered() && onButton) button.onHover();
-				if(onButton && mouseDown && !button.getPressed()) button.onPress();
-				else if(!mouseDown && button.getPressed()) button.onRelease();
+			if(entry.getValue() != null) {
+				entry.getKey().render(renderer, entry.getKey().getPositionX(), entry.getKey().getPositionY());
 			}
 		}
 	}
 	
+	public void update() {
+		update(framebufferWidth, framebufferHeight, cursorX, cursorY, mouseDown);
+	}
+	
+	private void update(float framebufferWidth, float framebufferHeight, float mouseX, float mouseY, boolean mouseDown) {
+		mouseX = (2f * mouseX) / framebufferWidth - 1f;
+		mouseX /= (framebufferWidth != 0 ? framebufferHeight/framebufferWidth : 1);
+		mouseY = -((2f * mouseY) / framebufferHeight - 1f);
+
+		for(Entry<Element, DynamicLocation> entry : entrySet()) {
+			if(updatePositions) {
+				entry.getKey().setPositionX(getX(entry.getValue(), framebufferHeight/framebufferWidth));
+				entry.getKey().setPositionY(getY(entry.getValue()));
+			}
+			
+			if(entry.getKey() instanceof Button && entry.getValue() != null) {
+				Button button = (Button)entry.getKey();
+				boolean hovering = HitboxUtil.intersection(entry.getKey().getPositionX(), entry.getKey().getPositionY(), entry.getKey().getWidth(), entry.getKey().getHeight(), mouseX, mouseY);
+				
+				if(button.getHovered() && !hovering) button.onUnHover();
+				else if(!button.getHovered() && hovering) button.onHover();
+				if(hovering && mouseDown && !button.getPressed()) button.onPress();
+				else if(!mouseDown && button.getPressed()) button.onRelease();
+			}
+		}
+		updatePositions = false;
+	}
+	
 	private static float getX(DynamicLocation location, float aspectRatio) {
-		float position = convertRange(location.horizontal, -1, 1, -1/aspectRatio, 1/aspectRatio);
+		float position = location.horizontal/aspectRatio;
 		if(position > 0) return position - location.paddingX;
 		else if(position < 0) return position + location.paddingX;
 		else return position;
-		
 	}
 	
 	private static float getY(DynamicLocation location) {
-		if(location.vertical > 0) return location.vertical - location.paddingY;
-		else if(location.vertical < 0) return location.vertical + location.paddingY;
-		else return location.vertical;
-	}
-	
-	private static float convertRange(float value, float originalMin, float originalMax, float newMin, float newMax) {
-		if(value > originalMax || value < originalMin) return 0;
-		return (((value - originalMin) * (newMax - newMin)) / (originalMax - originalMin)) + newMin;
+		if(location.vertical > 0) 
+			return location.vertical - location.paddingY;
+		else if(location.vertical < 0) 
+			return location.vertical + location.paddingY;
+		else 
+			return location.vertical;
 	}
 
 	@Override
@@ -79,7 +82,7 @@ public final class ElementManager extends HashMap<Element, DynamicLocation> impl
 		this.cursorX = (float)xpos;
 		this.cursorY = (float)ypos;
 	}
-
+	
 	@Override
 	public void mouseButton(int button, int action, int mods) {
 		if(button == GLFW_MOUSE_BUTTON_LEFT) {
@@ -95,7 +98,8 @@ public final class ElementManager extends HashMap<Element, DynamicLocation> impl
 
 	@Override
 	public void framebufferSize(int width, int height) {
-		frameWidth = width;
-		frameHeight = height;
+		framebufferWidth = width;
+		framebufferHeight = height;
+		updatePositions = true;
 	}
 }
