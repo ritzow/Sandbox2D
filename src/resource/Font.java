@@ -29,6 +29,16 @@ public class Font {
 		load();
 	}
 	
+	public void delete() {
+		for(Model model : characterModels) {
+			if(model != null) {
+				model.delete();
+			}
+		}
+		
+		characterSheet01.delete();
+	}
+	
 	public Model getModel(char c) {
 		if((int)c < characterModels.length && characterModels[(int)c] != null) {
 			return characterModels[(int)c];
