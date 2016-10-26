@@ -14,19 +14,24 @@ public abstract class Entity implements Serializable {
 	protected float height;
 	protected float mass;
 	protected float friction;
+	protected boolean doBlockCollision;
+	protected boolean doEntityCollision;
 	
 	public Entity() {
 		positionX = 0;
 		positionY = 0;
 		velocityX = 0;
 		velocityY = 0;
+		friction = 0;
 		width = 1;
 		height = 1;
 		mass = 1;
-		friction = 0;
+		doBlockCollision = true;
+		doEntityCollision = true;
 	}
 	
 	public abstract void render(Renderer renderer);
+	public abstract void onCollision(Entity e);
 	
 	public void update(float milliseconds) {
 		positionX += velocityX * milliseconds;
@@ -65,6 +70,14 @@ public abstract class Entity implements Serializable {
 		return friction;
 	}
 
+	public final boolean getDoBlockCollision() {
+		return doBlockCollision;
+	}
+
+	public final boolean getDoEntityCollision() {
+		return doEntityCollision;
+	}
+
 	public final void setPositionX(float positionX) {
 		this.positionX = positionX;
 	}
@@ -95,6 +108,14 @@ public abstract class Entity implements Serializable {
 
 	public final void setFriction(float friction) {
 		this.friction = friction;
+	}
+
+	public final void setDoBlockCollision(boolean doBlockCollision) {
+		this.doBlockCollision = doBlockCollision;
+	}
+
+	public final void setDoEntityCollision(boolean doEntityCollision) {
+		this.doEntityCollision = doEntityCollision;
 	}
 	
 }

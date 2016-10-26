@@ -35,6 +35,8 @@ public abstract class Block implements Serializable {
 		AudioSystem.playSound(Sounds.BLOCK_PLACE, x, y, 0, 0, 1, 1);
 		for(int i = 0; i < 5; i++) {
 			GraphicsEntity particle = new GraphicsEntity(getModel());
+			particle.setDoBlockCollision(false);
+			particle.setDoEntityCollision(false);
 			particle.getGraphics().setScaleX(0.2f);
 			particle.getGraphics().setScaleY(0.2f);
 			particle.setPositionX(x);

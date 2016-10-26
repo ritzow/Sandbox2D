@@ -26,4 +26,9 @@ public class GraphicsEntity extends Entity {
 		graphics.render(renderer, positionX, positionY);
 	}
 
+	@Override
+	public void onCollision(Entity e) {
+		
+	}
+
 }
