@@ -6,6 +6,8 @@ import java.io.Serializable;
 import resource.Sounds;
 import world.World;
 import world.entity.GraphicsEntity;
+import world.entity.ItemEntity;
+import world.item.BlockItem;
 
 public abstract class Block implements Serializable {
 	private static final long serialVersionUID = -5852957760473837301L;
@@ -22,15 +24,11 @@ public abstract class Block implements Serializable {
 	}
 	
 	public void onBreak(World world, float x, float y) {
-		GraphicsEntity particle = new GraphicsEntity(getModel());
-		particle.setPositionX(x);
-		particle.setPositionY(y);
-		particle.setMass(0);
-		particle.getGraphics().setRotationVelocity((float)Math.random() - 0.5f);
-		particle.setVelocityX(-0.2f + ((float)Math.random() * (0.4f))); //min + ((float)Math.random() * (max - min))
-		particle.setVelocityY((float)Math.random() * (0.35f));
-		world.getEntities().add(particle);
-		AudioSystem.playSound(Sounds.BLOCK_BREAK, x, y, particle.getVelocityX(), particle.getVelocityY(), 1, 1);
+		ItemEntity drop = new ItemEntity(new BlockItem(this), x, y);
+		drop.setVelocityX(-0.2f + ((float)Math.random() * (0.4f)));
+		drop.setVelocityY((float)Math.random() * (0.35f));
+		world.getEntities().add(drop);
+		AudioSystem.playSound(Sounds.BLOCK_BREAK, x, y, drop.getVelocityX(), drop.getVelocityY(), 1, 1);
 	}
 	
 	public void onPlace(World world, float x, float y) {

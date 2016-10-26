@@ -36,4 +36,16 @@ public class Player extends LivingEntity {
 		body.render(renderer, positionX, positionY - 0.5f);
 	}
 
+	@Override
+	public void onCollision(Entity e) {
+		if(e instanceof ItemEntity) {
+			for(int i = 0; i < inventory.length; i++) {
+				if(inventory[i] == null) {
+					inventory[i] = ((ItemEntity)e).getItem();
+					return;
+				}
+			}
+		}
+	}
+
 }
