@@ -60,14 +60,12 @@ public class World implements Renderable, Serializable {
 			
 			e.setVelocityY(e.getVelocityY() - gravity);
 			
-			//if collision is enabled on the entity
-			if(e.getMass() > 0) {
-				
-				//check for entity vs. entity collisions
+			//check for entity vs. entity collisions
+			if(e.getDoEntityCollision()) {
 				for(int j = i; j < entities.size(); j++) {
 					if(j > -1) {
 						Entity o = entities.get(j);
-						if(e != null && o != null && e != o && o.getMass() > 0) {
+						if(e != null && o != null && e != o && o.getDoEntityCollision()) {
 							if(e.getMass() < o.getMass()) {
 								resolveCollision(e, o);
 							} else {
@@ -76,7 +74,9 @@ public class World implements Renderable, Serializable {
 						}
 					}
 				}
+			}
 
+			if(e.getDoBlockCollision()) {
 				//Check for entity collisions with blocks
 				int leftBound = Math.max(0, (int)Math.floor(e.getPositionX() - e.getWidth()));
 				int topBound = Math.min(foreground.getHeight(), (int)Math.ceil(e.getPositionY() + e.getHeight()));
@@ -228,7 +228,7 @@ public class World implements Renderable, Serializable {
 	public boolean entityBelow(Entity e) {
 		for(int i = 0; i < entities.size(); i++) {
 			Entity o = entities.get(i);
-			if(o != null && e != o && o.getMass() > 0 && 
+			if(o != null && e != o && o.getDoEntityCollision() && 
 					intersection(e.getPositionX(), e.getPositionY() - e.getHeight()/2, e.getWidth() - 0.01f, 0.1f, 
 							o.getPositionX(), o.getPositionY(), o.getWidth(), o.getHeight())) {
 				return true;
