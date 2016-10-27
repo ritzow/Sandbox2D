@@ -2,6 +2,7 @@ package world.entity;
 
 import graphics.Renderer;
 import resource.Models;
+import world.World;
 import world.entity.component.Graphics;
 import world.item.Item;
 
@@ -37,7 +38,8 @@ public class Player extends LivingEntity {
 	}
 
 	@Override
-	public void onCollision(Entity e) {
+	public void onCollision(World world, Entity e) {
+		System.out.println("collision");
 		if(e instanceof ItemEntity) {
 			for(int i = 0; i < inventory.length; i++) {
 				if(inventory[i] == null) {

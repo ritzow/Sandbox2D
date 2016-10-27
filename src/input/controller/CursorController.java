@@ -83,7 +83,6 @@ public final class CursorController extends Controller implements MouseButtonHan
 		}
 		
 		if(activatePressed) {
-			activatePressed = false;
 			GraphicsEntity entity = new GraphicsEntity(Models.BLUE_SQUARE);
 			entity.setPositionX(worldX);
 			entity.setPositionY(worldY);
@@ -93,6 +92,7 @@ public final class CursorController extends Controller implements MouseButtonHan
 			entity.getGraphics().setScaleX(3);
 			entity.getGraphics().setScaleY(3);
 			world.getEntities().add(entity);
+			activatePressed = false;
 		}
 	}
 	

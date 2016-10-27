@@ -8,7 +8,10 @@ import input.InputManager;
 import input.handler.KeyHandler;
 import util.Updatable;
 import world.World;
+import world.block.RedBlock;
 import world.entity.Entity;
+import world.entity.ItemEntity;
+import world.item.BlockItem;
 
 public final class EntityController extends Controller implements KeyHandler, Updatable {
 	
@@ -95,6 +98,7 @@ public final class EntityController extends Controller implements KeyHandler, Up
 		else if(key == Controls.KEYBIND_DOWN) {
 			if(action == GLFW_PRESS) {
 				down = true;
+				world.getEntities().add(new ItemEntity(new BlockItem(new RedBlock()), entity.getPositionX(), entity.getPositionY()));
 			}
 			
 			else if(action == GLFW_RELEASE) {
