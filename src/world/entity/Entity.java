@@ -1,6 +1,8 @@
 package world.entity;
 
 import graphics.Renderer;
+import world.World;
+
 import java.io.Serializable;
 
 public abstract class Entity implements Serializable {
@@ -14,8 +16,9 @@ public abstract class Entity implements Serializable {
 	protected float height;
 	protected float mass;
 	protected float friction;
-	protected boolean doBlockCollision;
-	protected boolean doEntityCollision;
+	protected boolean doBlockCollisionResolution;
+	protected boolean doEntityCollisionResolution;
+	protected boolean shouldDelete;
 	
 	public Entity() {
 		positionX = 0;
@@ -26,12 +29,13 @@ public abstract class Entity implements Serializable {
 		width = 1;
 		height = 1;
 		mass = 1;
-		doBlockCollision = true;
-		doEntityCollision = true;
+		doBlockCollisionResolution = true;
+		doEntityCollisionResolution = true;
+		shouldDelete = false;
 	}
 	
 	public abstract void render(Renderer renderer);
-	public abstract void onCollision(Entity e);
+	public abstract void onCollision(World world, Entity e);
 	
 	public void update(float milliseconds) {
 		positionX += velocityX * milliseconds;
@@ -69,13 +73,17 @@ public abstract class Entity implements Serializable {
 	public final float getFriction() {
 		return friction;
 	}
-
-	public final boolean getDoBlockCollision() {
-		return doBlockCollision;
+	
+	public final boolean getShouldDelete() {
+		return shouldDelete;
 	}
 
-	public final boolean getDoEntityCollision() {
-		return doEntityCollision;
+	public final boolean getDoBlockCollisionResolution() {
+		return doBlockCollisionResolution;
+	}
+	
+	public final boolean getDoEntityCollisionResolution() {
+		return doEntityCollisionResolution;
 	}
 
 	public final void setPositionX(float positionX) {
@@ -110,12 +118,12 @@ public abstract class Entity implements Serializable {
 		this.friction = friction;
 	}
 
-	public final void setDoBlockCollision(boolean doBlockCollision) {
-		this.doBlockCollision = doBlockCollision;
+	public final void setDoBlockCollisionResolution(boolean doBlockCollision) {
+		this.doBlockCollisionResolution = doBlockCollision;
 	}
-
-	public final void setDoEntityCollision(boolean doEntityCollision) {
-		this.doEntityCollision = doEntityCollision;
+	
+	public final void setDoEntityCollisionResolution(boolean doEntityCollisionResolution) {
+		this.doEntityCollisionResolution = doEntityCollisionResolution;
 	}
 	
 }

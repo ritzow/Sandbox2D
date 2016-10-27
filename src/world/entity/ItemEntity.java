@@ -1,6 +1,7 @@
 package world.entity;
 
 import graphics.Renderer;
+import world.World;
 import world.item.Item;
 
 public class ItemEntity extends Entity {
@@ -18,7 +19,8 @@ public class ItemEntity extends Entity {
 		this.positionY = y;
 		this.width = 0.5f;
 		this.height = 0.7f;
-		this.doEntityCollision = false;
+		this.doBlockCollisionResolution = true;
+		this.doEntityCollisionResolution = false;
 		this.rotationSpeed = (float) (Math.random() < 0.5f ? -(Math.random() * 0.02f + 0.02f) : (Math.random() * 0.02f + 0.02f));
 	}
 	
@@ -39,7 +41,7 @@ public class ItemEntity extends Entity {
 	}
 
 	@Override
-	public void onCollision(Entity e) {
+	public void onCollision(World world, Entity e) {
 		
 	}
 	
