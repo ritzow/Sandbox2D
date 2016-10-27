@@ -250,31 +250,4 @@ public class World implements Renderable, Serializable {
 				e.render(renderer);
 		}
 	}
-	
-	public boolean entityBelow(Entity e) {
-		for(int i = 0; i < entities.size(); i++) {
-			Entity o = entities.get(i);
-			if(o != null && e != o && o.getDoEntityCollisionResolution() && 
-					intersection(e.getPositionX(), e.getPositionY() - e.getHeight()/2, e.getWidth() - 0.01f, 0.1f, 
-							o.getPositionX(), o.getPositionY(), o.getWidth(), o.getHeight())) {
-				return true;
-			}
-		}
-		return false;
-	}
-	
-	public boolean blockBelow(Entity e) {
-		return foreground.isBlock(e.getPositionX() - e.getWidth()/2 + 0.01f, e.getPositionY() - e.getHeight()/2 - 0.05f) || 
-			   foreground.isBlock(e.getPositionX() + e.getWidth()/2 - 0.01f, e.getPositionY() - e.getHeight()/2 - 0.05f);
-	}
-	
-	public boolean blockLeft(Entity e) {
-		return foreground.isBlock(e.getPositionX() - e.getWidth()/2 - 0.01f, e.getPositionY() + e.getHeight()/2 - 0.05f) || 
-			   foreground.isBlock(e.getPositionX() - e.getWidth()/2 - 0.01f, e.getPositionY() - e.getHeight()/2 + 0.05f);
-	}
-	
-	public boolean blockRight(Entity e) {
-		return foreground.isBlock(e.getPositionX() + e.getWidth()/2 + 0.01f, e.getPositionY() + e.getHeight()/2 - 0.05f) || 
-			   foreground.isBlock(e.getPositionX() + e.getWidth()/2 + 0.01f, e.getPositionY() - e.getHeight()/2 + 0.05f);
-	}
 }
