@@ -30,6 +30,17 @@ public final class InputManager {
 		glfwSetWindowIconifyCallback(window, glfwWindowIconifyCallback);
 	}
 	
+	public final void unlinkAll() {
+		cursorPosHandlers.clear();
+		framebufferSizeHandlers.clear();
+		keyHandlers.clear();
+		mouseButtonHandlers.clear();
+		scrollHandlers.clear();
+		windowRefreshHandlers.clear();
+		windowCloseHandlers.clear();
+		windowIconifyHandlers.clear();
+	}
+	
 	public final ArrayList<WindowCloseHandler> getWindowCloseHandlers() {
 		return windowCloseHandlers;
 	}
