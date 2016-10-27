@@ -16,6 +16,7 @@ public abstract class Entity implements Serializable {
 	protected float height;
 	protected float mass;
 	protected float friction;
+	protected boolean doCollision;
 	protected boolean doBlockCollisionResolution;
 	protected boolean doEntityCollisionResolution;
 	protected boolean shouldDelete;
@@ -29,6 +30,7 @@ public abstract class Entity implements Serializable {
 		width = 1;
 		height = 1;
 		mass = 1;
+		doCollision = true;
 		doBlockCollisionResolution = true;
 		doEntityCollisionResolution = true;
 		shouldDelete = false;
@@ -76,6 +78,10 @@ public abstract class Entity implements Serializable {
 	
 	public final boolean getShouldDelete() {
 		return shouldDelete;
+	}
+	
+	public final boolean getDoCollision() {
+		return doCollision;
 	}
 
 	public final boolean getDoBlockCollisionResolution() {
