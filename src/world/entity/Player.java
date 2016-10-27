@@ -1,7 +1,9 @@
 package world.entity;
 
+import audio.AudioSystem;
 import graphics.Renderer;
 import resource.Models;
+import resource.Sounds;
 import world.World;
 import world.entity.component.Graphics;
 import world.item.Item;
@@ -39,11 +41,16 @@ public class Player extends LivingEntity {
 
 	@Override
 	public void onCollision(World world, Entity e) {
-		System.out.println("collision");
 		if(e instanceof ItemEntity) {
 			for(int i = 0; i < inventory.length; i++) {
 				if(inventory[i] == null) {
 					inventory[i] = ((ItemEntity)e).getItem();
+					world.getEntities().remove(e);
+					world.getEntities().add(
+							new ParticleEntity(new Graphics(((ItemEntity)e).getItem().getModel(), 1.0f, 0.5f, 0.5f, 0), 
+									e.getPositionX(), e.getPositionY(), 0, 0.2f, 500, (float)Math.random() * 0.4f - 0.2f, true));
+					AudioSystem.playSound(Sounds.BLOOP, e.getPositionX(), e.getPositionY(), 0, 0.2f, 1, (float)Math.random() * 0.4f + 0.8f);
+					System.out.println("added item to slot " + (i + 1));
 					return;
 				}
 			}

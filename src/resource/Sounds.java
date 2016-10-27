@@ -10,10 +10,12 @@ import java.io.IOException;
 public class Sounds {
 	public static int BLOCK_BREAK;
 	public static int BLOCK_PLACE;
+	public static int BLOOP;
 	
 	public static void loadAll(File directory) throws IOException {
 		Sounds.BLOCK_BREAK = loadAudio(new File(directory.getPath(), "blockBreak.wav"));
 		Sounds.BLOCK_PLACE = loadAudio(new File(directory.getPath(), "blockPlace.wav"));
+		Sounds.BLOOP = loadAudio(new File(directory.getPath(), "bloop.wav"));
 	}
 	
 	public static int loadAudio(File file) throws IOException {
