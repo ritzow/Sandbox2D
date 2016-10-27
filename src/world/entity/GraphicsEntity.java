@@ -2,6 +2,7 @@ package world.entity;
 
 import graphics.Model;
 import graphics.Renderer;
+import world.World;
 import world.entity.component.Graphics;
 
 public class GraphicsEntity extends Entity {
@@ -27,7 +28,7 @@ public class GraphicsEntity extends Entity {
 	}
 
 	@Override
-	public void onCollision(Entity e) {
+	public void onCollision(World world, Entity e) {
 		
 	}
 
