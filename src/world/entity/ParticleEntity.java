@@ -13,13 +13,16 @@ public class ParticleEntity extends Entity {
 	protected float rotationSpeed;
 	protected boolean fade;
 
-	public ParticleEntity(Graphics graphics, float posX, float posY, long lifetime, float rotationSpeed, boolean fade) {
+	public ParticleEntity(Graphics graphics, float posX, float posY, float velocityX, float velocityY, long lifetime, float rotationSpeed, boolean fade) {
 		this.graphics = graphics;
 		this.positionX = posX;
 		this.positionY = posY;
+		this.velocityX = velocityX;
+		this.velocityY = velocityY;
 		this.rotationSpeed = rotationSpeed;
 		this.lifetime = lifetime;
 		this.fade = fade;
+		this.doCollision = false;
 		this.doBlockCollisionResolution = false;
 		this.doEntityCollisionResolution = false;
 		this.birthtime = System.currentTimeMillis();

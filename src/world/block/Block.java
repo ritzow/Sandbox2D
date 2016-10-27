@@ -36,9 +36,9 @@ public abstract class Block implements Serializable {
 	public void onPlace(World world, float x, float y) {
 		AudioSystem.playSound(Sounds.BLOCK_PLACE, x, y, 0, 0, 1, 1);
 		for(int i = 0; i < 5; i++) {
-			ParticleEntity particle = new ParticleEntity(new Graphics(getModel(), 1.0f, 0.3f, 0.3f, 0), x, y, 500, (float)Math.random() * 0.4f - 0.2f, true);
-			particle.setVelocityX((float)Math.random() * 0.4f - 0.2f);
-			particle.setVelocityY((float)Math.random() * 0.35f);
+			ParticleEntity particle = 
+					new ParticleEntity(new Graphics(getModel(), 1.0f, 0.3f, 0.3f, 0), x, y, 
+							(float)Math.random() * 0.4f - 0.2f, (float)Math.random() * 0.35f, 500, (float)Math.random() * 0.4f - 0.2f, true);
 			world.getEntities().add(particle);
 		}
 	}
