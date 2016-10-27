@@ -50,7 +50,7 @@ public class World implements Renderable, Serializable {
 			Entity e = entities.get(i);
 			
 			//remove entities that are below the world
-			if(e == null || e.getPositionY() < 0) {
+			if(e == null || e.getPositionY() < 0 || e.getShouldDelete()) {
 				entities.remove(i);
 				i--;
 				continue;
@@ -61,23 +61,46 @@ public class World implements Renderable, Serializable {
 			e.setVelocityY(e.getVelocityY() - gravity);
 			
 			//check for entity vs. entity collisions
-			if(e.getDoEntityCollision()) {
+			if(e.getDoEntityCollisionResolution()) {
 				for(int j = i; j < entities.size(); j++) {
 					if(j > -1) {
 						Entity o = entities.get(j);
-						if(e != null && o != null && e != o && o.getDoEntityCollision()) {
+						if(e != null && o != null && e != o && o.getDoEntityCollisionResolution()) {
+							boolean collision;
+							
 							if(e.getMass() < o.getMass()) {
-								resolveCollision(e, o);
-							} else {
-								resolveCollision(o, e);
+								collision = resolveCollision(e, o);
+							} 
+							
+							else {
+								collision = resolveCollision(o, e);
+							}
+							
+							if(collision) {
+								e.onCollision(this, o);
+								o.onCollision(this, e);
+							}
+						}
+					}
+				}
+			}
+			
+			else {
+				for(int j = i; j < entities.size(); j++) {
+					if(j > -1) {
+						Entity o = entities.get(j);
+						if(e != null && o != null && e != o) {
+							if(checkCollision(e, o)) {
+								e.onCollision(this, o);
+								o.onCollision(this, e);
 							}
 						}
 					}
 				}
 			}
 
-			if(e.getDoBlockCollision()) {
-				//Check for entity collisions with blocks
+			//Check for entity collisions with blocks
+			if(e.getDoBlockCollisionResolution()) {
 				int leftBound = Math.max(0, (int)Math.floor(e.getPositionX() - e.getWidth()));
 				int topBound = Math.min(foreground.getHeight(), (int)Math.ceil(e.getPositionY() + e.getHeight()));
 				int rightBound = Math.min(foreground.getWidth(), (int)Math.ceil(e.getPositionX() + e.getWidth()));
@@ -91,6 +114,25 @@ public class World implements Renderable, Serializable {
 					}
 				}
 			}
+		}
+	}
+	
+	public boolean checkCollision(Entity e, Entity o) {
+		return checkCollision(e, o.getPositionX(), o.getPositionY(), o.getWidth(), o.getHeight());
+	}
+	
+	public boolean checkCollision(Entity entity, float otherX, float otherY, float otherWidth, float otherHeight) {
+		float width = 0.5f * (entity.getWidth() + otherWidth);
+		float height = 0.5f * (entity.getHeight() + otherHeight);
+		float deltaX = otherX - entity.getPositionX();
+		float deltaY = otherY - entity.getPositionY();
+		
+		if (Math.abs(deltaX) < width && Math.abs(deltaY) < height) {
+			return true;
+		}
+		
+		else {
+			return false;
 		}
 	}
 	
@@ -228,7 +270,7 @@ public class World implements Renderable, Serializable {
 	public boolean entityBelow(Entity e) {
 		for(int i = 0; i < entities.size(); i++) {
 			Entity o = entities.get(i);
-			if(o != null && e != o && o.getDoEntityCollision() && 
+			if(o != null && e != o && o.getDoEntityCollisionResolution() && 
 					intersection(e.getPositionX(), e.getPositionY() - e.getHeight()/2, e.getWidth() - 0.01f, 0.1f, 
 							o.getPositionX(), o.getPositionY(), o.getWidth(), o.getHeight())) {
 				return true;
