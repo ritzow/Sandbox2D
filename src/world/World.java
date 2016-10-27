@@ -52,7 +52,7 @@ public class World implements Renderable, Serializable {
 			//remove entities that are below the world
 			if(e == null || e.getPositionY() < 0 || e.getShouldDelete()) {
 				entities.remove(i);
-				i--;
+				i = Math.max(0, i - 1);
 				continue;
 			}
 			
@@ -60,56 +60,40 @@ public class World implements Renderable, Serializable {
 			
 			e.setVelocityY(e.getVelocityY() - gravity);
 			
-			//check for entity vs. entity collisions
-			if(e.getDoEntityCollisionResolution()) {
-				for(int j = i; j < entities.size(); j++) {
-					if(j > -1) {
-						Entity o = entities.get(j);
-						if(e != null && o != null && e != o && o.getDoEntityCollisionResolution()) {
-							boolean collision;
-							
-							if(e.getMass() < o.getMass()) {
-								collision = resolveCollision(e, o);
-							} 
-							
-							else {
-								collision = resolveCollision(o, e);
-							}
-							
-							if(collision) {
-								e.onCollision(this, o);
-								o.onCollision(this, e);
-							}
-						}
-					}
-				}
-			}
-			
-			else {
-				for(int j = i; j < entities.size(); j++) {
-					if(j > -1) {
-						Entity o = entities.get(j);
-						if(e != null && o != null && e != o) {
-							if(checkCollision(e, o)) {
-								e.onCollision(this, o);
-								o.onCollision(this, e);
-							}
-						}
-					}
-				}
-			}
-
-			//Check for entity collisions with blocks
-			if(e.getDoBlockCollisionResolution()) {
-				int leftBound = Math.max(0, (int)Math.floor(e.getPositionX() - e.getWidth()));
-				int topBound = Math.min(foreground.getHeight(), (int)Math.ceil(e.getPositionY() + e.getHeight()));
-				int rightBound = Math.min(foreground.getWidth(), (int)Math.ceil(e.getPositionX() + e.getWidth()));
-				int bottomBound = Math.max(0, (int)Math.floor(e.getPositionY() - e.getHeight()));
+			if(e.getDoCollision()) {
 				
-				for(int row = bottomBound; row < topBound; row++) {
-					for(int column = leftBound; column < rightBound; column++) {
-						if(foreground.isBlock(column, row) && !foreground.isHidden(column, row)) {
-							resolveCollision(e, column, row, 1, 1, foreground.get(column, row).getFriction());
+				//check for entity vs. entity collisions
+				for(int j = i + 1; j < entities.size(); j++) {
+					Entity o = entities.get(j);
+					
+					if(o.getDoCollision()) {
+						boolean collision;
+						
+						if(o.getDoEntityCollisionResolution()) {
+							collision = (e.getMass() < o.getMass()) ? resolveCollision(e, o) : resolveCollision(o, e);
+						} else {
+							collision = checkCollision(e, o);
+						}
+						
+						if(collision) {
+							e.onCollision(this, o);
+							o.onCollision(this, e);
+						}
+					}
+				}
+
+				//Check for entity collisions with blocks
+				if(e.getDoBlockCollisionResolution()) {
+					int leftBound = Math.max(0, (int)Math.floor(e.getPositionX() - e.getWidth()));
+					int topBound = Math.min(foreground.getHeight(), (int)Math.ceil(e.getPositionY() + e.getHeight()));
+					int rightBound = Math.min(foreground.getWidth(), (int)Math.ceil(e.getPositionX() + e.getWidth()));
+					int bottomBound = Math.max(0, (int)Math.floor(e.getPositionY() - e.getHeight()));
+					
+					for(int row = bottomBound; row < topBound; row++) {
+						for(int column = leftBound; column < rightBound; column++) {
+							if(foreground.isBlock(column, row) && !foreground.isHidden(column, row)) {
+								resolveCollision(e, column, row, 1, 1, foreground.get(column, row).getFriction());
+							}
 						}
 					}
 				}
