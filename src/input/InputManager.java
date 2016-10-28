@@ -18,6 +18,7 @@ public final class InputManager {
 	private ArrayList<WindowRefreshHandler> windowRefreshHandlers = new ArrayList<WindowRefreshHandler>();
 	private ArrayList<WindowCloseHandler> windowCloseHandlers = new ArrayList<WindowCloseHandler>();
 	private ArrayList<WindowIconifyHandler> windowIconifyHandlers = new ArrayList<WindowIconifyHandler>();
+	private ArrayList<WindowFocusHandler> windowFocusHandlers = new ArrayList<WindowFocusHandler>();
 	
 	public InputManager(long window) {
 		glfwSetKeyCallback(window, glfwKeyCallback);
@@ -28,6 +29,7 @@ public final class InputManager {
 		glfwSetWindowRefreshCallback(window, glfwWindowRefreshCallback);
 		glfwSetWindowCloseCallback(window, glfwWindowCloseCallback);
 		glfwSetWindowIconifyCallback(window, glfwWindowIconifyCallback);
+		glfwSetWindowFocusCallback(window, glfwWindowFocusCallback);
 	}
 	
 	public final void unlinkAll() {
@@ -39,38 +41,7 @@ public final class InputManager {
 		windowRefreshHandlers.clear();
 		windowCloseHandlers.clear();
 		windowIconifyHandlers.clear();
-	}
-	
-	public final ArrayList<WindowCloseHandler> getWindowCloseHandlers() {
-		return windowCloseHandlers;
-	}
-
-	public final ArrayList<CursorPosHandler> getCursorPosHandlers() {
-		return cursorPosHandlers;
-	}
-
-	public final ArrayList<FramebufferSizeHandler> getFramebufferSizeHandlers() {
-		return framebufferSizeHandlers;
-	}
-
-	public final ArrayList<KeyHandler> getKeyHandlers() {
-		return keyHandlers;
-	}
-
-	public final ArrayList<MouseButtonHandler> getMouseButtonHandlers() {
-		return mouseButtonHandlers;
-	}
-
-	public final ArrayList<ScrollHandler> getScrollHandlers() {
-		return scrollHandlers;
-	}
-	
-	public final ArrayList<WindowRefreshHandler> getWindowRefreshHandlers() {
-		return windowRefreshHandlers;
-	}
-	
-	public final ArrayList<WindowIconifyHandler> getWindowIconifyHandlers() {
-		return windowIconifyHandlers;
+		windowFocusHandlers.clear();
 	}
 	
 	private GLFWWindowCloseCallback glfwWindowCloseCallback = new GLFWWindowCloseCallback() {
@@ -136,4 +107,48 @@ public final class InputManager {
 			}
 		}
 	};
+	
+	private GLFWWindowFocusCallback glfwWindowFocusCallback = new GLFWWindowFocusCallback() {
+		public void invoke(long window, boolean focused) {
+			for(WindowFocusHandler handler : windowFocusHandlers) {
+				handler.windowFocus(focused);
+			}
+		}
+	};
+
+	public final ArrayList<CursorPosHandler> getCursorPosHandlers() {
+		return cursorPosHandlers;
+	}
+
+	public final ArrayList<FramebufferSizeHandler> getFramebufferSizeHandlers() {
+		return framebufferSizeHandlers;
+	}
+
+	public final ArrayList<KeyHandler> getKeyHandlers() {
+		return keyHandlers;
+	}
+
+	public final ArrayList<MouseButtonHandler> getMouseButtonHandlers() {
+		return mouseButtonHandlers;
+	}
+
+	public final ArrayList<ScrollHandler> getScrollHandlers() {
+		return scrollHandlers;
+	}
+
+	public final ArrayList<WindowRefreshHandler> getWindowRefreshHandlers() {
+		return windowRefreshHandlers;
+	}
+
+	public final ArrayList<WindowCloseHandler> getWindowCloseHandlers() {
+		return windowCloseHandlers;
+	}
+
+	public final ArrayList<WindowIconifyHandler> getWindowIconifyHandlers() {
+		return windowIconifyHandlers;
+	}
+
+	public final ArrayList<WindowFocusHandler> getWindowFocusHandlers() {
+		return windowFocusHandlers;
+	}
 }
