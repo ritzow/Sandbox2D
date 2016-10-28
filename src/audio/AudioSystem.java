@@ -27,8 +27,8 @@ public class AudioSystem {
 		alcMakeContextCurrent(context);
 		ALCapabilities alCaps = AL.createCapabilities(alcCaps);
 		
-		if(!alCaps.OpenAL10) {
-			System.err.println("OpenAL 1.0 not supported");
+		if(!alCaps.OpenAL11) {
+			System.err.println("OpenAL 1.1 not supported");
 			stop();
 		}
 		
@@ -43,7 +43,6 @@ public class AudioSystem {
 	}
 	
 	public static void stop() {
-		Sounds.deleteAll();
 		alcMakeContextCurrent(0);
 		alcDestroyContext(context);
 		alcCloseDevice(device);
