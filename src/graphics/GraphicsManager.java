@@ -3,7 +3,9 @@ package graphics;
 import static org.lwjgl.glfw.GLFW.glfwSwapInterval;
 import static org.lwjgl.opengl.GL11.*;
 
+import input.InputManager;
 import input.handler.FramebufferSizeHandler;
+import input.handler.WindowFocusHandler;
 import input.handler.WindowIconifyHandler;
 import java.io.File;
 import java.io.IOException;
@@ -14,7 +16,7 @@ import resource.Textures;
 import util.Exitable;
 import util.Installable;
 
-public final class GraphicsManager implements Runnable, Installable, Exitable, FramebufferSizeHandler, WindowIconifyHandler {
+public final class GraphicsManager implements Runnable, Installable, Exitable, FramebufferSizeHandler, WindowIconifyHandler, WindowFocusHandler {
 	private volatile boolean setupComplete;
 	private volatile boolean exit;
 	private volatile boolean finished;
@@ -23,6 +25,7 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 	private volatile float framebufferHeight;
 	private volatile boolean updateFrameSize;
 	private volatile boolean iconified;
+	private volatile boolean focused;
 	
 	private Renderer renderer;
 	private Display display;
@@ -32,8 +35,7 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 	public GraphicsManager(Display display) {
 		this.display = display;
 		this.renderables = new ArrayList<Renderable>();
-		display.getInputManager().getFramebufferSizeHandlers().add(this);
-		display.getInputManager().getWindowIconifyHandlers().add(this);
+		this.link(display.getInputManager());
 	}
 
 	@Override
@@ -68,7 +70,7 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 		
 		try {
 			while(!exit) {
-				if(!iconified) {
+				if(!iconified && focused) {
 					if(updateFrameSize) {
 						glViewport(0, 0, (int)framebufferWidth, (int)framebufferHeight);
 						renderer.setResolution((int)framebufferWidth, (int)framebufferHeight);
@@ -80,7 +82,7 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 					for(int i = 0; i < renderables.size(); i++) {
 						renderables.get(i).render(renderer);
 					}
-					
+
 					glFinish();
 					display.refresh();
 					Thread.sleep(1);
@@ -88,9 +90,10 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 				
 				else {
 					synchronized(this) {
-						while(iconified) {
-							this.wait(); //TODO screen is white when de-iconified most of the time, chance of being white changes with time slept after waiting
+						while((iconified || !focused) && !exit) {
+							this.wait();
 						}
+						updateFrameSize = true;
 					}
 				}
 			}
@@ -142,10 +145,19 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 		this.iconified = iconified;
 
 		if(!iconified) {
-			updateFrameSize = true;
 			this.notifyAll();
 		}
 	}
+
+	@Override
+	public synchronized void windowFocus(boolean focused) {
+		this.focused = focused;
+		
+		if(focused) {
+			this.notifyAll();
+		}
+	}
+
 	@Override
 	public void link(InputManager manager) {
 		manager.getFramebufferSizeHandlers().add(this);
