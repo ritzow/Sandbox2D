@@ -131,4 +131,14 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
             eventManager.getDisplay().setFullscreen(!eventManager.getDisplay().getFullscreen());
         }
 	}
+
+	@Override
+	public void link(InputManager manager) {
+		manager.getKeyHandlers().add(this);
+	}
+
+	@Override
+	public void unlink(InputManager manager) {
+		manager.getKeyHandlers().remove(this);
+	}
 }
