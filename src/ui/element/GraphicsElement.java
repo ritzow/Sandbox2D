@@ -17,7 +17,7 @@ public class GraphicsElement extends Element {
 		this.offsetY = offsetY;
 	}
 	
-	public Graphics graphics() {
+	public Graphics getGraphics() {
 		return graphics;
 	}
 

@@ -1,6 +1,6 @@
 package ui.element.button;
 
-import input.controller.CursorController;
+import input.controller.InteractionController;
 import ui.element.GraphicsElement;
 import world.block.Block;
 
@@ -11,14 +11,14 @@ public final class BlockSwitcherButton extends GraphicsElement implements Button
 	private float height;
 	private int index;
 	private Block[] blockTypes;
-	private CursorController cursorController;
+	private InteractionController cursorController;
 	
 	private static final float SIZE_X = 0.25f;
 	private static final float SIZE_Y = 0.25f;
 	private static final float ENLARGED_SIZE_X = 0.3f;
 	private static final float ENLARGED_SIZE_Y = 0.3f;
 	
-	public BlockSwitcherButton(Block[] blockTypes, CursorController controller) {
+	public BlockSwitcherButton(Block[] blockTypes, InteractionController controller) {
 		super(blockTypes[0].getModel(), 0, 0);
 		graphics.setScaleX(SIZE_X);
 		graphics.setScaleY(SIZE_Y);
