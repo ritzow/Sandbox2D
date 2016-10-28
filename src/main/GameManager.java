@@ -1,27 +1,22 @@
 package main;
 
-import static org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE;
-import static org.lwjgl.glfw.GLFW.GLFW_PRESS;
-
 import audio.AudioSystem;
 import graphics.Background;
 import graphics.GraphicsManager;
 import input.Controls;
 import input.EventManager;
+import input.InputManager;
 import input.controller.CameraController;
-import input.controller.CursorController;
+import input.controller.InteractionController;
 import input.controller.EntityController;
 import input.handler.KeyHandler;
 import input.handler.WindowCloseHandler;
 import resource.Models;
-import ui.DynamicLocation;
+import resource.Sounds;
 import ui.ElementManager;
-import ui.element.Text;
-import ui.element.button.BlockSwitcherButton;
 import util.Synchronizer;
 import world.World;
 import world.WorldManager;
-import world.block.Block;
 import world.block.DirtBlock;
 import world.block.GrassBlock;
 import world.block.RedBlock;
@@ -47,8 +42,6 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		
 		Synchronizer.waitForSetup(graphicsManager);
 		
-		System.out.print("Creating world... ");
-		long time = System.currentTimeMillis();
 		World world = new World(500, 200, 0.015f);
 		for(int column = 0; column < world.getForeground().getWidth(); column++) {
 			double height = world.getForeground().getHeight()/10;
@@ -66,8 +59,6 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 			world.getBackground().set(column, (int)height, new DirtBlock());
 		}
 		
-		System.out.println("world creation took " + ((System.currentTimeMillis() - time)/1000.0f) + " seconds");
-		
 		Player player = new Player();
 		player.setPositionX(world.getForeground().getWidth()/2);
 		player.setPositionY(world.getForeground().getHeight());
@@ -76,7 +67,7 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		EntityController playerController = new EntityController(player, world, 0.2f);
 		playerController.link(eventManager.getDisplay().getInputManager());
 		
-		CursorController cursorController = new CursorController(player, world, graphicsManager.getRenderer().getCamera(), 200);
+		InteractionController cursorController = new InteractionController(player, world, graphicsManager.getRenderer().getCamera(), 200);
 		cursorController.link(eventManager.getDisplay().getInputManager());
 		
 		CameraController cameraController = new CameraController(graphicsManager.getRenderer().getCamera(), player, 0.005f);
@@ -86,9 +77,7 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		eventManager.getDisplay().getInputManager().getCursorPosHandlers().add(manager);
 		eventManager.getDisplay().getInputManager().getMouseButtonHandlers().add(manager);
 		eventManager.getDisplay().getInputManager().getFramebufferSizeHandlers().add(manager);
-		manager.put(new BlockSwitcherButton(new Block[] {new DirtBlock(), new RedBlock(), new GrassBlock()}, cursorController), new DynamicLocation(1f, -1f, 0.25f, 0.25f));
-		Text text = new Text("bloop", Models.DEFAULT_FONT, 2, 0.0f);
-		manager.put(text, new DynamicLocation(-1,-1,0.1f,0.1f));
+		//manager.put(new BlockSwitcherButton(new Block[] {new DirtBlock(), new RedBlock(), new GrassBlock()}, cursorController), new DynamicLocation(1f, -1f, 0.25f, 0.25f));
 		
 		new Thread(worldManager = new WorldManager(world), "World Manager " + world.hashCode()).start();
 		new Thread(clientUpdateManager = new ClientUpdateManager(), "Client Updater").start();
@@ -97,6 +86,7 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		clientUpdateManager.getUpdatables().add(cursorController);
 		clientUpdateManager.getUpdatables().add(cameraController);
 		clientUpdateManager.getUpdatables().add(manager);
+		eventManager.getDisplay().getInputManager().getWindowFocusHandlers().add(clientUpdateManager);
 		
 		graphicsManager.getRenderables().add(new Background(Models.CLOUDS_BACKGROUND));
 		graphicsManager.getRenderables().add(world);
@@ -110,6 +100,7 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 	
 	private void exit() {
 		clientUpdateManager.exit();
+		Sounds.deleteAll();
 		AudioSystem.stop();
 		Synchronizer.waitForExit(worldManager);
 		Synchronizer.waitForExit(graphicsManager);
@@ -123,11 +114,11 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 
 	@Override
 	public void keyboardButton(int key, int scancode, int action, int mods) {
-		if(key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+		if(key == Controls.KEYBIND_QUIT && action == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
 			exit();
 		}
 		
-        else if(key == Controls.KEYBIND_FULLSCREEN && action == GLFW_PRESS) {
+        else if(key == Controls.KEYBIND_FULLSCREEN && action == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
             eventManager.getDisplay().setFullscreen(!eventManager.getDisplay().getFullscreen());
         }
 	}

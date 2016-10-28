@@ -36,7 +36,6 @@ public final class EntityController extends Controller implements KeyHandler, Up
 	
 	@Override
 	public void update() {
-		
 		if(left) {
 			if(!blockLeft()) {
 				entity.setVelocityX(-movementSpeed);
