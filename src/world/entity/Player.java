@@ -53,6 +53,7 @@ public class Player extends LivingEntity {
 					System.out.println("added item to slot " + (i + 1));
 					return;
 				}
+			AudioSystem.playSound(Sounds.ITEM_PICKUP, e.getPositionX(), e.getPositionY(), 0, 0.2f, 1, (float)Math.random() * 0.4f + 0.8f);
 			}
 		}
 	}
