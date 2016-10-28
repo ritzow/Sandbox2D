@@ -13,10 +13,10 @@ import util.Updatable;
 import world.World;
 import world.block.Block;
 import world.block.RedBlock;
-import world.entity.Entity;
 import world.entity.GraphicsEntity;
+import world.entity.Player;
 
-public final class CursorController extends Controller implements MouseButtonHandler, CursorPosHandler, FramebufferSizeHandler, KeyHandler, Updatable {
+public final class InteractionController extends Controller implements MouseButtonHandler, CursorPosHandler, FramebufferSizeHandler, KeyHandler, Updatable {
 	private boolean leftMouseDown;
 	private boolean rightMouseDown;
 	private boolean activatePressed;
@@ -30,10 +30,10 @@ public final class CursorController extends Controller implements MouseButtonHan
 	private Block block;
 	
 	private World world;
-	private Entity player;
+	private Player player;
 	private Camera camera;
 	
-	public CursorController(Entity player, World world, Camera camera, float cooldownMilliseconds) {
+	public InteractionController(Player player, World world, Camera camera, float cooldownMilliseconds) {
 		this.block = new RedBlock();
 		this.world = world;
 		this.player = player;
@@ -148,6 +148,52 @@ public final class CursorController extends Controller implements MouseButtonHan
 	public void keyboardButton(int key, int scancode, int action, int mods) {
 		if(key == Controls.KEYBIND_ACTIVATE && action == GLFW.GLFW_PRESS) {
 			activatePressed = true;
+		}
+		
+		else if(key == GLFW.GLFW_KEY_L && action == GLFW.GLFW_PRESS) {
+			player.dropItem(world, player.getSelectedSlot());
+		}
+		
+		else if(key == GLFW.GLFW_KEY_C && action == GLFW.GLFW_PRESS) {
+			
+		}
+		
+		else if(action == GLFW.GLFW_PRESS) {	
+			if(key == GLFW.GLFW_KEY_KP_1 || key == GLFW.GLFW_KEY_1) {
+				player.setSelected(0);
+			}
+			
+			else if(key == GLFW.GLFW_KEY_KP_2 || key == GLFW.GLFW_KEY_2) {
+				player.setSelected(1);
+			}
+			
+			else if(key == GLFW.GLFW_KEY_KP_3 || key == GLFW.GLFW_KEY_3) {
+				player.setSelected(2);
+			}
+			
+			else if(key == GLFW.GLFW_KEY_KP_4 || key == GLFW.GLFW_KEY_4) {
+				player.setSelected(3);
+			}
+			
+			else if(key == GLFW.GLFW_KEY_KP_5 || key == GLFW.GLFW_KEY_5) {
+				player.setSelected(4);
+			}
+			
+			else if(key == GLFW.GLFW_KEY_KP_6 || key == GLFW.GLFW_KEY_6) {
+				player.setSelected(5);
+			}
+			
+			else if(key == GLFW.GLFW_KEY_KP_7 || key == GLFW.GLFW_KEY_7) {
+				player.setSelected(6);
+			}
+			
+			else if(key == GLFW.GLFW_KEY_KP_8 || key == GLFW.GLFW_KEY_8) {
+				player.setSelected(7);
+			}
+			
+			else if(key == GLFW.GLFW_KEY_KP_9 || key == GLFW.GLFW_KEY_9) {
+				player.setSelected(8);
+			}
 		}
 	}
 }
