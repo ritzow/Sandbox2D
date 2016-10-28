@@ -1,12 +1,14 @@
 package main;
 
+import input.handler.WindowFocusHandler;
 import java.util.ArrayList;
 import util.Exitable;
 import util.Updatable;
 
-public final class ClientUpdateManager implements Runnable, Exitable {
+public final class ClientUpdateManager implements Runnable, Exitable, WindowFocusHandler {
 	private volatile boolean finished;
 	private boolean exit;
+	private volatile boolean focused;
 	
 	private ArrayList<Updatable> updatables;
 	
@@ -22,10 +24,20 @@ public final class ClientUpdateManager implements Runnable, Exitable {
 	public void run() {
 		try {
 			while(!exit) {
-				for(int i = 0; i < updatables.size(); i++) {
-					updatables.get(i).update();
+				if(focused) {
+					for(int i = 0; i < updatables.size(); i++) {
+						updatables.get(i).update();
+					}
+					Thread.sleep(1);
 				}
-				Thread.sleep(1);
+				
+				else {
+					synchronized(this) {
+						while(!focused && !exit) {
+							this.wait();
+						}
+					}
+				}
 			}
 		} catch(InterruptedException e) {
 			e.printStackTrace();
@@ -44,6 +56,14 @@ public final class ClientUpdateManager implements Runnable, Exitable {
 	@Override
 	public boolean isFinished() {
 		return finished;
+	}
+
+	@Override
+	public synchronized void windowFocus(boolean focused) {
+		this.focused = focused;
+		if(focused) {
+			this.notifyAll();
+		}
 	}
 	
 }
