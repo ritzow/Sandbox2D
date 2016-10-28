@@ -66,6 +66,9 @@ public class World implements Renderable, Serializable {
 				for(int j = i + 1; j < entities.size(); j++) {
 					Entity o = entities.get(j);
 					
+					if(o == null)
+						continue;
+					
 					if(o.getDoCollision()) {
 						boolean collision;
 						
