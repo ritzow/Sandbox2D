@@ -1,5 +1,6 @@
 package world.item;
 
+import graphics.Model;
 import world.block.Block;
 
 public class BlockItem extends Item {
@@ -7,11 +8,15 @@ public class BlockItem extends Item {
 	
 	public BlockItem(Block block) {
 		this.block = block;
-		this.model = block.getModel();
 	}
 	
 	public Block getBlock() {
 		return block;
+	}
+
+	@Override
+	public Model getModel() {
+		return block.getModel();
 	}
 	
 }
