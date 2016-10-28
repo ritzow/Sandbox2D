@@ -17,8 +17,8 @@ public class ItemEntity extends Entity {
 		this.item = item;
 		this.positionX = x;
 		this.positionY = y;
-		this.width = 0.5f;
-		this.height = 0.7f;
+		this.width = 0.8f;
+		this.height = 0.8f;
 		this.doBlockCollisionResolution = true;
 		this.doEntityCollisionResolution = false;
 		this.rotationSpeed = (float) (Math.random() < 0.5f ? -(Math.random() * 0.02f + 0.02f) : (Math.random() * 0.02f + 0.02f));
@@ -32,7 +32,7 @@ public class ItemEntity extends Entity {
 	@Override
 	public void render(Renderer renderer) {
 		renderer.loadOpacity(1.0f);
-		renderer.loadTransformationMatrix(positionX, positionY, width, width, rotation);
+		renderer.loadTransformationMatrix(positionX, positionY, 0.5f, 0.5f, rotation);
 		item.getModel().render();
 	}
 	
@@ -42,7 +42,7 @@ public class ItemEntity extends Entity {
 
 	@Override
 	public void onCollision(World world, Entity e) {
-		
+		//TODO add squash and stretch?
 	}
 	
 }
