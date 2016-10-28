@@ -2,6 +2,7 @@ package ui;
 
 import graphics.Renderable;
 import graphics.Renderer;
+import input.InputManager;
 import input.handler.CursorPosHandler;
 import input.handler.FramebufferSizeHandler;
 import input.handler.MouseButtonHandler;
@@ -101,5 +102,19 @@ public final class ElementManager extends HashMap<Element, DynamicLocation> impl
 		framebufferWidth = width;
 		framebufferHeight = height;
 		updatePositions = true;
+	}
+
+	@Override
+	public void link(InputManager manager) {
+		manager.getCursorPosHandlers().add(this);
+		manager.getFramebufferSizeHandlers().add(this);
+		manager.getMouseButtonHandlers().add(this);
+	}
+
+	@Override
+	public void unlink(InputManager manager) {
+		manager.getCursorPosHandlers().remove(this);
+		manager.getFramebufferSizeHandlers().remove(this);
+		manager.getMouseButtonHandlers().remove(this);
 	}
 }

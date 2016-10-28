@@ -146,4 +146,17 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 			this.notifyAll();
 		}
 	}
+	@Override
+	public void link(InputManager manager) {
+		manager.getFramebufferSizeHandlers().add(this);
+		manager.getWindowIconifyHandlers().add(this);
+		manager.getWindowFocusHandlers().add(this);
+	}
+
+	@Override
+	public void unlink(InputManager manager) {
+		manager.getFramebufferSizeHandlers().remove(this);
+		manager.getWindowIconifyHandlers().remove(this);
+		manager.getWindowFocusHandlers().remove(this);
+	}
 }
