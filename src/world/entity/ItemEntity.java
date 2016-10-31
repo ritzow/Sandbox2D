@@ -17,11 +17,12 @@ public class ItemEntity extends Entity {
 		this.item = item;
 		this.positionX = x;
 		this.positionY = y;
-		this.width = 0.8f;
-		this.height = 0.8f;
+		this.width = 0.5f;
+		this.height = 0.5f;
+		this.friction = 0.02f;
 		this.doBlockCollisionResolution = true;
 		this.doEntityCollisionResolution = false;
-		this.rotationSpeed = (float) (Math.random() < 0.5f ? -(Math.random() * 0.02f + 0.02f) : (Math.random() * 0.02f + 0.02f));
+		this.rotationSpeed = 0; //(float) (Math.random() < 0.5f ? -(Math.random() * 0.02f + 0.02f) : (Math.random() * 0.02f + 0.02f));
 	}
 	
 	public void update(float milliseconds) {

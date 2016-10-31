@@ -6,9 +6,9 @@ import graphics.GraphicsManager;
 import input.Controls;
 import input.EventManager;
 import input.InputManager;
-import input.controller.CameraController;
-import input.controller.InteractionController;
 import input.controller.EntityController;
+import input.controller.InteractionController;
+import input.controller.TrackingCameraController;
 import input.handler.KeyHandler;
 import input.handler.WindowCloseHandler;
 import resource.Models;
@@ -44,7 +44,7 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		
 		World world = new World(500, 200, 0.015f);
 		for(int column = 0; column < world.getForeground().getWidth(); column++) {
-			double height = world.getForeground().getHeight()/10;
+			double height = world.getForeground().getHeight()/2;
 			height += (Math.sin(column * 0.1f) + 1) * (world.getForeground().getHeight() - height) * 0.05f;
 			
 			for(int row = 0; row < height; row++) {
@@ -59,7 +59,7 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 			world.getBackground().set(column, (int)height, new DirtBlock());
 		}
 		
-		Player player = new Player();
+		Player player = new Player("blobjim");
 		player.setPositionX(world.getForeground().getWidth()/2);
 		player.setPositionY(world.getForeground().getHeight());
 		world.getEntities().add(player);
@@ -70,27 +70,39 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		InteractionController cursorController = new InteractionController(player, world, graphicsManager.getRenderer().getCamera(), 200);
 		cursorController.link(eventManager.getDisplay().getInputManager());
 		
-		CameraController cameraController = new CameraController(graphicsManager.getRenderer().getCamera(), player, 0.005f);
+		TrackingCameraController cameraController = new TrackingCameraController(graphicsManager.getRenderer().getCamera(), player, 0.005f, 0.05f, 0.6f);
 		cameraController.link(eventManager.getDisplay().getInputManager());
 		
 		ElementManager manager = new ElementManager();
 		eventManager.getDisplay().getInputManager().getCursorPosHandlers().add(manager);
 		eventManager.getDisplay().getInputManager().getMouseButtonHandlers().add(manager);
 		eventManager.getDisplay().getInputManager().getFramebufferSizeHandlers().add(manager);
-		//manager.put(new BlockSwitcherButton(new Block[] {new DirtBlock(), new RedBlock(), new GrassBlock()}, cursorController), new DynamicLocation(1f, -1f, 0.25f, 0.25f));
 		
-		new Thread(worldManager = new WorldManager(world), "World Manager " + world.hashCode()).start();
-		new Thread(clientUpdateManager = new ClientUpdateManager(), "Client Updater").start();
+		clientUpdateManager = new ClientUpdateManager();
 		
 		clientUpdateManager.getUpdatables().add(playerController);
 		clientUpdateManager.getUpdatables().add(cursorController);
 		clientUpdateManager.getUpdatables().add(cameraController);
 		clientUpdateManager.getUpdatables().add(manager);
-		eventManager.getDisplay().getInputManager().getWindowFocusHandlers().add(clientUpdateManager);
+		clientUpdateManager.link(eventManager.getDisplay().getInputManager());
+		
+		new Thread(clientUpdateManager, "Client Updater").start();
+		new Thread(worldManager = new WorldManager(world), "World Manager " + world.hashCode()).start();
 		
 		graphicsManager.getRenderables().add(new Background(Models.CLOUDS_BACKGROUND));
 		graphicsManager.getRenderables().add(world);
 		graphicsManager.getRenderables().add(manager);
+		
+		/*
+		 * TODO networking:
+		 * Create ServerSocket on game's port on another thread
+		 * ServerSocket listens for next connection
+		 * On a separate thread, Client creates a Socket
+		 * socket connects to Server
+		 * Server accepts connection
+		 * if in lobby, server sends Lobby info
+		 * else if in game, server sends World info, Gamemode info
+		 */
 		
 		synchronized(eventManager) {
 			eventManager.setReadyToDisplay();
@@ -102,7 +114,7 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		clientUpdateManager.exit();
 		Sounds.deleteAll();
 		AudioSystem.stop();
-		Synchronizer.waitForExit(worldManager);
+		worldManager.exit();
 		Synchronizer.waitForExit(graphicsManager);
 		eventManager.exit();
 	}

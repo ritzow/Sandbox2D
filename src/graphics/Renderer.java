@@ -2,8 +2,7 @@ package graphics;
 
 import static util.MatrixMath.multiply;
 
-public final class Renderer {
-	private ShaderProgram program;
+public final class Renderer extends ShaderProgram {
 	private volatile Camera camera;
 	private int uniform_transform;
 	private int uniform_opacity;
@@ -19,24 +18,28 @@ public final class Renderer {
 			0, 0, 0, 1,
 	};
 	
-	public Renderer(ShaderProgram program, Camera camera, Display display) {	
-		this.program = program;
+	public Renderer(Camera camera) {
+		super(
+				new Shader("resources/shaders/vertexShader", org.lwjgl.opengl.GL20.GL_VERTEX_SHADER), 
+				new Shader("resources/shaders/fragmentShader", org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER)
+		);
+		
 		this.camera = camera;
-		this.uniform_transform = program.getUniformID("transform");
-		this.uniform_opacity = program.getUniformID("opacity");
-		this.uniform_view = program.getUniformID("view");
+		this.uniform_transform = getUniformID("transform");
+		this.uniform_opacity = getUniformID("opacity");
+		this.uniform_view = getUniformID("view");
 	}
 	
 	public final void loadOpacity(float opacity) {
-		program.loadFloat(uniform_opacity, opacity);
+		loadFloat(uniform_opacity, opacity);
 	}
 	
 	public final void loadTransformationMatrixIndentity() {
-		program.loadMatrix(uniform_transform, identityMatrix);
+		loadMatrix(uniform_transform, identityMatrix);
 	}
 	
 	public final void loadTransformationMatrix(float posX, float posY, float scaleX, float scaleY, float rotation) {
-		program.loadMatrix(uniform_transform, 
+		loadMatrix(uniform_transform, 
 			new float[] {
 				scaleX * (float) Math.cos(rotation), scaleY * (float) Math.sin(rotation), 0, posX,
 				scaleX * (float) -Math.sin(rotation), scaleY * (float) Math.cos(rotation), 0, posY,
@@ -47,7 +50,7 @@ public final class Renderer {
 	}
 	
 	public final void loadViewMatrixIdentity() {
-		program.loadMatrix(uniform_view, identityMatrix);
+		loadMatrix(uniform_view, identityMatrix);
 	}
 	
 	public final void loadViewMatrix(boolean includeCamera) {
@@ -60,46 +63,42 @@ public final class Renderer {
 		
 		if(includeCamera) {
 			view = multiply(view, new float[] {
-					camera.getZoom(), 0, 0, -camera.getX() * camera.getZoom(),
-					0, camera.getZoom(), 0, -camera.getY() * camera.getZoom(),
+					camera.getZoom(), 0, 0, -camera.getPositionX() * camera.getZoom(),
+					0, camera.getZoom(), 0, -camera.getPositionY() * camera.getZoom(),
 					0, 0, 0, 0,
 					0, 0, 0, 1,
 			});
 		}
 		
-		program.loadMatrix(uniform_view, view);
+		loadMatrix(uniform_view, view);
 	}
 	
 	public final float getWorldViewportLeftBound() {
 		float worldX = -framebufferWidth/framebufferHeight; //far left of screen after accounting for aspect ratio
 		worldX /= camera.getZoom();
-		worldX += camera.getX();
+		worldX += camera.getPositionX();
 		return worldX;
 	}
 	
 	public final float getWorldViewportRightBound() {
 		float worldX = framebufferWidth/framebufferHeight; //far right of screen, after accounting for aspect ratio
 		worldX /= camera.getZoom();
-		worldX += camera.getX();
+		worldX += camera.getPositionX();
 		return worldX;
 	}
 	
 	public final float getWorldViewportTopBound() {
 		float worldY = 1;
 		worldY /= camera.getZoom();
-		worldY += camera.getY();
+		worldY += camera.getPositionY();
 		return worldY;
 	}
 	
 	public final float getWorldViewportBottomBound() {
 		float worldY = -1;
 		worldY /= camera.getZoom();
-		worldY += camera.getY();
+		worldY += camera.getPositionY();
 		return worldY;
-	}
-
-	public final ShaderProgram getProgram() {
-		return program;
 	}
 
 	public final Camera getCamera() {
