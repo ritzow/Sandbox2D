@@ -16,6 +16,7 @@ public abstract class Block implements Serializable {
 	
 	protected int integrity;
 	
+	public abstract String getName();
 	public abstract Model getModel();
 	public abstract int getHardness();
 	public abstract float getFriction();
