@@ -57,8 +57,8 @@ public final class InteractionController extends Controller implements MouseButt
 		worldX /= frameHeight/frameWidth; //apply aspect ratio
 		worldX /= camera.getZoom();
 		worldY /= camera.getZoom();
-		worldX += camera.getX();
-		worldY += camera.getY();
+		worldX += camera.getPositionX();
+		worldY += camera.getPositionY();
 		
 		int blockX = (int) Math.round(worldX);
 		int blockY = (int) Math.round(worldY);

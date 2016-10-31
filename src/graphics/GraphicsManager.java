@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import org.lwjgl.opengl.GL;
 import resource.Models;
+import resource.Shaders;
 import resource.Textures;
 import util.Exitable;
 import util.Installable;
@@ -48,6 +49,7 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		
 		try {
+			Shaders.loadAll(new File("resources/shaders"));
 			Textures.loadAll(new File("resources/assets/textures"));
 			Models.loadAll(new File("resources/assets/textures"));
 			Models.loadDefaultFont(new File("resources/assets/fonts/default"));
@@ -55,13 +57,7 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 			e.printStackTrace();
 		}
 		
-		ShaderProgram shaderProgram = new ShaderProgram(
-				new Shader("resources/shaders/vertexShader", org.lwjgl.opengl.GL20.GL_VERTEX_SHADER), 
-				new Shader("resources/shaders/fragmentShader", org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER)
-		);
-		
-		Camera camera = new Camera( 0, 0, 0.05f, 1.5f);
-		renderer = new Renderer(shaderProgram, camera, display);
+		renderer = new Renderer(new Camera( 0, 0, 1));
 		
 		synchronized(this) {
 			setupComplete = true;
@@ -98,7 +94,7 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 				}
 			}
 		} catch(InterruptedException e) {
-			e.printStackTrace();
+			
 		}
 
 		

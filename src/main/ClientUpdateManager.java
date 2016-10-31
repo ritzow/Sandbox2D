@@ -1,5 +1,6 @@
 package main;
 
+import input.InputManager;
 import input.handler.WindowFocusHandler;
 import java.util.ArrayList;
 import util.Exitable;
@@ -64,6 +65,16 @@ public final class ClientUpdateManager implements Runnable, Exitable, WindowFocu
 		if(focused) {
 			this.notifyAll();
 		}
+	}
+
+	@Override
+	public void link(InputManager manager) {
+		manager.getWindowFocusHandlers().add(this);
+	}
+
+	@Override
+	public void unlink(InputManager manager) {
+		manager.getWindowFocusHandlers().remove(this);
 	}
 	
 }
