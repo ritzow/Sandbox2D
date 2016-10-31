@@ -13,13 +13,14 @@ public class Player extends LivingEntity {
 
 	private static final long serialVersionUID = 4619416956992212820L;
 	
+	protected final String username;
 	protected final Inventory inventory;
 	protected int selected;
 	
 	protected Graphics head;
 	protected Graphics body;
 	
-	public Player() {
+	public Player(String username) {
 		super(100);
 		this.mass = 1.0f;
 		this.friction = 0.02f;
@@ -27,7 +28,8 @@ public class Player extends LivingEntity {
 		this.height = 2.0f;
 		this.head = new Graphics(Models.GREEN_FACE, 1.0f, 1.0f, 1.0f, 0.0f);
 		this.body = new Graphics(Models.BLUE_SQUARE, 1.0f, 1.0f, 1.0f, 0.0f);
-		this.inventory = new Inventory(20);
+		this.username = username;
+		this.inventory = new Inventory(9);
 	}
 	
 	public void update(float milliseconds) {
@@ -50,7 +52,7 @@ public class Player extends LivingEntity {
 	public void onCollision(World world, Entity e) {
 		if(e instanceof ItemEntity && inventory.add(((ItemEntity)e).getItem())) {
 			world.getEntities().remove(e);
-			world.getEntities().add(new ParticleEntity(new Graphics(((ItemEntity)e).getItem().getModel(), 1.0f, 0.5f, 0.5f, 0), e.getPositionX(), e.getPositionY(), 0, 0.2f, 500, (float)Math.random() * 0.4f - 0.2f, true));
+			world.getEntities().add(new ParticleEntity(new Graphics(((ItemEntity)e).getItem().getModel(), 1.0f, 0.5f, 0.5f, 0), e.getPositionX(), e.getPositionY(), 0, 0.2f, 500, 0, true));
 			AudioSystem.playSound(Sounds.ITEM_PICKUP, e.getPositionX(), e.getPositionY(), 0, 0.2f, 1, (float)Math.random() * 0.4f + 0.8f);
 		}
 	}
@@ -64,9 +66,18 @@ public class Player extends LivingEntity {
 			if(world.getEntities().add(entity)) {
 				selected = (selected == inventory.getSize() - 1 ? selected = 0 : selected + 1);
 			}
+			AudioSystem.playSound(Sounds.THROW, positionX, positionY, entity.getVelocityX(), entity.getVelocityY(), 1.0f, 1f);
 		}
 		
 		return item;
+	}
+	
+	public String getName() {
+		return username;
+	}
+	
+	public Inventory getInventory() {
+		return inventory;
 	}
 	
 	public int getSelectedSlot() {
