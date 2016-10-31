@@ -10,6 +10,29 @@ public class Inventory {
 		this.inventory = new Item[capacity];
 	}
 	
+	public String toString() {
+		StringBuilder list = new StringBuilder("Size: " + inventory.length + " [");
+		for(int i = 0; i < inventory.length - 1; i++) {
+			if(inventory[i] != null) {
+				list.append(inventory[i].getName());
+			}
+			
+			else {
+				list.append("null");
+			}
+			
+			list.append(", ");
+		}
+		
+		if(inventory[inventory.length - 1] != null)
+			list.append(inventory[inventory.length - 1].getName());
+		else
+			list.append("null");
+		
+		list.append(']');
+		return list.toString();
+	}
+	
 	public Item get(int slot) {
 		return inventory[slot];
 	}
