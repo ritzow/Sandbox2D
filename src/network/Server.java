@@ -56,6 +56,7 @@ public class Server implements Runnable, Installable, Exitable {
 		while(!exit) {
 			for(int i = 0; i < connections.size(); i++) {
 				//TODO send data to connections?
+
 			}
 			try {
 				Thread.sleep(1);
