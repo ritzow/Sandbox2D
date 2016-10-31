@@ -25,4 +25,9 @@ public class GrassBlock extends Block {
 	public Block createNew() {
 		return new GrassBlock();
 	}
+
+	@Override
+	public String getName() {
+		return "Grass";
+	}
 }

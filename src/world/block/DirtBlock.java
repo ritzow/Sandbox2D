@@ -26,4 +26,9 @@ public class DirtBlock extends Block {
 		return new DirtBlock();
 	}
 
+	@Override
+	public String getName() {
+		return "Dirt";
+	}
+
 }

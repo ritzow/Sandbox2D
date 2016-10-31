@@ -25,4 +25,9 @@ public class RedBlock extends Block {
 	public Block createNew() {
 		return new RedBlock();
 	}
+
+	@Override
+	public String getName() {
+		return "Red";
+	}
 }
