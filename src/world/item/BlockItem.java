@@ -18,5 +18,10 @@ public class BlockItem extends Item {
 	public Model getModel() {
 		return block.getModel();
 	}
+
+	@Override
+	public String getName() {
+		return block.getName() + " Block";
+	}
 	
 }
