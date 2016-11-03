@@ -1,67 +1,61 @@
 package network;
-import java.io.*;
-import java.net.*;
+import java.io.IOException;
+import java.net.ConnectException;
+import java.net.InetAddress;
+import java.net.Socket;
+import util.Exitable;
 
-public class Client {
+public final class Client implements Runnable, Exitable {
 	
-	Socket client;
+	private volatile boolean exit;
+	private boolean finished;
 	
-	public Client(InetAddress address, int port) throws IOException {
-		this.client = new Socket(address, port);
+	private InetAddress address;
+	private int port;
+	
+	private Socket connection;
+	
+	public Client(InetAddress address, int port) {
+		this.address = address;
+		this.port = port;
 	}
 	
-	public boolean sendMessage(String message) {
+	@Override
+	public void run() {
 		try {
-			client.getOutputStream().write((message + '\u0000').getBytes());
-			return true;
+			connection = new Socket(address, port);
+		} catch (IllegalArgumentException e) {
+			e.printStackTrace();
+		} catch(ConnectException e) {
+			System.err.println("Client could not connect to " + address.getCanonicalHostName() + " on port " + port);
 		} catch (IOException e) {
-			return false;
+			e.printStackTrace();
 		}
-	}
-	
-	public boolean sendObject(Object o) {
-		try {
-			new ObjectOutputStream(client.getOutputStream()).writeObject(o);
-			return true;
-		} catch (IOException e) {
-			return false;
-		}
-	}
-	
-	public String getMessage() {
-		StringBuilder s = new StringBuilder();
-		char buffer;
 		
-		try {
-			while((buffer = (char)client.getInputStream().read()) != '\u0000') {
-				s.append(buffer);
+		new Thread("Client Input Listener") {
+			public void run() {
+				while(!exit) {
+					//TODO read messages sent from server and process
+				}
 			}
-		} 
+		}.start();
 		
-		catch (IOException e) {
-			e.printStackTrace();
+		while(!exit) {
+			//TODO send data to server, perhaps have thread wait until there is data to send?
 		}
-		
-		return s.toString();
 	}
 	
-	public Object getObject() {
-		try {
-			return (new ObjectInputStream(client.getInputStream())).readObject();
-		} catch (ClassNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+	public void sendData(byte[] data) {
 		
-		return null;
 	}
-	
-	public void close() {
-		try {
-			client.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+
+	@Override
+	public synchronized void exit() {
+		this.exit = true;
+	}
+
+	@Override
+	public synchronized boolean isFinished() {
+		return finished;
 	}
 }

@@ -11,6 +11,8 @@ import input.controller.InteractionController;
 import input.controller.TrackingCameraController;
 import input.handler.KeyHandler;
 import input.handler.WindowCloseHandler;
+import java.io.IOException;
+import java.net.*;
 import resource.Models;
 import resource.Sounds;
 import ui.ElementManager;
@@ -27,6 +29,8 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 	private GraphicsManager graphicsManager;
 	private WorldManager worldManager;
 	private ClientUpdateManager clientUpdateManager;
+	
+	private volatile boolean exit;
 	
 	public GameManager(EventManager eventManager) {
 		this.eventManager = eventManager;
@@ -100,34 +104,95 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		 * On a separate thread, Client creates a Socket
 		 * socket connects to Server
 		 * Server accepts connection
+		 * server creates threads to handle socket's input/output
 		 * if in lobby, server sends Lobby info
 		 * else if in game, server sends World info, Gamemode info
 		 */
+		
+		new Thread("Datagram Server") {
+			public void run() {
+				try {
+					DatagramSocket server = new DatagramSocket(50000); //for actual server: new InetSocketAddress(InetAddress.getLocalHost().getHostAddress(), 50000)
+					byte[] bufferArray = new byte[64000]; //make the buffer the max size possible
+					DatagramPacket buffer = new DatagramPacket(bufferArray, bufferArray.length);
+					System.out.println("Server waiting for data...");
+					server.receive(buffer);
+					System.out.println("Server received message: " + new String(buffer.getData(), buffer.getOffset(), buffer.getLength()));
+					server.close();
+				} catch (SocketException e) {
+					e.printStackTrace();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}.start();
+		
+		new Thread("Datagram Client") {
+			public void run() {
+				try {
+					DatagramSocket client = new DatagramSocket(); //for actual game: new InetSocketAddress(InetAddress.getLocalHost().getHostAddress(), 50000)
+					byte[] bufferArray = ("Lorem ipsum dolor sit amet").getBytes();
+					client.send(new DatagramPacket(bufferArray, bufferArray.length, new InetSocketAddress("localhost", 50000)));
+					System.out.println("Client sent message");
+					client.close();
+				} catch(BindException e) {
+					e.printStackTrace();
+				} catch (SocketException e) {
+					e.printStackTrace();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}.start();
 		
 		synchronized(eventManager) {
 			eventManager.setReadyToDisplay();
 			eventManager.notifyAll();
 		}
-	}
-	
-	private void exit() {
-		clientUpdateManager.exit();
+		
+//		Memory usage/gc
+//		while(!exit) {
+//			System.out.println("memory usage " + ((Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) * 0.000001) + " MB");
+//			//System.gc();
+//			try {
+//				Thread.sleep(100);
+//			} catch (InterruptedException e) {
+//				e.printStackTrace();
+//			}
+//		}
+		
+		synchronized(this) {
+			try {
+				while(!exit) {
+					this.wait();
+				}
+			} catch(InterruptedException e) {
+				System.err.println("Game Manager interrupted while waiting to exit");
+			}
+		}
+		
+ 		clientUpdateManager.exit();
 		Sounds.deleteAll();
 		AudioSystem.stop();
 		worldManager.exit();
 		Synchronizer.waitForExit(graphicsManager);
-		eventManager.exit();
+		Synchronizer.waitForExit(eventManager);
+		System.exit(0);
 	}
 
 	@Override
-	public void windowClose() {
-		exit();
+	public synchronized void windowClose() {
+		this.exit = true;
+		this.notifyAll();
 	}
 
 	@Override
-	public void keyboardButton(int key, int scancode, int action, int mods) {
+	public synchronized void keyboardButton(int key, int scancode, int action, int mods) {
 		if(key == Controls.KEYBIND_QUIT && action == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
-			exit();
+			synchronized(this) {
+				this.exit = true;
+				this.notifyAll();
+			}
 		}
 		
         else if(key == Controls.KEYBIND_FULLSCREEN && action == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
