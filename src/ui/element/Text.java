@@ -1,6 +1,6 @@
 package ui.element;
 
-import graphics.Renderer;
+import graphics.ModelRenderer;
 import resource.Font;
 
 public class Text extends Element {
@@ -18,7 +18,7 @@ public class Text extends Element {
 	}
 
 	@Override 
-	public void render(Renderer renderer, float x, float y) {
+	public void render(ModelRenderer renderer, float x, float y) {
 		renderer.loadOpacity(1.0f);
 		
 		int index = 0;

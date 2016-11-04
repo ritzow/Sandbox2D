@@ -1,13 +1,13 @@
 package ui.element;
 
-import graphics.Renderer;
+import graphics.ModelRenderer;
 
 public abstract class Element {
 	
 	protected float positionX;
 	protected float positionY;
 	
-	public abstract void render(Renderer renderer, float x, float y);
+	public abstract void render(ModelRenderer renderer, float x, float y);
 	
 	public abstract float getWidth();
 	public abstract float getHeight();

@@ -1,6 +1,6 @@
 package world.entity;
 
-import graphics.Renderer;
+import graphics.ModelRenderer;
 import world.World;
 import world.entity.component.Graphics;
 
@@ -51,7 +51,7 @@ public class ParticleEntity extends Entity {
 	}
 
 	@Override
-	public void render(Renderer renderer) {
+	public void render(ModelRenderer renderer) {
 		graphics.render(renderer, positionX, positionY);
 	}
 

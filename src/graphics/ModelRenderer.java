@@ -2,7 +2,7 @@ package graphics;
 
 import static util.MatrixMath.multiply;
 
-public final class Renderer extends ShaderProgram {
+public final class ModelRenderer extends ShaderProgram {
 	private volatile Camera camera;
 	private int uniform_transform;
 	private int uniform_opacity;
@@ -18,11 +18,16 @@ public final class Renderer extends ShaderProgram {
 			0, 0, 0, 1,
 	};
 	
-	public Renderer(Camera camera) {
-		super(
-				new Shader("resources/shaders/vertexShader", org.lwjgl.opengl.GL20.GL_VERTEX_SHADER), 
-				new Shader("resources/shaders/fragmentShader", org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER)
-		);
+	private float[] transformationMatrix = new float[] {
+			1, 0, 0, 0,
+			0, 1, 0, 0,
+			0, 0, 0, 0,
+			0, 0, 0, 1,
+	};
+	
+	public ModelRenderer(Camera camera) {
+		super(new Shader("resources/shaders/vertexShader", org.lwjgl.opengl.GL20.GL_VERTEX_SHADER), 
+				new Shader("resources/shaders/fragmentShader", org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER));
 		
 		this.camera = camera;
 		this.uniform_transform = getUniformID("transform");
@@ -39,14 +44,13 @@ public final class Renderer extends ShaderProgram {
 	}
 	
 	public final void loadTransformationMatrix(float posX, float posY, float scaleX, float scaleY, float rotation) {
-		loadMatrix(uniform_transform, 
-			new float[] {
-				scaleX * (float) Math.cos(rotation), scaleY * (float) Math.sin(rotation), 0, posX,
-				scaleX * (float) -Math.sin(rotation), scaleY * (float) Math.cos(rotation), 0, posY,
-				0, 0, 0, 0,
-				0, 0, 0, 1,
-			}
-		);
+		transformationMatrix[0] = scaleX * (float) Math.cos(rotation);
+		transformationMatrix[1] = scaleY * (float) Math.sin(rotation);
+		transformationMatrix[3] = posX;
+		transformationMatrix[4] = scaleX * (float) -Math.sin(rotation);
+		transformationMatrix[5] = scaleY * (float) Math.cos(rotation);
+		transformationMatrix[7] = posY;
+		loadMatrix(uniform_transform, transformationMatrix);
 	}
 	
 	public final void loadViewMatrixIdentity() {

@@ -1,7 +1,7 @@
 package ui;
 
 import graphics.Renderable;
-import graphics.Renderer;
+import graphics.ModelRenderer;
 import input.InputManager;
 import input.handler.CursorPosHandler;
 import input.handler.FramebufferSizeHandler;
@@ -25,7 +25,7 @@ public final class ElementManager extends HashMap<Element, DynamicLocation> impl
 	private boolean updatePositions;
 	
 	@Override
-	public void render(Renderer renderer) {
+	public void render(ModelRenderer renderer) {
 		renderer.loadViewMatrix(false);
 		for(Entry<Element, DynamicLocation> entry : entrySet()) {
 			if(entry.getValue() != null) {

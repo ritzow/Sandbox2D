@@ -1,7 +1,7 @@
 package world.entity;
 
 import audio.AudioSystem;
-import graphics.Renderer;
+import graphics.ModelRenderer;
 import resource.Models;
 import resource.Sounds;
 import world.World;
@@ -38,7 +38,7 @@ public class Player extends LivingEntity {
 	}
 
 	@Override
-	public void render(Renderer renderer) {
+	public void render(ModelRenderer renderer) {
 		head.render(renderer, positionX, positionY + 0.5f);
 		body.render(renderer, positionX, positionY - 0.5f);
 		if(inventory.get(selected) != null) {

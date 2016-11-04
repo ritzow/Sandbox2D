@@ -1,7 +1,7 @@
 package ui.element;
 
 import graphics.Model;
-import graphics.Renderer;
+import graphics.ModelRenderer;
 import world.entity.component.Graphics;
 
 public class GraphicsElement extends Element {
@@ -38,7 +38,7 @@ public class GraphicsElement extends Element {
 	}
 
 	@Override
-	public void render(Renderer renderer, float x, float y) {
+	public void render(ModelRenderer renderer, float x, float y) {
 		renderer.loadTransformationMatrix(x + offsetX, y + offsetY, graphics.getScaleX(), graphics.getScaleY(), graphics.getRotation());
 		renderer.loadOpacity(graphics.getOpacity());
 		graphics.getModel().render();
