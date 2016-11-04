@@ -11,8 +11,6 @@ import input.controller.InteractionController;
 import input.controller.TrackingCameraController;
 import input.handler.KeyHandler;
 import input.handler.WindowCloseHandler;
-import java.io.IOException;
-import java.net.*;
 import resource.Models;
 import resource.Sounds;
 import ui.ElementManager;
@@ -37,6 +35,13 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 	}
 	
 	public void run() {
+		
+		Runtime.getRuntime().addShutdownHook(new Thread() {
+			public void run() {
+				System.out.println("Program exiting...");
+			}
+		});
+		
 		Synchronizer.waitForSetup(eventManager);
 		eventManager.getDisplay().getInputManager().getWindowCloseHandlers().add(this);
 		eventManager.getDisplay().getInputManager().getKeyHandlers().add(this);
@@ -109,15 +114,17 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		 * else if in game, server sends World info, Gamemode info
 		 */
 		
-		new Thread("Datagram Server") {
+/*		new Thread("Datagram Server") {
 			public void run() {
 				try {
 					DatagramSocket server = new DatagramSocket(50000); //for actual server: new InetSocketAddress(InetAddress.getLocalHost().getHostAddress(), 50000)
 					byte[] bufferArray = new byte[64000]; //make the buffer the max size possible
 					DatagramPacket buffer = new DatagramPacket(bufferArray, bufferArray.length);
-					System.out.println("Server waiting for data...");
-					server.receive(buffer);
-					System.out.println("Server received message: " + new String(buffer.getData(), buffer.getOffset(), buffer.getLength()));
+					
+					while(!exit) {
+						server.receive(buffer);
+						System.out.println("Server received message: " + new String(buffer.getData(), buffer.getOffset(), buffer.getLength()));
+					}
 					server.close();
 				} catch (SocketException e) {
 					e.printStackTrace();
@@ -144,21 +151,20 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 				}
 			}
 		}.start();
+*/
 		
 		synchronized(eventManager) {
 			eventManager.setReadyToDisplay();
 			eventManager.notifyAll();
 		}
 		
-//		Memory usage/gc
-//		while(!exit) {
-//			System.out.println("memory usage " + ((Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) * 0.000001) + " MB");
-//			//System.gc();
-//			try {
-//				Thread.sleep(100);
-//			} catch (InterruptedException e) {
-//				e.printStackTrace();
+//		try {
+//			while(!exit) {
+//				System.out.println("memory usage " + ((Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) * 0.000001) + " MB");
+//				Thread.sleep(500);
 //			}
+//		} catch(InterruptedException e) {
+//			
 //		}
 		
 		synchronized(this) {
@@ -171,13 +177,17 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 			}
 		}
 		
+		new Thread() {
+			public void run() {
+				Sounds.deleteAll();
+				AudioSystem.stop();
+			}
+		}.start();
+		
  		clientUpdateManager.exit();
-		Sounds.deleteAll();
-		AudioSystem.stop();
 		worldManager.exit();
 		Synchronizer.waitForExit(graphicsManager);
-		Synchronizer.waitForExit(eventManager);
-		System.exit(0);
+		eventManager.exit();
 	}
 
 	@Override
