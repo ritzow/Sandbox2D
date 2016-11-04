@@ -4,7 +4,7 @@ import static util.HitboxUtil.*;
 
 import graphics.Model;
 import graphics.Renderable;
-import graphics.Renderer;
+import graphics.ModelRenderer;
 import java.util.ArrayList;
 import world.entity.Entity;
 
@@ -211,7 +211,7 @@ public class World implements Renderable, Serializable {
 	}
 	
 	@Override
-	public void render(Renderer renderer) {
+	public void render(ModelRenderer renderer) {
 		renderer.loadViewMatrix(true);
 		
 		int leftBound = 	Math.max(0, (int)Math.floor(renderer.getWorldViewportLeftBound()));

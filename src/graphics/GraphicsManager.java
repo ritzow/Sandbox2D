@@ -28,7 +28,7 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 	private volatile boolean iconified;
 	private volatile boolean focused;
 	
-	private Renderer renderer;
+	private ModelRenderer renderer;
 	private Display display;
 	
 	private final ArrayList<Renderable> renderables;
@@ -57,7 +57,7 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 			e.printStackTrace();
 		}
 		
-		renderer = new Renderer(new Camera( 0, 0, 1));
+		renderer = new ModelRenderer(new Camera( 0, 0, 1));
 		
 		synchronized(this) {
 			setupComplete = true;
@@ -109,7 +109,7 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 		}
 	}
 	
-	public Renderer getRenderer() {
+	public ModelRenderer getRenderer() {
 		return renderer;
 	}
 	

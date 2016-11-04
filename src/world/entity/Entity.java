@@ -1,6 +1,6 @@
 package world.entity;
 
-import graphics.Renderer;
+import graphics.ModelRenderer;
 import world.World;
 
 import java.io.Serializable;
@@ -36,7 +36,7 @@ public abstract class Entity implements Serializable {
 		shouldDelete = false;
 	}
 	
-	public abstract void render(Renderer renderer);
+	public abstract void render(ModelRenderer renderer);
 	public abstract void onCollision(World world, Entity e);
 	
 	public void update(float milliseconds) {

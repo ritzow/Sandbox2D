@@ -1,7 +1,7 @@
 package world.entity;
 
 import graphics.Model;
-import graphics.Renderer;
+import graphics.ModelRenderer;
 import world.World;
 import world.entity.component.Graphics;
 
@@ -23,7 +23,7 @@ public class GraphicsEntity extends Entity {
 		graphics.setRotation(graphics.getRotation() + graphics.getRotationVelocity());
 	}
 	
-	public void render(Renderer renderer) {
+	public void render(ModelRenderer renderer) {
 		graphics.render(renderer, positionX, positionY);
 	}
 

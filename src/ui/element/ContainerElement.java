@@ -1,6 +1,6 @@
 package ui.element;
 
-import graphics.Renderer;
+import graphics.ModelRenderer;
 import java.util.ArrayList;
 
 public class ContainerElement extends Element {
@@ -15,7 +15,7 @@ public class ContainerElement extends Element {
 	}
 
 	@Override
-	public void render(Renderer renderer, float x, float y) {
+	public void render(ModelRenderer renderer, float x, float y) {
 		for(Element e : elements) {
 			e.render(renderer, x, y);
 		}

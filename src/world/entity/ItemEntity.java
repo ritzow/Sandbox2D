@@ -1,6 +1,6 @@
 package world.entity;
 
-import graphics.Renderer;
+import graphics.ModelRenderer;
 import world.World;
 import world.item.Item;
 
@@ -31,7 +31,7 @@ public class ItemEntity extends Entity {
 	}
 
 	@Override
-	public void render(Renderer renderer) {
+	public void render(ModelRenderer renderer) {
 		renderer.loadOpacity(1.0f);
 		renderer.loadTransformationMatrix(positionX, positionY, 0.5f, 0.5f, rotation);
 		item.getModel().render();

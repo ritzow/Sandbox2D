@@ -1,7 +1,7 @@
 package world.entity.component;
 
 import graphics.Model;
-import graphics.Renderer;
+import graphics.ModelRenderer;
 import java.io.Serializable;
 
 public class Graphics implements Serializable {
@@ -26,7 +26,7 @@ public class Graphics implements Serializable {
 		this.rotation = rotation;
 	}
 	
-	public void render(Renderer renderer, float x, float y) {
+	public void render(ModelRenderer renderer, float x, float y) {
 		renderer.loadOpacity(opacity);
 		renderer.loadTransformationMatrix(x, y, scaleX, scaleY, rotation);
 		model.render();
