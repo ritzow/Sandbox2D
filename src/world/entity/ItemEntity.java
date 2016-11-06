@@ -42,7 +42,7 @@ public class ItemEntity extends Entity {
 	}
 
 	@Override
-	public void onCollision(World world, Entity e) {
+	public void onCollision(World world, Entity e, float time) {
 		//TODO add squash and stretch?
 	}
 	
