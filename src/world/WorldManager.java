@@ -24,7 +24,7 @@ public final class WorldManager implements Runnable, Exitable {
 			long start;
 			while(!exit) {
 				start = System.nanoTime();
-				world.update(1);
+				world.update(1f);
 				Thread.sleep((long)Math.max(0, TimeUtil.getElapsedTime(start, System.nanoTime()) + MILLISECONDS_PER_UPDATE));
 			}
 		} catch(InterruptedException e) {

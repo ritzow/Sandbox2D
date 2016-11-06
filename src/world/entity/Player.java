@@ -27,14 +27,14 @@ public class Player extends LivingEntity {
 		this.width = 1.0f;
 		this.height = 2.0f;
 		this.head = new Graphics(Models.GREEN_FACE, 1.0f, 1.0f, 1.0f, 0.0f);
-		this.body = new Graphics(Models.BLUE_SQUARE, 1.0f, 1.0f, 1.0f, 0.0f);
+		this.body = new Graphics(Models.RED_SQUARE, 1.0f, 1.0f, 1.0f, 0.0f);
 		this.username = username;
 		this.inventory = new Inventory(9);
 	}
 	
 	public void update(float milliseconds) {
 		super.update(milliseconds);
-		body.setRotation(body.getRotation() + velocityX); //TODO clamp to 2pi range
+		body.setRotation(body.getRotation() + velocityX * milliseconds); //TODO clamp to 2pi range
 	}
 
 	@Override
@@ -49,7 +49,7 @@ public class Player extends LivingEntity {
 	}
 
 	@Override
-	public void onCollision(World world, Entity e) {
+	public void onCollision(World world, Entity e, float time) {
 		if(e instanceof ItemEntity && inventory.add(((ItemEntity)e).getItem())) {
 			world.getEntities().remove(e);
 			world.getEntities().add(new ParticleEntity(new Graphics(((ItemEntity)e).getItem().getModel(), 1.0f, 0.5f, 0.5f, 0), e.getPositionX(), e.getPositionY(), 0, 0.2f, 500, 0, true));

@@ -28,7 +28,7 @@ public class GraphicsEntity extends Entity {
 	}
 
 	@Override
-	public void onCollision(World world, Entity e) {
+	public void onCollision(World world, Entity e, float time) {
 		
 	}
 

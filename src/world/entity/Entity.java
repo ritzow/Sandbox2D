@@ -37,11 +37,11 @@ public abstract class Entity implements Serializable {
 	}
 	
 	public abstract void render(ModelRenderer renderer);
-	public abstract void onCollision(World world, Entity e);
+	public abstract void onCollision(World world, Entity e, float time);
 	
-	public void update(float milliseconds) {
-		positionX += velocityX * milliseconds;
-		positionY += velocityY * milliseconds;
+	public void update(float time) {
+		positionX += velocityX * time;
+		positionY += velocityY * time;
 	}
 
 	public final float getPositionX() {

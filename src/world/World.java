@@ -45,7 +45,7 @@ public class World implements Renderable, Serializable {
 		this.gravity = gravity;
 	}
 
-	public void update(float milliseconds) {
+	public void update(float time) {
 		for(int i = 0; i < entities.size(); i++) {
 			Entity e = entities.get(i);
 			
@@ -56,9 +56,9 @@ public class World implements Renderable, Serializable {
 				continue;
 			}
 			
-			e.update(milliseconds);
+			e.update(time);
 			
-			e.setVelocityY(e.getVelocityY() - gravity);
+			e.setVelocityY(e.getVelocityY() - gravity * time);
 			
 			if(e.getDoCollision()) {
 				
@@ -73,14 +73,14 @@ public class World implements Renderable, Serializable {
 						boolean collision;
 						
 						if(o.getDoEntityCollisionResolution()) {
-							collision = (e.getMass() < o.getMass()) ? resolveCollision(e, o) : resolveCollision(o, e);
+							collision = (e.getMass() < o.getMass()) ? resolveCollision(e, o, time) : resolveCollision(o, e, time);
 						} else {
 							collision = checkCollision(e, o);
 						}
 						
 						if(collision) {
-							e.onCollision(this, o);
-							o.onCollision(this, e);
+							e.onCollision(this, o, time);
+							o.onCollision(this, e, time);
 						}
 					}
 				}
@@ -95,7 +95,7 @@ public class World implements Renderable, Serializable {
 					for(int row = bottomBound; row < topBound; row++) {
 						for(int column = leftBound; column < rightBound; column++) {
 							if(foreground.isBlock(column, row) && !foreground.isHidden(column, row)) {
-								resolveCollision(e, column, row, 1, 1, foreground.get(column, row).getFriction());
+								resolveCollision(e, column, row, 1, 1, foreground.get(column, row).getFriction(), time);
 							}
 						}
 					}
@@ -123,12 +123,12 @@ public class World implements Renderable, Serializable {
 		}
 	}
 	
-	public boolean resolveCollision(Entity e, Entity o) {
-		return resolveCollision(e, o.getPositionX(), o.getPositionY(), o.getWidth(), o.getHeight(), o.getFriction());
+	public boolean resolveCollision(Entity e, Entity o, float time) {
+		return resolveCollision(e, o.getPositionX(), o.getPositionY(), o.getWidth(), o.getHeight(), o.getFriction(), time);
 	}
 	
 	/** Returns true if a collision occurred **/
-	public boolean resolveCollision(Entity entity, float otherX, float otherY, float otherWidth, float otherHeight, float otherFriction) {	
+	public boolean resolveCollision(Entity entity, float otherX, float otherY, float otherWidth, float otherHeight, float otherFriction, float time) {	
 		float width = 0.5f * (entity.getWidth() + otherWidth);
 		float height = 0.5f * (entity.getHeight() + otherHeight);
 		float deltaX = otherX - entity.getPositionX();
@@ -145,11 +145,11 @@ public class World implements Renderable, Serializable {
 					}
 					
 		        	if(entity.getVelocityX() > 0) {
-		        		entity.setVelocityX(Math.max(0, entity.getVelocityX() - combineFriction(entity.getFriction(), otherFriction)));
+		        		entity.setVelocityX(Math.max(0, entity.getVelocityX() - combineFriction(entity.getFriction(), otherFriction) * time));
 		        	}
 		        	
 		        	else if(entity.getVelocityX() < 0) {
-		        		entity.setVelocityX(Math.min(0, entity.getVelocityX() + combineFriction(entity.getFriction(), otherFriction)));
+		        		entity.setVelocityX(Math.min(0, entity.getVelocityX() + combineFriction(entity.getFriction(), otherFriction) * time));
 		        	}
 		        }
 
@@ -161,11 +161,11 @@ public class World implements Renderable, Serializable {
 					}
 		        	
 		        	if(entity.getVelocityY() > 0) {
-		        		entity.setVelocityY(Math.max(0, entity.getVelocityY() - combineFriction(entity.getFriction(), otherFriction)));
+		        		entity.setVelocityY(Math.max(0, entity.getVelocityY() - combineFriction(entity.getFriction(), otherFriction) * time));
 		        	}
 		        	
 		        	else if(entity.getVelocityY() < 0) {
-		        		entity.setVelocityY(Math.min(0, entity.getVelocityY() + combineFriction(entity.getFriction(), otherFriction)));
+		        		entity.setVelocityY(Math.min(0, entity.getVelocityY() + combineFriction(entity.getFriction(), otherFriction) * time));
 		        	}
 		        }
 		    }
@@ -175,15 +175,15 @@ public class World implements Renderable, Serializable {
 		        	entity.setPositionX(otherX - width);
 					
 		        	if(entity.getVelocityX() > 0) {
-						entity.setVelocityX(0);;
+						entity.setVelocityX(0);
 					}
 					
 		        	if(entity.getVelocityY() > 0) {
-		        		entity.setVelocityY(Math.max(0, entity.getVelocityY() - combineFriction(entity.getFriction(), otherFriction)));
+		        		entity.setVelocityY(Math.max(0, entity.getVelocityY() - combineFriction(entity.getFriction(), otherFriction) * time));
 		        	}
 		        	
 		        	else if(entity.getVelocityY() < 0) {
-		        		entity.setVelocityY(Math.min(0, entity.getVelocityY() + combineFriction(entity.getFriction(), otherFriction)));
+		        		entity.setVelocityY(Math.min(0, entity.getVelocityY() + combineFriction(entity.getFriction(), otherFriction) * time));
 		        	}
 		        }
 		        
@@ -191,15 +191,15 @@ public class World implements Renderable, Serializable {
 		        	entity.setPositionY(otherY + height);
 
 		        	if(entity.getVelocityY() < 0) {
-		        		entity.setVelocityY(0);;
+		        		entity.setVelocityY(0);
 		        	}
 		        	
 		        	if(entity.getVelocityX() > 0) {
-		        		entity.setVelocityX(Math.max(0, entity.getVelocityX() - combineFriction(entity.getFriction(), otherFriction)));
+		        		entity.setVelocityX(Math.max(0, entity.getVelocityX() - combineFriction(entity.getFriction(), otherFriction) * time));
 		        	}
 		        	
 		        	else if(entity.getVelocityX() < 0) {
-		        		entity.setVelocityX(Math.min(0, entity.getVelocityX() + combineFriction(entity.getFriction(), otherFriction)));
+		        		entity.setVelocityX(Math.min(0, entity.getVelocityX() + combineFriction(entity.getFriction(), otherFriction) * time));
 		        	}
 		        }
 		    }
