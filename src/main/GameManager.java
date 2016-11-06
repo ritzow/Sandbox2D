@@ -36,11 +36,20 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 	
 	public void run() {
 		
-		Runtime.getRuntime().addShutdownHook(new Thread() {
-			public void run() {
-				System.out.println("Program exiting...");
-			}
-		});
+		if(GameEngine2D.PRINT_MEMORY_USAGE) {
+			new Thread() {
+				public void run() {
+					try {
+						while(!exit) {
+							System.out.println("Memory Usage: " + ((Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) * 0.000001) + " MB");
+							Thread.sleep(1000);
+						}
+					} catch(InterruptedException e) {
+						
+					}
+				}
+			}.start();
+		}
 		
 		Synchronizer.waitForSetup(eventManager);
 		eventManager.getDisplay().getInputManager().getWindowCloseHandlers().add(this);
@@ -109,15 +118,27 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		
 		Runtime.getRuntime().addShutdownHook(new Thread() {
 			public void run() {
+				System.out.println("Program exited");
+		 		clientUpdateManager.exit();
+				worldManager.exit();
 				Sounds.deleteAll();
 				AudioSystem.stop();
+				Synchronizer.waitForExit(graphicsManager);
+				Synchronizer.waitForExit(eventManager);
 			}
-		}.start();
+		});
 		
- 		clientUpdateManager.exit();
-		worldManager.exit();
-		Synchronizer.waitForExit(graphicsManager);
-		eventManager.exit();
+		try {
+			synchronized(this) {
+				while(!exit) {
+					this.wait();
+				}
+			}
+		} catch(InterruptedException e) {
+			
+		} finally {
+			System.exit(0);
+		}
 	}
 
 	@Override
