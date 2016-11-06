@@ -12,14 +12,8 @@ import org.lwjgl.glfw.GLFWImage;
 public class Cursors {
 	public static long LEAFY_STICK;
 	
-	public static void loadAll() {
-		try {
-			LEAFY_STICK = Cursors.loadCursor(new FileInputStream(new File("resources/assets/textures/cursor.png")), true);
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+	public static void loadAll() throws FileNotFoundException, IOException {
+		LEAFY_STICK = Cursors.loadCursor(new FileInputStream(new File("resources/assets/textures/cursor.png")), true);
 	}
 	
 	public static long loadCursor(InputStream image, boolean cursorLocationTopLeft) throws IOException {
