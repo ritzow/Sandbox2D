@@ -4,6 +4,7 @@ import static org.lwjgl.glfw.GLFW.glfwInit;
 import static org.lwjgl.glfw.GLFW.glfwTerminate;
 
 import graphics.Display;
+import java.io.IOException;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import resource.Cursors;
 import util.Exitable;
@@ -27,7 +28,11 @@ public final class EventManager implements Runnable, Installable, Exitable {
 		
 		GLFWErrorCallback.createPrint(System.err).set();
 		
-		Cursors.loadAll();
+		try {
+			Cursors.loadAll();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		
 		display = new Display("2D Game");
 		display.setCursor(Cursors.LEAFY_STICK);
@@ -40,10 +45,8 @@ public final class EventManager implements Runnable, Installable, Exitable {
 		waitUntilReady();
 		display.setFullscreen(true);
 		
-		synchronized(this) {
-			while(!exit) {
-				display.waitEvents();
-			}
+		while(!exit) {
+			display.waitEvents();
 		}
 		
 		display.destroy();
@@ -63,15 +66,13 @@ public final class EventManager implements Runnable, Installable, Exitable {
 		shouldDisplay = true;
 	}
 	
-	private void waitUntilReady() {
-		synchronized(this) {
-			try {
-				while(!shouldDisplay) {
-					this.wait();
-				}
-			} catch(InterruptedException e) {
-				e.printStackTrace();
+	private synchronized void waitUntilReady() {
+		try {
+			while(!shouldDisplay) {
+				this.wait();
 			}
+		} catch(InterruptedException e) {
+			e.printStackTrace();
 		}
 	}
 	
