@@ -102,82 +102,12 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		graphicsManager.getRenderables().add(world);
 		graphicsManager.getRenderables().add(manager);
 		
-		/*
-		 * TODO networking:
-		 * Create ServerSocket on game's port on another thread
-		 * ServerSocket listens for next connection
-		 * On a separate thread, Client creates a Socket
-		 * socket connects to Server
-		 * Server accepts connection
-		 * server creates threads to handle socket's input/output
-		 * if in lobby, server sends Lobby info
-		 * else if in game, server sends World info, Gamemode info
-		 */
-		
-/*		new Thread("Datagram Server") {
-			public void run() {
-				try {
-					DatagramSocket server = new DatagramSocket(50000); //for actual server: new InetSocketAddress(InetAddress.getLocalHost().getHostAddress(), 50000)
-					byte[] bufferArray = new byte[64000]; //make the buffer the max size possible
-					DatagramPacket buffer = new DatagramPacket(bufferArray, bufferArray.length);
-					
-					while(!exit) {
-						server.receive(buffer);
-						System.out.println("Server received message: " + new String(buffer.getData(), buffer.getOffset(), buffer.getLength()));
-					}
-					server.close();
-				} catch (SocketException e) {
-					e.printStackTrace();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
-		}.start();
-		
-		new Thread("Datagram Client") {
-			public void run() {
-				try {
-					DatagramSocket client = new DatagramSocket(); //for actual game: new InetSocketAddress(InetAddress.getLocalHost().getHostAddress(), 50000)
-					byte[] bufferArray = ("Lorem ipsum dolor sit amet").getBytes();
-					client.send(new DatagramPacket(bufferArray, bufferArray.length, new InetSocketAddress("localhost", 50000)));
-					System.out.println("Client sent message");
-					client.close();
-				} catch(BindException e) {
-					e.printStackTrace();
-				} catch (SocketException e) {
-					e.printStackTrace();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
-		}.start();
-*/
-		
 		synchronized(eventManager) {
 			eventManager.setReadyToDisplay();
 			eventManager.notifyAll();
 		}
 		
-//		try {
-//			while(!exit) {
-//				System.out.println("memory usage " + ((Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) * 0.000001) + " MB");
-//				Thread.sleep(500);
-//			}
-//		} catch(InterruptedException e) {
-//			
-//		}
-		
-		synchronized(this) {
-			try {
-				while(!exit) {
-					this.wait();
-				}
-			} catch(InterruptedException e) {
-				System.err.println("Game Manager interrupted while waiting to exit");
-			}
-		}
-		
-		new Thread() {
+		Runtime.getRuntime().addShutdownHook(new Thread() {
 			public void run() {
 				Sounds.deleteAll();
 				AudioSystem.stop();
