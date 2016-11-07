@@ -16,9 +16,11 @@ public final class WorldManager implements Runnable, Exitable {
 	
 	@Override
 	public void run() {
-		BlockGridManager blockManager = new BlockGridManager(world.getForeground());
+		BlockGridManager blockManagerForeground = new BlockGridManager(world.getForeground());
+		BlockGridManager blockManagerBackground = new BlockGridManager(world.getBackground());
 		
-		new Thread(blockManager).start();
+		new Thread(blockManagerForeground).start();
+		new Thread(blockManagerBackground).start();
 		
 		try {	
 			long start;
@@ -31,7 +33,9 @@ public final class WorldManager implements Runnable, Exitable {
 			
 		}
 		
-		Synchronizer.waitForExit(blockManager);
+		Synchronizer.waitForExit(blockManagerForeground);
+		Synchronizer.waitForExit(blockManagerBackground);
+		
 		
 		synchronized(this) {
 			finished = true;
