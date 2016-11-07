@@ -9,7 +9,6 @@ public class ItemEntity extends Entity {
 	private static final long serialVersionUID = 41895034901801590L;
 	
 	protected Item item;
-	
 	protected float rotation;
 	protected float rotationSpeed;
 	
@@ -17,11 +16,6 @@ public class ItemEntity extends Entity {
 		this.item = item;
 		this.positionX = x;
 		this.positionY = y;
-		this.width = 0.5f;
-		this.height = 0.5f;
-		this.friction = 0.02f;
-		this.doBlockCollisionResolution = true;
-		this.doEntityCollisionResolution = false;
 		this.rotationSpeed = 0; //(float) (Math.random() < 0.5f ? -(Math.random() * 0.02f + 0.02f) : (Math.random() * 0.02f + 0.02f));
 	}
 	
@@ -44,6 +38,46 @@ public class ItemEntity extends Entity {
 	@Override
 	public void onCollision(World world, Entity e, float time) {
 		//TODO add squash and stretch?
+	}
+
+	@Override
+	public boolean getShouldDelete() {
+		return false;
+	}
+
+	@Override
+	public boolean getDoCollision() {
+		return true;
+	}
+
+	@Override
+	public boolean getDoBlockCollisionResolution() {
+		return true;
+	}
+
+	@Override
+	public boolean getDoEntityCollisionResolution() {
+		return false;
+	}
+
+	@Override
+	public float getFriction() {
+		return 0.02f;
+	}
+
+	@Override
+	public float getWidth() {
+		return 0.5f;
+	}
+
+	@Override
+	public float getHeight() {
+		return 0.5f;
+	}
+
+	@Override
+	public float getMass() {
+		return 1f;
 	}
 	
 }

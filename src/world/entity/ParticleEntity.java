@@ -8,10 +8,12 @@ public class ParticleEntity extends Entity {
 	private static final long serialVersionUID = 7392722072442474321L;
 	
 	protected Graphics graphics;
-	protected long birthtime;
+	protected final long birthtime;
 	protected long lifetime;
 	protected float rotationSpeed;
 	protected boolean fade;
+	
+	protected boolean shouldDelete;
 
 	public ParticleEntity(Graphics graphics, float posX, float posY, float velocityX, float velocityY, long lifetime, float rotationSpeed, boolean fade) {
 		this.graphics = graphics;
@@ -22,14 +24,7 @@ public class ParticleEntity extends Entity {
 		this.rotationSpeed = rotationSpeed;
 		this.lifetime = lifetime;
 		this.fade = fade;
-		this.doCollision = false;
-		this.doBlockCollisionResolution = false;
-		this.doEntityCollisionResolution = false;
 		this.birthtime = System.currentTimeMillis();
-	}
-	
-	public void startLife() {
-		
 	}
 	
 	public void update(float milliseconds) {
@@ -62,5 +57,45 @@ public class ParticleEntity extends Entity {
 	
 	protected float getLifetimeRemaining() {
 		return lifetime - (System.currentTimeMillis() - birthtime);
+	}
+
+	@Override
+	public boolean getShouldDelete() {
+		return shouldDelete;
+	}
+
+	@Override
+	public boolean getDoCollision() {
+		return false;
+	}
+
+	@Override
+	public boolean getDoBlockCollisionResolution() {
+		return false;
+	}
+
+	@Override
+	public boolean getDoEntityCollisionResolution() {
+		return false;
+	}
+
+	@Override
+	public float getFriction() {
+		return 0;
+	}
+
+	@Override
+	public float getWidth() {
+		return graphics.getScaleX();
+	}
+
+	@Override
+	public float getHeight() {
+		return graphics.getScaleY();
+	}
+
+	@Override
+	public float getMass() {
+		return 0;
 	}
 }

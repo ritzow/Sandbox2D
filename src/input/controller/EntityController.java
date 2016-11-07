@@ -23,15 +23,11 @@ public final class EntityController extends Controller implements KeyHandler, Up
 	private boolean left;
 	private boolean right;
 	private boolean up;
-	private boolean down;
-	
-	private float friction;
 	
 	public EntityController(Entity entity, World world, float movementSpeed) {
 		this.world = world;
 		this.entity = entity;
 		this.movementSpeed = movementSpeed;
-		this.friction = entity.getFriction();
 	}
 	
 	@Override
@@ -58,14 +54,6 @@ public final class EntityController extends Controller implements KeyHandler, Up
 		
 		if(up && canJump()) {
 			entity.setVelocityY(movementSpeed);
-		}
-		
-		if(down) {
-			entity.setFriction(1);
-		}
-		
-		else {
-			entity.setFriction(friction);
 		}
 	}
 	
@@ -152,12 +140,12 @@ public final class EntityController extends Controller implements KeyHandler, Up
 		
 		else if(key == Controls.KEYBIND_DOWN) {
 			if(action == GLFW_PRESS) {
-				down = true;
+				//down = true;
 				world.getEntities().add(new ItemEntity(new BlockItem(new RedBlock()), entity.getPositionX(), entity.getPositionY()));
 			}
 			
 			else if(action == GLFW_RELEASE) {
-				down = false;
+				//down = false;
 			}
 		}
 		
