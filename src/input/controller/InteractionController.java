@@ -83,12 +83,9 @@ public final class InteractionController extends Controller implements MouseButt
 		}
 		
 		if(activatePressed) {
-			GraphicsEntity entity = new GraphicsEntity(Models.BLUE_SQUARE);
+			GraphicsEntity entity = new GraphicsEntity(Models.BLUE_SQUARE, 3, 3, 10);
 			entity.setPositionX(worldX);
 			entity.setPositionY(worldY);
-			entity.setWidth(3);
-			entity.setHeight(3);
-			entity.setMass(10);
 			entity.getGraphics().setScaleX(3);
 			entity.getGraphics().setScaleY(3);
 			world.getEntities().add(entity);

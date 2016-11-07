@@ -22,10 +22,6 @@ public class Player extends LivingEntity {
 	
 	public Player(String username) {
 		super(100);
-		this.mass = 1.0f;
-		this.friction = 0.02f;
-		this.width = 1.0f;
-		this.height = 2.0f;
 		this.head = new Graphics(Models.GREEN_FACE, 1.0f, 1.0f, 1.0f, 0.0f);
 		this.body = new Graphics(Models.RED_SQUARE, 1.0f, 1.0f, 1.0f, 0.0f);
 		this.username = username;
@@ -60,7 +56,7 @@ public class Player extends LivingEntity {
 	public Item dropItem(World world, int slot) {
 		Item item = inventory.remove(slot);
 		if(item != null) {
-			ItemEntity entity = new ItemEntity(item, positionX, positionY + height);
+			ItemEntity entity = new ItemEntity(item, positionX, positionY + this.getHeight());
 			entity.setVelocityX((float) (Math.random() * 0.4f - 0.2f));
 			entity.setVelocityY((float) (Math.random() * 0.3f));
 			if(world.getEntities().add(entity)) {
@@ -86,6 +82,46 @@ public class Player extends LivingEntity {
 	
 	public void setSelected(int slot) {
 		selected = slot;
+	}
+
+	@Override
+	public boolean getShouldDelete() {
+		return false;
+	}
+
+	@Override
+	public boolean getDoCollision() {
+		return true;
+	}
+
+	@Override
+	public boolean getDoBlockCollisionResolution() {
+		return true;
+	}
+
+	@Override
+	public boolean getDoEntityCollisionResolution() {
+		return true;
+	}
+
+	@Override
+	public float getFriction() {
+		return 0.02f;
+	}
+
+	@Override
+	public float getWidth() {
+		return 1;
+	}
+
+	@Override
+	public float getHeight() {
+		return 2;
+	}
+
+	@Override
+	public float getMass() {
+		return 1;
 	}
 
 }

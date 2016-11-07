@@ -12,37 +12,23 @@ public abstract class Entity implements Serializable {
 	protected float positionY;
 	protected float velocityX;
 	protected float velocityY;
-	protected float width;
-	protected float height;
-	protected float mass;
-	protected float friction;
-	protected boolean doCollision;
-	protected boolean doBlockCollisionResolution;
-	protected boolean doEntityCollisionResolution;
-	protected boolean shouldDelete;
-	
-	public Entity() {
-		positionX = 0;
-		positionY = 0;
-		velocityX = 0;
-		velocityY = 0;
-		friction = 0;
-		width = 1;
-		height = 1;
-		mass = 1;
-		doCollision = true;
-		doBlockCollisionResolution = true;
-		doEntityCollisionResolution = true;
-		shouldDelete = false;
-	}
-	
-	public abstract void render(ModelRenderer renderer);
-	public abstract void onCollision(World world, Entity e, float time);
 	
 	public void update(float time) {
 		positionX += velocityX * time;
 		positionY += velocityY * time;
 	}
+	
+	public abstract void render(ModelRenderer renderer);
+	public abstract void onCollision(World world, Entity e, float time);
+
+	public abstract boolean getShouldDelete();
+	public abstract boolean getDoCollision();
+	public abstract boolean getDoBlockCollisionResolution();
+	public abstract boolean getDoEntityCollisionResolution();
+	public abstract float getFriction();
+	public abstract float getWidth();
+	public abstract float getHeight();
+	public abstract float getMass();
 
 	public final float getPositionX() {
 		return positionX;
@@ -60,38 +46,6 @@ public abstract class Entity implements Serializable {
 		return velocityY;
 	}
 
-	public final float getWidth() {
-		return width;
-	}
-
-	public final float getHeight() {
-		return height;
-	}
-
-	public final float getMass() {
-		return mass;
-	}
-
-	public final float getFriction() {
-		return friction;
-	}
-	
-	public final boolean getShouldDelete() {
-		return shouldDelete;
-	}
-	
-	public final boolean getDoCollision() {
-		return doCollision;
-	}
-
-	public final boolean getDoBlockCollisionResolution() {
-		return doBlockCollisionResolution;
-	}
-	
-	public final boolean getDoEntityCollisionResolution() {
-		return doEntityCollisionResolution;
-	}
-
 	public final void setPositionX(float positionX) {
 		this.positionX = positionX;
 	}
@@ -106,30 +60,6 @@ public abstract class Entity implements Serializable {
 
 	public final void setVelocityY(float velocityY) {
 		this.velocityY = velocityY;
-	}
-
-	public final void setWidth(float width) {
-		this.width = width;
-	}
-
-	public final void setHeight(float height) {
-		this.height = height;
-	}
-
-	public final void setMass(float mass) {
-		this.mass = mass;
-	}
-
-	public final void setFriction(float friction) {
-		this.friction = friction;
-	}
-
-	public final void setDoBlockCollisionResolution(boolean doBlockCollision) {
-		this.doBlockCollisionResolution = doBlockCollision;
-	}
-	
-	public final void setDoEntityCollisionResolution(boolean doEntityCollisionResolution) {
-		this.doEntityCollisionResolution = doEntityCollisionResolution;
 	}
 	
 }
