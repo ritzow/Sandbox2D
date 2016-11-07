@@ -11,6 +11,8 @@ import input.controller.InteractionController;
 import input.controller.TrackingCameraController;
 import input.handler.KeyHandler;
 import input.handler.WindowCloseHandler;
+import network.GameClient;
+import network.GameServer;
 import resource.Models;
 import resource.Sounds;
 import ui.ElementManager;
@@ -111,6 +113,9 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		graphicsManager.getRenderables().add(world);
 		graphicsManager.getRenderables().add(manager);
 		
+		GameClient client = new GameClient();
+		GameServer server = new GameServer();
+		
 		synchronized(eventManager) {
 			eventManager.setReadyToDisplay();
 			eventManager.notifyAll();
@@ -137,6 +142,8 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		} catch(InterruptedException e) {
 			
 		} finally {
+			client.exit();
+			server.exit();
 			System.exit(0);
 		}
 	}
