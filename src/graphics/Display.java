@@ -94,7 +94,7 @@ public final class Display {
 		}
 		
 		else {
-			glfwSetWindowMonitor(displayID, 0, windowedX, windowedY, windowedWidth, windowedHeight, GLFW_DONT_CARE);
+			glfwSetWindowMonitor(displayID, 0, windowedX, windowedY, windowedWidth, windowedHeight, glfwGetVideoMode(glfwGetPrimaryMonitor()).refreshRate());
 		}
 	}
 }
