@@ -21,7 +21,7 @@ public class Text extends Element {
 	public void render(ModelRenderer renderer, float x, float y) {
 		renderer.loadOpacity(1.0f);
 		
-		int index = 0;
+		int index = 0; //TODO optimize text rendering and make text position in center
 		float charWidth = (size * 0.02f) + (size * 0.02f * spacing);
 		for(float pos = x; index < text.length(); pos += charWidth) {
 			renderer.loadTransformationMatrix(pos, y, size * 0.02f, size * 0.021f, 0);
@@ -55,7 +55,7 @@ public class Text extends Element {
 	}
 	
 	public float getWidth() {
-		return 1; //TODO implement
+		return 1; //TODO implement text width
 	}
 
 	@Override
