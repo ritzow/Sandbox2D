@@ -1,5 +1,9 @@
 package main;
 
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
+
 import audio.AudioSystem;
 import graphics.Background;
 import graphics.GraphicsManager;
@@ -113,8 +117,15 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		graphicsManager.getRenderables().add(world);
 		graphicsManager.getRenderables().add(manager);
 		
-		GameClient client = new GameClient();
-		GameServer server = new GameServer();
+		GameClient client = null;
+		GameServer server = null;
+		
+		try {
+			new Thread(client = new GameClient(new InetSocketAddress(InetAddress.getLocalHost(), 50000))).start();
+			new Thread(server = new GameServer((short)100)).start();
+		} catch (UnknownHostException e1) {
+			e1.printStackTrace();
+		}
 		
 		synchronized(eventManager) {
 			eventManager.setReadyToDisplay();
