@@ -11,14 +11,14 @@ public final class ModelRenderer extends ShaderProgram {
 	private float framebufferWidth;
 	private float framebufferHeight;
 	
-	private static float[] identityMatrix = new float[] {
+	private static final float[] identityMatrix = new float[] {
 			1, 0, 0, 0,
 			0, 1, 0, 0,
 			0, 0, 0, 0,
 			0, 0, 0, 1,
 	};
 	
-	private float[] transformationMatrix = new float[] {
+	private final float[] transformationMatrix = new float[] {
 			1, 0, 0, 0,
 			0, 1, 0, 0,
 			0, 0, 0, 0,

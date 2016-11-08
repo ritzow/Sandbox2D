@@ -82,14 +82,12 @@ public final class Display {
 	public void setFullscreen(boolean fullscreen) {
 		if(fullscreen) {
 			int[] storeH = new int[1], storeV = new int[1];
-			glfwGetWindowSize(displayID, storeH, storeV);
-			windowedWidth = storeH[0]; windowedHeight = storeV[0];
-			glfwGetWindowPos(displayID, storeH, storeV);
-			windowedX = storeH[0]; windowedY = storeV[0];
+			glfwGetWindowSize(displayID, storeH, storeV);	windowedWidth = storeH[0]; 	windowedHeight = storeV[0];
+			glfwGetWindowPos(displayID, storeH, storeV);	windowedX = storeH[0]; 		windowedY = storeV[0];
 			
-			glfwSetWindowMonitor(displayID, glfwGetPrimaryMonitor(), 0, 0,
+			glfwSetWindowMonitor(displayID, glfwGetPrimaryMonitor(), 0, 0, 
 					glfwGetVideoMode(glfwGetPrimaryMonitor()).width(), 
-					glfwGetVideoMode(glfwGetPrimaryMonitor()).height(), GLFW_DONT_CARE);
+					glfwGetVideoMode(glfwGetPrimaryMonitor()).height(), glfwGetVideoMode(glfwGetPrimaryMonitor()).refreshRate());
 			glfwFocusWindow(displayID);
 		}
 		
