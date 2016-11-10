@@ -16,12 +16,12 @@ public class ItemEntity extends Entity {
 		this.item = item;
 		this.positionX = x;
 		this.positionY = y;
-		this.rotationSpeed = 0; //(float) (Math.random() < 0.5f ? -(Math.random() * 0.02f + 0.02f) : (Math.random() * 0.02f + 0.02f));
+		this.rotationSpeed = (float) (Math.random() < 0.5f ? -(Math.random() * 0.02f + 0.02f) : (Math.random() * 0.02f + 0.02f));
 	}
 	
-	public void update(float milliseconds) {
-		super.update(milliseconds);
-		rotation = ((rotation + rotationSpeed > Math.PI * 2) ? (float)(rotation + rotationSpeed - Math.PI * 2) : rotation + rotationSpeed);
+	public void update(float time) {
+		super.update(time);
+		rotation = ((rotation + rotationSpeed > Math.PI * 2) ? (float)(rotation + rotationSpeed * time - Math.PI * 2) : rotation + rotationSpeed * time);
 	}
 
 	@Override

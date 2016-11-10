@@ -27,7 +27,7 @@ public class ParticleEntity extends Entity {
 		this.birthtime = System.currentTimeMillis();
 	}
 	
-	public void update(float milliseconds) {
+	public void update(float time) {
 		float remaining = this.getLifetimeRemaining();
 		
 		if(remaining <= 0) {
@@ -35,8 +35,8 @@ public class ParticleEntity extends Entity {
 		}
 		
 		else {
-			super.update(milliseconds);
-			graphics.setRotation(graphics.getRotation() + rotationSpeed);
+			super.update(time);
+			graphics.setRotation(graphics.getRotation() + rotationSpeed * time);
 			
 			if(fade) {
 				float opacity = remaining/lifetime;
