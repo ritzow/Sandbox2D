@@ -27,6 +27,16 @@ public final class MatrixMath {
 		return result;
 	}
 	
+	public static void multiply(float[] a, float[] b, float[] destination) {
+		for(int i = 0; i < 4; i++){
+			for(int j = 0; j < 4; j++){
+				for(int k = 0; k < 4; k++){
+					set(destination, i, j, get(destination, i, j) + get(a, i, k) * get(b, k, j));
+				}
+			}
+		}
+	}
+	
 	private static float get(float[] array, int row, int column) {
 		return array[(row * 4) + column];
 	}
