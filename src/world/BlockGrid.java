@@ -65,7 +65,7 @@ public class BlockGrid implements Serializable {
 		return !(isBlock(x - 1, y) || isBlock(x + 1, y) || isBlock(x, y - 1) || isBlock(x, y + 1));
 	}
 	
-	public boolean isStable(int x, int y) {
+	public boolean isStable(int x, int y) { //TODO remove this method from block grid, too specific
 		return (isBlock(x, y - 1) || isBlock(x - 1, y) || isBlock(x + 1, y));
 	}
 	

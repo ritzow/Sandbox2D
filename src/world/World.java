@@ -52,7 +52,8 @@ public class World implements Renderable, Serializable {
 			//remove entities that are below the world
 			if(e == null || e.getPositionY() < 0 || e.getShouldDelete()) {
 				entities.remove(i);
-				i = Math.max(0, i - 1);
+				//i = Math.max(0, i - 1);
+				i = (0 >= i - 1) ? 0 : i - 1;
 				continue;
 			}
 			
@@ -74,7 +75,9 @@ public class World implements Renderable, Serializable {
 						
 						if(o.getDoEntityCollisionResolution()) {
 							collision = (e.getMass() < o.getMass()) ? resolveCollision(e, o, time) : resolveCollision(o, e, time);
-						} else {
+						} 
+						
+						else {
 							collision = checkCollision(e, o);
 						}
 						
@@ -241,13 +244,14 @@ public class World implements Renderable, Serializable {
 		for(int i = 0; i < entities.size(); i++) {
 			Entity e = entities.get(i);
 			
-			synchronized(e) { //TODO change so entity rendering doesn't rely on physical width and height?
-				if(e.getPositionX() < renderer.getWorldViewportRightBound() + e.getWidth()/2 
+			if(e == null)
+				continue;
+			
+			if(e.getPositionX() < renderer.getWorldViewportRightBound() + e.getWidth()/2 
 				&& e.getPositionX() > renderer.getWorldViewportLeftBound() - e.getWidth()/2 
 				&& e.getPositionY() < renderer.getWorldViewportTopBound() + e.getHeight()/2 
 				&& e.getPositionY() > renderer.getWorldViewportBottomBound() - e.getHeight()/2)
-					e.render(renderer);
-			}
+						e.render(renderer);
 		}
 	}
 }
