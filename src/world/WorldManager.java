@@ -30,7 +30,7 @@ public final class WorldManager implements Runnable, Exitable {
 			    updateTime = (currentTime - previousTime) * 0.0000000625f; //convert from nanoseconds to sixteenth of a milliseconds
 			    previousTime = currentTime;
 				
-				world.update(updateTime * 3);
+				world.update(updateTime);
 				Thread.sleep((long)Math.max(1, 16 - updateTime));
 			}
 		} catch (InterruptedException e) {

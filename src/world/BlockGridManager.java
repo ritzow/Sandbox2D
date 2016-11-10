@@ -13,22 +13,19 @@ public final class BlockGridManager implements Runnable, Exitable {
 
 	@Override
 	public void run() {
-		while(!exit) {
-			//Update all of the blocks
-			for(int row = 0; row < blocks.getHeight(); row++) {
-				for(int column = 0; column < blocks.getWidth(); column++) {
-					if(blocks.isBlock(column, row) && !blocks.isHidden(column, row)) {
-						if(row != 0 && !blocks.isStable(column, row)) { //destroy loose blocks
+		try {
+			while(!exit) {
+				for(int row = 0; row < blocks.getHeight(); row++) {
+					for(int column = 0; column < blocks.getWidth(); column++) {
+						if(blocks.isBlock(column, row) && !blocks.isHidden(column, row) && !blocks.isStable(column, row)) {
 							blocks.destroy(column, row);
 						}
 					}
 				}
-			}
-			try {
 				Thread.sleep(1);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
 			}
+		} catch (InterruptedException e) {
+			System.out.println("Block Grid Updater interrupted");
 		}
 		
 		synchronized(this) {
