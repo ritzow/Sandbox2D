@@ -28,9 +28,9 @@ public class Player extends LivingEntity {
 		this.inventory = new Inventory(9);
 	}
 	
-	public void update(float milliseconds) {
-		super.update(milliseconds);
-		body.setRotation(body.getRotation() + velocityX * milliseconds); //TODO clamp to 2pi range
+	public void update(float time) {
+		super.update(time);
+		body.setRotation(body.getRotation() + velocityX * time); //TODO clamp to 2pi range?
 	}
 
 	@Override

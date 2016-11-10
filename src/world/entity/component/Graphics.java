@@ -12,7 +12,6 @@ public class Graphics implements Serializable {
 	protected float scaleX;
 	protected float scaleY;
 	protected float rotation;
-	protected float rotationVelocity;
 	
 	public Graphics(Model model) {
 		this(model, 1.0f, 1.0f, 1.0f, 0.0f);
@@ -52,10 +51,6 @@ public class Graphics implements Serializable {
 		return rotation;
 	}
 
-	public final float getRotationVelocity() {
-		return rotationVelocity;
-	}
-
 	public final void setModel(Model model) {
 		this.model = model;
 	}
@@ -74,10 +69,6 @@ public class Graphics implements Serializable {
 
 	public final void setRotation(float rotation) {
 		this.rotation = rotation;
-	}
-
-	public final void setRotationVelocity(float rotationVelocity) {
-		this.rotationVelocity = rotationVelocity;
 	}
 	
 }

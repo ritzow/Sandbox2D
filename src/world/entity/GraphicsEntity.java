@@ -10,6 +10,7 @@ public class GraphicsEntity extends Entity {
 	
 	protected final transient Graphics graphics;
 	
+	protected float rotationSpeed;
 	protected float width;
 	protected float height;
 	protected float mass;
@@ -25,9 +26,9 @@ public class GraphicsEntity extends Entity {
 		return graphics;
 	}
 	
-	public void update(float milliseconds) {
-		super.update(milliseconds);
-		graphics.setRotation(graphics.getRotation() + graphics.getRotationVelocity());
+	public void update(float time) {
+		super.update(time);
+		graphics.setRotation(graphics.getRotation() + rotationSpeed * time);
 	}
 	
 	public void render(ModelRenderer renderer) {
