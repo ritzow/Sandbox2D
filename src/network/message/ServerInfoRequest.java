@@ -12,4 +12,9 @@ public class ServerInfoRequest extends Message {
 		return message;
 	}
 
+	@Override
+	public String toString() {
+		return "Server info request";
+	}
+
 }

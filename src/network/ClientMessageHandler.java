@@ -1,5 +1,5 @@
 package network;
 
-public class ClientMessageHandler {
+public class ClientMessageHandler extends MessageHandler {
 
 }

@@ -40,4 +40,9 @@ public class ServerInfoMessage extends Message {
 		return playerCapacity;
 	}
 
+	@Override
+	public String toString() {
+		return "Player Count: " + playerCount + "/" + playerCapacity;
+	}
+
 }
