@@ -43,7 +43,7 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 	public void run() {
 		
 		if(GameEngine2D.PRINT_MEMORY_USAGE) {
-			new Thread() {
+			new Thread("Memory Usage Thread") {
 				public void run() {
 					try {
 						while(!exit) {
@@ -121,10 +121,10 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		GameServer server = null;
 		
 		try {
-			new Thread(client = new GameClient(new InetSocketAddress(InetAddress.getLocalHost(), 50000))).start();
-			new Thread(server = new GameServer((short)100)).start();
-		} catch (UnknownHostException e1) {
-			e1.printStackTrace();
+			new Thread(client = new GameClient(new InetSocketAddress(InetAddress.getLocalHost(), 50000)), "Game Client").start();
+			new Thread(server = new GameServer((short)100), "Game Server").start();
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
 		}
 		
 		synchronized(eventManager) {
@@ -134,13 +134,16 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		
 		Runtime.getRuntime().addShutdownHook(new Thread() {
 			public void run() {
-				System.out.println("Program exited");
+				System.out.print("Program exiting...");
 		 		clientUpdateManager.exit();
 				worldManager.exit();
+				
 				Sounds.deleteAll();
 				AudioSystem.stop();
+				
 				Synchronizer.waitForExit(graphicsManager);
-				Synchronizer.waitForExit(eventManager);
+				Synchronizer.waitForExit(eventManager); //wait for the eventManager to exit before the program clsoes
+				System.out.println(" complete!");
 			}
 		});
 		
