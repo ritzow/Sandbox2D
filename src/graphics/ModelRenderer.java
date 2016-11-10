@@ -18,6 +18,27 @@ public final class ModelRenderer extends ShaderProgram {
 			0, 0, 0, 1,
 	};
 	
+	private final float[] aspectMatrix = new float[] {
+			1, 0, 0, 0,
+			0, 1, 0, 0,
+			0, 0, 0, 0,
+			0, 0, 0, 1,
+	};
+	
+	private final float[] cameraMatrix = new float[] {
+			1, 0, 0, 0,
+			0, 1, 0, 0,
+			0, 0, 0, 0,
+			0, 0, 0, 1,
+	};
+	
+	private final float[] viewMatrix = new float[] {
+			0, 0, 0, 0,
+			0, 0, 0, 0,
+			0, 0, 0, 0,
+			0, 0, 0, 0,
+	};
+	
 	private final float[] transformationMatrix = new float[] {
 			1, 0, 0, 0,
 			0, 1, 0, 0,
@@ -39,10 +60,6 @@ public final class ModelRenderer extends ShaderProgram {
 		loadFloat(uniform_opacity, opacity);
 	}
 	
-	public final void loadTransformationMatrixIndentity() {
-		loadMatrix(uniform_transform, identityMatrix);
-	}
-	
 	public final void loadTransformationMatrix(float posX, float posY, float scaleX, float scaleY, float rotation) {
 		transformationMatrix[0] = scaleX * (float) Math.cos(rotation);
 		transformationMatrix[1] = scaleY * (float) Math.sin(rotation);
@@ -58,23 +75,31 @@ public final class ModelRenderer extends ShaderProgram {
 	}
 	
 	public final void loadViewMatrix(boolean includeCamera) {
-		float[] view = new float[] {
-				framebufferHeight/framebufferWidth, 0, 0, 0,
-				0, 1, 0, 0,
-				0, 0, 0, 0,
-				0, 0, 0, 1,
-		};
+		aspectMatrix[0] = framebufferHeight/framebufferWidth;
 		
 		if(includeCamera) {
-			view = multiply(view, new float[] {
-					camera.getZoom(), 0, 0, -camera.getPositionX() * camera.getZoom(),
-					0, camera.getZoom(), 0, -camera.getPositionY() * camera.getZoom(),
-					0, 0, 0, 0,
-					0, 0, 0, 1,
-			});
+			loadCameraMatrix(cameraMatrix);
+			clearMatrix(viewMatrix);
+			multiply(aspectMatrix, cameraMatrix, viewMatrix);
+			loadMatrix(uniform_view, viewMatrix);
 		}
 		
-		loadMatrix(uniform_view, view);
+		else {
+			loadMatrix(uniform_view, aspectMatrix);
+		}
+	}
+	
+	private final void clearMatrix(float[] matrix) {
+		for(int i = 0; i < matrix.length; i++) {
+			matrix[i] = 0;
+		}
+	}
+	
+	private final void loadCameraMatrix(float[] matrix) {
+		matrix[0] = camera.getZoom();
+		matrix[3] = -camera.getPositionX() * camera.getZoom();
+		matrix[5] = camera.getZoom();
+		matrix[7] = -camera.getPositionY() * camera.getZoom();
 	}
 	
 	public final float getWorldViewportLeftBound() {
