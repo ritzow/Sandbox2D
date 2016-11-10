@@ -12,4 +12,9 @@ public class ServerConnectRequest extends Message {
 		return message;
 	}
 
+	@Override
+	public String toString() {
+		return "Server connect request";
+	}
+
 }

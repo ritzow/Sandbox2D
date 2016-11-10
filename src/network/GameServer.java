@@ -10,6 +10,7 @@ import network.message.*;
 import networkutils.DatagramInputStream;
 import networkutils.DatagramOutputStream;
 import networkutils.InvalidMessageException;
+import networkutils.Message;
 import networkutils.UnknownMessageException;
 import util.Exitable;
 import world.World;
@@ -21,28 +22,38 @@ public class GameServer implements Runnable, Exitable {
 	
 	protected DatagramSocket socket;
 	
-	protected InetSocketAddress[] clients;
+	protected DatagramOutputStream[] clients;
 	
 	public GameServer(short capacity) {
-		clients = new InetSocketAddress[capacity];
+		clients = new DatagramOutputStream[capacity];
 	}
 
 	@Override
 	public void run() {
-		
+		//TODO continue creating game server
 		try {
 			socket = new DatagramSocket(new InetSocketAddress(InetAddress.getLocalHost(), 50000));
 			DatagramInputStream input = new DatagramInputStream(socket);
 			while(!exit) {
 				byte[] data = input.readPacket();
-				if(MessageParser.getMessage(data) instanceof ServerInfoRequest) {
+				Message message = MessageParser.getMessage(data);
+				if(message instanceof ServerInfoRequest) {
 					DatagramOutputStream output = new DatagramOutputStream(socket, input.getBuffer().getSocketAddress()); //will keep this in real situation
 					output.write(new ServerInfoMessage((short)24, (short)clients.length).getBytes()); //test amount
 					output.close();
 				}
 				
+				else if(message instanceof ServerConnectRequest) {
+					int index = addClient(new DatagramOutputStream(socket, input.getBuffer().getSocketAddress()));
+					clients[index].write(new ServerConnectAcknowledgement(true).getBytes());
+				}
+				
+				else if(message instanceof ClientInfoMessage) {
+					System.out.println(message);
+				}
+				
 				else {
-					System.out.println("Unknown message: " + new String(data));
+					System.out.println("Message:" + message);
 				}
 			}
 			
@@ -65,9 +76,28 @@ public class GameServer implements Runnable, Exitable {
 		}
 	}
 	
+	public int addClient(DatagramOutputStream output) {
+		for(int i = 0; i < clients.length; i++) {
+			if(clients[i] == null) {
+				clients[i] = output;
+				return i;
+			}
+		}
+		
+		return -1;
+	}
+	
+	public void removeClient(DatagramOutputStream output) {
+		for(int i = 0; i < clients.length; i++) {
+			if(clients[i] == output) {
+				clients[i] = null;
+			}
+		}
+	}
+	
 	protected WorldManager startWorld(World world) {
 		WorldManager worldManager = new WorldManager(world);
-		new Thread(worldManager).start();
+		new Thread(worldManager, "World " + world.hashCode()).start();
 		return worldManager;
 	}
 

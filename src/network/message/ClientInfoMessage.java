@@ -1,6 +1,8 @@
 package network.message;
 
 import java.nio.charset.Charset;
+
+import networkutils.InvalidMessageException;
 import networkutils.Message;
 
 import static networkutils.ByteUtil.*;
@@ -13,8 +15,9 @@ public class ClientInfoMessage extends Message {
 		this.username = username;
 	}
 	
-	public ClientInfoMessage(byte[] data) {
-		
+	public ClientInfoMessage(byte[] data) throws InvalidMessageException {
+		byte length = data[2];
+		this.username = new String(data, 3, length);
 	}
 
 	//format: protocol 2, 2 bytes, username length, 1 byte, username string, username length bytes
@@ -29,14 +32,10 @@ public class ClientInfoMessage extends Message {
 		}
 		return message;
 	}
-//
-//	@Override
-//	public int putBytes(byte[] array, int offset) {
-//		byte[] username = this.username.getBytes(Charset.forName("UTF-8"));
-//		putShort(array, offset, (short)2);
-//		array[offset + 2] = (byte)username.length;
-//		System.arraycopy(username, 0, array, offset, username.length);
-//		return 3 + username.length;
-//	}
+
+	@Override
+	public String toString() {
+		return "Username: " + username;
+	}
 
 }
