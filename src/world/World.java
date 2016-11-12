@@ -19,7 +19,7 @@ public class World implements Renderable, Serializable {
 	protected float gravity;
 	
 	public World(int width, int height, float gravity) {
-		entities = new ArrayList<Entity>();
+		entities = new ArrayList<Entity>(100);
 		foreground = new BlockGrid(this, width, height);
 		background = new BlockGrid(this, width, height);
 		this.gravity = gravity;
