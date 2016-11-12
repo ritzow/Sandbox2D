@@ -1,20 +1,24 @@
 package world.block;
 
-import java.io.Serializable;
+import static audio.AudioSystem.playSound;
+import static util.Utility.MathUtility.randomFloat;
 
-import audio.AudioSystem;
 import graphics.Model;
+import java.io.Serializable;
 import resource.Sounds;
 import world.World;
+import world.entity.BlockPlaceParticleEntity;
 import world.entity.ItemEntity;
-import world.entity.ParticleEntity;
-import world.entity.component.Graphics;
 import world.item.BlockItem;
 
 public abstract class Block implements Serializable {
 	private static final long serialVersionUID = -5852957760473837301L;
 	
-	protected int integrity;
+	protected byte integrity;
+	
+	{
+		integrity = 100;
+	}
 	
 	public abstract String getName();
 	public abstract Model getModel();
@@ -27,20 +31,17 @@ public abstract class Block implements Serializable {
 	}
 	
 	public void onBreak(World world, float x, float y) {
-		ItemEntity drop = new ItemEntity(new BlockItem(this), x, y);
+		ItemEntity drop = new ItemEntity(new BlockItem(this.createNew()), x, y);
 		drop.setVelocityX(-0.2f + ((float)Math.random() * (0.4f)));
 		drop.setVelocityY((float)Math.random() * (0.35f));
 		world.getEntities().add(drop);
-		AudioSystem.playSound(Sounds.BLOCK_BREAK, x, y, drop.getVelocityX(), drop.getVelocityY(), 1, 1);
+		playSound(Sounds.BLOCK_BREAK, x, y, drop.getVelocityX(), drop.getVelocityY(), randomFloat(0.75f, 1.5f), randomFloat(0.75f, 1.5f));
 	}
 	
 	public void onPlace(World world, float x, float y) {
-		AudioSystem.playSound(Sounds.BLOCK_PLACE, x, y, 0, 0, 1, 1);
-		for(int i = 0; i < 5; i++) {
-			ParticleEntity particle = 
-					new ParticleEntity(new Graphics(getModel(), 1.0f, 0.3f, 0.3f, 0), x, y, 
-							(float)Math.random() * 0.4f - 0.2f, (float)Math.random() * 0.35f, 500, (float)Math.random() * 0.4f - 0.2f, true);
-			world.getEntities().add(particle);
+		playSound(Sounds.BLOCK_PLACE, x, y, 0, 0, 1, randomFloat(0.9f, 1.1f));
+		for(int i = 0; i < 3; i++) {
+			world.getEntities().add(new BlockPlaceParticleEntity(this, x, y));
 		}
 	}
 }

@@ -45,11 +45,15 @@ public class Sounds {
     	int buffer = alGenBuffers();
     	alBufferData(buffer, format, decoder.getData(), decoder.getSampleRate());
     	
+    	decoder.close();
+    	
     	return buffer;
 	}
 	
 	public static void deleteAll() {
 		alDeleteBuffers(Sounds.BLOCK_BREAK);
 		alDeleteBuffers(Sounds.BLOCK_PLACE);
+		alDeleteBuffers(Sounds.ITEM_PICKUP);
+		alDeleteBuffers(Sounds.THROW);
 	}
 }

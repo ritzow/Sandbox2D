@@ -87,7 +87,8 @@ public final class Display {
 			
 			glfwSetWindowMonitor(displayID, glfwGetPrimaryMonitor(), 0, 0, 
 					glfwGetVideoMode(glfwGetPrimaryMonitor()).width(), 
-					glfwGetVideoMode(glfwGetPrimaryMonitor()).height(), glfwGetVideoMode(glfwGetPrimaryMonitor()).refreshRate());
+					glfwGetVideoMode(glfwGetPrimaryMonitor()).height(), 
+					glfwGetVideoMode(glfwGetPrimaryMonitor()).refreshRate());
 			glfwFocusWindow(displayID);
 		}
 		

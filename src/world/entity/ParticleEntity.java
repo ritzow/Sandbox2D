@@ -14,8 +14,12 @@ public class ParticleEntity extends Entity {
 	protected boolean fade;
 	
 	protected boolean shouldDelete;
+	
+	public ParticleEntity(Graphics graphics, float posX, float posY) {
+		this(graphics, posX, posY, (float)Math.random() * 0.4f - 0.2f, (float)Math.random() * 0.35f, (float)Math.random() * 0.4f - 0.2f, (long)(Math.random() * 500), true);
+	}
 
-	public ParticleEntity(Graphics graphics, float posX, float posY, float velocityX, float velocityY, long lifetime, float rotationSpeed, boolean fade) {
+	public ParticleEntity(Graphics graphics, float posX, float posY, float velocityX, float velocityY,  float rotationSpeed, long lifetime, boolean fade) {
 		this.graphics = graphics;
 		this.positionX = posX;
 		this.positionY = posY;

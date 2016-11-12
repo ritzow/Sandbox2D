@@ -1,6 +1,6 @@
 package graphics;
 
-import static util.MatrixMath.multiply;
+import static util.Utility.Matrix.multiply;
 
 public final class ModelRenderer extends ShaderProgram {
 	private volatile Camera camera;
