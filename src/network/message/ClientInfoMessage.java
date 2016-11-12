@@ -3,7 +3,6 @@ package network.message;
 import java.nio.charset.Charset;
 
 import networkutils.InvalidMessageException;
-import networkutils.Message;
 
 import static networkutils.ByteUtil.*;
 

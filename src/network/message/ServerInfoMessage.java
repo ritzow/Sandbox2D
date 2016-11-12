@@ -1,6 +1,5 @@
 package network.message;
 
-import networkutils.Message;
 import static networkutils.ByteUtil.*;
 
 import networkutils.InvalidMessageException;
