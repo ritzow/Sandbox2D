@@ -51,6 +51,10 @@ public class Player extends LivingEntity {
 			world.getEntities().add(new ParticleEntity(new Graphics(((ItemEntity)e).getItem().getModel(), 1.0f, 0.5f, 0.5f, 0), e.getPositionX(), e.getPositionY(), 0, 0.2f, 500, 0, true));
 			AudioSystem.playSound(Sounds.ITEM_PICKUP, e.getPositionX(), e.getPositionY(), 0, 0.2f, 1, (float)Math.random() * 0.4f + 0.8f);
 		}
+		
+		else if(e.getSpeed() > 0.5f) {
+			world.getEntities().add(new ParticleEntity(new Graphics(Models.RED_SQUARE, 1, 0.4f, 0.4f, 0), positionX, positionY));
+		}
 	}
 	
 	public Item dropItem(World world, int slot) {
