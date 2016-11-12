@@ -6,7 +6,6 @@ import static org.lwjgl.opengl.GL11.*;
 import input.InputManager;
 import input.handler.FramebufferSizeHandler;
 import input.handler.WindowFocusHandler;
-import input.handler.WindowIconifyHandler;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -17,15 +16,10 @@ import resource.Textures;
 import util.Exitable;
 import util.Installable;
 
-public final class GraphicsManager implements Runnable, Installable, Exitable, FramebufferSizeHandler, WindowIconifyHandler, WindowFocusHandler {
-	private volatile boolean setupComplete;
-	private volatile boolean exit;
-	private volatile boolean finished;
-	
-	private volatile float framebufferWidth;
-	private volatile float framebufferHeight;
+public final class GraphicsManager implements Runnable, Installable, Exitable, FramebufferSizeHandler, WindowFocusHandler {
+	private volatile boolean setupComplete, exit, finished;
+	private volatile float framebufferWidth, framebufferHeight;
 	private volatile boolean updateFrameSize;
-	private volatile boolean iconified;
 	private volatile boolean focused;
 	
 	private ModelRenderer renderer;
@@ -56,7 +50,7 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		
+
 		renderer = new ModelRenderer(new Camera( 0, 0, 1));
 		
 		synchronized(this) {
@@ -66,7 +60,7 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 		
 		try {
 			while(!exit) {
-				if(!iconified && focused) {
+				if(focused) {
 					if(updateFrameSize) {
 						glViewport(0, 0, (int)framebufferWidth, (int)framebufferHeight);
 						renderer.setResolution((int)framebufferWidth, (int)framebufferHeight);
@@ -76,7 +70,10 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 					glClear(GL_COLOR_BUFFER_BIT);
 					
 					for(int i = 0; i < renderables.size(); i++) {
-						renderables.get(i).render(renderer);
+						Renderable renderable = renderables.get(i);
+						synchronized(renderable) {
+							renderable.render(renderer);
+						}
 					}
 
 					glFinish();
@@ -86,7 +83,7 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 				
 				else {
 					synchronized(this) {
-						while((iconified || !focused) && !exit) {
+						while(!focused && !exit) {
 							this.wait();
 						}
 						updateFrameSize = true;
@@ -95,17 +92,16 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 			}
 		} catch(InterruptedException e) {
 			
-		}
-
-		
-		renderables.clear();
-		Models.deleteAll();
-		display.closeContext();
-		GL.destroy();
-		
-		synchronized(this) {
-			finished = true;
-			this.notifyAll();
+		} finally {
+			renderables.clear();
+			Models.deleteAll();
+			display.closeContext();
+			GL.destroy();
+			
+			synchronized(this) {
+				finished = true;
+				this.notifyAll();
+			}
 		}
 	}
 	
@@ -125,8 +121,9 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 		return finished;
 	}
 	
-	public void exit() {
+	public synchronized void exit() {
 		exit = true;
+		this.notifyAll();
 	}
 
 	@Override
@@ -134,15 +131,6 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 		framebufferWidth = width;
 		framebufferHeight = height;
 		updateFrameSize = true;
-	}
-
-	@Override
-	public synchronized void windowIconify(boolean iconified) {
-		this.iconified = iconified;
-
-		if(!iconified) {
-			this.notifyAll();
-		}
 	}
 
 	@Override
@@ -157,14 +145,12 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 	@Override
 	public void link(InputManager manager) {
 		manager.getFramebufferSizeHandlers().add(this);
-		manager.getWindowIconifyHandlers().add(this);
 		manager.getWindowFocusHandlers().add(this);
 	}
 
 	@Override
 	public void unlink(InputManager manager) {
 		manager.getFramebufferSizeHandlers().remove(this);
-		manager.getWindowIconifyHandlers().remove(this);
 		manager.getWindowFocusHandlers().remove(this);
 	}
 }
