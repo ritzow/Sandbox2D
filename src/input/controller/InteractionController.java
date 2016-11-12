@@ -13,7 +13,7 @@ import util.Updatable;
 import world.World;
 import world.block.Block;
 import world.block.RedBlock;
-import world.entity.GraphicsEntity;
+import world.entity.TestEntity;
 import world.entity.Player;
 
 public final class InteractionController extends Controller implements MouseButtonHandler, CursorPosHandler, FramebufferSizeHandler, KeyHandler, Updatable {
@@ -83,7 +83,7 @@ public final class InteractionController extends Controller implements MouseButt
 		}
 		
 		if(activatePressed) {
-			GraphicsEntity entity = new GraphicsEntity(Models.BLUE_SQUARE, 3, 3, 10);
+			TestEntity entity = new TestEntity(Models.BLUE_SQUARE, 3, 3);
 			entity.setPositionX(worldX);
 			entity.setPositionY(worldY);
 			entity.getGraphics().setScaleX(3);

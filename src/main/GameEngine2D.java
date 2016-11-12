@@ -4,7 +4,7 @@ import input.EventManager;
 
 public class GameEngine2D {
 	
-	public static final boolean PRINT_MEMORY_USAGE = false;
+	public static final boolean PRINT_MEMORY_USAGE = true;
 	
 	public static void main(String[] args) throws InterruptedException {
 		EventManager eventManager = new EventManager();

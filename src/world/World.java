@@ -1,6 +1,6 @@
 package world;
 
-import static util.HitboxUtil.*;
+import static util.Utility.Intersection.*;
 
 import graphics.Model;
 import graphics.Renderable;
@@ -10,7 +10,7 @@ import world.entity.Entity;
 
 import java.io.Serializable;
 
-public class World implements Renderable, Serializable {	
+public class World implements Renderable, Serializable {
 	private static final long serialVersionUID = 8941044044393756575L;
 	
 	protected final ArrayList<Entity> entities;

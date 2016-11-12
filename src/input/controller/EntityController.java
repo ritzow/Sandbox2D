@@ -2,7 +2,7 @@ package input.controller;
 
 import static org.lwjgl.glfw.GLFW.GLFW_PRESS;
 import static org.lwjgl.glfw.GLFW.GLFW_RELEASE;
-import static util.HitboxUtil.intersection;
+import static util.Utility.Intersection.intersection;
 
 import input.Controls;
 import input.InputManager;

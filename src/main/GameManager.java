@@ -20,7 +20,7 @@ import network.GameServer;
 import resource.Models;
 import resource.Sounds;
 import ui.ElementManager;
-import util.Synchronizer;
+import static util.Utility.Synchronizer.*;
 import world.World;
 import world.WorldManager;
 import world.block.DirtBlock;
@@ -57,14 +57,14 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 			}.start();
 		}
 		
-		Synchronizer.waitForSetup(eventManager);
+		waitForSetup(eventManager);
 		eventManager.getDisplay().getInputManager().getWindowCloseHandlers().add(this);
 		eventManager.getDisplay().getInputManager().getKeyHandlers().add(this);
 		new Thread(graphicsManager = new GraphicsManager(eventManager.getDisplay()), "Graphics Manager").start();
 		
 		AudioSystem.start();
 		
-		Synchronizer.waitForSetup(graphicsManager);
+		waitForSetup(graphicsManager);
 		
 		World world = new World(500, 200, 0.015f);
 		for(int column = 0; column < world.getForeground().getWidth(); column++) {
@@ -98,9 +98,7 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		cameraController.link(eventManager.getDisplay().getInputManager());
 		
 		ElementManager manager = new ElementManager();
-		eventManager.getDisplay().getInputManager().getCursorPosHandlers().add(manager);
-		eventManager.getDisplay().getInputManager().getMouseButtonHandlers().add(manager);
-		eventManager.getDisplay().getInputManager().getFramebufferSizeHandlers().add(manager);
+		manager.link(eventManager.getDisplay().getInputManager());
 		
 		clientUpdateManager = new ClientUpdateManager();
 		
@@ -141,8 +139,8 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 				Sounds.deleteAll();
 				AudioSystem.stop();
 				
-				Synchronizer.waitForExit(graphicsManager);
-				Synchronizer.waitForExit(eventManager); //wait for the eventManager to exit before the program clsoes
+				waitForExit(graphicsManager);
+				waitForExit(eventManager); //wait for the eventManager to exit before the program clsoes
 				System.out.println(" complete!");
 			}
 		});

@@ -9,7 +9,7 @@ import input.handler.MouseButtonHandler;
 import java.util.HashMap;
 import ui.element.Element;
 import ui.element.button.Button;
-import util.HitboxUtil;
+import util.Utility.Intersection;
 import util.Updatable;
 
 import static org.lwjgl.glfw.GLFW.*;
@@ -51,7 +51,7 @@ public final class ElementManager extends HashMap<Element, DynamicLocation> impl
 			
 			if(entry.getKey() instanceof Button && entry.getValue() != null) {
 				Button button = (Button)entry.getKey();
-				boolean hovering = HitboxUtil.intersection(entry.getKey().getPositionX(), entry.getKey().getPositionY(), entry.getKey().getWidth(), entry.getKey().getHeight(), mouseX, mouseY);
+				boolean hovering = Intersection.intersection(entry.getKey().getPositionX(), entry.getKey().getPositionY(), entry.getKey().getWidth(), entry.getKey().getHeight(), mouseX, mouseY);
 				
 				if(button.getHovered() && !hovering) button.onUnHover();
 				else if(!button.getHovered() && hovering) button.onHover();
