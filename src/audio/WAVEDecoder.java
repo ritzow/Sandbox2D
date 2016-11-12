@@ -55,8 +55,8 @@ public final class WAVEDecoder {
 		data.flip();
 	}
 
-	public void close() {
-		this.data = null;
+	public void close() throws IOException {
+		input.close();
 	}
 
 	public String toString() {
