@@ -5,7 +5,7 @@ import graphics.ModelRenderer;
 import world.World;
 import world.entity.component.Graphics;
 
-public class GraphicsEntity extends Entity {
+public class TestEntity extends Entity {
 	private static final long serialVersionUID = 6938705771360005876L;
 	
 	protected final transient Graphics graphics;
@@ -13,13 +13,11 @@ public class GraphicsEntity extends Entity {
 	protected float rotationSpeed;
 	protected float width;
 	protected float height;
-	protected float mass;
 	
-	public GraphicsEntity(Model model, float width, float height, float mass) {
+	public TestEntity(Model model, float width, float height) {
 		this.graphics = new Graphics(model);
 		this.width = width;
 		this.height = height;
-		this.mass = mass;
 	}
 	
 	public Graphics getGraphics() {
@@ -77,7 +75,7 @@ public class GraphicsEntity extends Entity {
 
 	@Override
 	public float getMass() {
-		return mass;
+		return 10;
 	}
 
 }
