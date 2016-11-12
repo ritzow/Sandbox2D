@@ -1,6 +1,5 @@
 package network.message;
 
-import networkutils.Message;
 import networkutils.ByteUtil;
 
 public class ServerConnectRequest extends Message {

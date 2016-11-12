@@ -3,7 +3,6 @@ package network.message;
 import static networkutils.ByteUtil.putFloat;
 import static networkutils.ByteUtil.putShort;
 
-import networkutils.Message;
 import world.entity.Entity;
 
 public class EntityUpdateMessage extends Message {

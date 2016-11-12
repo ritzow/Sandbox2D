@@ -1,6 +1,5 @@
 package network.message;
 
-import networkutils.*;
 import static networkutils.ByteUtil.*;
 
 public class ServerConnectAcknowledgement extends Message {
