@@ -29,6 +29,10 @@ public abstract class Entity implements Serializable {
 	public abstract float getWidth();
 	public abstract float getHeight();
 	public abstract float getMass();
+	
+	public final float getSpeed() {
+		return (float)Math.abs(Math.sqrt(velocityX * velocityX + velocityY * velocityY));
+	}
 
 	public final float getPositionX() {
 		return positionX;
