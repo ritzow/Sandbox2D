@@ -21,15 +21,77 @@ public final class InputManager {
 	private ArrayList<WindowFocusHandler> windowFocusHandlers = new ArrayList<WindowFocusHandler>();
 	
 	public InputManager(long window) {
-		glfwSetKeyCallback(window, glfwKeyCallback);
-		glfwSetScrollCallback(window, glfwScrollCallback);
-		glfwSetMouseButtonCallback(window, glfwMouseButtonCallback);
-		glfwSetCursorPosCallback(window, glfwCursorPosCallback);
-		glfwSetFramebufferSizeCallback(window, glfwFramebufferSizeCallback);
-		glfwSetWindowRefreshCallback(window, glfwWindowRefreshCallback);
-		glfwSetWindowCloseCallback(window, glfwWindowCloseCallback);
-		glfwSetWindowIconifyCallback(window, glfwWindowIconifyCallback);
-		glfwSetWindowFocusCallback(window, glfwWindowFocusCallback);
+		glfwSetKeyCallback(window, new GLFWKeyCallback() {
+		    public void invoke (long window, int key, int scancode, int action, int mods) {
+				for(KeyHandler handler : keyHandlers) {
+					handler.keyboardButton(key, scancode, action, mods);
+				}
+		    }
+		});
+		
+		glfwSetScrollCallback(window, new GLFWScrollCallback() {
+			public void invoke(long window, double xoffset, double yoffset) {
+				for(ScrollHandler handler : scrollHandlers) {
+					handler.mouseScroll(xoffset, yoffset);
+				}
+			}
+		});
+		
+		glfwSetMouseButtonCallback(window, new GLFWMouseButtonCallback() {
+			public void invoke(long window, int button, int action, int mods) {
+				for(MouseButtonHandler handler : mouseButtonHandlers) {
+					handler.mouseButton(button, action, mods);
+				}
+			}
+		});
+		
+		glfwSetCursorPosCallback(window, new GLFWCursorPosCallback() {
+			public void invoke(long window, double xpos, double ypos) {
+				for(CursorPosHandler handler : cursorPosHandlers) {
+					handler.cursorPos(xpos, ypos);
+				}
+			}
+		});
+		
+		glfwSetFramebufferSizeCallback(window, new GLFWFramebufferSizeCallback() {
+			public void invoke(long window, int width, int height) {
+				for(FramebufferSizeHandler handler : framebufferSizeHandlers) {
+					handler.framebufferSize(width, height);
+				}
+			}
+		});
+		
+		glfwSetWindowRefreshCallback(window, new GLFWWindowRefreshCallback() {
+			public void invoke(long window) {
+				for(WindowRefreshHandler handler : windowRefreshHandlers) {
+					handler.windowRefresh();
+				}
+			}
+		});
+		
+		glfwSetWindowCloseCallback(window, new GLFWWindowCloseCallback() {
+			public void invoke(long window) {
+				for(WindowCloseHandler handler : windowCloseHandlers) {
+					handler.windowClose();
+				}
+			}
+		});
+		
+		glfwSetWindowIconifyCallback(window, new GLFWWindowIconifyCallback() {
+			public void invoke(long window, boolean iconified) {
+				for(WindowIconifyHandler handler : windowIconifyHandlers) {
+					handler.windowIconify(iconified);
+				}
+			}
+		});
+		
+		glfwSetWindowFocusCallback(window, new GLFWWindowFocusCallback() {
+			public void invoke(long window, boolean focused) {
+				for(WindowFocusHandler handler : windowFocusHandlers) {
+					handler.windowFocus(focused);
+				}
+			}
+		});
 	}
 	
 	public final void unlinkAll() {
@@ -43,78 +105,6 @@ public final class InputManager {
 		windowIconifyHandlers.clear();
 		windowFocusHandlers.clear();
 	}
-	
-	private GLFWWindowCloseCallback glfwWindowCloseCallback = new GLFWWindowCloseCallback() {
-		public void invoke(long window) {
-			for(WindowCloseHandler handler : windowCloseHandlers) {
-				handler.windowClose();
-			}
-		}
-	};
-	
-	private GLFWCursorPosCallback glfwCursorPosCallback = new GLFWCursorPosCallback() {
-		public void invoke(long window, double xpos, double ypos) {
-			for(CursorPosHandler handler : cursorPosHandlers) {
-				handler.cursorPos(xpos, ypos);
-			}
-		}
-	};
-	
-	private GLFWFramebufferSizeCallback glfwFramebufferSizeCallback = new GLFWFramebufferSizeCallback() {
-		public void invoke(long window, int width, int height) {
-			for(FramebufferSizeHandler handler : framebufferSizeHandlers) {
-				handler.framebufferSize(width, height);
-			}
-		}
-	};
-	
-	private GLFWKeyCallback glfwKeyCallback = new GLFWKeyCallback() {
-	    public void invoke (long window, int key, int scancode, int action, int mods) {
-			for(KeyHandler handler : keyHandlers) {
-				handler.keyboardButton(key, scancode, action, mods);
-			}
-	    }
-	};
-	
-	private GLFWMouseButtonCallback glfwMouseButtonCallback = new GLFWMouseButtonCallback() {
-		public void invoke(long window, int button, int action, int mods) {
-			for(MouseButtonHandler handler : mouseButtonHandlers) {
-				handler.mouseButton(button, action, mods);
-			}
-		}
-	};
-	
-	private GLFWScrollCallback glfwScrollCallback = new GLFWScrollCallback() {
-		public void invoke(long window, double xoffset, double yoffset) {
-			for(ScrollHandler handler : scrollHandlers) {
-				handler.mouseScroll(xoffset, yoffset);
-			}
-		}
-	};
-	
-	private GLFWWindowRefreshCallback glfwWindowRefreshCallback = new GLFWWindowRefreshCallback() {
-		public void invoke(long window) {
-			for(WindowRefreshHandler handler : windowRefreshHandlers) {
-				handler.windowRefresh();
-			}
-		}
-	};
-	
-	private GLFWWindowIconifyCallback glfwWindowIconifyCallback = new GLFWWindowIconifyCallback() {
-		public void invoke(long window, boolean iconified) {
-			for(WindowIconifyHandler handler : windowIconifyHandlers) {
-				handler.windowIconify(iconified);
-			}
-		}
-	};
-	
-	private GLFWWindowFocusCallback glfwWindowFocusCallback = new GLFWWindowFocusCallback() {
-		public void invoke(long window, boolean focused) {
-			for(WindowFocusHandler handler : windowFocusHandlers) {
-				handler.windowFocus(focused);
-			}
-		}
-	};
 
 	public final ArrayList<CursorPosHandler> getCursorPosHandlers() {
 		return cursorPosHandlers;
