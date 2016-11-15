@@ -2,7 +2,6 @@ package world.entity;
 
 import graphics.Model;
 import graphics.ModelRenderer;
-import world.World;
 import world.entity.component.Graphics;
 
 public class TestEntity extends Entity {
@@ -14,10 +13,12 @@ public class TestEntity extends Entity {
 	protected float width;
 	protected float height;
 	
-	public TestEntity(Model model, float width, float height) {
+	public TestEntity(Model model, float width, float height, float posX, float posY) {
 		this.graphics = new Graphics(model);
 		this.width = width;
 		this.height = height;
+		this.positionX = posX;
+		this.positionY = posY;
 	}
 	
 	public Graphics getGraphics() {
@@ -34,27 +35,22 @@ public class TestEntity extends Entity {
 	}
 
 	@Override
-	public void onCollision(World world, Entity e, float time) {
-		
-	}
-
-	@Override
 	public boolean getShouldDelete() {
 		return false;
 	}
 
 	@Override
-	public boolean getDoCollision() {
+	public boolean doCollision() {
 		return true;
 	}
 
 	@Override
-	public boolean getDoBlockCollisionResolution() {
+	public boolean doBlockCollisionResolution() {
 		return true;
 	}
 
 	@Override
-	public boolean getDoEntityCollisionResolution() {
+	public boolean doEntityCollisionResolution() {
 		return true;
 	}
 

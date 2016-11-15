@@ -1,10 +1,9 @@
 package world.entity;
 
 import graphics.ModelRenderer;
-import world.World;
 import world.item.Item;
 
-public class ItemEntity extends Entity {
+public final class ItemEntity extends Entity {
 	
 	private static final long serialVersionUID = 41895034901801590L;
 	
@@ -26,18 +25,11 @@ public class ItemEntity extends Entity {
 
 	@Override
 	public void render(ModelRenderer renderer) {
-		renderer.loadOpacity(1.0f);
-		renderer.loadTransformationMatrix(positionX, positionY, 0.5f, 0.5f, rotation);
-		item.getModel().render();
+		item.getGraphics().render(renderer, positionX, positionY, 1.0f, 0.5f, 0.5f, rotation);
 	}
 	
 	public Item getItem() {
 		return item;
-	}
-
-	@Override
-	public void onCollision(World world, Entity e, float time) {
-		//TODO add squash and stretch?
 	}
 
 	@Override
@@ -46,17 +38,17 @@ public class ItemEntity extends Entity {
 	}
 
 	@Override
-	public boolean getDoCollision() {
+	public boolean doCollision() {
 		return true;
 	}
 
 	@Override
-	public boolean getDoBlockCollisionResolution() {
+	public boolean doBlockCollisionResolution() {
 		return true;
 	}
 
 	@Override
-	public boolean getDoEntityCollisionResolution() {
+	public boolean doEntityCollisionResolution() {
 		return false;
 	}
 

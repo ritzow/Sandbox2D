@@ -1,8 +1,8 @@
 package world.item;
 
-import graphics.Model;
+import world.entity.component.Graphics;
 
 public abstract class Item {
-	public abstract Model getModel();
+	public abstract Graphics getGraphics();
 	public abstract String getName();
 }

@@ -1,13 +1,15 @@
 package world.item;
 
-import graphics.Model;
 import world.block.Block;
+import world.entity.component.Graphics;
 
-public class BlockItem extends Item {
+public final class BlockItem extends Item {
 	protected Block block;
+	protected Graphics graphics;
 	
 	public BlockItem(Block block) {
 		this.block = block;
+		this.graphics = new Graphics(block.getModel());
 	}
 	
 	public Block getBlock() {
@@ -15,8 +17,8 @@ public class BlockItem extends Item {
 	}
 
 	@Override
-	public Model getModel() {
-		return block.getModel();
+	public Graphics getGraphics() {
+		return graphics;
 	}
 
 	@Override
