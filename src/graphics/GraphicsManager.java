@@ -10,12 +10,17 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import org.lwjgl.opengl.GL;
+import resource.Fonts;
 import resource.Models;
 import resource.Shaders;
 import resource.Textures;
 import util.Exitable;
 import util.Installable;
-
+/**
+ * Initializes OpenGL and loads data to the GPU, then render objects added to the renderables ArrayList.
+ * @author Solomon Ritzow
+ *
+ */
 public final class GraphicsManager implements Runnable, Installable, Exitable, FramebufferSizeHandler, WindowFocusHandler {
 	private volatile boolean setupComplete, exit, finished;
 	private volatile float framebufferWidth, framebufferHeight;
@@ -46,7 +51,7 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 			Shaders.loadAll(new File("resources/shaders"));
 			Textures.loadAll(new File("resources/assets/textures"));
 			Models.loadAll(new File("resources/assets/textures"));
-			Models.loadDefaultFont(new File("resources/assets/fonts/default"));
+			Fonts.loadAll(new File("resources/assets/fonts"));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
