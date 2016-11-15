@@ -5,28 +5,36 @@ import graphics.data.Texture;
 import graphics.data.TextureCoordinateBuffer;
 import java.io.File;
 import java.io.IOException;
+import java.util.Scanner;
 
-public class Font {
+public final class Font {
 	
 	protected Model[] characterModels;
-	
-	protected Texture characterSheet01;
+	protected Texture charset1;
+	protected String name;
+	protected File directory;
 	
 	/** A class for loading and managing fonts, should only be used in GraphicsManager 
 	 * @throws IOException if unable to load texture 
 	 * **/
 	public Font(File directory) throws IOException {
+		this.directory = directory;
 		characterModels = new Model[200];
+
+		File sheet01 = new File(directory, "sheet01.png");
 		
-		File[] files = directory.listFiles();
-		
-		for(File f : files) {
-			if(characterSheet01 == null && f.canRead() && f.getName().equals("sheet01.png")) {
-				characterSheet01 = Textures.loadTexture(f);
-			}
+		if(sheet01.exists() && sheet01.canRead()) {
+			charset1 = Textures.loadTexture(sheet01);
+		} else {
+			throw new IOException("Font directory does not contain character sheet 1");
 		}
 		
-		load();
+		loadInfo();
+		loadCharacters();
+	}
+	
+	public String getName() {
+		return name;
 	}
 	
 	public void delete() {
@@ -36,7 +44,7 @@ public class Font {
 			}
 		}
 		
-		characterSheet01.delete();
+		charset1.delete();
 	}
 	
 	public Model getModel(char c) {
@@ -45,14 +53,25 @@ public class Font {
 		}
 		
 		else {
-			return Models.RED_SQUARE; //return an error model
+			return Models.RED_SQUARE; //return an error model TODO make a custom unknown character model
 		}
 	}
 	
-	public void load() {
+	protected void loadInfo() throws IOException {
+		File info = new File(directory, "info.txt");
+		if(info.exists() && info.canRead()) {
+			Scanner reader = new Scanner(info);
+			this.name = reader.nextLine();
+			reader.close();
+		} else {
+			throw new IOException("Unable to access info.txt file in font");
+		}
+	}
+	
+	protected void loadCharacters() {
 		float textureWidth = 0.03515625f;
 		float textureHeight = 0.03515625f;
-		float horizontalPadding = 0.00390626f; //exact 0.00390625f
+		float horizontalPadding = 0.00390626f; //exact 0.00390625f, use 0.00390626f to fix texture edges
 		float verticalPadding = 0.00390625f;
 		
 		char[] characters = new char[] {
@@ -63,7 +82,7 @@ public class Font {
 		};
 		
 		for(int i = 0; i < characters.length; i++) {
-			loadCharacter(characters[i], characterSheet01, getTextureCoordinates(textureWidth, textureHeight, horizontalPadding, verticalPadding, i));
+			loadCharacter(characters[i], charset1, getTextureCoordinates(textureWidth, textureHeight, horizontalPadding, verticalPadding, i));
 		}
 	}
 	

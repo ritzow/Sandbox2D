@@ -1,2 +1,1 @@
-name=Default Font
-supportedRange=0-1000 //test values this is an example test file, nothing implemented to read it :D
+Default Font
