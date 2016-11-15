@@ -82,12 +82,9 @@ public final class EventManager implements Runnable, Installable, Exitable {
 	}
 	
 	@Override
-	public void exit() {
+	public synchronized void exit() {
 		exit = true;
-		
-		synchronized(this) {
-			notifyAll();
-		}
+		this.notifyAll();
 	}
 
 	@Override

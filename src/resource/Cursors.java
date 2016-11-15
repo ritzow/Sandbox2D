@@ -9,7 +9,7 @@ import java.nio.ByteBuffer;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.glfw.GLFWImage;
 
-public class Cursors {
+public final class Cursors {
 	public static long LEAFY_STICK;
 	
 	public static void loadAll() throws FileNotFoundException, IOException {

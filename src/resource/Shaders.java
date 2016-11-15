@@ -11,7 +11,7 @@ import java.nio.ByteBuffer;
 import org.lwjgl.BufferUtils;
 import static org.lwjgl.opengl.GL20.*;
 
-public class Shaders {
+public final class Shaders {
 	public static int VERTEX_SHADER;
 	public static int FRAGMENT_SHADER;
 	
