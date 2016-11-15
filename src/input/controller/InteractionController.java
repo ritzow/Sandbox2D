@@ -11,85 +11,72 @@ import org.lwjgl.glfw.GLFW;
 import resource.Models;
 import util.Updatable;
 import world.World;
-import world.block.Block;
-import world.block.RedBlock;
 import world.entity.TestEntity;
+import world.item.BlockItem;
 import world.entity.Player;
 
 public final class InteractionController extends Controller implements MouseButtonHandler, CursorPosHandler, FramebufferSizeHandler, KeyHandler, Updatable {
-	private boolean leftMouseDown;
-	private boolean rightMouseDown;
-	private boolean activatePressed;
-	
+	private boolean primaryAction, secondaryAction, tertiaryAction;
 	private float frameWidth, frameHeight;
 	private volatile double mouseX, mouseY;
 	
 	private long lastPlacement;
 	private long lastBreak;
-	private float cooldown;
-	private Block block;
+	private long cooldown;
 	
 	private World world;
 	private Player player;
 	private Camera camera;
 	
-	public InteractionController(Player player, World world, Camera camera, float cooldownMilliseconds) {
-		this.block = new RedBlock();
+	public InteractionController(Player player, World world, Camera camera, long cooldownMilliseconds) {
 		this.world = world;
 		this.player = player;
 		this.camera = camera;
 		this.cooldown = cooldownMilliseconds;
 	}
 	
-	public void setBlock(Block block) {
-		this.block = block;
-	}
-	
 	public void update() {
 		update(camera, frameWidth, frameHeight);
 	}
 	
-	private void update(Camera camera, float frameWidth, float frameHeight) {
-		float worldX = (float)mouseX;
-		float worldY = (float)mouseY;
-		worldX = (2f * worldX) / frameWidth - 1f; //normalize the mouse coordinate
-		worldY = -((2f * worldY) / frameHeight - 1f); //normalize the mouse coordinate
-		worldX /= frameHeight/frameWidth; //apply aspect ratio
-		worldX /= camera.getZoom();
+	protected void update(Camera camera, float frameWidth, float frameHeight) {
+		float worldX = (2f * (float)mouseX) / frameWidth - 1f; 		//normalize the mouse coordinate
+		float worldY = -((2f * (float)mouseY) / frameHeight - 1f);
+		worldX /= frameHeight/frameWidth; 							//apply aspect ratio
+		worldX /= camera.getZoom(); 								//apply zoom
 		worldY /= camera.getZoom();
-		worldX += camera.getPositionX();
+		worldX += camera.getPositionX(); 							//apply camera position
 		worldY += camera.getPositionY();
-		
-		int blockX = (int) Math.round(worldX);
-		int blockY = (int) Math.round(worldY);
-		
-		float playerX = player.getPositionX();
+		int blockX = (int)Math.round(worldX);						//convert world coordinate to block grid coordinate
+		int blockY = (int)Math.round(worldY);
+		float playerX = player.getPositionX();						//get player position
 		float playerY = player.getPositionY();
-		
 		double distance = Math.sqrt((playerX - blockX) * (playerX - blockX) + (playerY - blockY) * (playerY - blockY));
 		
 		if(distance <= 4) {
-			if(leftMouseDown && (System.currentTimeMillis() - lastBreak > cooldown)) {
+			if(primaryAction && (System.currentTimeMillis() - lastBreak > cooldown)) {
 				if(world.getForeground().isValid(blockX, blockY) && (world.getForeground().destroy(blockX, blockY) || world.getBackground().destroy(blockX, blockY))) {
 					lastBreak = System.currentTimeMillis();
 				}
 			}
 			
-			else if(rightMouseDown && (System.currentTimeMillis() - lastPlacement > cooldown)) {
-				if(world.getForeground().isValid(blockX, blockY) && (world.getBackground().place(blockX, blockY, block.createNew()) || world.getForeground().place(blockX, blockY, block.createNew()))) {
+			else if(secondaryAction && (System.currentTimeMillis() - lastPlacement > cooldown)) {
+				if((player.getSelectedItem() instanceof BlockItem) && 
+					world.getForeground().isValid(blockX, blockY) && 
+					(world.getBackground().place(blockX, blockY, ((BlockItem)player.getSelectedItem()).getBlock()) || 
+					world.getForeground().place(blockX, blockY, ((BlockItem)player.getSelectedItem()).getBlock()))) {
 					lastPlacement = System.currentTimeMillis();
+					player.removeSelectedItem();
 				}
 			}
 		}
 		
-		if(activatePressed) {
-			TestEntity entity = new TestEntity(Models.BLUE_SQUARE, 3, 3);
-			entity.setPositionX(worldX);
-			entity.setPositionY(worldY);
+		if(tertiaryAction) {
+			TestEntity entity = new TestEntity(Models.BLUE_SQUARE, 3, 3, worldX, worldY);
 			entity.getGraphics().setScaleX(3);
 			entity.getGraphics().setScaleY(3);
 			world.getEntities().add(entity);
-			activatePressed = false;
+			tertiaryAction = false;
 		}
 	}
 	
@@ -113,19 +100,19 @@ public final class InteractionController extends Controller implements MouseButt
 	@Override
 	public void mouseButton(int button, int action, int mods) {
 		if(button == GLFW.GLFW_MOUSE_BUTTON_LEFT && action == GLFW.GLFW_PRESS) {
-			leftMouseDown = true;
+			primaryAction = true;
 		}
 		
 		else if(button == GLFW.GLFW_MOUSE_BUTTON_LEFT && action == GLFW.GLFW_RELEASE) {
-			leftMouseDown = false;
+			primaryAction = false;
 		}
 		
 		else if(button == GLFW.GLFW_MOUSE_BUTTON_RIGHT && action == GLFW.GLFW_PRESS) {
-			rightMouseDown = true;
+			secondaryAction = true;
 		}
 		
 		else if(button == GLFW.GLFW_MOUSE_BUTTON_RIGHT && action == GLFW.GLFW_RELEASE) {
-			rightMouseDown = false;
+			secondaryAction = false;
 		}
 	}
 
@@ -144,11 +131,11 @@ public final class InteractionController extends Controller implements MouseButt
 	@Override
 	public void keyboardButton(int key, int scancode, int action, int mods) {
 		if(key == Controls.KEYBIND_ACTIVATE && action == GLFW.GLFW_PRESS) {
-			activatePressed = true;
+			tertiaryAction = true;
 		}
 		
 		else if(key == GLFW.GLFW_KEY_L && action == GLFW.GLFW_PRESS) {
-			player.dropItem(world, player.getSelectedSlot());
+			player.dropSelectedItem(world);
 		}
 		
 		else if(key == GLFW.GLFW_KEY_C && action == GLFW.GLFW_PRESS) {
@@ -157,39 +144,39 @@ public final class InteractionController extends Controller implements MouseButt
 		
 		else if(action == GLFW.GLFW_PRESS) {	
 			if(key == GLFW.GLFW_KEY_KP_1 || key == GLFW.GLFW_KEY_1) {
-				player.setSelected(0);
+				player.setSlot(0);
 			}
 			
 			else if(key == GLFW.GLFW_KEY_KP_2 || key == GLFW.GLFW_KEY_2) {
-				player.setSelected(1);
+				player.setSlot(1);
 			}
 			
 			else if(key == GLFW.GLFW_KEY_KP_3 || key == GLFW.GLFW_KEY_3) {
-				player.setSelected(2);
+				player.setSlot(2);
 			}
 			
 			else if(key == GLFW.GLFW_KEY_KP_4 || key == GLFW.GLFW_KEY_4) {
-				player.setSelected(3);
+				player.setSlot(3);
 			}
 			
 			else if(key == GLFW.GLFW_KEY_KP_5 || key == GLFW.GLFW_KEY_5) {
-				player.setSelected(4);
+				player.setSlot(4);
 			}
 			
 			else if(key == GLFW.GLFW_KEY_KP_6 || key == GLFW.GLFW_KEY_6) {
-				player.setSelected(5);
+				player.setSlot(5);
 			}
 			
 			else if(key == GLFW.GLFW_KEY_KP_7 || key == GLFW.GLFW_KEY_7) {
-				player.setSelected(6);
+				player.setSlot(6);
 			}
 			
 			else if(key == GLFW.GLFW_KEY_KP_8 || key == GLFW.GLFW_KEY_8) {
-				player.setSelected(7);
+				player.setSlot(7);
 			}
 			
 			else if(key == GLFW.GLFW_KEY_KP_9 || key == GLFW.GLFW_KEY_9) {
-				player.setSelected(8);
+				player.setSlot(8);
 			}
 		}
 	}
