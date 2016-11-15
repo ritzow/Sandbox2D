@@ -7,7 +7,7 @@ public class ServerInfoRequest extends Message {
 	@Override
 	public byte[] getBytes() {
 		byte[] message = new byte[2];
-		ByteUtil.putShort(message, 0, (short)5);
+		ByteUtil.putShort(message, 0, Protocol.SERVER_INFO_REQUEST);
 		return message;
 	}
 

@@ -10,7 +10,7 @@ public class ServerInfoMessage extends Message {
 	protected short playerCapacity;
 	
 	public ServerInfoMessage(byte[] packet) throws InvalidMessageException {
-		if(packet.length < 6)
+		if(packet.length < 6 || getShort(packet, 0) != Protocol.SERVER_INFO)
 			throw new InvalidMessageException();
 		this.playerCount = getShort(packet, 2);
 		this.playerCapacity = getShort(packet, 4);
@@ -25,7 +25,7 @@ public class ServerInfoMessage extends Message {
 	@Override
 	public byte[] getBytes() {
 		byte[] message = new byte[6];
-		putShort(message, 0, (short)3);
+		putShort(message, 0, Protocol.SERVER_INFO);
 		putShort(message, 2, playerCount);
 		putShort(message, 4, playerCapacity);
 		return message;
