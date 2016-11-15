@@ -6,6 +6,10 @@ public class Utility {
 		public static float randomFloat(float min, float max) {
 			return (float)(Math.random() * (max - min) + min);
 		}
+		
+		public static long randomLong(long min, long max) {
+			return (long)(Math.random() * (max - min) + min);
+		}
 	}
 	
 	public static class Time {
