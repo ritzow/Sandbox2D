@@ -5,7 +5,7 @@ import world.entity.component.Graphics;
 
 import static util.Utility.MathUtility.randomFloat;
 
-public class BlockPlaceParticleEntity extends ParticleEntity {
+public final class BlockPlaceParticleEntity extends ParticleEntity {
 
 	private static final long serialVersionUID = -7531448862656734229L;
 

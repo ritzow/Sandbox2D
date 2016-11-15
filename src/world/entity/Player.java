@@ -9,22 +9,22 @@ import world.entity.component.Graphics;
 import world.entity.component.Inventory;
 import world.item.Item;
 
+import static util.Utility.MathUtility.*;
+
 public class Player extends LivingEntity {
 
 	private static final long serialVersionUID = 4619416956992212820L;
 	
-	protected final String username;
 	protected final Inventory inventory;
 	protected int selected;
 	
 	protected Graphics head;
 	protected Graphics body;
 	
-	public Player(String username) {
+	public Player() {
 		super(100);
 		this.head = new Graphics(Models.GREEN_FACE, 1.0f, 1.0f, 1.0f, 0.0f);
 		this.body = new Graphics(Models.RED_SQUARE, 1.0f, 1.0f, 1.0f, 0.0f);
-		this.username = username;
 		this.inventory = new Inventory(9);
 	}
 	
@@ -40,24 +40,28 @@ public class Player extends LivingEntity {
 		if(inventory.get(selected) != null) {
 			renderer.loadOpacity(1.0f);
 			renderer.loadTransformationMatrix(positionX + velocityX * 2, positionY, 0.5f, 0.5f, velocityX != 0 ? (float)Math.PI/4 * (velocityX < 0 ? -1 : 1) : 0);
-			inventory.get(selected).getModel().render();
+			inventory.get(selected).getGraphics().getModel().render();
 		}
 	}
 
 	@Override
 	public void onCollision(World world, Entity e, float time) {
 		if(e instanceof ItemEntity && inventory.add(((ItemEntity)e).getItem())) {
+			Item i = ((ItemEntity)e).getItem();
 			world.getEntities().remove(e);
-			world.getEntities().add(new ParticleEntity(new Graphics(((ItemEntity)e).getItem().getModel(), 1.0f, 0.5f, 0.5f, 0), e.getPositionX(), e.getPositionY(), 0, 0.2f, 500, 0, true));
+			world.getEntities().add(new ParticleEntity(
+					new Graphics(i.getGraphics(), 0.75f, 0.5f, 0.5f, 0),
+					positionX, positionY, randomFloat(-0.2f, 0.2f), randomFloat(0.1f, 0.3f), randomFloat(0.1f, 0.5f), randomLong(300, 1000), true));
 			AudioSystem.playSound(Sounds.ITEM_PICKUP, e.getPositionX(), e.getPositionY(), 0, 0.2f, 1, (float)Math.random() * 0.4f + 0.8f);
 		}
 		
 		else if(e.getSpeed() > 0.5f) {
-			world.getEntities().add(new ParticleEntity(new Graphics(Models.RED_SQUARE, 1, 0.4f, 0.4f, 0), positionX, positionY));
+			new ParticleEntity(new Graphics(Models.RED_SQUARE, 0.75f, 0.5f, 0.5f, 0),
+					positionX, positionY, randomFloat(-0.2f, 0.2f), randomFloat(0.1f, 0.3f), randomFloat(0.1f, 0.5f), randomLong(300, 1000), true);
 		}
 	}
 	
-	public Item dropItem(World world, int slot) {
+	protected Item dropItem(World world, int slot) {
 		Item item = inventory.remove(slot);
 		if(item != null) {
 			ItemEntity entity = new ItemEntity(item, positionX, positionY + this.getHeight());
@@ -72,20 +76,25 @@ public class Player extends LivingEntity {
 		return item;
 	}
 	
-	public String getName() {
-		return username;
-	}
-	
 	public Inventory getInventory() {
 		return inventory;
 	}
 	
-	public int getSelectedSlot() {
-		return selected;
+	public Item dropSelectedItem(World world) {
+		return dropItem(world, selected);
 	}
 	
-	public void setSelected(int slot) {
-		selected = slot;
+	public Item removeSelectedItem() {
+		return inventory.remove(selected);
+	}
+	
+	public Item getSelectedItem() {
+		return inventory.get(selected);
+	}
+	
+	public void setSlot(int slot) {
+		if(slot < inventory.getSize())
+			selected = slot;
 	}
 
 	@Override
@@ -94,17 +103,17 @@ public class Player extends LivingEntity {
 	}
 
 	@Override
-	public boolean getDoCollision() {
+	public boolean doCollision() {
 		return true;
 	}
 
 	@Override
-	public boolean getDoBlockCollisionResolution() {
+	public boolean doBlockCollisionResolution() {
 		return true;
 	}
 
 	@Override
-	public boolean getDoEntityCollisionResolution() {
+	public boolean doEntityCollisionResolution() {
 		return true;
 	}
 

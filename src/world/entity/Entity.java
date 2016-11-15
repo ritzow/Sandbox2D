@@ -19,12 +19,15 @@ public abstract class Entity implements Serializable {
 	}
 	
 	public abstract void render(ModelRenderer renderer);
-	public abstract void onCollision(World world, Entity e, float time);
+	
+	public void onCollision(World world, Entity e, float time) {
+		
+	}
 
 	public abstract boolean getShouldDelete();
-	public abstract boolean getDoCollision();
-	public abstract boolean getDoBlockCollisionResolution();
-	public abstract boolean getDoEntityCollisionResolution();
+	public abstract boolean doCollision();
+	public abstract boolean doBlockCollisionResolution();
+	public abstract boolean doEntityCollisionResolution();
 	public abstract float getFriction();
 	public abstract float getWidth();
 	public abstract float getHeight();

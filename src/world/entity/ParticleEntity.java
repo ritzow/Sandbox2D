@@ -1,7 +1,6 @@
 package world.entity;
 
 import graphics.ModelRenderer;
-import world.World;
 import world.entity.component.Graphics;
 
 public class ParticleEntity extends Entity {
@@ -12,12 +11,7 @@ public class ParticleEntity extends Entity {
 	protected long lifetime;
 	protected float rotationSpeed;
 	protected boolean fade;
-	
 	protected boolean shouldDelete;
-	
-	public ParticleEntity(Graphics graphics, float posX, float posY) {
-		this(graphics, posX, posY, (float)Math.random() * 0.4f - 0.2f, (float)Math.random() * 0.35f, (float)Math.random() * 0.4f - 0.2f, (long)(Math.random() * 500), true);
-	}
 
 	public ParticleEntity(Graphics graphics, float posX, float posY, float velocityX, float velocityY,  float rotationSpeed, long lifetime, boolean fade) {
 		this.graphics = graphics;
@@ -32,7 +26,7 @@ public class ParticleEntity extends Entity {
 	}
 	
 	public void update(float time) {
-		float remaining = this.getLifetimeRemaining();
+		float remaining = getLifetimeRemaining();
 		
 		if(remaining <= 0) {
 			this.shouldDelete = true;
@@ -53,13 +47,8 @@ public class ParticleEntity extends Entity {
 	public void render(ModelRenderer renderer) {
 		graphics.render(renderer, positionX, positionY);
 	}
-
-	@Override
-	public void onCollision(World world, Entity e, float time) {
-		
-	}
 	
-	protected float getLifetimeRemaining() {
+	protected long getLifetimeRemaining() {
 		return lifetime - (System.currentTimeMillis() - birthtime);
 	}
 
@@ -69,17 +58,17 @@ public class ParticleEntity extends Entity {
 	}
 
 	@Override
-	public boolean getDoCollision() {
+	public boolean doCollision() {
 		return false;
 	}
 
 	@Override
-	public boolean getDoBlockCollisionResolution() {
+	public boolean doBlockCollisionResolution() {
 		return false;
 	}
 
 	@Override
-	public boolean getDoEntityCollisionResolution() {
+	public boolean doEntityCollisionResolution() {
 		return false;
 	}
 
