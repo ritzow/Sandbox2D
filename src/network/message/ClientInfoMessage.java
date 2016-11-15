@@ -15,6 +15,8 @@ public class ClientInfoMessage extends Message {
 	}
 	
 	public ClientInfoMessage(byte[] data) throws InvalidMessageException {
+		if(data.length < 2 || getShort(data, 0) != Protocol.CLIENT_INFO)
+			throw new InvalidMessageException();
 		byte length = data[2];
 		this.username = new String(data, 3, length);
 	}
@@ -24,11 +26,12 @@ public class ClientInfoMessage extends Message {
 	public byte[] getBytes() {
 		byte[] username = this.username.getBytes(Charset.forName("UTF-8"));
 		byte[] message = new byte[3 + username.length];
-		putShort(message, 0, (short)2);
+		putShort(message, 0, Protocol.CLIENT_INFO);
 		message[2] = (byte)username.length;
 		for(int i = 0; i < username.length; i++) {
 			message[i + 3] = username[i];
 		}
+		
 		return message;
 	}
 
