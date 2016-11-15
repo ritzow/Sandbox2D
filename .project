@@ -3,6 +3,7 @@
 	<name>GameEngine2D</name>
 	<comment></comment>
 	<projects>
+		<project>DatagramNetworking</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

@@ -9,8 +9,8 @@ import org.lwjgl.BufferUtils;
 import de.matthiasmann.twl.utils.*;
 import de.matthiasmann.twl.utils.PNGDecoder.Format;
 
-public class Textures {
-	public static Texture GRASS_BLOCK;
+public final class Textures {
+	public static Texture GRASS;
 	public static Texture BLUE_SQUARE;
 	public static Texture RED_SQUARE;
 	public static Texture GREEN_FACE;
@@ -18,24 +18,12 @@ public class Textures {
 	public static Texture DIRT;
 	
 	public static void loadAll(File directory) throws IOException {
-		
-		File[] files = directory.listFiles();
-		
-		for(File file : files) {
-			if(file.getName().equals("blueSquare.png")) {
-				Textures.BLUE_SQUARE = loadTexture(file);
-			} else if(file.getName().equals("redSquare.png")) {
-				Textures.RED_SQUARE = loadTexture(file);
-			} else if(file.getName().equals("grass.png")) {
-				Textures.GRASS_BLOCK = loadTexture(file);
-			} else if(file.getName().equals("dirt.png")) {
-				Textures.DIRT = loadTexture(file);
-			} else if(file.getName().equals("clouds.png")) {
-				Textures.CLOUDS = loadTexture(file);
-			} else if(file.getName().equals("greenFace.png")) {
-				Textures.GREEN_FACE = loadTexture(file);
-			}
-		}
+		Textures.BLUE_SQUARE = loadTexture(new File(directory, "blueSquare.png"));
+		Textures.RED_SQUARE = loadTexture(new File(directory, "redSquare.png"));
+		Textures.GREEN_FACE = loadTexture(new File(directory, "greenFace.png"));
+		Textures.DIRT = loadTexture(new File(directory, "dirt.png"));
+		Textures.GRASS = loadTexture(new File(directory, "grass.png"));
+		Textures.CLOUDS = loadTexture(new File(directory, "clouds.png"));
 	}
 	
 	public static Texture loadTexture(File file) throws IOException {

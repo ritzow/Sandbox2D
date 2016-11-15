@@ -7,7 +7,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 
-public class Sounds {
+public final class Sounds {
 	public static int BLOCK_BREAK;
 	public static int BLOCK_PLACE;
 	public static int ITEM_PICKUP;

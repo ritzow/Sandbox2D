@@ -1,8 +1,7 @@
 package main;
 
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.UnknownHostException;
+import static util.Utility.Synchronizer.waitForExit;
+import static util.Utility.Synchronizer.waitForSetup;
 
 import audio.AudioSystem;
 import graphics.Background;
@@ -10,17 +9,24 @@ import graphics.GraphicsManager;
 import input.Controls;
 import input.EventManager;
 import input.InputManager;
+import input.controller.CameraController;
 import input.controller.EntityController;
 import input.controller.InteractionController;
 import input.controller.TrackingCameraController;
 import input.handler.KeyHandler;
 import input.handler.WindowCloseHandler;
-import network.GameClient;
-import network.GameServer;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.SocketTimeoutException;
+import network.client.Client;
+import network.server.Server;
+import resource.Fonts;
 import resource.Models;
 import resource.Sounds;
+import ui.DynamicLocation;
 import ui.ElementManager;
-import static util.Utility.Synchronizer.*;
+import ui.element.Text;
 import world.World;
 import world.WorldManager;
 import world.block.DirtBlock;
@@ -33,6 +39,8 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 	private GraphicsManager graphicsManager;
 	private WorldManager worldManager;
 	private ClientUpdateManager clientUpdateManager;
+	
+	public static CameraController camC;
 	
 	private volatile boolean exit;
 	
@@ -83,7 +91,7 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 			world.getBackground().set(column, (int)height, new DirtBlock());
 		}
 		
-		Player player = new Player("blobjim");
+		Player player = new Player();
 		player.setPositionX(world.getForeground().getWidth()/2);
 		player.setPositionY(world.getForeground().getHeight());
 		world.getEntities().add(player);
@@ -95,10 +103,13 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		cursorController.link(eventManager.getDisplay().getInputManager());
 		
 		TrackingCameraController cameraController = new TrackingCameraController(graphicsManager.getRenderer().getCamera(), player, 0.005f, 0.05f, 0.6f);
+		camC = cameraController;
 		cameraController.link(eventManager.getDisplay().getInputManager());
 		
 		ElementManager manager = new ElementManager();
 		manager.link(eventManager.getDisplay().getInputManager());
+		
+		manager.put(new Text("GameEngine2D", Fonts.DEFAULT_FONT, 5, 0), new DynamicLocation(-1, -1, 0.1f, 0.1f));
 		
 		clientUpdateManager = new ClientUpdateManager();
 		
@@ -115,13 +126,25 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		graphicsManager.getRenderables().add(world);
 		graphicsManager.getRenderables().add(manager);
 		
-		GameClient client = null;
-		GameServer server = null;
-		
 		try {
-			new Thread(client = new GameClient(new InetSocketAddress(InetAddress.getLocalHost(), 50000)), "Game Client").start();
-			new Thread(server = new GameServer((short)100), "Game Server").start();
-		} catch (UnknownHostException e) {
+			Client client = new Client();
+			Server server = new Server();
+			new Thread(server, "Game Server").start();
+			
+			while(true) {
+				try {
+					if(client.connectToServer(new InetSocketAddress(InetAddress.getLocalHost(), 50000))) {
+						System.out.println("connected to server!");
+					} else {
+						System.out.println("Couldn't connect to server");
+					}
+					
+					break;
+				} catch(SocketTimeoutException e) {
+					System.err.println("Server didn't response, retrying");
+				}
+			}
+		} catch (IOException e) {
 			e.printStackTrace();
 		}
 		
@@ -154,8 +177,6 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		} catch(InterruptedException e) {
 			
 		} finally {
-			client.exit();
-			server.exit();
 			System.exit(0);
 		}
 	}
