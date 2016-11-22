@@ -17,7 +17,7 @@ public final class BlockSwitcherButton extends GraphicsElement implements Button
 	private static final float ENLARGED_SIZE_Y = 0.3f;
 	
 	public BlockSwitcherButton(Block[] blockTypes) {
-		super(blockTypes[0].getModel(), 0, 0);
+		super(blockTypes[0].getModel());
 		graphics.setScaleX(SIZE_X);
 		graphics.setScaleY(SIZE_Y);
 		graphics.setOpacity(0.75f);
