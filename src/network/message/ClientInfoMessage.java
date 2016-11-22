@@ -1,10 +1,9 @@
 package network.message;
 
+import static util.ByteUtil.*;
+
+import java.net.DatagramPacket;
 import java.nio.charset.Charset;
-
-import networkutils.InvalidMessageException;
-
-import static networkutils.ByteUtil.*;
 
 public class ClientInfoMessage extends Message {
 	
@@ -14,11 +13,11 @@ public class ClientInfoMessage extends Message {
 		this.username = username;
 	}
 	
-	public ClientInfoMessage(byte[] data) throws InvalidMessageException {
-		if(data.length < 2 || getShort(data, 0) != Protocol.CLIENT_INFO)
+	public ClientInfoMessage(DatagramPacket packet) throws InvalidMessageException {
+		if(packet.getLength() < 2 || getShort(packet.getData(), 0) != Protocol.CLIENT_INFO)
 			throw new InvalidMessageException();
-		byte length = data[2];
-		this.username = new String(data, 3, length);
+		byte length = packet.getData()[packet.getOffset() + 2];
+		this.username = new String(packet.getData(), packet.getOffset() + 3, length);
 	}
 
 	//format: protocol 2, 2 bytes, username length, 1 byte, username string, username length bytes
