@@ -1,17 +1,15 @@
 package network.client;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.net.*;
 import java.util.LinkedList;
-import network.MessageDispatcher;
 import network.MessageHandler;
 import network.message.*;
-import networkutils.InvalidMessageException;
-import networkutils.UnknownMessageException;
 
-public class Client {
+public final class Client implements Closeable {
 
-	protected DatagramSocket socket;
+	protected final DatagramSocket socket;
 
 	protected volatile boolean exit;
 	protected volatile boolean finished;
@@ -20,32 +18,6 @@ public class Client {
 		this.socket = new DatagramSocket(new InetSocketAddress(InetAddress.getLocalHost(), 0));
 	}
 	
-//	public synchronized ServerInfoMessage getServerInfo(InetSocketAddress address, long timeout) throws IOException, InvalidMessageException {
-//		byte[] request = new ServerInfoRequest().getBytes();
-//		socket.send(new DatagramPacket(request, request.length, address));
-//		long start = System.currentTimeMillis();
-//		DatagramPacket buffer = new DatagramPacket(new byte[100], 100);
-//		while(System.currentTimeMillis() - start < timeout) {
-//			socket.receive(buffer);
-//		}
-//		
-//		return null;
-//	}
-	
-	public synchronized boolean connectToServer(SocketAddress address) throws IOException, SocketTimeoutException {
-		byte[] request = new ServerConnectRequest().getBytes();
-		socket.send(new DatagramPacket(request, request.length, address));
-		
-		try {
-			socket.setSoTimeout(1000);
-			DatagramPacket response = new DatagramPacket(new byte[100], 100);
-			socket.receive(response);
-			
-			if(new ServerConnectAcknowledgement(response.getData()).isAccepted()) {
-				return true;
-			}
-			
-			else {
 	/**
 	 * Connect to a specified SocketAddress using a ServerConnectRequest
 	 * @param address the socket address of the server
@@ -86,15 +58,19 @@ public class Client {
 		}
 		return false;
 	}
+	
+	@Override
+	public void close() throws IOException {
+		socket.close();
+		this.exit = true;
 	}
 	
-	public synchronized void disconnectFromServer() {
+	public void run() {
 		
 	}
 	
 	protected class ClientLogicHandler implements MessageHandler, Runnable {
 		protected LinkedList<byte[]> unprocessedPackets;
-		
 		protected InetSocketAddress serverAddress;
 
 		public ClientLogicHandler() {
@@ -103,19 +79,10 @@ public class Client {
 		
 		@Override
 		public void run() {
-			MessageDispatcher dispatcher = new MessageDispatcher();
-			
 			try {
 				while(!exit) {
 					if(unprocessedPackets.pollFirst() != null) {
-						try {
-							dispatcher.process(unprocessedPackets.getFirst(), this);
-							unprocessedPackets.removeFirst();
-						} catch (UnknownMessageException e) {
-							e.printStackTrace();
-						} catch (InvalidMessageException e) {
-							e.printStackTrace();
-						}
+						unprocessedPackets.removeFirst();
 					} else {
 						synchronized(this) {
 							while(!exit && unprocessedPackets.pollFirst() == null) {
@@ -133,45 +100,6 @@ public class Client {
 				finished = true;
 				this.notifyAll();
 			}
-		}
-
-		public synchronized void process(byte[] packet) {
-			unprocessedPackets.addLast(packet);
-			this.notifyAll();
-		}
-
-		@Override
-		public void handleMessage(ClientInfoMessage message) {
-			
-		}
-
-		@Override
-		public void handleMessage(EntityUpdateMessage message) {
-			
-		}
-
-		@Override
-		public void handleMessage(ServerConnectAcknowledgement message) {
-			if(message.isAccepted()) {
-				
-			} else {
-				
-			}
-		}
-
-		@Override
-		public void handleMessage(ServerConnectRequest messsage) {
-			
-		}
-
-		@Override
-		public void handleMessage(ServerInfoMessage message) {
-			
-		}
-
-		@Override
-		public void handleMessage(ServerInfoRequest message) {
-			
 		}
 	}
 
