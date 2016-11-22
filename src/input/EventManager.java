@@ -22,8 +22,7 @@ public final class EventManager implements Runnable, Installable, Exitable {
 	public void run() {
 		
 		if(!glfwInit()) {
-			System.err.println("GLFW failed to initialize");
-			System.exit(1);
+			throw new UnsupportedOperationException("GLFW failed to initialize");
 		}
 		
 		GLFWErrorCallback.createPrint(System.err).set();
@@ -35,7 +34,7 @@ public final class EventManager implements Runnable, Installable, Exitable {
 		}
 		
 		display = new Display("2D Game");
-		display.setCursor(Cursors.LEAFY_STICK);
+		display.setCursor(Cursors.PICKAXE);
 		
 		synchronized(this) {
 			setupComplete = true;
@@ -62,8 +61,9 @@ public final class EventManager implements Runnable, Installable, Exitable {
 		return display;
 	}
 	
-	public void setReadyToDisplay() {
+	public synchronized void setReadyToDisplay() {
 		shouldDisplay = true;
+		this.notifyAll();
 	}
 	
 	private synchronized void waitUntilReady() {

@@ -1,7 +1,7 @@
 package network.message;
 
-import static networkutils.ByteUtil.putFloat;
-import static networkutils.ByteUtil.putShort;
+import static util.ByteUtil.putFloat;
+import static util.ByteUtil.putShort;
 
 import world.entity.Entity;
 
