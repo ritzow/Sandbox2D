@@ -46,18 +46,21 @@ public class Player extends LivingEntity {
 
 	@Override
 	public void onCollision(World world, Entity e, float time) {
-		if(e instanceof ItemEntity && inventory.add(((ItemEntity)e).getItem())) {
-			Item i = ((ItemEntity)e).getItem();
-			world.getEntities().remove(e);
-			world.getEntities().add(new ParticleEntity(
-					new Graphics(i.getGraphics(), 0.75f, 0.5f, 0.5f, 0),
-					positionX, positionY, randomFloat(-0.2f, 0.2f), randomFloat(0.1f, 0.3f), randomFloat(0.1f, 0.5f), randomLong(300, 1000), true));
-			AudioSystem.playSound(Sounds.ITEM_PICKUP, e.getPositionX(), e.getPositionY(), 0, 0.2f, 1, (float)Math.random() * 0.4f + 0.8f);
+		if(e instanceof ItemEntity) {
+			if(inventory.add(((ItemEntity)e).getItem())) {
+				Item i = ((ItemEntity)e).getItem();
+				world.getEntities().remove(e);
+				world.getEntities().add(new ParticleEntity(
+						new Graphics(i.getGraphics(), 0.75f, 0.5f, 0.5f, 0),
+						positionX, positionY, randomFloat(-0.2f, 0.2f), randomFloat(0.1f, 0.3f), randomFloat(0.1f, 0.5f), randomLong(300, 1000), true));
+				AudioSystem.playSound(Sounds.ITEM_PICKUP, e.getPositionX(), e.getPositionY(), 0, 0.2f, 1, (float)Math.random() * 0.4f + 0.8f);
+			}
 		}
 		
-		else if(e.getSpeed() > 0.5f) {
+		else if(e.getSpeed() > 0.3f) {
 			new ParticleEntity(new Graphics(Models.RED_SQUARE, 0.75f, 0.5f, 0.5f, 0),
 					positionX, positionY, randomFloat(-0.2f, 0.2f), randomFloat(0.1f, 0.3f), randomFloat(0.1f, 0.5f), randomLong(300, 1000), true);
+			AudioSystem.playSound(Sounds.SNAP, e.positionX, e.positionY, e.velocityX, e.velocityY, 1.0f, 1.0f);
 		}
 	}
 	
