@@ -15,9 +15,9 @@ public class ContainerElement extends Element {
 	}
 
 	@Override
-	public void render(ModelRenderer renderer, float x, float y) {
+	public void render(ModelRenderer renderer) {
 		for(Element e : elements) {
-			e.render(renderer, x, y);
+			e.render(renderer);
 		}
 	}
 
