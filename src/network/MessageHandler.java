@@ -1,12 +1,30 @@
 package network;
 
+import java.net.SocketAddress;
 import network.message.*;
 
 public interface MessageHandler {
-	void handleMessage(ClientInfoMessage message);
-	void handleMessage(EntityUpdateMessage message);
-	void handleMessage(ServerConnectAcknowledgement message);
-	void handleMessage(ServerConnectRequest messsage);
-	void handleMessage(ServerInfoMessage message);
-	void handleMessage(ServerInfoRequest message);
+	default void handle(ClientInfoMessage message, SocketAddress sender) {
+		
+	}
+	
+	default void handle(EntityUpdateMessage message, SocketAddress sender) {
+		
+	}
+	
+	default void handle(ServerConnectAcknowledgment message, SocketAddress sender) {
+		
+	}
+	
+	default void handle(ServerConnectRequest messsage, SocketAddress sender) {
+		
+	}
+	
+	default void handle(ServerInfoMessage message, SocketAddress sender) {
+		
+	}
+	
+	default void handle(ServerInfoRequest message, SocketAddress sender) {
+		
+	}
 }
