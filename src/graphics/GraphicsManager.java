@@ -80,7 +80,7 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 							renderable.render(renderer);
 						}
 					}
-
+					
 					glFinish();
 					display.refresh();
 					Thread.sleep(1);
@@ -132,7 +132,7 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 	}
 
 	@Override
-	public synchronized void framebufferSize(int width, int height) {
+	public void framebufferSize(int width, int height) {
 		framebufferWidth = width;
 		framebufferHeight = height;
 		updateFrameSize = true;

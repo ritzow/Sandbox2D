@@ -22,16 +22,11 @@ public final class WorldManager implements Runnable, Exitable {
 			long currentTime;
 			float updateTime;
 			long previousTime = System.nanoTime();
-			
 			while(!exit) {
 			    currentTime = System.nanoTime();
 			    updateTime = (currentTime - previousTime) * 0.0000000625f; //convert from nanoseconds to sixteenth of a milliseconds
 			    previousTime = currentTime;
-				
-			    synchronized(world) {
-					world.update(updateTime);
-			    }
-			    
+			    world.update(updateTime);
 				Thread.sleep(16); //TODO change based on time it takes to update (computer speed)
 			}
 		} catch (InterruptedException e) {
