@@ -11,25 +11,19 @@ import org.lwjgl.glfw.GLFWImage;
 
 public final class Cursors {
 	public static long LEAFY_STICK;
+	public static long PICKAXE;
 	
 	public static void loadAll() throws FileNotFoundException, IOException {
-		LEAFY_STICK = Cursors.loadCursor(new FileInputStream(new File("resources/assets/textures/cursor.png")), true);
+		Cursors.LEAFY_STICK = loadCursor(new File("resources/assets/textures/cursors/cursor.png"), 0, 0);
+		Cursors.PICKAXE = loadCursor(new File("resources/assets/textures/cursors/pickaxe32.png"), 0, 0.66f);
 	}
 	
-	public static long loadCursor(InputStream image, boolean cursorLocationTopLeft) throws IOException {
-		GLFWImage cursorImage = GLFWImage.create();
-		PNGDecoder decoder = new PNGDecoder(image);
+	public static long loadCursor(File image, float ratioX, float ratioY) throws IOException {
+		PNGDecoder decoder = new PNGDecoder(new FileInputStream(image));
 		ByteBuffer pixels = BufferUtils.createByteBuffer(decoder.getWidth() * decoder.getHeight() * 4);
 		decoder.decode(pixels, decoder.getWidth() * 4, Format.RGBA);
 		pixels.flip();
-		cursorImage.set(decoder.getWidth(), decoder.getHeight(), pixels);
-		
-		if(cursorLocationTopLeft) {
-			return glfwCreateCursor(cursorImage, 0, 0);
-		} 
-		
-		else {
-			return glfwCreateCursor(cursorImage, decoder.getWidth()/2, decoder.getHeight()/2);
-		}
+		GLFWImage cursorImage = GLFWImage.create().set(decoder.getWidth(), decoder.getHeight(), pixels);
+		return glfwCreateCursor(cursorImage, (int)(decoder.getWidth() * ratioX), (int)(decoder.getHeight() * ratioY));
 	}
 }
