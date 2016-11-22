@@ -46,12 +46,46 @@ public class Client {
 			}
 			
 			else {
+	/**
+	 * Connect to a specified SocketAddress using a ServerConnectRequest
+	 * @param address the socket address of the server
+	 * @param attempts number of times to resend the connection request
+	 * @param timeout the total amount of time in milliseconds to wait for the server to respond
+	 * @return whether or not the server responded and accepted the client's connection
+	 * @throws IOException if the socket throws an IOException
+	 */
+	public synchronized boolean connectToServer(SocketAddress address, int attempts, int timeout) throws IOException {
+		if(timeout != 0 && timeout < attempts)
+			throw new UnsupportedOperationException("timeout too small");
+		socket.setSoTimeout(timeout/attempts);
+		DatagramPacket response = new DatagramPacket(new byte[100], 100);
+		byte[] packet = new ServerConnectRequest().getBytes();
+		DatagramPacket request = new DatagramPacket(packet, packet.length, address);
+		socket.send(request);
+		long startTime = System.currentTimeMillis();
+		int attemptsRemaining = attempts;
+		while(attemptsRemaining >= 0 && (System.currentTimeMillis() - startTime < timeout || timeout == 0)) {
+			try {
+				socket.receive(response);
+				if(response.getSocketAddress().equals(address)) {
+					return (new ServerConnectAcknowledgment(response).isAccepted());
+				} else {
+					continue;
+				}
+			} catch(InvalidMessageException e) {
+				continue;
+			} catch(SocketTimeoutException e) {
+				if(--attemptsRemaining > 0)
+					socket.send(request);
+				continue;
+			} catch(PortUnreachableException e) {
 				return false;
+			} catch(SocketException e) {
+				e.printStackTrace();
 			}
-			
-		} catch (InvalidMessageException e) {
-			return false;
 		}
+		return false;
+	}
 	}
 	
 	public synchronized void disconnectFromServer() {
