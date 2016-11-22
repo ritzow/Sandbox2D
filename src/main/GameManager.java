@@ -9,7 +9,6 @@ import graphics.GraphicsManager;
 import input.Controls;
 import input.EventManager;
 import input.InputManager;
-import input.controller.CameraController;
 import input.controller.EntityController;
 import input.controller.InteractionController;
 import input.controller.TrackingCameraController;
@@ -18,15 +17,10 @@ import input.handler.WindowCloseHandler;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.SocketTimeoutException;
 import network.client.Client;
 import network.server.Server;
-import resource.Fonts;
 import resource.Models;
 import resource.Sounds;
-import ui.DynamicLocation;
-import ui.ElementManager;
-import ui.element.Text;
 import world.World;
 import world.WorldManager;
 import world.block.DirtBlock;
@@ -40,8 +34,6 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 	private WorldManager worldManager;
 	private ClientUpdateManager clientUpdateManager;
 	
-	public static CameraController camC;
-	
 	private volatile boolean exit;
 	
 	public GameManager(EventManager eventManager) {
@@ -49,7 +41,6 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 	}
 	
 	public void run() {
-		
 		if(GameEngine2D.PRINT_MEMORY_USAGE) {
 			new Thread("Memory Usage Thread") {
 				public void run() {
@@ -69,9 +60,7 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		eventManager.getDisplay().getInputManager().getWindowCloseHandlers().add(this);
 		eventManager.getDisplay().getInputManager().getKeyHandlers().add(this);
 		new Thread(graphicsManager = new GraphicsManager(eventManager.getDisplay()), "Graphics Manager").start();
-		
 		AudioSystem.start();
-		
 		waitForSetup(graphicsManager);
 		
 		World world = new World(500, 200, 0.015f);
@@ -97,26 +86,16 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		world.getEntities().add(player);
 		
 		EntityController playerController = new EntityController(player, world, 0.2f);
-		playerController.link(eventManager.getDisplay().getInputManager());
-		
 		InteractionController cursorController = new InteractionController(player, world, graphicsManager.getRenderer().getCamera(), 200);
-		cursorController.link(eventManager.getDisplay().getInputManager());
-		
 		TrackingCameraController cameraController = new TrackingCameraController(graphicsManager.getRenderer().getCamera(), player, 0.005f, 0.05f, 0.6f);
-		camC = cameraController;
+		playerController.link(eventManager.getDisplay().getInputManager());
+		cursorController.link(eventManager.getDisplay().getInputManager());
 		cameraController.link(eventManager.getDisplay().getInputManager());
 		
-		ElementManager manager = new ElementManager();
-		manager.link(eventManager.getDisplay().getInputManager());
-		
-		manager.put(new Text("GameEngine2D", Fonts.DEFAULT_FONT, 5, 0), new DynamicLocation(-1, -1, 0.1f, 0.1f));
-		
 		clientUpdateManager = new ClientUpdateManager();
-		
 		clientUpdateManager.getUpdatables().add(playerController);
 		clientUpdateManager.getUpdatables().add(cursorController);
 		clientUpdateManager.getUpdatables().add(cameraController);
-		clientUpdateManager.getUpdatables().add(manager);
 		clientUpdateManager.link(eventManager.getDisplay().getInputManager());
 		
 		new Thread(clientUpdateManager, "Client Updater").start();
@@ -124,58 +103,49 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		
 		graphicsManager.getRenderables().add(new Background(Models.CLOUDS_BACKGROUND));
 		graphicsManager.getRenderables().add(world);
-		graphicsManager.getRenderables().add(manager);
 		
 		try {
 			Client client = new Client();
 			Server server = new Server();
 			new Thread(server, "Game Server").start();
 			
-			while(true) {
-				try {
-					if(client.connectToServer(new InetSocketAddress(InetAddress.getLocalHost(), 50000))) {
-						System.out.println("connected to server!");
-					} else {
-						System.out.println("Couldn't connect to server");
-					}
-					
-					break;
-				} catch(SocketTimeoutException e) {
-					System.err.println("Server didn't response, retrying");
-				}
+			boolean connected = client.connectToServer(new InetSocketAddress(InetAddress.getLocalHost(), 50000), 1, 1000);
+			
+			if(connected) {
+				System.out.println("Connected to the server!");
+			} else {
+				System.out.println("Failed to connect to the server!");
 			}
+			
+			client.close();
+			server.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 		
-		synchronized(eventManager) {
-			eventManager.setReadyToDisplay();
-			eventManager.notifyAll();
-		}
+		eventManager.setReadyToDisplay();
 		
 		Runtime.getRuntime().addShutdownHook(new Thread() {
 			public void run() {
 				System.out.print("Program exiting...");
 		 		clientUpdateManager.exit();
 				worldManager.exit();
-				
 				Sounds.deleteAll();
-				AudioSystem.stop();
-				
+				AudioSystem.stop(); 
 				waitForExit(graphicsManager);
-				waitForExit(eventManager); //wait for the eventManager to exit before the program clsoes
+				waitForExit(eventManager); //wait for the eventManager to exit before the program closes
 				System.out.println(" complete!");
 			}
 		});
 		
 		try {
-			synchronized(this) {
-				while(!exit) {
+			while(!exit) {
+				synchronized(this) {
 					this.wait();
 				}
 			}
 		} catch(InterruptedException e) {
-			
+			System.err.println("Game Manager was interrupted");
 		} finally {
 			System.exit(0);
 		}
@@ -190,10 +160,8 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 	@Override
 	public synchronized void keyboardButton(int key, int scancode, int action, int mods) {
 		if(key == Controls.KEYBIND_QUIT && action == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
-			synchronized(this) {
-				this.exit = true;
-				this.notifyAll();
-			}
+			this.exit = true;
+			this.notifyAll();
 		}
 		
         else if(key == Controls.KEYBIND_FULLSCREEN && action == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
