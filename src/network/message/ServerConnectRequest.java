@@ -1,7 +1,7 @@
 package network.message;
 
-import networkutils.ByteUtil;
-import networkutils.InvalidMessageException;
+import java.net.DatagramPacket;
+import util.ByteUtil;
 
 public class ServerConnectRequest extends Message {
 	
@@ -9,8 +9,8 @@ public class ServerConnectRequest extends Message {
 		
 	}
 	
-	public ServerConnectRequest(byte[] packet) throws InvalidMessageException {
-		if(packet.length < 2 || ByteUtil.getShort(packet, 0) != Protocol.SERVER_CONNECT_REQUEST)
+	public ServerConnectRequest(DatagramPacket packet) throws InvalidMessageException {
+		if(packet.getLength() < 2 || ByteUtil.getShort(packet.getData(), packet.getOffset()) != Protocol.SERVER_CONNECT_REQUEST)
 			throw new InvalidMessageException();
 	}
 

@@ -1,20 +1,19 @@
 package network.message;
 
-import static networkutils.ByteUtil.*;
+import static util.ByteUtil.*;
 
-import networkutils.InvalidMessageException;
+import java.net.DatagramPacket;
 
 public class ServerInfoMessage extends Message {
 	
 	protected short playerCount;
 	protected short playerCapacity;
 	
-	public ServerInfoMessage(byte[] packet) throws InvalidMessageException {
-		if(packet.length < 6 || getShort(packet, 0) != Protocol.SERVER_INFO)
+	public ServerInfoMessage(DatagramPacket packet) throws InvalidMessageException {
+		if(packet.getLength() < 6 || getShort(packet.getData(), packet.getOffset()) != Protocol.SERVER_INFO)
 			throw new InvalidMessageException();
-		this.playerCount = getShort(packet, 2);
-		this.playerCapacity = getShort(packet, 4);
-		
+		this.playerCount = getShort(packet.getData(), packet.getOffset() + 2);
+		this.playerCapacity = getShort(packet.getData(), packet.getOffset() + 4);
 	}
 	
 	public ServerInfoMessage(short playerCount, short playerCapacity) {
