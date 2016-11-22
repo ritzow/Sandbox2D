@@ -12,12 +12,14 @@ public final class Sounds {
 	public static int BLOCK_PLACE;
 	public static int ITEM_PICKUP;
 	public static int THROW;
+	public static int SNAP;
 	
 	public static void loadAll(File directory) throws IOException {
 		Sounds.BLOCK_BREAK = loadAudio(new File(directory.getPath(), "dig.wav"));
 		Sounds.BLOCK_PLACE = loadAudio(new File(directory.getPath(), "place.wav"));
 		Sounds.ITEM_PICKUP = loadAudio(new File(directory.getPath(), "pop.wav"));
 		Sounds.THROW = loadAudio(new File(directory.getPath(), "throw.wav"));
+		Sounds.SNAP = loadAudio(new File(directory.getPath(), "snap.wav"));
 	}
 	
 	public static int loadAudio(File file) throws IOException {

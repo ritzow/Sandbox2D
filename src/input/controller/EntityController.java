@@ -9,10 +9,7 @@ import input.InputManager;
 import input.handler.KeyHandler;
 import util.Updatable;
 import world.World;
-import world.block.RedBlock;
 import world.entity.Entity;
-import world.entity.ItemEntity;
-import world.item.BlockItem;
 
 public final class EntityController extends Controller implements KeyHandler, Updatable {
 	
@@ -54,6 +51,39 @@ public final class EntityController extends Controller implements KeyHandler, Up
 		
 		if(up && canJump()) {
 			entity.setVelocityY(movementSpeed);
+		}
+	}
+	
+	@Override
+	public void keyboardButton(int key, int scancode, int action, int mods) {
+		if(key == Controls.KEYBIND_UP) {
+			if(action == GLFW_PRESS) {
+				up = true;
+			}
+			
+			else if(action == GLFW_RELEASE) {
+				up = false;
+			}
+		}
+		
+		else if(key == Controls.KEYBIND_LEFT) {
+			if(action == GLFW_PRESS) {
+				left = true;
+			}
+			
+			else if(action == GLFW_RELEASE) {
+				left = false;
+			}
+		}
+		
+		else if(key == Controls.KEYBIND_RIGHT) {
+			if(action == GLFW_PRESS) {
+				right = true;
+			}
+			
+			else if(action == GLFW_RELEASE) {
+				right = false;
+			}
 		}
 	}
 	
@@ -124,49 +154,5 @@ public final class EntityController extends Controller implements KeyHandler, Up
 	@Override
 	public void unlink(InputManager input) {
 		input.getKeyHandlers().remove(this);
-	}
-
-	@Override
-	public void keyboardButton(int key, int scancode, int action, int mods) {
-		if(key == Controls.KEYBIND_UP) {
-			if(action == GLFW_PRESS) {
-				up = true;
-			}
-			
-			else if(action == GLFW_RELEASE) {
-				up = false;
-			}
-		}
-		
-		else if(key == Controls.KEYBIND_DOWN) {
-			if(action == GLFW_PRESS) {
-				//down = true;
-				world.getEntities().add(new ItemEntity(new BlockItem(new RedBlock()), entity.getPositionX(), entity.getPositionY()));
-			}
-			
-			else if(action == GLFW_RELEASE) {
-				//down = false;
-			}
-		}
-		
-		else if(key == Controls.KEYBIND_LEFT) {
-			if(action == GLFW_PRESS) {
-				left = true;
-			}
-			
-			else if(action == GLFW_RELEASE) {
-				left = false;
-			}
-		}
-		
-		else if(key == Controls.KEYBIND_RIGHT) {
-			if(action == GLFW_PRESS) {
-				right = true;
-			}
-			
-			else if(action == GLFW_RELEASE) {
-				right = false;
-			}
-		}
 	}
 }
