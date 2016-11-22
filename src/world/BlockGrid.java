@@ -23,11 +23,11 @@ public class BlockGrid implements Serializable {
 		return blocks[blocks.length - 1 - y][x];
 	}
 	
-	public void set(int x, int y, Block block) {
+	public synchronized void set(int x, int y, Block block) {
 		blocks[blocks.length - 1 - y][x] = block;
 	}
 	
-	public boolean destroy(int x, int y) {
+	public synchronized boolean destroy(int x, int y) {
 		if(isBlock(x, y)) {
 			get(x, y).onBreak(world, x, y);
 			set(x, y, null);
@@ -37,7 +37,7 @@ public class BlockGrid implements Serializable {
 		}
 	}
 	
-	public boolean place(int x, int y, Block block) {
+	public synchronized boolean place(int x, int y, Block block) {
 		if(!isBlock(x, y) && isStable(x, y)) {
 			set(x, y, block);
 			block.onPlace(world, x, y);

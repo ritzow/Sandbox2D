@@ -7,7 +7,6 @@ import graphics.Renderable;
 import graphics.ModelRenderer;
 import java.util.ArrayList;
 import world.entity.Entity;
-
 import java.io.Serializable;
 
 public final class World implements Renderable, Serializable {
@@ -33,7 +32,7 @@ public final class World implements Renderable, Serializable {
 		return background;
 	}
 	
-	public ArrayList<Entity> getEntities() {
+	public synchronized ArrayList<Entity> getEntities() {
 		return entities;
 	}
 	
@@ -41,11 +40,11 @@ public final class World implements Renderable, Serializable {
 		return gravity;
 	}
 
-	public void setGravity(float gravity) {
+	public synchronized void setGravity(float gravity) {
 		this.gravity = gravity;
 	}
 
-	public void update(float time) {
+	public synchronized void update(float time) {
 		for(int i = 0; i < entities.size(); i++) {
 			Entity e = entities.get(i);
 			
@@ -109,15 +108,15 @@ public final class World implements Renderable, Serializable {
 		}
 	}
 	
-	protected boolean checkCollision(Entity e, Entity o) {
+	protected final boolean checkCollision(Entity e, Entity o) {
 		return checkCollision(e, o.getPositionX(), o.getPositionY(), o.getWidth(), o.getHeight());
 	}
 	
-	protected boolean checkCollision(Entity e, float otherX, float otherY, float otherWidth, float otherHeight) {
+	protected final boolean checkCollision(Entity e, float otherX, float otherY, float otherWidth, float otherHeight) {
 		 return (Math.abs(e.getPositionX() - otherX) * 2 < (e.getWidth() + otherWidth)) &&  (Math.abs(e.getPositionY() - otherY) * 2 < (e.getHeight() + otherHeight));
 	}
 	
-	protected boolean resolveCollision(Entity e, Entity o, float time) {
+	protected final boolean resolveCollision(Entity e, Entity o, float time) {
 		return resolveCollision(e, o.getPositionX(), o.getPositionY(), o.getWidth(), o.getHeight(), o.getFriction(), time);
 	}
 	
@@ -215,7 +214,7 @@ public final class World implements Renderable, Serializable {
 	}
 	
 	@Override
-	public void render(ModelRenderer renderer) {
+	public synchronized void render(ModelRenderer renderer) {
 		renderer.loadViewMatrix(true);
 		
 		int leftBound = 	Math.max(0, (int)Math.floor(renderer.getWorldViewportLeftBound()));
@@ -225,7 +224,6 @@ public final class World implements Renderable, Serializable {
 		
 		for(int row = bottomBound; row < topBound; row++) {
 			for(int column = leftBound; column < rightBound; column++) {
-				
 				if(foreground.isBlock(column, row)) {
 					Model blockModel = foreground.get(column, row).getModel();
 					renderer.loadOpacity(1);
