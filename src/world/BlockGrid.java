@@ -15,6 +15,26 @@ public class BlockGrid implements Serializable {
 		this.world = world;
 	}
 	
+	public Block[][] toArray() {
+		return toArray(0, 0, blocks.length, blocks[0].length);
+	}
+	
+	/**
+	 * 
+	 * @param x the starting x-coordinate to copy, from the left
+	 * @param y the starting y-coordinate to copy, from the bottom
+	 * @param width the width of the rectangular area to copy
+	 * @param height the height of the rectangular area to copy
+	 * @return a new 2D block array representing the rectangle of blocks specified by the parameters
+	 */ //TODO is this actually from the bottom left? it doesnt use the get and set methods
+	public Block[][] toArray(int x, int y, int width, int height) {
+		Block[][] range = new Block[height][width];
+		for(int row = y; row < y + height; row++) {
+			System.arraycopy(blocks[row], x, range[row - y], 0, width);
+		}
+		return range;
+	}
+	
 	public boolean isValid(int x, int y) {
 		return y < blocks.length && y >= 0 && x < blocks[y].length && x >= 0;
 	}
