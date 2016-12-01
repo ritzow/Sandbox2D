@@ -5,15 +5,15 @@ import static util.ByteUtil.*;
 import java.net.DatagramPacket;
 import java.nio.charset.Charset;
 
-public class ClientInfoMessage extends Message {
+public class ClientInfo extends Message {
 	
 	protected String username;
 	
-	public ClientInfoMessage(String username) {
+	public ClientInfo(String username) {
 		this.username = username;
 	}
 	
-	public ClientInfoMessage(DatagramPacket packet) throws InvalidMessageException {
+	public ClientInfo(DatagramPacket packet) throws InvalidMessageException {
 		if(packet.getLength() < 2 || getShort(packet.getData(), 0) != Protocol.CLIENT_INFO)
 			throw new InvalidMessageException();
 		byte length = packet.getData()[packet.getOffset() + 2];
