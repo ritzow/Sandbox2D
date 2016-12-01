@@ -17,7 +17,10 @@ import input.handler.WindowCloseHandler;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import network.client.Client;
+import network.message.ClientInfo;
+import network.message.BlockGridChunkMessage;
 import network.server.Server;
 import resource.Models;
 import resource.Sounds;
@@ -40,6 +43,7 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		this.eventManager = eventManager;
 	}
 	
+	@Override
 	public void run() {
 		if(GameEngine2D.PRINT_MEMORY_USAGE) {
 			new Thread("Memory Usage Thread") {
@@ -104,49 +108,59 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		graphicsManager.getRenderables().add(new Background(Models.CLOUDS_BACKGROUND));
 		graphicsManager.getRenderables().add(world);
 		
-		try {
-			Client client = new Client();
-			Server server = new Server();
-			new Thread(server, "Game Server").start();
-			
-			boolean connected = client.connectToServer(new InetSocketAddress(InetAddress.getLocalHost(), 50000), 1, 1000);
-			
-			if(connected) {
-				System.out.println("Connected to the server!");
-			} else {
-				System.out.println("Failed to connect to the server!");
-			}
-			
-			client.close();
-			server.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		
 		eventManager.setReadyToDisplay();
 		
-		Runtime.getRuntime().addShutdownHook(new Thread() {
+		Runtime.getRuntime().addShutdownHook(new Thread("Shutdown") {
 			public void run() {
-				System.out.print("Program exiting...");
 		 		clientUpdateManager.exit();
 				worldManager.exit();
 				Sounds.deleteAll();
 				AudioSystem.stop(); 
 				waitForExit(graphicsManager);
-				waitForExit(eventManager); //wait for the eventManager to exit before the program closes
-				System.out.println(" complete!");
+				waitForExit(eventManager);
 			}
 		});
 		
+		System.out.println(new BlockGridChunkMessage(world.getForeground(), 0, 0, world.getForeground().getWidth(), world.getForeground().getHeight()));
+
+		System.out.println("Starting networking...");
+		Client client = null;
+		Server server = null;
 		try {
-			while(!exit) {
-				synchronized(this) {
+			client = new Client();
+			server = new Server();
+			server.startWorld(world);
+			new Thread(server, "Game Server").start();
+			SocketAddress serverAddress = new InetSocketAddress(InetAddress.getLocalHost(), 50000);
+			
+			if(client.connectToServer(serverAddress, 1, 1000)) {
+				System.out.println("Client connected to " + serverAddress);
+				client.send(new ClientInfo("blobjim"), serverAddress);
+				new Thread(client, "Game Client").start();
+			} else {
+				System.out.println("Client failed to connect to " + serverAddress);
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+		try {
+			synchronized(this) {
+				while(!exit) {
 					this.wait();
 				}
 			}
 		} catch(InterruptedException e) {
 			System.err.println("Game Manager was interrupted");
 		} finally {
+			try {
+				if(client != null)
+					client.close();
+				if(server != null)
+					server.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 			System.exit(0);
 		}
 	}
