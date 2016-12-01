@@ -75,7 +75,7 @@ public final class InteractionController extends Controller implements MouseButt
 			TestEntity entity = new TestEntity(Models.BLUE_SQUARE, 3, 3, worldX, worldY);
 			entity.getGraphics().setScaleX(3);
 			entity.getGraphics().setScaleY(3);
-			world.getEntities().add(entity);
+			world.add(entity);
 			tertiaryAction = false;
 		}
 	}

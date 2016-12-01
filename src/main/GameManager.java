@@ -83,7 +83,7 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		Player player = new Player();
 		player.setPositionX(world.getForeground().getWidth()/2);
 		player.setPositionY(world.getForeground().getHeight());
-		world.getEntities().add(player);
+		world.add(player);
 		
 		EntityController playerController = new EntityController(player, world, 0.2f);
 		InteractionController cursorController = new InteractionController(player, world, graphicsManager.getRenderer().getCamera(), 200);

@@ -32,8 +32,22 @@ public final class World implements Renderable, Serializable {
 		return background;
 	}
 	
-	public synchronized ArrayList<Entity> getEntities() {
-		return entities;
+	public ArrayList<Entity> getEntities() {
+		synchronized(entities) {
+			return entities;
+		}
+	}
+	
+	public synchronized boolean add(Entity e) {
+		synchronized(entities) {
+			return entities.add(e);
+		}
+	}
+	
+	public synchronized boolean remove(Entity e) {
+		synchronized(entities) {
+			return entities.remove(e);
+		}
 	}
 	
 	public float getGravity() {
