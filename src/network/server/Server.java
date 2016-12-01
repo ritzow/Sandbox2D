@@ -158,34 +158,6 @@ public class Server implements Runnable, Exitable, Closeable {
 		}
 		return connected;
 	}
-	
-	public void processPacket(DatagramPacket packet) throws UnknownMessageException, InvalidMessageException {
-		if(packet.getData().length < 2)
-			throw new InvalidMessageException();
-		try {
-			switch(ByteUtil.getShort(packet.getData(), 0)) {
-			case Protocol.SERVER_CONNECT_REQUEST:
-				messageHandler.handle(new ServerConnectRequest(), packet.getSocketAddress());
-				return;
-			case Protocol.CLIENT_INFO:
-				messageHandler.handle(new ClientInfoMessage(packet), packet.getSocketAddress());
-				return;
-			case Protocol.SERVER_INFO:
-				messageHandler.handle(new ServerInfoMessage(packet), packet.getSocketAddress());
-				return;
-			case Protocol.SERVER_INFO_REQUEST:
-				messageHandler.handle(new ServerInfoRequest(), packet.getSocketAddress());
-				return;
-			case Protocol.SERVER_CONNECT_ACKNOWLEDGMENT:
-				messageHandler.handle(new ServerConnectAcknowledgment(packet), packet.getSocketAddress());
-			default:
-				throw new UnknownMessageException();
-			}
-		} catch(InvalidMessageException e) {
-			System.err.println("Caught invalid message");
-		}
-
-	}
 
 	@Override
 	public synchronized void exit() {
