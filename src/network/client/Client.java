@@ -4,18 +4,22 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.net.*;
 import java.util.LinkedList;
-import network.MessageHandler;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import network.message.*;
+import util.Exitable;
 
-public final class Client implements Closeable {
+public final class Client implements Closeable, Runnable, Exitable {
 
+	protected volatile boolean exit, finished;
 	protected final DatagramSocket socket;
-
-	protected volatile boolean exit;
-	protected volatile boolean finished;
+	protected SocketAddress serverAddress;
+	
+	protected volatile LinkedList<DatagramPacket> unprocessedPackets;
 	
 	public Client() throws IOException {
-		this.socket = new DatagramSocket(new InetSocketAddress(InetAddress.getLocalHost(), 0));
+		unprocessedPackets = new LinkedList<DatagramPacket>();
+		socket = new DatagramSocket(new InetSocketAddress(InetAddress.getLocalHost(), 0));
 	}
 	
 	/**
@@ -30,33 +34,43 @@ public final class Client implements Closeable {
 		if(timeout != 0 && timeout < attempts)
 			throw new UnsupportedOperationException("timeout too small");
 		socket.setSoTimeout(timeout/attempts);
-		DatagramPacket response = new DatagramPacket(new byte[100], 100);
-		byte[] packet = new ServerConnectRequest().getBytes();
-		DatagramPacket request = new DatagramPacket(packet, packet.length, address);
-		socket.send(request);
+		DatagramPacket response = new DatagramPacket(new byte[10], 10);
+		ServerConnectRequest request = new ServerConnectRequest();
+		send(request, address);
 		long startTime = System.currentTimeMillis();
 		int attemptsRemaining = attempts;
 		while(attemptsRemaining >= 0 && (System.currentTimeMillis() - startTime < timeout || timeout == 0)) {
 			try {
 				socket.receive(response);
 				if(response.getSocketAddress().equals(address)) {
-					return (new ServerConnectAcknowledgment(response).isAccepted());
+					if(new ServerConnectAcknowledgment(response).isAccepted()) {
+						serverAddress = response.getSocketAddress();
+						return true;
+					} else {
+						return false;
+					}
 				} else {
 					continue;
 				}
 			} catch(InvalidMessageException e) {
 				continue;
-			} catch(SocketTimeoutException e) {
-				if(--attemptsRemaining > 0)
-					socket.send(request);
-				continue;
 			} catch(PortUnreachableException e) {
 				return false;
-			} catch(SocketException e) {
-				e.printStackTrace();
+			} catch(SocketTimeoutException e) {
+				if(--attemptsRemaining > 0)
+					send(request, address);
+				continue;
 			}
 		}
 		return false;
+	}
+	
+	public synchronized void send(Message message, SocketAddress address) throws IOException {
+		send(message.getBytes(), address);
+	}
+	
+	protected synchronized void send(byte[] data, SocketAddress address) throws IOException {
+		socket.send(new DatagramPacket(data, data.length, address));
 	}
 	
 	@Override
@@ -65,42 +79,82 @@ public final class Client implements Closeable {
 		this.exit = true;
 	}
 	
+	@Override
 	public void run() {
+		if(serverAddress == null)
+			throw new UnsupportedOperationException("Client has not connected to a server");
 		
-	}
-	
-	protected class ClientLogicHandler implements MessageHandler, Runnable {
-		protected LinkedList<byte[]> unprocessedPackets;
-		protected InetSocketAddress serverAddress;
-
-		public ClientLogicHandler() {
-			this.unprocessedPackets = new LinkedList<byte[]>();
+		try {
+			socket.setSoTimeout(0);
+		} catch (SocketException e) {
+			e.printStackTrace();
 		}
 		
-		@Override
-		public void run() {
+		MessageHandler messageHandler = new MessageHandler() {
+			@Override
+			public void handle(ServerInfo message, SocketAddress sender) {
+				System.out.println(message);
+			}
+			
+			@Override
+			public void handle(WorldCreationMessage message, SocketAddress sender) {
+				System.out.println(message);
+			}
+		};
+		
+		ExecutorService scheduler = Executors.newCachedThreadPool();
+		DatagramPacket buffer = new DatagramPacket(new byte[1024], 1024);
+		while(!exit) {
 			try {
-				while(!exit) {
-					if(unprocessedPackets.pollFirst() != null) {
-						unprocessedPackets.removeFirst();
-					} else {
-						synchronized(this) {
-							while(!exit && unprocessedPackets.pollFirst() == null) {
-								this.wait();
-							}
+				socket.receive(buffer);
+				byte[] packetData = new byte[buffer.getLength()]; //TODO this stuff is pretty unoptimized, perhaps use byte arrays in packet processing? VVV
+				System.arraycopy(buffer.getData(), buffer.getOffset(), packetData, 0, packetData.length);
+				DatagramPacket packet = new DatagramPacket(packetData, 0, packetData.length, buffer.getAddress(), buffer.getPort());
+				scheduler.execute(new Runnable() {
+					public void run() {
+						try {
+							Protocol.processPacket(packet, messageHandler);
+						} catch (UnknownMessageException e) {
+							return;
+						} catch (InvalidMessageException e) {
+							return;
 						}
 					}
-					Thread.sleep(1);
+				});
+			} catch(SocketException e) {
+				if(!socket.isClosed()) {
+					e.printStackTrace();
+				} else {
+					break;
 				}
-			} catch(InterruptedException e) {
-				
+			} catch (IOException e) {
+				e.printStackTrace();
 			}
-
-			synchronized(this) {
-				finished = true;
-				this.notifyAll();
-			}
+		}
+		
+		synchronized(this) {
+			finished = true;
+			this.notifyAll();
+		}
+	}
+	
+	protected synchronized void add(DatagramPacket packet) {
+		synchronized(unprocessedPackets) {
+			unprocessedPackets.add(packet);	
 		}
 	}
 
+	@Override
+	public synchronized void exit() {
+		try {
+			close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	@Override
+	public boolean isFinished() {
+		return finished;
+	}
 }
