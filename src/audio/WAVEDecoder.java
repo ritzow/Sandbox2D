@@ -103,12 +103,12 @@ public final class WAVEDecoder {
 		bitsPerSample = readShortLittleEndian(); //bits per sample 8 for 8 bits, 16 for 16 bits, etc.
 	}
 	
-	private void readData() throws IOException {		
-		int dataSize = readIntegerLittleEndian(); //SubChunk2Size (NumSamples * NumChannels * BitsPerSample/8) aka the amount of space I need to store data
-		data = BufferUtils.createByteBuffer(dataSize);
-		
-		while(data.hasRemaining())
-			data.put((byte)input.read()); //WAVE data is interleaved left/right sample, each sample is bits per sample large
+	private void readData() throws IOException {
+		byte[] data = new byte[readIntegerLittleEndian()]; //SubChunk2Size (NumSamples * NumChannels * BitsPerSample/8) aka the amount of space I need to store data
+		input.read(data); //WAVE data is interleaved left/right sample, each sample is bits per sample large
+		ByteBuffer buffer = BufferUtils.createByteBuffer(data.length);
+		buffer.put(data);
+		this.data = buffer;
 	}
 	
 	private String readStringBigEndian(int numBytes) throws IOException {
