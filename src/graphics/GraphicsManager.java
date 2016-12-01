@@ -96,7 +96,7 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 				}
 			}
 		} catch(InterruptedException e) {
-			
+			System.err.println("Graphics Manager " + this.hashCode() + " was interrupted");
 		} finally {
 			renderables.clear();
 			Models.deleteAll();
