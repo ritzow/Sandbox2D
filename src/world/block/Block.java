@@ -30,10 +30,6 @@ public abstract class Block implements Serializable {
 		return integrity;
 	}
 	
-	public void onHit() {
-		
-	}
-	
 	public void onBreak(World world, float x, float y) {
 		ItemEntity drop = new ItemEntity(new BlockItem(this.createNew()), x, y);
 		drop.setVelocityX(-0.2f + ((float)Math.random() * (0.4f)));
@@ -47,5 +43,9 @@ public abstract class Block implements Serializable {
 		for(int i = 0; i < 3; i++) {
 			world.add(new BlockPlaceParticleEntity(this, x, y));
 		}
+	}
+	
+	public String toString() {
+		return getName();
 	}
 }
