@@ -3,77 +3,87 @@ package network.server;
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.*;
-import network.MessageHandler;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import network.message.*;
-import networkutils.DatagramInputStream;
-import util.ByteUtil;
 import util.Exitable;
+import world.World;
 
 public class Server implements Runnable, Exitable, Closeable {
+	protected boolean exit, finished;
+	protected final DatagramSocket socket;
+	protected final SocketAddress[] clients;
+	
+	protected World world;
 
-	protected volatile boolean exit, finished;
-	protected DatagramSocket socket;
-	protected SocketAddress[] clients;
-	protected MessageHandler messageHandler;
-
-	public Server() {
-		clients = new SocketAddress[10];
+	public Server() throws SocketException, UnknownHostException {
+		this(10);
 	}
 	
-	public Server(short capacity) {
+	public Server(int capacity) throws SocketException, UnknownHostException {
+		socket = new DatagramSocket(new InetSocketAddress(InetAddress.getLocalHost(), 50000));
 		clients = new SocketAddress[capacity];
 	}
 
 	@Override
 	public void run() {
-		try {
-			socket = new DatagramSocket(new InetSocketAddress(InetAddress.getLocalHost(), 50000));
-			DatagramInputStream input = new DatagramInputStream(socket);
-			
-			messageHandler = new MessageHandler() {
-
-				@Override
-				public void handle(ServerConnectRequest messsage, SocketAddress sender) {
-					try {
-						sendData(new ServerConnectAcknowledgment(clientsConnected() < clients.length).getBytes(), sender);
-						addClient(sender);
-					} catch (IOException e) {
-						e.printStackTrace();
-					}
-				}
-
-				@Override
-				public void handle(ServerInfoRequest message, SocketAddress sender) {
-					
-				}
-				
-				@Override
-				public void handle(ClientInfoMessage message, SocketAddress sender) {
-					
-				}
-			};
-			
-			while(!exit) {
-				DatagramPacket packet = new DatagramPacket(new byte[1024], 1024);
-				socket.receive(packet);
-				
+		final MessageHandler messageHandler = new MessageHandler() {
+			@Override
+			public void handle(ServerConnectRequest messsage, SocketAddress sender) {
 				try {
-					processPacket(packet);
-				} catch (InvalidMessageException e) {
-					continue;
-				} catch (UnknownMessageException e) {
-					continue;
+					boolean canConnect = clientsConnected() < clients.length && !clientPresent(sender);
+					if(canConnect)
+						addClient(sender);
+					send(new ServerConnectAcknowledgment(canConnect).getBytes(), sender);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+
+			@Override
+			public void handle(ServerInfoRequest message, SocketAddress sender) {
+				try {
+					send(new ServerInfo(clientsConnected(), clients.length).getBytes(), sender);
+				} catch (IOException e) {
+					e.printStackTrace();
 				}
 			}
 			
-			input.close();
-		} catch(SocketException e) {
-			
-		} catch(IOException e) {
-			e.printStackTrace();
-		} finally {
-			socket.close();
+			@Override
+			public void handle(ClientInfo message, SocketAddress sender) {
+				System.out.println(message);
+			}
+		};
+		
+		ExecutorService scheduler = Executors.newCachedThreadPool();
+		DatagramPacket buffer = new DatagramPacket(new byte[1024], 1024);
+		while(!exit) {
+			try {
+				socket.receive(buffer);
+				byte[] packetData = new byte[buffer.getLength()];
+				System.arraycopy(buffer.getData(), buffer.getOffset(), packetData, 0, packetData.length);
+				DatagramPacket packet = new DatagramPacket(packetData, 0, packetData.length, buffer.getAddress(), buffer.getPort());
+
+				scheduler.execute(new Runnable() {
+					public void run() {
+						try {
+							Protocol.processPacket(packet, messageHandler);
+						} catch (UnknownMessageException | InvalidMessageException e) {
+							return;
+						}
+					}
+				});
+			} catch(SocketException e) {
+				if(!socket.isClosed()) {
+					e.printStackTrace();
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		}
+		
+		scheduler.shutdown();
+		socket.close();
 
 		synchronized(this) {
 			finished = true;
@@ -81,23 +91,42 @@ public class Server implements Runnable, Exitable, Closeable {
 		}
 	}
 	
-	public synchronized void sendData(byte[] data, SocketAddress address) throws IOException {
+	public void startWorld(World world) {
+		this.world = world;
+	}
+	
+	/**
+	 * Sends a message to the specified socket address
+	 * @param message the message to be sent
+	 * @param address the SocketAddress to send the message to
+	 * @exception if the underlying call to <code>DatagramSocket.send</code> throws an IOException
+	 */
+	public synchronized void send(Message message, SocketAddress address) throws IOException {
+		send(message.getBytes(), address);
+	}
+	
+	/**
+	 * Sends a byte array to the specified socket address
+	 * @param data the byte[] to be sent
+	 * @param address the SocketAddress to send the byte array to
+	 * @throws IOException 
+	 */
+	protected synchronized void send(byte[] data, SocketAddress address) throws IOException {
 		socket.send(new DatagramPacket(data, data.length, address));
 	}
 	
 	@Override
-	public synchronized void close() throws IOException {
+	public void close() throws IOException {
 		socket.close();
 		exit();
 	}
 	
 	protected boolean clientPresent(SocketAddress address) {
 		for(int i = 0; i < clients.length; i++) {
-			if(clients[i].equals(address)) {
+			if(clients[i] != null && clients[i].equals(address)) {
 				return true;
 			}
 		}
-		
 		return false;
 	}
 
@@ -114,7 +143,7 @@ public class Server implements Runnable, Exitable, Closeable {
 
 	protected void removeClient(SocketAddress output) {
 		for(int i = 0; i < clients.length; i++) {
-			if(clients[i].equals(output)) {
+			if(clients[i] != null && clients[i].equals(output)) {
 				clients[i] = null;
 			}
 		}
