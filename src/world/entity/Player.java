@@ -49,9 +49,8 @@ public class Player extends LivingEntity {
 		if(e instanceof ItemEntity) {
 			if(inventory.add(((ItemEntity)e).getItem())) {
 				Item i = ((ItemEntity)e).getItem();
-				world.getEntities().remove(e);
-				world.getEntities().add(new ParticleEntity(
-						new Graphics(i.getGraphics(), 0.75f, 0.5f, 0.5f, 0),
+				world.remove(e);
+				world.add(new ParticleEntity(new Graphics(i.getGraphics(), 0.75f, 0.5f, 0.5f, 0),
 						positionX, positionY, randomFloat(-0.2f, 0.2f), randomFloat(0.1f, 0.3f), randomFloat(0.1f, 0.5f), randomLong(300, 1000), true));
 				AudioSystem.playSound(Sounds.ITEM_PICKUP, e.getPositionX(), e.getPositionY(), 0, 0.2f, 1, (float)Math.random() * 0.4f + 0.8f);
 			}
@@ -70,9 +69,8 @@ public class Player extends LivingEntity {
 			ItemEntity entity = new ItemEntity(item, positionX, positionY + this.getHeight());
 			entity.setVelocityX((float) (Math.random() * 0.4f - 0.2f));
 			entity.setVelocityY((float) (Math.random() * 0.3f));
-			if(world.getEntities().add(entity)) {
+			if(world.add(entity))
 				selected = (selected == inventory.getSize() - 1 ? selected = 0 : selected + 1);
-			}
 			AudioSystem.playSound(Sounds.THROW, positionX, positionY, entity.getVelocityX(), entity.getVelocityY(), 1.0f, 1f);
 		}
 		
