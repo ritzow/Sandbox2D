@@ -9,14 +9,30 @@ import java.util.ArrayList;
 import world.entity.Entity;
 import java.io.Serializable;
 
+/**
+ * Handler and organizer of {@link Entity} and {@link BlockGrid} objects. Handles updating of entities in the world and rendering of entities and blocks. 
+ * Contains a foreground and background.
+ * @author Solomon Ritzow
+ *
+ */
 public final class World implements Renderable, Serializable {
 	private static final long serialVersionUID = 8941044044393756575L;
 	
+	/** collection of entities in the world **/
 	protected final ArrayList<Entity> entities;
-	protected final BlockGrid foreground;
-	protected final BlockGrid background;
+	
+	/** blocks in the world that collide with entities and and are rendered **/
+	protected final BlockGrid foreground, background;
+	
+	/** amount of downwards acceleration to apply to entities in the world **/
 	protected float gravity;
 	
+	/**
+	 * Initializes a new World object with a foreground, background, entity storage, and gravity.
+	 * @param width the width of the foreground and background
+	 * @param height the height of the foreground and background
+	 * @param gravity the amount of gravity
+	 */
 	public World(int width, int height, float gravity) {
 		entities = new ArrayList<Entity>(200);
 		foreground = new BlockGrid(this, width, height);
@@ -32,10 +48,13 @@ public final class World implements Renderable, Serializable {
 		return background;
 	}
 	
+	/**
+	 * Returns the internal {@link ArrayList} of {@link Entity} objects.
+	 * This class is unsafe and all calls on the returned ArrayList should be synchronized.
+	 * @return an ArrayList that contains the entities in the world.
+	 */
 	public ArrayList<Entity> getEntities() {
-		synchronized(entities) {
-			return entities;
-		}
+		return entities;
 	}
 	
 	public synchronized boolean add(Entity e) {
@@ -58,6 +77,12 @@ public final class World implements Renderable, Serializable {
 		this.gravity = gravity;
 	}
 
+	/**
+	 * Updates the entities in the world, simulating the specified amount of time. Entities below the world or marked for deletion will be removed
+	 * from the world. Entities are be updated, gravity is applied, entity vs entity collisions are resolved, and entity vs block collisions
+	 * are resolved.
+	 * @param time the amount of time to simulate.
+	 */
 	public synchronized void update(float time) {
 		for(int i = 0; i < entities.size(); i++) {
 			Entity e = entities.get(i);
@@ -122,20 +147,42 @@ public final class World implements Renderable, Serializable {
 		}
 	}
 	
+	/**
+	 * Checks if there is a collision between two entities
+	 * @param e an entity
+	 * @param o an entity
+	 * @return true if the entities intersect eachother, false otherwise
+	 */
 	protected final boolean checkCollision(Entity e, Entity o) {
 		return checkCollision(e, o.getPositionX(), o.getPositionY(), o.getWidth(), o.getHeight());
 	}
-	
+
+	/**
+	 * Checks if there is a collision between an entity and a hitbox
+	 * @param e an entity
+	 * @param otherX the x position of the hitbox
+	 * @param otherY the y position of the hitbox
+	 * @param otherWidth the width of the hitbox
+	 * @param otherHeight the height of the hitbox
+	 * @return true if the entity and hitbox intersect, false otherwise;
+	 */
 	protected final boolean checkCollision(Entity e, float otherX, float otherY, float otherWidth, float otherHeight) {
 		 return (Math.abs(e.getPositionX() - otherX) * 2 < (e.getWidth() + otherWidth)) &&  (Math.abs(e.getPositionY() - otherY) * 2 < (e.getHeight() + otherHeight));
 	}
-	
+
+	/**
+	 * Resolves a collision between two entities. The entity passed into the first parameter will be moved if necessary.
+	 * @param e the first entity, which will be moved if necessary
+	 * @param o the second entity, which will not move
+	 * @param time the amount of time to simulate during the collision resolution
+	 * @return true if a collision occurred, false otherwise
+	 */
 	protected final boolean resolveCollision(Entity e, Entity o, float time) {
 		return resolveCollision(e, o.getPositionX(), o.getPositionY(), o.getWidth(), o.getHeight(), o.getFriction(), time);
 	}
 	
 	/**
-	 * Resolves a collision between an entity and a hitbox. The entity passed into the first parameter will be moved if necessary
+	 * Resolves a collision between an entity and a hitbox. The entity passed into the first parameter will be moved if necessary.
 	 * @param e the entity to be resolved
 	 * @param otherX the x position of the hitbox
 	 * @param otherY the y position of the hitbox
