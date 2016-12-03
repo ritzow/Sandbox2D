@@ -1,4 +1,4 @@
-package network.message;
+package network.message.server;
 
 import static util.ByteUtil.getBoolean;
 import static util.ByteUtil.getShort;
@@ -6,6 +6,9 @@ import static util.ByteUtil.putBoolean;
 import static util.ByteUtil.putShort;
 
 import java.net.DatagramPacket;
+import network.message.InvalidMessageException;
+import network.message.Message;
+import network.message.Protocol;
 
 public class ServerConnectAcknowledgment extends Message {
 	

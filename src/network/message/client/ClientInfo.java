@@ -1,9 +1,12 @@
-package network.message;
+package network.message.client;
 
 import static util.ByteUtil.*;
 
 import java.net.DatagramPacket;
 import java.nio.charset.Charset;
+import network.message.InvalidMessageException;
+import network.message.Message;
+import network.message.Protocol;
 
 public class ClientInfo extends Message {
 	

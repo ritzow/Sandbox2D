@@ -1,6 +1,10 @@
-package network.message;
+package network.message.server.world;
 
 import java.net.DatagramPacket;
+import network.message.InvalidMessageException;
+import network.message.Message;
+import network.message.Protocol;
+
 import static util.ByteUtil.*;
 import world.World;
 

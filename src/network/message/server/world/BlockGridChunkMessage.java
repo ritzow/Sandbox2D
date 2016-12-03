@@ -1,8 +1,11 @@
-package network.message;
+package network.message.server.world;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.util.Arrays;
+import network.message.InvalidMessageException;
+import network.message.Message;
+import network.message.Protocol;
 import util.ByteUtil;
 import world.BlockGrid;
 import world.block.Block;

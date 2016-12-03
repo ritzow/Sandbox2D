@@ -1,6 +1,9 @@
-package network.message;
+package network.message.client;
 
 import java.net.DatagramPacket;
+import network.message.InvalidMessageException;
+import network.message.Message;
+import network.message.Protocol;
 import util.ByteUtil;
 
 public class ServerConnectRequest extends Message {
