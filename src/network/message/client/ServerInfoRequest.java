@@ -1,5 +1,7 @@
-package network.message;
+package network.message.client;
 
+import network.message.Message;
+import network.message.Protocol;
 import util.ByteUtil;
 
 public class ServerInfoRequest extends Message {

@@ -1,8 +1,11 @@
-package network.message;
+package network.message.server;
 
 import static util.ByteUtil.*;
 
 import java.net.DatagramPacket;
+import network.message.InvalidMessageException;
+import network.message.Message;
+import network.message.Protocol;
 
 public class ServerInfo extends Message {
 	
