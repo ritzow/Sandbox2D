@@ -1,59 +1,78 @@
 package network.server;
 
-import java.io.Closeable;
-import java.io.IOException;
-import java.net.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import network.message.*;
-import util.Exitable;
+import java.net.DatagramPacket;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+import java.net.SocketException;
+import java.net.UnknownHostException;
+import network.NetworkController;
+import network.message.MessageHandler;
+import network.message.client.ServerConnectRequest;
+import network.message.client.ServerInfoRequest;
+import network.message.server.ServerConnectAcknowledgment;
+import network.message.server.ServerInfo;
+import util.Utility.Synchronizer;
 import world.World;
+import world.WorldManager;
 
+public class Server extends NetworkController {
+	
+	protected WorldManager worldUpdater;
 	protected final SocketAddress[] clients;
 	
-	protected World world;
+	public Server(int maxClients) throws SocketException, UnknownHostException {
+		super(new InetSocketAddress(InetAddress.getLocalHost(), 50000));
+		clients = new SocketAddress[maxClients];
+		messageHandler = new ServerMessageHandler();
 	}
 	
-	public Server(int capacity) throws SocketException, UnknownHostException {
-		socket = new DatagramSocket(new InetSocketAddress(InetAddress.getLocalHost(), 50000));
-		clients = new SocketAddress[capacity];
-	}
+	protected class ServerMessageHandler implements MessageHandler {
+		public void handle(ServerConnectRequest messsage, SocketAddress sender) {
+			boolean canConnect = clientsConnected() < clients.length && !clientPresent(sender);
+			if(canConnect)
+				addClient(sender);
+			byte[] response = new ServerConnectAcknowledgment(canConnect).getBytes();
+			send(new DatagramPacket(response, response.length, sender));
+		}
 
+		@Override
+		public void handle(ServerInfoRequest message, SocketAddress sender) {
+			byte[] response = new ServerInfo(clientsConnected(), clients.length).getBytes();
+			send(new DatagramPacket(response, response.length, sender));
+		}
+	}
+	
 	@Override
+	public void exit() {
+		try {
+			stopWorld();
+		} catch(RuntimeException e) {
 			
+		} finally {
+			super.exit();
 		}
 	}
 	
 	public void startWorld(World world) {
-		this.world = world;
+		if(worldUpdater == null || worldUpdater.isFinished())
+			new Thread(worldUpdater = new WorldManager(world), "Server World Updater").start();
+		else
+			throw new RuntimeException("A world is already running");
+	}
+	
+	public void stopWorld() {
+		if(worldUpdater != null && !worldUpdater.isFinished())
+			Synchronizer.waitForExit(worldUpdater);
+		else
+			throw new RuntimeException("There is no world currently running");
 	}
 	
 	/**
-	 * Sends a message to the specified socket address
-	 * @param message the message to be sent
-	 * @param address the SocketAddress to send the message to
-	 * @exception if the underlying call to <code>DatagramSocket.send</code> throws an IOException
+	 * Checks to see if the specified SocketAddress is already connected to the server
+	 * @param address the SocketAddress to query
+	 * @return whether or not the address specified is present
 	 */
-	public synchronized void send(Message message, SocketAddress address) throws IOException {
-		send(message.getBytes(), address);
-	}
-	
-	/**
-	 * Sends a byte array to the specified socket address
-	 * @param data the byte[] to be sent
-	 * @param address the SocketAddress to send the byte array to
-	 * @throws IOException 
-	 */
-	protected synchronized void send(byte[] data, SocketAddress address) throws IOException {
-		socket.send(new DatagramPacket(data, data.length, address));
-	}
-	
-	@Override
-	public void close() throws IOException {
-		socket.close();
-		exit();
-	}
-	
 	protected boolean clientPresent(SocketAddress address) {
 		for(int i = 0; i < clients.length; i++) {
 			if(clients[i] != null && clients[i].equals(address)) {
@@ -70,7 +89,6 @@ import world.World;
 				return true;
 			}
 		}
-
 		return false;
 	}
 
