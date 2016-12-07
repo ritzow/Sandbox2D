@@ -1,8 +1,5 @@
 package main;
 
-import static util.Utility.Synchronizer.waitForExit;
-import static util.Utility.Synchronizer.waitForSetup;
-
 import audio.AudioSystem;
 import graphics.Background;
 import graphics.GraphicsManager;
@@ -15,26 +12,25 @@ import input.controller.TrackingCameraController;
 import input.handler.KeyHandler;
 import input.handler.WindowCloseHandler;
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import network.client.Client;
-import network.message.ClientInfo;
-import network.message.BlockGridChunkMessage;
 import network.server.Server;
 import resource.Models;
-import resource.Sounds;
+import util.Utility.Synchronizer;
 import world.World;
-import world.WorldManager;
 import world.block.DirtBlock;
 import world.block.GrassBlock;
 import world.block.RedBlock;
 import world.entity.Player;
 
+/**
+ * An instance of this class manages game startup and shutdown.
+ * @author Solomon Ritzow
+ *
+ */
 public final class GameManager implements Runnable, WindowCloseHandler, KeyHandler {
 	private EventManager eventManager;
 	private GraphicsManager graphicsManager;
-	private WorldManager worldManager;
 	private ClientUpdateManager clientUpdateManager;
 	
 	private volatile boolean exit;
@@ -60,13 +56,20 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 			}.start();
 		}
 		
-		waitForSetup(eventManager);
+		Synchronizer.waitForSetup(eventManager); //wait for the Display, and thus InputManager, to be created.
 		eventManager.getDisplay().getInputManager().getWindowCloseHandlers().add(this);
 		eventManager.getDisplay().getInputManager().getKeyHandlers().add(this);
-		new Thread(graphicsManager = new GraphicsManager(eventManager.getDisplay()), "Graphics Manager").start();
-		AudioSystem.start();
-		waitForSetup(graphicsManager);
 		
+		//start the graphics manager, which will load all models into OpenGL and setup the OpenGL context.
+		new Thread(graphicsManager = new GraphicsManager(eventManager.getDisplay()), "Graphics Manager").start();
+		
+		//wait for the graphics manager to finish setup.
+		Synchronizer.waitForSetup(graphicsManager);
+		
+		//start OpenAL and load audio files.
+		AudioSystem.start();
+		
+		//create the world
 		World world = new World(500, 200, 0.015f);
 		for(int column = 0; column < world.getForeground().getWidth(); column++) {
 			double height = world.getForeground().getHeight()/2;
@@ -84,65 +87,70 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 			world.getBackground().set(column, (int)height, new DirtBlock());
 		}
 		
+		//create the player's character
 		Player player = new Player();
 		player.setPositionX(world.getForeground().getWidth()/2);
 		player.setPositionY(world.getForeground().getHeight());
 		world.add(player);
 		
+		//Create controllers for player input
 		EntityController playerController = new EntityController(player, world, 0.2f);
 		InteractionController cursorController = new InteractionController(player, world, graphicsManager.getRenderer().getCamera(), 200);
 		TrackingCameraController cameraController = new TrackingCameraController(graphicsManager.getRenderer().getCamera(), player, 0.005f, 0.05f, 0.6f);
+		
+		//link controllers with the window's input manager
 		playerController.link(eventManager.getDisplay().getInputManager());
 		cursorController.link(eventManager.getDisplay().getInputManager());
 		cameraController.link(eventManager.getDisplay().getInputManager());
 		
+		//create the client update manager and register controllers, then link with the input manager.
 		clientUpdateManager = new ClientUpdateManager();
 		clientUpdateManager.getUpdatables().add(playerController);
 		clientUpdateManager.getUpdatables().add(cursorController);
 		clientUpdateManager.getUpdatables().add(cameraController);
 		clientUpdateManager.link(eventManager.getDisplay().getInputManager());
 		
-		new Thread(clientUpdateManager, "Client Updater").start();
-		new Thread(worldManager = new WorldManager(world), "World Manager " + world.hashCode()).start();
-		
+		//Add the background and world to the renderer
 		graphicsManager.getRenderables().add(new Background(Models.CLOUDS_BACKGROUND));
 		graphicsManager.getRenderables().add(world);
 		
+		//start the client updater
+		new Thread(clientUpdateManager, "Client Updater").start();
+		
+		//display the window!
 		eventManager.setReadyToDisplay();
 		
-		Runtime.getRuntime().addShutdownHook(new Thread("Shutdown") {
-			public void run() {
-		 		clientUpdateManager.exit();
-				worldManager.exit();
-				Sounds.deleteAll();
-				AudioSystem.stop(); 
-				waitForExit(graphicsManager);
-				waitForExit(eventManager);
-			}
-		});
+		Client client;
+		Server server;
 		
-		System.out.println(new BlockGridChunkMessage(world.getForeground(), 0, 0, world.getForeground().getWidth(), world.getForeground().getHeight()));
-
-		System.out.println("Starting networking...");
-		Client client = null;
-		Server server = null;
-		try {
+		try { 
 			client = new Client();
-			server = new Server();
-			server.startWorld(world);
+			server = new Server(20);
 			new Thread(server, "Game Server").start();
-			SocketAddress serverAddress = new InetSocketAddress(InetAddress.getLocalHost(), 50000);
-			
+			Synchronizer.waitForSetup(server);
+			SocketAddress serverAddress = server.getSocketAddress();
+			server.startWorld(world);
 			if(client.connectToServer(serverAddress, 1, 1000)) {
 				System.out.println("Client connected to " + serverAddress);
-				client.send(new ClientInfo("blobjim"), serverAddress);
 				new Thread(client, "Game Client").start();
 			} else {
 				System.out.println("Client failed to connect to " + serverAddress);
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
+			client = null;
+			server = null;
 		}
+		
+		//create a shutdown hook so that when the program exits, everything is cleanly stopped
+		Runtime.getRuntime().addShutdownHook(new Thread("Shutdown") {
+			public void run() {
+		 		clientUpdateManager.exit();
+				AudioSystem.stop();
+				Synchronizer.waitForExit(graphicsManager);
+				Synchronizer.waitForExit(eventManager);
+			}
+		});
 		
 		try {
 			synchronized(this) {
@@ -153,13 +161,10 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		} catch(InterruptedException e) {
 			System.err.println("Game Manager was interrupted");
 		} finally {
-			try {
-				if(client != null)
-					client.close();
-				if(server != null)
-					server.close();
-			} catch (IOException e) {
-				e.printStackTrace();
+			if(client != null)
+				client.exit();
+			if(server != null) {
+				server.exit();
 			}
 			System.exit(0);
 		}
