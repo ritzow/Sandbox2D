@@ -35,7 +35,7 @@ public class Utility {
 					try {
 						installable.wait();
 					} catch (InterruptedException e){
-						e.printStackTrace();
+						continue;
 					}
 				}
 			}
@@ -48,7 +48,7 @@ public class Utility {
 					try {
 						exitable.wait();
 					} catch (InterruptedException e){
-						e.printStackTrace();
+						continue;
 					}
 				}
 			}
