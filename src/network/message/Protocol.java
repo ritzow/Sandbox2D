@@ -1,6 +1,13 @@
 package network.message;
 
 import java.net.DatagramPacket;
+import network.message.client.ClientInfo;
+import network.message.client.ServerConnectRequest;
+import network.message.client.ServerInfoRequest;
+import network.message.server.ServerConnectAcknowledgment;
+import network.message.server.ServerInfo;
+import network.message.server.world.BlockGridChunkMessage;
+import network.message.server.world.WorldCreationMessage;
 
 /**
  * Network message ID constants
@@ -12,7 +19,7 @@ public final class Protocol {
 	/**
 	 * Client/server message protocol ID
 	 */
-	protected static final short
+	public static final short
 		SERVER_INFO_REQUEST = 0,
 		SERVER_INFO = 1,
 		SERVER_CONNECT_REQUEST = 2,
