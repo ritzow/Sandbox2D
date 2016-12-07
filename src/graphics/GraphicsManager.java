@@ -12,7 +12,6 @@ import java.util.ArrayList;
 import org.lwjgl.opengl.GL;
 import resource.Fonts;
 import resource.Models;
-import resource.Shaders;
 import resource.Textures;
 import util.Exitable;
 import util.Installable;
@@ -48,7 +47,7 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		
 		try {
-			Shaders.loadAll(new File("resources/shaders"));
+			//Shaders.loadAll(new File("resources/shaders"));
 			Textures.loadAll(new File("resources/assets/textures"));
 			Models.loadAll(new File("resources/assets/textures"));
 			Fonts.loadAll(new File("resources/assets/fonts"));

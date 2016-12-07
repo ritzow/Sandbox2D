@@ -43,6 +43,7 @@ public class AudioSystem {
 	}
 	
 	public static void stop() {
+		Sounds.deleteAll();
 		alcMakeContextCurrent(0);
 		alcDestroyContext(context);
 		alcCloseDevice(device);
