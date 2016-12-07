@@ -1,11 +1,2 @@
 Assets needed:
-
-Audio:
-- Item pickup sounds
-- Walking sounds for materials
-- Arrow firing sounds
-- Sword sounds
-- Shield sounds
-- Environmental sounds (wind, rain, etc.)
-
-Textures:
+NOT STARTED
