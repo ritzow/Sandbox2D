@@ -40,6 +40,5 @@
 	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-openal-natives-linux.jar"/>
 	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-openal-natives-macos.jar"/>
 	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-openal-natives-windows.jar"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/DatagramNetworking"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
