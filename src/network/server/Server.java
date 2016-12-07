@@ -9,15 +9,9 @@ import network.message.*;
 import util.Exitable;
 import world.World;
 
-public class Server implements Runnable, Exitable, Closeable {
-	protected boolean exit, finished;
-	protected final DatagramSocket socket;
 	protected final SocketAddress[] clients;
 	
 	protected World world;
-
-	public Server() throws SocketException, UnknownHostException {
-		this(10);
 	}
 	
 	public Server(int capacity) throws SocketException, UnknownHostException {
@@ -26,68 +20,7 @@ public class Server implements Runnable, Exitable, Closeable {
 	}
 
 	@Override
-	public void run() {
-		final MessageHandler messageHandler = new MessageHandler() {
-			@Override
-			public void handle(ServerConnectRequest messsage, SocketAddress sender) {
-				try {
-					boolean canConnect = clientsConnected() < clients.length && !clientPresent(sender);
-					if(canConnect)
-						addClient(sender);
-					send(new ServerConnectAcknowledgment(canConnect).getBytes(), sender);
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
-
-			@Override
-			public void handle(ServerInfoRequest message, SocketAddress sender) {
-				try {
-					send(new ServerInfo(clientsConnected(), clients.length).getBytes(), sender);
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
 			
-			@Override
-			public void handle(ClientInfo message, SocketAddress sender) {
-				System.out.println(message);
-			}
-		};
-		
-		ExecutorService scheduler = Executors.newCachedThreadPool();
-		DatagramPacket buffer = new DatagramPacket(new byte[1024], 1024);
-		while(!exit) {
-			try {
-				socket.receive(buffer);
-				byte[] packetData = new byte[buffer.getLength()];
-				System.arraycopy(buffer.getData(), buffer.getOffset(), packetData, 0, packetData.length);
-				DatagramPacket packet = new DatagramPacket(packetData, 0, packetData.length, buffer.getAddress(), buffer.getPort());
-
-				scheduler.execute(new Runnable() {
-					public void run() {
-						try {
-							Protocol.processPacket(packet, messageHandler);
-						} catch (UnknownMessageException | InvalidMessageException e) {
-							return;
-						}
-					}
-				});
-			} catch(SocketException e) {
-				if(!socket.isClosed()) {
-					e.printStackTrace();
-				}
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-		
-		scheduler.shutdown();
-		socket.close();
-
-		synchronized(this) {
-			finished = true;
-			this.notifyAll();
 		}
 	}
 	
@@ -158,16 +91,4 @@ public class Server implements Runnable, Exitable, Closeable {
 		}
 		return connected;
 	}
-
-	@Override
-	public synchronized void exit() {
-		this.exit = true;
-		this.notifyAll();
-	}
-
-	@Override
-	public synchronized boolean isFinished() {
-		return finished;
-	}
-
 }

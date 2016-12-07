@@ -2,24 +2,13 @@ package network.client;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.net.*;
-import java.util.LinkedList;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import network.message.*;
-import util.Exitable;
+import network.NetworkController;
 
-public final class Client implements Closeable, Runnable, Exitable {
+public final class Client extends NetworkController {
 
-	protected volatile boolean exit, finished;
-	protected final DatagramSocket socket;
 	protected SocketAddress serverAddress;
 	
-	protected volatile LinkedList<DatagramPacket> unprocessedPackets;
 	
-	public Client() throws IOException {
-		unprocessedPackets = new LinkedList<DatagramPacket>();
-		socket = new DatagramSocket(new InetSocketAddress(InetAddress.getLocalHost(), 0));
 	}
 	
 	/**
@@ -63,98 +52,5 @@ public final class Client implements Closeable, Runnable, Exitable {
 			}
 		}
 		return false;
-	}
-	
-	public synchronized void send(Message message, SocketAddress address) throws IOException {
-		send(message.getBytes(), address);
-	}
-	
-	protected synchronized void send(byte[] data, SocketAddress address) throws IOException {
-		socket.send(new DatagramPacket(data, data.length, address));
-	}
-	
-	@Override
-	public void close() throws IOException {
-		socket.close();
-		this.exit = true;
-	}
-	
-	@Override
-	public void run() {
-		if(serverAddress == null)
-			throw new UnsupportedOperationException("Client has not connected to a server");
-		
-		try {
-			socket.setSoTimeout(0);
-		} catch (SocketException e) {
-			e.printStackTrace();
-		}
-		
-		MessageHandler messageHandler = new MessageHandler() {
-			@Override
-			public void handle(ServerInfo message, SocketAddress sender) {
-				System.out.println(message);
-			}
-			
-			@Override
-			public void handle(WorldCreationMessage message, SocketAddress sender) {
-				System.out.println(message);
-			}
-		};
-		
-		ExecutorService scheduler = Executors.newCachedThreadPool();
-		DatagramPacket buffer = new DatagramPacket(new byte[1024], 1024);
-		while(!exit) {
-			try {
-				socket.receive(buffer);
-				byte[] packetData = new byte[buffer.getLength()]; //TODO this stuff is pretty unoptimized, perhaps use byte arrays in packet processing? VVV
-				System.arraycopy(buffer.getData(), buffer.getOffset(), packetData, 0, packetData.length);
-				DatagramPacket packet = new DatagramPacket(packetData, 0, packetData.length, buffer.getAddress(), buffer.getPort());
-				scheduler.execute(new Runnable() {
-					public void run() {
-						try {
-							Protocol.processPacket(packet, messageHandler);
-						} catch (UnknownMessageException e) {
-							return;
-						} catch (InvalidMessageException e) {
-							return;
-						}
-					}
-				});
-			} catch(SocketException e) {
-				if(!socket.isClosed()) {
-					e.printStackTrace();
-				} else {
-					break;
-				}
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-		
-		synchronized(this) {
-			finished = true;
-			this.notifyAll();
-		}
-	}
-	
-	protected synchronized void add(DatagramPacket packet) {
-		synchronized(unprocessedPackets) {
-			unprocessedPackets.add(packet);	
-		}
-	}
-
-	@Override
-	public synchronized void exit() {
-		try {
-			close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-
-	@Override
-	public boolean isFinished() {
-		return finished;
 	}
 }
