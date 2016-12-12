@@ -2,7 +2,7 @@ package graphics;
 
 public class Background implements Renderable {
 	
-	protected Model model;
+	protected final Model model;
 	
 	public Background(Model model) {
 		this.model = model;
@@ -19,4 +19,5 @@ public class Background implements Renderable {
 		}
 		model.render();
 	}
+	
 }

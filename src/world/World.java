@@ -1,13 +1,18 @@
 package world;
 
-import static util.Utility.Intersection.*;
+import static util.Utility.Intersection.combineFriction;
 
 import graphics.Model;
-import graphics.Renderable;
 import graphics.ModelRenderer;
+import graphics.Renderable;
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 import world.entity.Entity;
-import java.io.Serializable;
 
 /**
  * Handler and organizer of {@link Entity} and {@link BlockGrid} objects. Handles updating of entities in the world and rendering of entities and blocks. 
@@ -15,17 +20,23 @@ import java.io.Serializable;
  * @author Solomon Ritzow
  *
  */
-public final class World implements Renderable, Serializable {
-	private static final long serialVersionUID = 8941044044393756575L;
+public final class World implements Renderable, Iterable<Entity>, Externalizable {
 	
 	/** collection of entities in the world **/
-	protected final ArrayList<Entity> entities;
+	protected final List<Entity> entities;
+	
+	//protected final Queue<Entity> entityAddQueue;
+	//protected final Queue<Entity> entityRemoveQueue;
 	
 	/** blocks in the world that collide with entities and and are rendered **/
 	protected final BlockGrid foreground, background;
 	
 	/** amount of downwards acceleration to apply to entities in the world **/
 	protected float gravity;
+	
+	public World(int width, int height) {
+		this(width, height, 0.016f);
+	}
 	
 	/**
 	 * Initializes a new World object with a foreground, background, entity storage, and gravity.
@@ -34,7 +45,9 @@ public final class World implements Renderable, Serializable {
 	 * @param gravity the amount of gravity
 	 */
 	public World(int width, int height, float gravity) {
-		entities = new ArrayList<Entity>(200);
+		//entityAddQueue = new LinkedList<Entity>();
+		//entityRemoveQueue = new LinkedList<Entity>();
+		entities = new ArrayList<Entity>(100);
 		foreground = new BlockGrid(this, width, height);
 		background = new BlockGrid(this, width, height);
 		this.gravity = gravity;
@@ -48,25 +61,12 @@ public final class World implements Renderable, Serializable {
 		return background;
 	}
 	
-	/**
-	 * Returns the internal {@link ArrayList} of {@link Entity} objects.
-	 * This class is unsafe and all calls on the returned ArrayList should be synchronized.
-	 * @return an ArrayList that contains the entities in the world.
-	 */
-	public ArrayList<Entity> getEntities() {
-		return entities;
-	}
-	
 	public synchronized boolean add(Entity e) {
-		synchronized(entities) {
-			return entities.add(e);
-		}
+		return entities.add(e);
 	}
 	
 	public synchronized boolean remove(Entity e) {
-		synchronized(entities) {
-			return entities.remove(e);
-		}
+		return entities.remove(e);
 	}
 	
 	public float getGravity() {
@@ -137,13 +137,58 @@ public final class World implements Renderable, Serializable {
 					
 					for(int row = bottomBound; row < topBound; row++) {
 						for(int column = leftBound; column < rightBound; column++) {
-							if(foreground.isBlock(column, row) && !foreground.isHidden(column, row)) {
+							if(foreground.isBlock(column, row) && foreground.get(column, row).doCollision() && !foreground.isSurrounded(column, row)) {
 								resolveCollision(e, column, row, 1, 1, foreground.get(column, row).getFriction(), time);
 							}
 						}
 					}
 				}
 			}
+		}
+	}
+	
+	@Override
+	public synchronized void render(ModelRenderer renderer) {
+		renderer.loadViewMatrix(true);
+		
+		int leftBound = 	Math.max(0, (int)Math.floor(renderer.getWorldViewportLeftBound()));
+		int bottomBound = 	Math.max(0, (int)Math.floor(renderer.getWorldViewportBottomBound()));
+		int rightBound = 	Math.min(foreground.getWidth(), (int)Math.ceil(renderer.getWorldViewportRightBound()) + 1);
+		int topBound = 		Math.min(foreground.getHeight(), (int)Math.ceil(renderer.getWorldViewportTopBound()) + 1);
+		
+		for(int row = bottomBound; row < topBound; row++) {
+			for(int column = leftBound; column < rightBound; column++) {
+				if(foreground.isBlock(column, row)) {
+					Model blockModel = foreground.get(column, row).getModel();
+					
+					if(blockModel != null) {
+						renderer.loadOpacity(1);
+						renderer.loadTransformationMatrix(column, row, 1, 1, 0);
+						blockModel.render();
+					}
+				}
+				
+				else if(background.isBlock(column, row)) {
+					Model blockModel = background.get(column, row).getModel();
+					
+					if(blockModel != null) {
+						renderer.loadOpacity(0.5f); //TODO this is a temp representation of background blocks, in actuality, they will be opaque but drawn over.
+						renderer.loadTransformationMatrix(column, row, 1, 1, 0);
+						blockModel.render();
+					}
+				}
+			}
+		}
+		
+		for(Entity e : entities) {
+			if(e == null)
+				continue;
+			
+			if(e.getPositionX() < renderer.getWorldViewportRightBound() + e.getWidth()/2 
+				&& e.getPositionX() > renderer.getWorldViewportLeftBound() - e.getWidth()/2 
+				&& e.getPositionY() < renderer.getWorldViewportTopBound() + e.getHeight()/2 
+				&& e.getPositionY() > renderer.getWorldViewportBottomBound() - e.getHeight()/2)
+						e.render(renderer);
 		}
 	}
 	
@@ -205,7 +250,7 @@ public final class World implements Renderable, Serializable {
 		        	e.setPositionY(otherY - height);
 		        	
 					if(e.getVelocityY() > 0) {
-						e.setVelocityY(0);;
+						e.setVelocityY(0);
 					}
 					
 		        	if(e.getVelocityX() > 0) {
@@ -273,45 +318,21 @@ public final class World implements Renderable, Serializable {
 		
 		return false;
 	}
-	
+
 	@Override
-	public synchronized void render(ModelRenderer renderer) {
-		renderer.loadViewMatrix(true);
-		
-		int leftBound = 	Math.max(0, (int)Math.floor(renderer.getWorldViewportLeftBound()));
-		int bottomBound = 	Math.max(0, (int)Math.floor(renderer.getWorldViewportBottomBound()));
-		int rightBound = 	Math.min(foreground.getWidth(), (int)Math.ceil(renderer.getWorldViewportRightBound()) + 1);
-		int topBound = 		Math.min(foreground.getHeight(), (int)Math.ceil(renderer.getWorldViewportTopBound()) + 1);
-		
-		for(int row = bottomBound; row < topBound; row++) {
-			for(int column = leftBound; column < rightBound; column++) {
-				if(foreground.isBlock(column, row)) {
-					Model blockModel = foreground.get(column, row).getModel();
-					renderer.loadOpacity(1);
-					renderer.loadTransformationMatrix(column, row, 1, 1, 0);
-					blockModel.render();
-				}
-				
-				else if(background.isBlock(column, row)) {
-					Model blockModel = background.get(column, row).getModel();
-					renderer.loadOpacity(0.5f);
-					renderer.loadTransformationMatrix(column, row, 1, 1, 0);
-					blockModel.render();
-				}
-			}
-		}
-		
-		for(int i = 0; i < entities.size(); i++) {
-			Entity e = entities.get(i);
-			
-			if(e == null)
-				continue;
-			
-			if(e.getPositionX() < renderer.getWorldViewportRightBound() + e.getWidth()/2 
-				&& e.getPositionX() > renderer.getWorldViewportLeftBound() - e.getWidth()/2 
-				&& e.getPositionY() < renderer.getWorldViewportTopBound() + e.getHeight()/2 
-				&& e.getPositionY() > renderer.getWorldViewportBottomBound() - e.getHeight()/2)
-						e.render(renderer);
-		}
+	public Iterator<Entity> iterator() {
+		return entities.iterator();
+	}
+
+	@Override
+	public void writeExternal(ObjectOutput out) throws IOException {
+		out.writeObject(foreground);
+		out.writeObject(background);
+		out.writeObject(entities);
+	}
+
+	@Override
+	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+		throw new UnsupportedOperationException("method not implemented");
 	}
 }

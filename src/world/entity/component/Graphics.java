@@ -31,15 +31,19 @@ public class Graphics {
 	}
 	
 	public void render(ModelRenderer renderer, float x, float y) {
-		renderer.loadOpacity(opacity);
-		renderer.loadTransformationMatrix(x, y, scaleX, scaleY, rotation);
-		model.render();
+		if(model != null) {
+			renderer.loadOpacity(opacity);
+			renderer.loadTransformationMatrix(x, y, scaleX, scaleY, rotation);
+			model.render();
+		}
 	}
 	
 	public void render(ModelRenderer renderer, float x, float y, float opacity, float scaleX, float scaleY, float rotation) {
-		renderer.loadOpacity(this.opacity * opacity);
-		renderer.loadTransformationMatrix(x, y, this.scaleX * scaleX, this.scaleY * scaleY, this.rotation + rotation);
-		model.render();
+		if(model != null) {
+			renderer.loadOpacity(this.opacity * opacity);
+			renderer.loadTransformationMatrix(x, y, this.scaleX * scaleX, this.scaleY * scaleY, this.rotation + rotation);
+			model.render();
+		}
 	}
 
 	public final Model getModel() {

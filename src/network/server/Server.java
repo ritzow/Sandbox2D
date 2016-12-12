@@ -1,6 +1,5 @@
 package network.server;
 
-import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -8,6 +7,7 @@ import java.net.SocketException;
 import java.net.UnknownHostException;
 import network.NetworkController;
 import network.message.MessageHandler;
+import network.message.Protocol;
 import network.message.client.ServerConnectRequest;
 import network.message.client.ServerInfoRequest;
 import network.message.server.ServerConnectAcknowledgment;
@@ -28,18 +28,17 @@ public class Server extends NetworkController {
 	}
 	
 	protected class ServerMessageHandler implements MessageHandler {
-		public void handle(ServerConnectRequest messsage, SocketAddress sender) {
+		public void handle(ServerConnectRequest messsage, SocketAddress sender, int messageID) {
 			boolean canConnect = clientsConnected() < clients.length && !clientPresent(sender);
 			if(canConnect)
 				addClient(sender);
-			byte[] response = new ServerConnectAcknowledgment(canConnect).getBytes();
-			send(new DatagramPacket(response, response.length, sender));
+			send(Protocol.construct(0, new ServerConnectAcknowledgment(canConnect), sender)); //TODO implement message ID, or is this always id 0?
 		}
 
 		@Override
-		public void handle(ServerInfoRequest message, SocketAddress sender) {
-			byte[] response = new ServerInfo(clientsConnected(), clients.length).getBytes();
-			send(new DatagramPacket(response, response.length, sender));
+		public void handle(ServerInfoRequest message, SocketAddress sender, int messageID) {
+			System.out.println("received info request");
+			send(Protocol.construct(0, new ServerInfo(clientsConnected(), clients.length), sender)); //TODO implement message ID, separate id for each client?
 		}
 	}
 	
@@ -48,7 +47,7 @@ public class Server extends NetworkController {
 		try {
 			stopWorld();
 		} catch(RuntimeException e) {
-			
+			//ignores "no world to stop" exception
 		} finally {
 			super.exit();
 		}

@@ -27,7 +27,7 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 	private volatile boolean focused;
 	
 	private ModelRenderer renderer;
-	private Display display;
+	private final Display display;
 	
 	private final ArrayList<Renderable> renderables;
 	
@@ -41,7 +41,7 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 	public void run() {
 		display.setContext();
 		GL.createCapabilities();
-		glfwSwapInterval(1);
+		glfwSwapInterval(0);
 		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -63,7 +63,7 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 		}
 		
 		try {
-			while(!exit) {
+			while(!exit) { //TODO remove as much synchronization stuff as possible (all the volatile fields)
 				if(focused) {
 					if(updateFrameSize) {
 						glViewport(0, 0, (int)framebufferWidth, (int)framebufferHeight);
@@ -73,11 +73,8 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 					
 					glClear(GL_COLOR_BUFFER_BIT);
 					
-					for(int i = 0; i < renderables.size(); i++) {
-						Renderable renderable = renderables.get(i);
-						synchronized(renderable) {
-							renderable.render(renderer);
-						}
+					for(Renderable r : renderables) {
+						r.render(renderer);
 					}
 					
 					glFinish();

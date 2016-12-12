@@ -14,11 +14,11 @@ import network.message.server.world.WorldCreationMessage;
  * @author Solomon Ritzow
  */
 public interface MessageHandler {
-	default void handle(ClientInfo message, SocketAddress sender) {}
-	default void handle(ServerConnectAcknowledgment message, SocketAddress sender) {}
-	default void handle(ServerConnectRequest message, SocketAddress sender) {}
-	default void handle(ServerInfo message, SocketAddress sender) {}
-	default void handle(ServerInfoRequest message, SocketAddress sender) {}
-	default void handle(WorldCreationMessage message, SocketAddress sender) {}
-	default void handle(BlockGridChunkMessage message, SocketAddress sender) {}
+	default void handle(ClientInfo message, SocketAddress sender, int messageID) {}
+	default void handle(ServerConnectAcknowledgment message, SocketAddress sender, int messageID) {}
+	default void handle(ServerConnectRequest message, SocketAddress sender, int messageID) {}
+	default void handle(ServerInfo message, SocketAddress sender, int messageID) {}
+	default void handle(ServerInfoRequest message, SocketAddress sender, int messageID) {}
+	default void handle(WorldCreationMessage message, SocketAddress sender, int messageID) {}
+	default void handle(BlockGridChunkMessage message, SocketAddress sender, int messageID) {}
 }

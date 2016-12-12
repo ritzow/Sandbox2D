@@ -4,7 +4,7 @@ import network.message.Message;
 import network.message.Protocol;
 import util.ByteUtil;
 
-public class ServerInfoRequest extends Message {
+public class ServerInfoRequest implements Message {
 
 	@Override
 	public byte[] getBytes() {

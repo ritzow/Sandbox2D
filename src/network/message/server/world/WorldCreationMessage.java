@@ -1,9 +1,7 @@
 package network.message.server.world;
 
-import java.net.DatagramPacket;
 import network.message.InvalidMessageException;
 import network.message.Message;
-import network.message.Protocol;
 
 import static util.ByteUtil.*;
 import world.World;
@@ -12,35 +10,48 @@ import world.World;
  * @author Solomon Ritzow
  *
  */
-public class WorldCreationMessage extends Message {
+public class WorldCreationMessage implements Message {
 	
 	protected int width;
 	protected int height;
+	protected float gravity;
 	
 	public WorldCreationMessage(World world) {
 		this.width = world.getForeground().getWidth();
 		this.height = world.getForeground().getHeight();
+		this.gravity = world.getGravity();
 	}
 	
-	public WorldCreationMessage(DatagramPacket packet) throws InvalidMessageException {
-		if(getShort(packet.getData(), packet.getOffset()) != Protocol.WORLD_CREATION_MESSAGE)
-			throw new InvalidMessageException();
-		this.width = getInteger(packet.getData(), packet.getOffset() + 2);
-		this.height = getInteger(packet.getData(), packet.getOffset() + 6);
+	public WorldCreationMessage(byte[] data) throws InvalidMessageException {
+		this.width = getInteger(data, 0);
+		this.height = getInteger(data, 4);
+		this.gravity = getInteger(data, 8);
 	}
 
 	@Override
 	public byte[] getBytes() {
-		byte[] data = new byte[10];
-		putShort(data, 0, Protocol.WORLD_CREATION_MESSAGE);
-		putInteger(data, 2, width);
-		putInteger(data, 6, height);
+		byte[] data = new byte[12];
+		putInteger(data, 0, width);
+		putInteger(data, 4, height);
+		putFloat(data, 8, gravity);
 		return data;
 	}
 
 	@Override
 	public String toString() {
-		return "width: " + width + ", height: " + height;
+		return "width: " + width + ", height: " + height + ", gravity: " + gravity;
+	}
+	
+	public int getWidth() {
+		return width;
+	}
+	
+	public int getHeight() {
+		return height;
+	}
+	
+	public float getGravity() {
+		return gravity;
 	}
 	
 }

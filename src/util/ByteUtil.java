@@ -1,14 +1,31 @@
 package util;
 
 import java.io.*;
+import java.util.zip.DeflaterOutputStream;
+import java.util.zip.InflaterInputStream;
+import org.nustaq.serialization.FSTConfiguration;
 
 public final class ByteUtil {
 	
-	//Data composition from bytes
+	private static final FSTConfiguration serializer;
 	
-	public static short getShort(byte a, byte b) {
-		return (short)((a << 8) + (b << 0));
+	static {
+		serializer = FSTConfiguration.createDefaultConfiguration();
+		serializer.registerClass(
+				world.block.Block.class, 
+				world.block.DirtBlock.class, 
+				world.block.GrassBlock.class, 
+				world.block.RedBlock.class, 
+				world.entity.Entity.class,
+				world.entity.ItemEntity.class,
+				world.entity.BlockPlaceParticleEntity.class,
+				world.entity.LivingEntity.class,
+				world.entity.ParticleEntity.class,
+				world.entity.Player.class
+		);
 	}
+	
+	//Data composition from bytes
 	
 	public static short getShort(byte[] array, int index) {
 		return (short)((array[index] << 8) | (array[index + 1] & 0xff));
@@ -18,7 +35,7 @@ public final class ByteUtil {
 		return ((array[index] & 255) << 24) | ((array[index + 1] & 255) << 16) | ((array[index + 2] & 255) << 8) | ((array[index + 3] & 255) << 0);
 	}
 	
-	public static float getFloat(byte a, byte b, byte c, byte d) {
+	private static float getFloat(byte a, byte b, byte c, byte d) {
 		return Float.intBitsToFloat(((a & 255) << 24) | ((b & 255) << 16) | ((c & 255) << 8) | ((d & 255) << 0));
 	}
 	
@@ -30,8 +47,25 @@ public final class ByteUtil {
 		return array[index] == 1 ? true : false;
 	}
 	
-	public static synchronized Object deserialize(byte[] data, int offset, int length) throws ClassNotFoundException, IOException {
+	public static Object deserialize(byte[] data) throws ClassNotFoundException, IOException {
+		return deserialize(data, 0, data.length);
+	}
+	
+	public static Object deserialize(byte[] data, int offset, int length) throws ClassNotFoundException, IOException {
 		return new ObjectInputStream(new ByteArrayInputStream(data, offset, length)).readObject();
+	}
+	
+	public static Object deserializeCompressed(byte[] data) throws ClassNotFoundException, IOException {
+		return deserializeCompressed(data, 0, data.length);
+	}
+	
+	public static Object deserializeCompressed(byte[] data, int offset, int length) throws ClassNotFoundException, IOException {
+		ByteArrayInputStream in = new ByteArrayInputStream(data, offset, length);
+		InflaterInputStream inflater = new InflaterInputStream(in);
+		ObjectInputStream deserializer = new ObjectInputStream(inflater);
+		Object object = deserializer.readObject();
+		deserializer.close();
+		return object;
 	}
 	
 	//Data decomposition to bytes
@@ -60,10 +94,47 @@ public final class ByteUtil {
 		array[index] = (byte) (b ? 1 : 0);
 	}
 	
-	public static synchronized byte[] serialize(Serializable object) throws IOException {
+	public static byte[] serialize(Object object) throws IOException {
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
-		ObjectOutputStream ser = new ObjectOutputStream(out);
-		ser.writeObject(object);
+		ObjectOutputStream serializer = new ObjectOutputStream(out);
+		serializer.writeObject(object);
+		serializer.close();
+		out.close();
 		return out.toByteArray();
 	}
+	
+	public static byte[] serializeCompressed(Object object) throws IOException { //TODO use FST Serialization?
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		DeflaterOutputStream compresser = new DeflaterOutputStream(out);
+		ObjectOutputStream serializer = new ObjectOutputStream(compresser);
+		serializer.writeObject(object);
+		serializer.close();
+		return out.toByteArray();
+	}
+	
+//	private static final class ByteArrayFillOutputStream extends OutputStream {
+//		protected byte[] array;
+//		protected int index;
+//		
+//		public ByteArrayFillOutputStream(byte[] array, int offset) {
+//			this.array = array;
+//			this.index = offset;
+//		}
+//
+//		@Override
+//		public void write(int b) throws IOException {
+//			if(index >= array.length)
+//				throw new ArrayIndexOutOfBoundsException();
+//			array[index] = (byte)b;
+//			index++;
+//		}
+//
+//		@Override
+//		public void write(byte[] b, int off, int len) throws IOException {
+//			if(index >= array.length)
+//				throw new ArrayIndexOutOfBoundsException();
+//			System.arraycopy(b, off, array, index, len);
+//			index += len;
+//		}
+//	}
 }

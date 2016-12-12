@@ -14,18 +14,24 @@ import network.NetworkController;
 import network.message.InvalidMessageException;
 import network.message.Message;
 import network.message.MessageHandler;
+import network.message.Protocol;
 import network.message.client.ServerConnectRequest;
+import network.message.client.ServerInfoRequest;
 import network.message.server.ServerConnectAcknowledgment;
 import network.message.server.ServerInfo;
 import network.message.server.world.BlockGridChunkMessage;
 import network.message.server.world.WorldCreationMessage;
+import world.World;
 import world.WorldManager;
 
 public final class Client extends NetworkController {
 
 	protected SocketAddress serverAddress;
-	protected WorldManager world;
+	protected WorldManager worldManager;
 	protected Lobby lobby;
+	
+	/** if the client sent a ServerInfoRequest to get server information **/
+	protected boolean requestedInfo;
 	
 	public Client() throws SocketException, UnknownHostException {
 		super(new InetSocketAddress(InetAddress.getLocalHost(), 0));
@@ -34,31 +40,37 @@ public final class Client extends NetworkController {
 	
 	protected class ClientMessageHandler implements MessageHandler {
 		@Override
-		public void handle(ServerConnectAcknowledgment message, SocketAddress sender) {
-			System.out.println(message);
+		public void handle(ServerInfo message, SocketAddress sender, int messageID) {
+			if(requestedInfo) {
+				System.out.println(message);
+				requestedInfo = false;
+			}
 		}
 
 		@Override
-		public void handle(ServerInfo message, SocketAddress sender) {
-			System.out.println(message);
+		public void handle(WorldCreationMessage message, SocketAddress sender, int messageID) {
+			worldManager = new WorldManager(new World(message.getWidth(), message.getHeight(), message.getGravity()));
 		}
 
 		@Override
-		public void handle(WorldCreationMessage message, SocketAddress sender) {
-			System.out.println(message);
-		}
-
-		@Override
-		public void handle(BlockGridChunkMessage message, SocketAddress sender) {
-			System.out.println(message);
+		public void handle(BlockGridChunkMessage message, SocketAddress sender, int messageID) {
+			//TODO implement world transfer. Serialize and compress entire world, then send chunks of the resulting byte array at a time.
 		}
 	}
 	
-	public void send(Message message) {
-		if(serverAddress == null)
-			throw new RuntimeException("Server address is null");
-		byte[] msg = message.getBytes();
-		send(new DatagramPacket(msg, msg.length, serverAddress));
+	protected int lastMessageID = 0;
+	
+	/**
+	 * Note: currently only works after connecting to a server.
+	 * @param address
+	 */
+	public void requestServerInfo(SocketAddress address) {
+		requestedInfo = true;
+		send(new ServerInfoRequest(), address);
+	}
+	
+	public void send(Message message, SocketAddress address) {
+		send(Protocol.construct(++lastMessageID, message, address));
 	}
 	
 	/**
@@ -75,8 +87,7 @@ public final class Client extends NetworkController {
 		if(attempts == 0)
 			throw new RuntimeException("Number of connection attempts cannot be zero");
 		socket.setSoTimeout(timeout/attempts);
-		byte[] request = new ServerConnectRequest().getBytes();
-		DatagramPacket packet = new DatagramPacket(request, request.length, serverAddress);
+		DatagramPacket packet = Protocol.construct(0, new ServerConnectRequest(), serverAddress);
 		socket.send(packet);
 		DatagramPacket response = new DatagramPacket(new byte[10], 10);
 		long startTime = System.currentTimeMillis();
@@ -85,7 +96,7 @@ public final class Client extends NetworkController {
 			try {
 				socket.receive(response);
 				if(response.getSocketAddress().equals(serverAddress)) {
-					if(new ServerConnectAcknowledgment(response).isAccepted()) {
+					if(new ServerConnectAcknowledgment(response.getData(), 6).isAccepted()) {
 						this.serverAddress = response.getSocketAddress();
 						return true;
 					} else {
