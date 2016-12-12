@@ -2,6 +2,9 @@ package world.entity;
 
 import graphics.Model;
 import graphics.ModelRenderer;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 import world.entity.component.Graphics;
 
 public class TestEntity extends Entity {
@@ -72,6 +75,20 @@ public class TestEntity extends Entity {
 	@Override
 	public float getMass() {
 		return 10;
+	}
+
+	@Override
+	public void writeExternal(ObjectOutput out) throws IOException {
+		out.writeFloat(rotationSpeed);
+		out.writeFloat(width);
+		out.writeFloat(height);
+	}
+
+	@Override
+	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+		rotationSpeed = in.readFloat();
+		width = in.readFloat();
+		height = in.readFloat();
 	}
 
 }

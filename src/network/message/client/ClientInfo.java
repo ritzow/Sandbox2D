@@ -1,14 +1,10 @@
 package network.message.client;
 
-import static util.ByteUtil.*;
-
-import java.net.DatagramPacket;
 import java.nio.charset.Charset;
 import network.message.InvalidMessageException;
 import network.message.Message;
-import network.message.Protocol;
 
-public class ClientInfo extends Message {
+public class ClientInfo implements Message {
 	
 	protected String username;
 	
@@ -16,24 +12,16 @@ public class ClientInfo extends Message {
 		this.username = username;
 	}
 	
-	public ClientInfo(DatagramPacket packet) throws InvalidMessageException {
-		if(packet.getLength() < 2 || getShort(packet.getData(), 0) != Protocol.CLIENT_INFO)
-			throw new InvalidMessageException();
-		byte length = packet.getData()[packet.getOffset() + 2];
-		this.username = new String(packet.getData(), packet.getOffset() + 3, length);
+	public ClientInfo(byte[] data) throws InvalidMessageException {
+		byte length = data[0];
+		this.username = new String(data, 1, length);
 	}
 
-	//format: protocol 2, 2 bytes, username length, 1 byte, username string, username length bytes
 	@Override
 	public byte[] getBytes() {
-		byte[] username = this.username.getBytes(Charset.forName("UTF-8"));
-		byte[] message = new byte[3 + username.length];
-		putShort(message, 0, Protocol.CLIENT_INFO);
-		message[2] = (byte)username.length;
-		for(int i = 0; i < username.length; i++) {
-			message[i + 3] = username[i];
-		}
-		
+		byte[] nameBytes = username.getBytes(Charset.forName("UTF-8"));
+		byte[] message = new byte[1 + nameBytes.length];
+		System.arraycopy(nameBytes, 0, message, 1, nameBytes.length);
 		return message;
 	}
 

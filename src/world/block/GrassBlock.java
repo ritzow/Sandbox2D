@@ -1,6 +1,9 @@
 package world.block;
 
 import graphics.Model;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 import resource.Models;
 
 public class GrassBlock extends Block {
@@ -29,5 +32,20 @@ public class GrassBlock extends Block {
 	@Override
 	public String getName() {
 		return "Grass";
+	}
+
+	@Override
+	public boolean doCollision() {
+		return true;
+	}
+
+	@Override
+	public void writeExternal(ObjectOutput out) throws IOException {
+		
+	}
+
+	@Override
+	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+		
 	}
 }

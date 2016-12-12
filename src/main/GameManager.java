@@ -6,6 +6,7 @@ import graphics.GraphicsManager;
 import input.Controls;
 import input.EventManager;
 import input.InputManager;
+import input.controller.CameraController;
 import input.controller.EntityController;
 import input.controller.InteractionController;
 import input.controller.TrackingCameraController;
@@ -16,12 +17,15 @@ import java.net.SocketAddress;
 import network.client.Client;
 import network.server.Server;
 import resource.Models;
+import util.ByteUtil;
 import util.Utility.Synchronizer;
 import world.World;
 import world.block.DirtBlock;
 import world.block.GrassBlock;
 import world.block.RedBlock;
+import world.entity.ItemEntity;
 import world.entity.Player;
+import world.item.BlockItem;
 
 /**
  * An instance of this class manages game startup and shutdown.
@@ -70,13 +74,13 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		AudioSystem.start();
 		
 		//create the world
-		World world = new World(500, 200, 0.015f);
+		World world = new World(5000, 1000);
 		for(int column = 0; column < world.getForeground().getWidth(); column++) {
 			double height = world.getForeground().getHeight()/2;
 			height += (Math.sin(column * 0.1f) + 1) * (world.getForeground().getHeight() - height) * 0.05f;
 			
 			for(int row = 0; row < height; row++) {
-				if(Math.random() < 0.005) {
+				if(Math.random() < 0.007) {
 					world.getForeground().set(column, row, new RedBlock());
 				} else {
 					world.getForeground().set(column, row, new DirtBlock());
@@ -87,16 +91,50 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 			world.getBackground().set(column, (int)height, new DirtBlock());
 		}
 		
+		/* TODO figure out how to implement "air"/refactor block system so that blocks like air (non-physical blocks)...
+		 * won't cause weird bugs by refactoring based on the assumption that any given block wont be physical/have a model/collide/etc.
+		 * Take context related stuff out of BlockGrid and move it somewhere else (world?) and make it so EntityController/InteractionController
+		 * don't have to worry too much about how things work.
+		 */
+//		for(int column = 0; column < world.getForeground().getWidth(); column++) {
+//			for(int row = 0; row < world.getForeground().getHeight(); row++) {
+//				if(world.getForeground().get(column, row) == null) {
+//					world.getForeground().set(column, row, new AirBlock());
+//				}
+//			}
+//		}
+		
 		//create the player's character
 		Player player = new Player();
 		player.setPositionX(world.getForeground().getWidth()/2);
-		player.setPositionY(world.getForeground().getHeight());
-		world.add(player);
+		for(int i = 0; i < world.getForeground().getHeight(); i++) {
+			if(world.getForeground().get(player.getPositionX(), i) == null) {
+				player.setPositionY(i);
+				break;
+			}
+		} world.add(player);
+
+//		try {
+//			byte[] serialized = ByteUtil.serializeCompressed(world.getForeground());
+//			System.out.println("Serialized size: " + serialized.length + " bytes");
+//			ByteUtil.deserializeCompressed(serialized);
+//		} catch (IOException | ClassNotFoundException e) {
+//			e.printStackTrace();
+//		}
+		
+		try {
+			byte[] serialized = ByteUtil.serializeCompressed(new ItemEntity(new BlockItem(new RedBlock())));
+			System.out.println("Serialized size: " + serialized.length + " bytes");
+			ItemEntity item = (ItemEntity)ByteUtil.deserializeCompressed(serialized);
+			System.out.println(item);
+		} catch (IOException | ClassNotFoundException e) {
+			e.printStackTrace();
+		}
 		
 		//Create controllers for player input
 		EntityController playerController = new EntityController(player, world, 0.2f);
 		InteractionController cursorController = new InteractionController(player, world, graphicsManager.getRenderer().getCamera(), 200);
-		TrackingCameraController cameraController = new TrackingCameraController(graphicsManager.getRenderer().getCamera(), player, 0.005f, 0.05f, 0.6f);
+		CameraController cameraController = new TrackingCameraController(graphicsManager.getRenderer().getCamera(), player, 0.005f, 0.05f, 0.6f);
 		
 		//link controllers with the window's input manager
 		playerController.link(eventManager.getDisplay().getInputManager());
@@ -123,13 +161,13 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		Client client;
 		Server server;
 		
-		try { 
+		try {
 			client = new Client();
 			server = new Server(20);
 			new Thread(server, "Game Server").start();
 			Synchronizer.waitForSetup(server);
-			SocketAddress serverAddress = server.getSocketAddress();
 			server.startWorld(world);
+			SocketAddress serverAddress = server.getSocketAddress();
 			if(client.connectToServer(serverAddress, 1, 1000)) {
 				System.out.println("Client connected to " + serverAddress);
 				new Thread(client, "Game Client").start();

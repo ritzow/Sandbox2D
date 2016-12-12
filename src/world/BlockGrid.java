@@ -4,35 +4,50 @@ import java.io.Serializable;
 import world.block.Block;
 
 public class BlockGrid implements Serializable {
-	private static final long serialVersionUID = -6699666931303107158L;
+	private static final long serialVersionUID = 1L;
 
 	protected final Block[][] blocks;
 	
-	protected World world;
+	/** A reference to the containing World object **/
+	protected transient World world;
 	
+	//TODO refactor BlockGrid classes to have as little usage of outside classes as possible?
 	public BlockGrid(World world, int width, int height) {
 		blocks = new Block[height][width];
 		this.world = world;
 	}
 	
-	public Block[][] toArray() {
-		return toArray(0, 0, blocks.length, blocks[0].length);
-	}
-	
-	/**
-	 * 
-	 * @param x the starting x-coordinate to copy, from the left
-	 * @param y the starting y-coordinate to copy, from the bottom
-	 * @param width the width of the rectangular area to copy
-	 * @param height the height of the rectangular area to copy
-	 * @return a new 2D block array representing the rectangle of blocks specified by the parameters
-	 */ //TODO is this actually from the bottom left? it doesnt use the get and set methods
-	public Block[][] toArray(int x, int y, int width, int height) {
-		Block[][] range = new Block[height][width];
-		for(int row = y; row < y + height; row++) {
-			System.arraycopy(blocks[row], x, range[row - y], 0, width);
+	public String toString() {
+		StringBuilder builder = new StringBuilder();
+		
+		builder.append('┌');
+		for(int i = 1; i < blocks[0].length - 1; i++) {
+			builder.append('─');
 		}
-		return range;
+		builder.append('┐');
+		builder.append('\n');
+		
+		for(int i = 0; i < blocks.length; i++) {
+			builder.append('│');
+			for(int j = 1; j < blocks[i].length - 1; j++) {
+				Block block = blocks[i][j];
+				if(block != null) {
+					builder.append(blocks[i][j].toString().charAt(0));
+				} else {
+					builder.append(" ");
+				}
+			}
+			builder.append('│');
+			builder.append('\n');
+		}
+		
+		builder.append('└');
+		for(int i = 1; i < blocks[0].length - 1; i++) {
+			builder.append('─');
+		}
+		builder.append('┘');
+		
+		return builder.toString();
 	}
 	
 	public boolean isValid(int x, int y) {
@@ -41,6 +56,10 @@ public class BlockGrid implements Serializable {
 	
 	public Block get(int x, int y) {
 		return blocks[blocks.length - 1 - y][x];
+	}
+	
+	public Block get(float worldX, float worldY) {
+		return get(Math.round(worldX), Math.round(worldY));
 	}
 	
 	public synchronized void set(int x, int y, Block block) {
@@ -58,7 +77,7 @@ public class BlockGrid implements Serializable {
 	}
 	
 	public synchronized boolean place(int x, int y, Block block) {
-		if(!isBlock(x, y) && isStable(x, y)) {
+		if(!isBlock(x, y)) {
 			set(x, y, block);
 			block.onPlace(world, x, y);
 			return true;
@@ -77,16 +96,15 @@ public class BlockGrid implements Serializable {
 		return isBlock(Math.round(worldX), Math.round(worldY));
 	}
 	
-	public boolean isHidden(int x, int y) {
-		return  isBlock(x - 1, y) && isBlock(x + 1, y) && isBlock(x, y - 1) && isBlock(x, y + 1);
+	public boolean isSurrounded(int x, int y) {
+		return 	isBlock(x - 1, y) &&
+				isBlock(x + 1, y) &&
+				isBlock(x, y - 1) &&
+				isBlock(x, y + 1);
 	}
 	
 	public boolean isFloating(int x, int y) {
 		return !(isBlock(x - 1, y) || isBlock(x + 1, y) || isBlock(x, y - 1) || isBlock(x, y + 1));
-	}
-	
-	public boolean isStable(int x, int y) { //TODO remove this method from block grid, too specific
-		return (isBlock(x, y - 1) || isBlock(x - 1, y) || isBlock(x + 1, y));
 	}
 	
 	public int getWidth() {

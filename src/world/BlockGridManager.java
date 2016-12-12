@@ -17,12 +17,12 @@ public final class BlockGridManager implements Runnable, Exitable {
 			while(!exit) {
 				for(int row = 0; row < blocks.getHeight(); row++) {
 					for(int column = 0; column < blocks.getWidth(); column++) {
-						if(blocks.isBlock(column, row) && !blocks.isHidden(column, row) && !blocks.isStable(column, row)) {
+						if(blocks.isBlock(column, row) && !blocks.isSurrounded(column, row) && !isStable(column, row)) {
 							blocks.destroy(column, row);
 						}
 					}
 				}
-				Thread.sleep(1);
+				Thread.sleep(10);
 			}
 		} catch (InterruptedException e) {
 			System.out.println("Block Grid Updater interrupted");
@@ -32,6 +32,10 @@ public final class BlockGridManager implements Runnable, Exitable {
 			finished = true;
 			this.notifyAll();
 		}
+	}
+	
+	private boolean isStable(int x, int y) {
+		return (blocks.isBlock(x, y - 1) || blocks.isBlock(x - 1, y) || blocks.isBlock(x + 1, y));
 	}
 	
 	@Override

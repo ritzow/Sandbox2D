@@ -2,6 +2,9 @@ package world.entity;
 
 import audio.AudioSystem;
 import graphics.ModelRenderer;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 import resource.Models;
 import resource.Sounds;
 import world.World;
@@ -15,11 +18,11 @@ public class Player extends LivingEntity {
 
 	private static final long serialVersionUID = 4619416956992212820L;
 	
-	protected final Inventory inventory;
+	protected Inventory inventory;
 	protected int selected;
 	
-	protected Graphics head;
-	protected Graphics body;
+	protected transient Graphics head;
+	protected transient Graphics body;
 	
 	public Player() {
 		super(100);
@@ -38,9 +41,9 @@ public class Player extends LivingEntity {
 		head.render(renderer, positionX, positionY + 0.5f);
 		body.render(renderer, positionX, positionY - 0.5f);
 		if(inventory.get(selected) != null) {
-			renderer.loadOpacity(1.0f);
-			renderer.loadTransformationMatrix(positionX + velocityX * 2, positionY, 0.5f, 0.5f, velocityX != 0 ? (float)Math.PI/4 * (velocityX < 0 ? -1 : 1) : 0);
-			inventory.get(selected).getGraphics().getModel().render();
+			inventory.get(selected)
+			.getGraphics()
+			.render(renderer, positionX + velocityX * 2,  positionY, 1.0f, 0.5f, 0.5f, velocityX != 0 ? (float)Math.PI/4 * (velocityX < 0 ? -1 : 1) : 0);
 		}
 	}
 
@@ -136,6 +139,18 @@ public class Player extends LivingEntity {
 	@Override
 	public float getMass() {
 		return 1;
+	}
+
+	@Override
+	public void writeExternal(ObjectOutput out) throws IOException {
+		out.writeObject(inventory);
+		out.writeInt(selected);
+	}
+
+	@Override
+	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+		inventory = (Inventory)in.readObject();
+		selected = in.readInt();
 	}
 
 }

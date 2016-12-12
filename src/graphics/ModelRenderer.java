@@ -47,8 +47,10 @@ public final class ModelRenderer extends ShaderProgram {
 	};
 	
 	public ModelRenderer(Camera camera) {
-		super(new Shader("resources/shaders/vertexShader", org.lwjgl.opengl.GL20.GL_VERTEX_SHADER), 
-				new Shader("resources/shaders/fragmentShader", org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER));
+		super(
+			new Shader("resources/shaders/vertexShader", org.lwjgl.opengl.GL20.GL_VERTEX_SHADER),
+			new Shader("resources/shaders/fragmentShader", org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER)
+		);
 		
 		this.camera = camera;
 		this.uniform_transform = getUniformID("transform");

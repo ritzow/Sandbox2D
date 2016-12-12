@@ -1,12 +1,8 @@
 package network.message.server.world;
 
-import java.io.IOException;
-import java.net.DatagramPacket;
 import java.util.Arrays;
 import network.message.InvalidMessageException;
 import network.message.Message;
-import network.message.Protocol;
-import util.ByteUtil;
 import world.BlockGrid;
 import world.block.Block;
 
@@ -14,40 +10,41 @@ import world.block.Block;
  * @author Solomon Ritzow
  *
  */
-public class BlockGridChunkMessage extends Message {
+public class BlockGridChunkMessage implements Message {
 	
+	protected String name;
 	protected Block[][] blocks;
 	
-	public BlockGridChunkMessage(BlockGrid grid, int startX, int startY, int width, int height) {
-		this.blocks = grid.toArray(startX, startY, width, height);
+	public BlockGridChunkMessage(String name, BlockGrid grid, int startX, int startY, int width, int height) {
+		this.name = name;
+		//this.blocks = grid.toArray(startX, startY, width, height);
+		throw new UnsupportedOperationException("Class not implemented");
 	}
 	
-	public BlockGridChunkMessage(DatagramPacket packet) throws InvalidMessageException {
-		
-		if(ByteUtil.getShort(packet.getData(), 0) != Protocol.WORLD_CHUNK_MESSAGE)
-			throw new InvalidMessageException("incorrect protocol ID");
-		
-		try {
-			Object object = ByteUtil.deserialize(packet.getData(), packet.getOffset() + 2, packet.getLength());
-			
-			if(object instanceof Block[][]) {
-				this.blocks = (Block[][])object;
-			} else {
-				throw new InvalidMessageException("Deserialized object is of incorrect type");
-			}
-		} catch (ClassNotFoundException | IOException e) {
-			e.printStackTrace();
-		}
+	public BlockGridChunkMessage(byte[] data) throws InvalidMessageException {
+//		try {
+//			//Object object = ByteUtil.deserialize(data, 0, data.length);
+//			
+//			if(object instanceof Block[][]) {
+//				this.blocks = (Block[][])object;
+//			} else {
+//				throw new InvalidMessageException("Deserialized object is of incorrect type");
+//			}
+//		} catch (ClassNotFoundException | IOException e) {
+//			throw new InvalidMessageException(e);
+//		}
 	}
 
 	@Override
 	public byte[] getBytes() {
-		try {
-			return ByteUtil.serialize(blocks);
-		} catch (IOException e) {
-			e.printStackTrace();
-			return null;
-		}
+//		try {//TODO implement naming system or some other more effective system for foreground/background etc.
+//			byte[] object = ByteUtil.serialize(blocks);
+//			
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//			return null;
+//		}
+		return null;
 	}
 
 	@Override

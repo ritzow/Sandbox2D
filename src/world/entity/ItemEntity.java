@@ -1,6 +1,9 @@
 package world.entity;
 
 import graphics.ModelRenderer;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 import world.item.Item;
 
 public final class ItemEntity extends Entity {
@@ -10,6 +13,15 @@ public final class ItemEntity extends Entity {
 	protected Item item;
 	protected float rotation;
 	protected float rotationSpeed;
+	
+	public ItemEntity() {
+		//for deserialization
+	}
+	
+	public ItemEntity(Item item) {
+		this.item = item;
+		this.rotationSpeed = (float) (Math.random() < 0.5f ? -(Math.random() * 0.02f + 0.02f) : (Math.random() * 0.02f + 0.02f));
+	}
 	
 	public ItemEntity(Item item, float x, float y) {
 		this.item = item;
@@ -70,6 +82,26 @@ public final class ItemEntity extends Entity {
 	@Override
 	public float getMass() {
 		return 1f;
+	}
+
+	@Override
+	public void writeExternal(ObjectOutput out) throws IOException {
+		super.writeExternal(out);
+		out.writeObject(item);
+		out.writeFloat(rotation);
+		out.writeFloat(rotationSpeed);
+	}
+
+	@Override
+	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+		super.readExternal(in);
+		item = (Item)in.readObject();
+		rotation = in.readFloat();
+		rotationSpeed = in.readFloat();
+	}
+	
+	public String toString() {
+		return super.toString() + ", item = (" + item.toString() + "), rotation = " + rotation + ", rotationSpeed = " + rotationSpeed;
 	}
 	
 }

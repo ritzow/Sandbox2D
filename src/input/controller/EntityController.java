@@ -101,7 +101,8 @@ public final class EntityController extends Controller implements KeyHandler, Up
 	
 	private boolean blockBelow(float x, float y, float width, float height) {
 		for(float h = x - width/2; h <= x + width/2; h++) {	
-			if(world.getForeground().isBlock(h + (h < x ? +0.05f : -0.05f), y - height/2 - 0.05f)) {
+			if(world.getForeground().isBlock(h + (h < x ? +0.05f : -0.05f), y - height/2 - 0.05f) 
+					&& world.getForeground().get(h + (h < x ? +0.05f : -0.05f), y - height/2 - 0.05f).doCollision()) {
 				return true;
 			}
 		}
@@ -114,7 +115,8 @@ public final class EntityController extends Controller implements KeyHandler, Up
 	
 	private boolean blockLeft(float x, float y, float width, float height) {
 		for(float v = y - height/2; v <= y + height/2; v++) {
-			if(world.getForeground().isBlock(x - width/2 - 0.05f, v + (v < y ? +0.05f : -0.05f))) {
+			if(world.getForeground().isBlock(x - width/2 - 0.05f, v + (v < y ? +0.05f : -0.05f)) 
+					&& world.getForeground().get(x - width/2 - 0.05f, v + (v < y ? +0.05f : -0.05f)).doCollision()) {
 				return true;
 			}
 		}
@@ -127,7 +129,8 @@ public final class EntityController extends Controller implements KeyHandler, Up
 	
 	private boolean blockRight(float x, float y, float width, float height) {
 		for(float v = y - height/2; v <= y + height/2; v++) {
-			if(world.getForeground().isBlock(x + width/2 + 0.05f, v + (v < y ? +0.05f : -0.05f))) {
+			if(world.getForeground().isBlock(x + width/2 + 0.05f, v + (v < y ? +0.05f : -0.05f)) && world.getForeground()
+					.get(x + width/2 + 0.05f, v + (v < y ? +0.05f : -0.05f)).doCollision()) {
 				return true;
 			}
 		}
@@ -135,8 +138,7 @@ public final class EntityController extends Controller implements KeyHandler, Up
 	}
 	
 	private boolean entityBelow() {
-		for(int i = 0; i < world.getEntities().size(); i++) {
-			Entity o = world.getEntities().get(i);
+		for(Entity o : world) {
 			if(o != null && entity != o && o.doEntityCollisionResolution() && 
 					intersection(entity.getPositionX(), entity.getPositionY() - entity.getHeight()/2, entity.getWidth() - 0.01f, 0.1f, 
 							o.getPositionX(), o.getPositionY(), o.getWidth(), o.getHeight())) {

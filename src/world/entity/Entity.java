@@ -2,10 +2,12 @@ package world.entity;
 
 import graphics.ModelRenderer;
 import world.World;
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 
-import java.io.Serializable;
-
-public abstract class Entity implements Serializable {
+public abstract class Entity implements Externalizable {
 	private static final long serialVersionUID = 7177412000462430179L;
 	
 	protected float positionX;
@@ -22,6 +24,22 @@ public abstract class Entity implements Serializable {
 	
 	public void onCollision(World world, Entity e, float time) {
 		
+	}
+	
+	@Override
+	public void writeExternal(ObjectOutput out) throws IOException {
+		out.writeFloat(positionX);
+		out.writeFloat(positionY);
+		out.writeFloat(velocityX);
+		out.writeFloat(velocityY);
+	}
+
+	@Override
+	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+		positionX = in.readFloat();
+		positionY = in.readFloat();
+		velocityX = in.readFloat();
+		velocityY = in.readFloat();
 	}
 
 	public abstract boolean getShouldDelete();
@@ -69,4 +87,16 @@ public abstract class Entity implements Serializable {
 		this.velocityY = velocityY;
 	}
 	
+	public String toString() {
+		StringBuilder builder = new StringBuilder();
+		builder.append("positionX = ");
+		builder.append(positionX);
+		builder.append(", positionY = ");
+		builder.append(positionY);
+		builder.append(", velocityX = ");
+		builder.append(velocityX);
+		builder.append(", velocityY = ");
+		builder.append(velocityY);
+		return builder.toString();
+	}
 }

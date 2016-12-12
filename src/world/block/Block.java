@@ -4,14 +4,14 @@ import static audio.AudioSystem.playSound;
 import static util.Utility.MathUtility.randomFloat;
 
 import graphics.Model;
-import java.io.Serializable;
+import java.io.Externalizable;
 import resource.Sounds;
 import world.World;
 import world.entity.BlockPlaceParticleEntity;
 import world.entity.ItemEntity;
 import world.item.BlockItem;
 
-public abstract class Block implements Serializable {
+public abstract class Block implements Externalizable {
 	private static final long serialVersionUID = -5852957760473837301L;
 	
 	protected byte integrity;
@@ -24,6 +24,7 @@ public abstract class Block implements Serializable {
 	public abstract Model getModel();
 	public abstract int getHardness();
 	public abstract float getFriction();
+	public abstract boolean doCollision();
 	public abstract Block createNew();
 	
 	public int getIntegrity() {

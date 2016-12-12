@@ -10,16 +10,13 @@ import input.Controls;
 import world.entity.Entity;
 
 public class TrackingCameraController extends CameraController {
-	
 	protected Camera camera;
+	protected Entity target;
 	protected float zoomSpeed;
 	protected float soundFalloff;
-	
 	protected float velocityZ;
 	protected float minZoom;
 	protected float maxZoom;
-	
-	protected Entity target;
 	
 	public TrackingCameraController(Camera camera, Entity target, float zoomSpeed, float minZoom, float maxZoom) {
 		this.camera = camera;
@@ -28,6 +25,7 @@ public class TrackingCameraController extends CameraController {
 		this.minZoom = minZoom;
 		this.maxZoom = maxZoom;
 		this.soundFalloff = 1.5f;
+		this.camera.setZoom(minZoom);
 	}
 	
 	public void update() {
@@ -36,6 +34,10 @@ public class TrackingCameraController extends CameraController {
 		camera.setZoom((Math.max(Math.min(maxZoom, camera.getZoom() + camera.getZoom() * velocityZ), minZoom)));
 		AudioSystem.setListenerProperties(camera.getPositionX(), camera.getPositionY(), -(maxZoom - camera.getZoom()) * soundFalloff, target.getVelocityX(), 
 				target.getVelocityY(), target.getVelocityX(), target.getVelocityY());
+	}
+	
+	public Camera getCamera() {
+		return camera;
 	}
 
 	@Override
