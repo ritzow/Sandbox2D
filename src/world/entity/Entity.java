@@ -1,15 +1,11 @@
 package world.entity;
 
 import graphics.ModelRenderer;
+import util.ByteUtil;
+import util.Transportable;
 import world.World;
-import java.io.Externalizable;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
 
-public abstract class Entity implements Externalizable {
-	private static final long serialVersionUID = 7177412000462430179L;
-	
+public abstract class Entity implements Transportable {
 	protected float positionX;
 	protected float positionY;
 	protected float velocityX;
@@ -20,27 +16,28 @@ public abstract class Entity implements Externalizable {
 		positionY += velocityY * time;
 	}
 	
-	public abstract void render(ModelRenderer renderer);
-	
-	public void onCollision(World world, Entity e, float time) {
+	public Entity() {
 		
 	}
 	
-	@Override
-	public void writeExternal(ObjectOutput out) throws IOException {
-		out.writeFloat(positionX);
-		out.writeFloat(positionY);
-		out.writeFloat(velocityX);
-		out.writeFloat(velocityY);
+	public Entity(byte[] data) {
+		positionX = ByteUtil.getFloat(data, 0);
+		positionY = ByteUtil.getFloat(data, 4);
+		velocityX = ByteUtil.getFloat(data, 8);
+		velocityY = ByteUtil.getFloat(data, 12);
 	}
-
-	@Override
-	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-		positionX = in.readFloat();
-		positionY = in.readFloat();
-		velocityX = in.readFloat();
-		velocityY = in.readFloat();
+	
+	public byte[] toBytes() {
+		byte[] data = new byte[16];
+		ByteUtil.putFloat(data, 0, positionX);
+		ByteUtil.putFloat(data, 4, positionY);
+		ByteUtil.putFloat(data, 8, velocityX);
+		ByteUtil.putFloat(data, 12, velocityY);
+		return data;
 	}
+	
+	public void render(ModelRenderer renderer) {/* optional implementation */}
+	public void onCollision(World world, Entity e, float time) {/* optional implementation */}
 
 	public abstract boolean getShouldDelete();
 	public abstract boolean doCollision();

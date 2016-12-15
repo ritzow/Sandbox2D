@@ -2,19 +2,18 @@ package world.entity;
 
 import graphics.Model;
 import graphics.ModelRenderer;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
+import resource.Models;
 import world.entity.component.Graphics;
 
 public class TestEntity extends Entity {
-	private static final long serialVersionUID = 6938705771360005876L;
-	
-	protected final transient Graphics graphics;
-	
+	protected transient Graphics graphics;
 	protected float rotationSpeed;
 	protected float width;
 	protected float height;
+	
+	public TestEntity() {
+		graphics = new Graphics(Models.BLUE_SQUARE);
+	}
 	
 	public TestEntity(Model model, float width, float height, float posX, float posY) {
 		this.graphics = new Graphics(model);
@@ -22,6 +21,15 @@ public class TestEntity extends Entity {
 		this.height = height;
 		this.positionX = posX;
 		this.positionY = posY;
+	}
+	
+	@SuppressWarnings("unused")
+	private TestEntity(byte[] data) {
+		throw new UnsupportedOperationException("not implemented");
+	}
+	
+	public byte[] toBytes() {
+		throw new UnsupportedOperationException("not implemented");
 	}
 	
 	public Graphics getGraphics() {
@@ -76,19 +84,4 @@ public class TestEntity extends Entity {
 	public float getMass() {
 		return 10;
 	}
-
-	@Override
-	public void writeExternal(ObjectOutput out) throws IOException {
-		out.writeFloat(rotationSpeed);
-		out.writeFloat(width);
-		out.writeFloat(height);
-	}
-
-	@Override
-	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-		rotationSpeed = in.readFloat();
-		width = in.readFloat();
-		height = in.readFloat();
-	}
-
 }

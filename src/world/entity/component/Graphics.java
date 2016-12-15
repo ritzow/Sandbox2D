@@ -2,8 +2,9 @@ package world.entity.component;
 
 import graphics.Model;
 import graphics.ModelRenderer;
+import util.Transportable;
 
-public class Graphics {
+public class Graphics implements Transportable {
 	protected Model model;
 	protected float opacity;
 	protected float scaleX;
@@ -28,6 +29,16 @@ public class Graphics {
 		this.scaleX = scaleX;
 		this.scaleY = scaleY;
 		this.rotation = rotation;
+	}
+	
+	@SuppressWarnings("unused")
+	private Graphics(byte[] data) {
+		throw new UnsupportedOperationException("not implemented");
+	}
+	
+	@Override
+	public byte[] toBytes() {
+		throw new UnsupportedOperationException("not implemented");
 	}
 	
 	public void render(ModelRenderer renderer, float x, float y) {
@@ -85,5 +96,4 @@ public class Graphics {
 	public final void setRotation(float rotation) {
 		this.rotation = rotation;
 	}
-	
 }

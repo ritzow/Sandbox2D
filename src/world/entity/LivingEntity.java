@@ -1,9 +1,6 @@
 package world.entity;
 
 public abstract class LivingEntity extends Entity {
-	
-	private static final long serialVersionUID = 1397868054064772835L;
-	
 	protected int maxHealth;
 	protected int health;
 	
@@ -27,6 +24,4 @@ public abstract class LivingEntity extends Entity {
 	public final void setHealth(int health) {
 		this.health = Math.min(health, maxHealth);
 	}
-	
-	
 }
