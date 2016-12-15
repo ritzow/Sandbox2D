@@ -73,36 +73,64 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		//start OpenAL and load audio files.
 		AudioSystem.start();
 		
-		//create the world
-		World world = new World(5000, 1000);
-		for(int column = 0; column < world.getForeground().getWidth(); column++) {
-			double height = world.getForeground().getHeight()/2;
-			height += (Math.sin(column * 0.1f) + 1) * (world.getForeground().getHeight() - height) * 0.05f;
-			
-			for(int row = 0; row < height; row++) {
-				if(Math.random() < 0.007) {
-					world.getForeground().set(column, row, new RedBlock());
-				} else {
-					world.getForeground().set(column, row, new DirtBlock());
-				}
-				world.getBackground().set(column, row, new DirtBlock());
-			}
-			world.getForeground().set(column, (int)height, new GrassBlock());
-			world.getBackground().set(column, (int)height, new DirtBlock());
-		}
-		
 		/* TODO figure out how to implement "air"/refactor block system so that blocks like air (non-physical blocks)...
 		 * won't cause weird bugs by refactoring based on the assumption that any given block wont be physical/have a model/collide/etc.
 		 * Take context related stuff out of BlockGrid and move it somewhere else (world?) and make it so EntityController/InteractionController
 		 * don't have to worry too much about how things work.
 		 */
-//		for(int column = 0; column < world.getForeground().getWidth(); column++) {
-//			for(int row = 0; row < world.getForeground().getHeight(); row++) {
-//				if(world.getForeground().get(column, row) == null) {
-//					world.getForeground().set(column, row, new AirBlock());
+//		for(int column = 0; column < preWorld.getForeground().getWidth(); column++) {
+//			for(int row = 0; row < preWorld.getForeground().getHeight(); row++) {
+//				if(preWorld.getForeground().get(column, row) == null) {
+//					preWorld.getForeground().set(column, row, new AirBlock());
 //				}
 //			}
 //		}
+		
+		//test the serialization mechanism by serializing the entire world
+		World world;
+		try {
+			File worldFile = new File("data/worlds/testWorld.dat");
+			if(worldFile.length() == 0) {
+				System.out.print("Creating world... ");
+				World preWorld = new World(5000, 1000);
+				for(int column = 0; column < preWorld.getForeground().getWidth(); column++) {
+					double height = preWorld.getForeground().getHeight()/2;
+					height += (Math.sin(column * 0.1f) + 1) * (preWorld.getForeground().getHeight() - height) * 0.05f;
+					
+					for(int row = 0; row < height; row++) {
+						if(Math.random() < 0.007) {
+							preWorld.getForeground().set(column, row, new RedBlock());
+						} else {
+							preWorld.getForeground().set(column, row, new DirtBlock());
+						}
+						preWorld.getBackground().set(column, row, new DirtBlock());
+					}
+					preWorld.getForeground().set(column, (int)height, new GrassBlock());
+					preWorld.getBackground().set(column, (int)height, new DirtBlock());
+				}
+				System.out.println("world created.");
+				
+				System.out.print("Saving world... ");
+				byte[] serialized = ByteUtil.serializeCompressed(preWorld);
+				FileOutputStream out = new FileOutputStream(worldFile);
+				out.write(serialized);
+				out.getChannel().truncate(serialized.length);
+				out.close();
+				System.out.println("world saved to " + serialized.length + " bytes");
+			}
+			
+			FileInputStream in = new FileInputStream(worldFile);
+			byte[] fromFile = new byte[(int)worldFile.length()];
+			in.read(fromFile);
+			in.close();
+			System.out.print("Loading world... ");
+			world = (World)ByteUtil.deserializeCompressed(fromFile);
+			System.out.println("done!");
+		} catch (IOException | ClassNotFoundException e) {
+			e.printStackTrace();
+			world = null;
+			System.exit(1);
+		}
 		
 		//create the player's character
 		Player player = new Player();
@@ -113,23 +141,6 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 				break;
 			}
 		} world.add(player);
-
-//		try {
-//			byte[] serialized = ByteUtil.serializeCompressed(world.getForeground());
-//			System.out.println("Serialized size: " + serialized.length + " bytes");
-//			ByteUtil.deserializeCompressed(serialized);
-//		} catch (IOException | ClassNotFoundException e) {
-//			e.printStackTrace();
-//		}
-		
-		try {
-			byte[] serialized = ByteUtil.serializeCompressed(new ItemEntity(new BlockItem(new RedBlock())));
-			System.out.println("Serialized size: " + serialized.length + " bytes");
-			ItemEntity item = (ItemEntity)ByteUtil.deserializeCompressed(serialized);
-			System.out.println(item);
-		} catch (IOException | ClassNotFoundException e) {
-			e.printStackTrace();
-		}
 		
 		//Create controllers for player input
 		EntityController playerController = new EntityController(player, world, 0.2f);
@@ -180,6 +191,8 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 			server = null;
 		}
 		
+		final World lastWorld = server.getWorld();
+		
 		//create a shutdown hook so that when the program exits, everything is cleanly stopped
 		Runtime.getRuntime().addShutdownHook(new Thread("Shutdown") {
 			public void run() {
@@ -187,6 +200,19 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 				AudioSystem.stop();
 				Synchronizer.waitForExit(graphicsManager);
 				Synchronizer.waitForExit(eventManager);
+				
+				try {
+					System.out.print("Saving world... ");
+					File file = new File("data/worlds/testWorld.dat");
+					FileOutputStream out = new FileOutputStream(file);
+					byte[] serialized = ByteUtil.serializeCompressed(lastWorld);
+					out.write(serialized);
+					out.getChannel().truncate(serialized.length);
+					out.close();
+					System.out.println("done!");
+				} catch (IOException e) {
+					e.printStackTrace();
+				} 
 			}
 		});
 		
