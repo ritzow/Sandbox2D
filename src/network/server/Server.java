@@ -67,6 +67,10 @@ public class Server extends NetworkController {
 			throw new RuntimeException("There is no world currently running");
 	}
 	
+	public World getWorld() {
+		return worldUpdater.getWorld();
+	}
+	
 	/**
 	 * Checks to see if the specified SocketAddress is already connected to the server
 	 * @param address the SocketAddress to query
