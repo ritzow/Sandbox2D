@@ -2,9 +2,6 @@ package world.entity;
 
 import audio.AudioSystem;
 import graphics.ModelRenderer;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
 import resource.Models;
 import resource.Sounds;
 import world.World;
@@ -15,20 +12,21 @@ import world.item.Item;
 import static util.Utility.MathUtility.*;
 
 public class Player extends LivingEntity {
-
-	private static final long serialVersionUID = 4619416956992212820L;
-	
 	protected Inventory inventory;
 	protected int selected;
-	
 	protected transient Graphics head;
 	protected transient Graphics body;
 	
 	public Player() {
 		super(100);
+		this.inventory = new Inventory(9);
 		this.head = new Graphics(Models.GREEN_FACE, 1.0f, 1.0f, 1.0f, 0.0f);
 		this.body = new Graphics(Models.RED_SQUARE, 1.0f, 1.0f, 1.0f, 0.0f);
-		this.inventory = new Inventory(9);
+	}
+	
+	@Override
+	public byte[] toBytes() {
+		throw new UnsupportedOperationException("not implemented");
 	}
 	
 	public void update(float time) {
@@ -140,17 +138,4 @@ public class Player extends LivingEntity {
 	public float getMass() {
 		return 1;
 	}
-
-	@Override
-	public void writeExternal(ObjectOutput out) throws IOException {
-		out.writeObject(inventory);
-		out.writeInt(selected);
-	}
-
-	@Override
-	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-		inventory = (Inventory)in.readObject();
-		selected = in.readInt();
-	}
-
 }

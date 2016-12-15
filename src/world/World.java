@@ -23,16 +23,15 @@ import world.entity.Entity;
 public final class World implements Renderable, Iterable<Entity>, Externalizable {
 	
 	/** collection of entities in the world **/
-	protected final List<Entity> entities;
-	
-	//protected final Queue<Entity> entityAddQueue;
-	//protected final Queue<Entity> entityRemoveQueue;
+	protected List<Entity> entities;
 	
 	/** blocks in the world that collide with entities and and are rendered **/
-	protected final BlockGrid foreground, background;
+	protected BlockGrid foreground, background;
 	
 	/** amount of downwards acceleration to apply to entities in the world **/
 	protected float gravity;
+	
+	public World() {/*for serialization */}
 	
 	public World(int width, int height) {
 		this(width, height, 0.016f);
@@ -45,8 +44,6 @@ public final class World implements Renderable, Iterable<Entity>, Externalizable
 	 * @param gravity the amount of gravity
 	 */
 	public World(int width, int height, float gravity) {
-		//entityAddQueue = new LinkedList<Entity>();
-		//entityRemoveQueue = new LinkedList<Entity>();
 		entities = new ArrayList<Entity>(100);
 		foreground = new BlockGrid(this, width, height);
 		background = new BlockGrid(this, width, height);
@@ -325,14 +322,27 @@ public final class World implements Renderable, Iterable<Entity>, Externalizable
 	}
 
 	@Override
-	public void writeExternal(ObjectOutput out) throws IOException {
+	public synchronized void writeExternal(ObjectOutput out) throws IOException {
 		out.writeObject(foreground);
 		out.writeObject(background);
-		out.writeObject(entities);
+		out.writeFloat(gravity);
+		out.writeInt(entities.size());
+		for(Entity e : entities) {
+			out.writeObject(e);
+		}
 	}
 
 	@Override
 	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-		throw new UnsupportedOperationException("method not implemented");
+		foreground = (BlockGrid)in.readObject();
+		foreground.world = this;
+		background = (BlockGrid)in.readObject();
+		background.world = this;
+		gravity = in.readFloat();
+		int entityCount = in.readInt();
+		entities = new ArrayList<Entity>(entityCount);
+		for(int i = 0; i < entityCount; i++) {
+			entities.add((Entity)in.readObject());
+		}
 	}
 }

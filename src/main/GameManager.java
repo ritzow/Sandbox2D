@@ -12,6 +12,9 @@ import input.controller.InteractionController;
 import input.controller.TrackingCameraController;
 import input.handler.KeyHandler;
 import input.handler.WindowCloseHandler;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.SocketAddress;
 import network.client.Client;
@@ -23,9 +26,7 @@ import world.World;
 import world.block.DirtBlock;
 import world.block.GrassBlock;
 import world.block.RedBlock;
-import world.entity.ItemEntity;
 import world.entity.Player;
-import world.item.BlockItem;
 
 /**
  * An instance of this class manages game startup and shutdown.

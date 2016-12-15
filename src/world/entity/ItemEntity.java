@@ -1,22 +1,14 @@
 package world.entity;
 
 import graphics.ModelRenderer;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
 import world.item.Item;
 
 public final class ItemEntity extends Entity {
-	
-	private static final long serialVersionUID = 41895034901801590L;
-	
 	protected Item item;
 	protected float rotation;
 	protected float rotationSpeed;
 	
-	public ItemEntity() {
-		//for deserialization
-	}
+	public ItemEntity() {/* for deserialization */}
 	
 	public ItemEntity(Item item) {
 		this.item = item;
@@ -83,25 +75,14 @@ public final class ItemEntity extends Entity {
 	public float getMass() {
 		return 1f;
 	}
-
-	@Override
-	public void writeExternal(ObjectOutput out) throws IOException {
-		super.writeExternal(out);
-		out.writeObject(item);
-		out.writeFloat(rotation);
-		out.writeFloat(rotationSpeed);
-	}
-
-	@Override
-	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-		super.readExternal(in);
-		item = (Item)in.readObject();
-		rotation = in.readFloat();
-		rotationSpeed = in.readFloat();
-	}
 	
 	public String toString() {
 		return super.toString() + ", item = (" + item.toString() + "), rotation = " + rotation + ", rotationSpeed = " + rotationSpeed;
+	}
+
+	@Override
+	public byte[] toBytes() {
+		throw new UnsupportedOperationException("not implemented");
 	}
 	
 }

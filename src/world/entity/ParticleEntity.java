@@ -1,14 +1,9 @@
 package world.entity;
 
 import graphics.ModelRenderer;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
 import world.entity.component.Graphics;
 
 public class ParticleEntity extends Entity {
-	private static final long serialVersionUID = 7392722072442474321L;
-	
 	protected final Graphics graphics;
 	protected float rotationSpeed;
 	protected boolean fade;
@@ -26,6 +21,16 @@ public class ParticleEntity extends Entity {
 		this.lifetime = lifetime;
 		this.fade = fade;
 		this.birthtime = System.currentTimeMillis();
+	}
+	
+	@SuppressWarnings("unused")
+	private ParticleEntity(byte[] data) {
+		throw new UnsupportedOperationException("not implemented");
+	}
+	
+	@Override
+	public byte[] toBytes() {
+		throw new UnsupportedOperationException("not implemented");
 	}
 	
 	public void update(float time) {
@@ -94,33 +99,4 @@ public class ParticleEntity extends Entity {
 	public float getMass() {
 		return 0;
 	}
-
-	/*
-	protected final Graphics graphics;
-	protected float rotationSpeed;
-	protected final boolean fade;
-	protected boolean shouldDelete;
-	protected final long birthtime;
-	protected final long lifetime;
-	 */
-	
-	@Override
-	public void writeExternal(ObjectOutput out) throws IOException {
-		out.writeFloat(rotationSpeed);
-		out.writeBoolean(fade);
-		out.writeBoolean(shouldDelete);
-		out.writeLong(birthtime);
-		out.writeLong(lifetime);
-	}
-
-	@Override
-	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-		rotationSpeed = in.readFloat();
-		fade = in.readBoolean();
-		shouldDelete = in.readBoolean();
-		birthtime = in.readLong();
-		lifetime = in.readLong();
-	}
-	
-	
 }
