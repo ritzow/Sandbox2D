@@ -1,15 +1,24 @@
 package world.block;
 
 import graphics.Model;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
 import resource.Models;
 import world.World;
 
 public class AirBlock extends Block {
+	
+	public AirBlock() {
+		
+	}
+	
+	public AirBlock(byte[] data) {
+		super(data);
+	}
+	
+	@Override
+	public byte[] toBytes() {
+		return new byte[] {integrity};
+	}
 
-	private static final long serialVersionUID = 1L;
 	//TODO should I implement air density? friction value changes based on current air density/player suffocates when air density is too low
 	@Override
 	public String getName() {
@@ -49,15 +58,5 @@ public class AirBlock extends Block {
 	@Override
 	public boolean doCollision() {
 		return false;
-	}
-
-	@Override
-	public void writeExternal(ObjectOutput out) throws IOException {
-		
-	}
-
-	@Override
-	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-		
 	}
 }

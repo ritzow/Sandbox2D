@@ -1,18 +1,20 @@
 package world.entity;
 
+import static util.Utility.MathUtility.randomFloat;
+import static util.Utility.MathUtility.randomLong;
+
 import audio.AudioSystem;
 import graphics.ModelRenderer;
 import resource.Models;
 import resource.Sounds;
+import util.ByteUtil;
 import world.World;
 import world.entity.component.Graphics;
 import world.entity.component.Inventory;
 import world.item.Item;
 
-import static util.Utility.MathUtility.*;
-
 public class Player extends LivingEntity {
-	protected Inventory inventory;
+	protected final Inventory inventory;
 	protected int selected;
 	protected transient Graphics head;
 	protected transient Graphics body;
@@ -24,9 +26,22 @@ public class Player extends LivingEntity {
 		this.body = new Graphics(Models.RED_SQUARE, 1.0f, 1.0f, 1.0f, 0.0f);
 	}
 	
+	public Player(byte[] data) throws ReflectiveOperationException {
+		super(data);
+		this.inventory = (Inventory)ByteUtil.deserialize(data, 24);
+		selected = 0;
+		this.head = new Graphics(Models.GREEN_FACE, 1.0f, 1.0f, 1.0f, 0.0f);
+		this.body = new Graphics(Models.RED_SQUARE, 1.0f, 1.0f, 1.0f, 0.0f);
+	}
+	
 	@Override
 	public byte[] toBytes() {
-		throw new UnsupportedOperationException("not implemented");
+		byte[] sb = super.toBytes();
+		byte[] invBytes = ByteUtil.serialize(inventory);
+		byte[] object = new byte[sb.length + invBytes.length];
+		System.arraycopy(sb, 0, object, 0, sb.length);
+		System.arraycopy(invBytes, 0, object, sb.length, invBytes.length);
+		return object;
 	}
 	
 	public void update(float time) {

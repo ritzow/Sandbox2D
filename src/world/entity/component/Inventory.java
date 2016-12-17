@@ -1,20 +1,45 @@
 package world.entity.component;
 
-import java.io.Externalizable;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
+import util.ByteUtil;
+import util.Transportable;
 import world.item.Item;
 
-public class Inventory implements Externalizable {
+public class Inventory implements Transportable {
 	
-	protected Item[] items;
+	protected final Item[] items;
 	
 	public Inventory(int capacity) {
 		this.items = new Item[capacity];
 	}
 	
-	public Inventory() {/* for serialization */}
+	public Inventory(byte[] data) throws ReflectiveOperationException {
+		items = new Item[ByteUtil.getInteger(data, 0)];
+		int index = 4;
+		for(int i = 0; i < items.length; i++) {
+			items[i] = (Item)ByteUtil.deserialize(data, index);
+			index += ByteUtil.getSerializedLength(data, index);
+		}
+	}
+	
+	@Override
+	public byte[] toBytes() {
+		byte[] numItems = new byte[4];
+		ByteUtil.putInteger(numItems, 0, items.length);
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		try {
+			out.write(numItems);
+			
+			for(Item i : items) {
+				out.write(ByteUtil.serialize(i));
+			}
+			
+		} catch (IOException e) {
+			return null;
+		}
+		return out.toByteArray();
+	}
 	
 	public String toString() {
 		StringBuilder list = new StringBuilder("Size: " + items.length + " [");
@@ -81,15 +106,5 @@ public class Inventory implements Externalizable {
 				}
 			}
 		}
-	}
-
-	@Override
-	public void writeExternal(ObjectOutput out) throws IOException {
-		out.writeObject(items);
-	}
-
-	@Override
-	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-		this.items = (Item[])in.readObject();
 	}
 }

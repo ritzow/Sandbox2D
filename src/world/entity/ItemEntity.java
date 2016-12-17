@@ -1,14 +1,13 @@
 package world.entity;
 
 import graphics.ModelRenderer;
+import util.ByteUtil;
 import world.item.Item;
 
 public final class ItemEntity extends Entity {
 	protected Item item;
 	protected float rotation;
 	protected float rotationSpeed;
-	
-	public ItemEntity() {/* for deserialization */}
 	
 	public ItemEntity(Item item) {
 		this.item = item;
@@ -20,6 +19,24 @@ public final class ItemEntity extends Entity {
 		this.positionX = x;
 		this.positionY = y;
 		this.rotationSpeed = (float) (Math.random() < 0.5f ? -(Math.random() * 0.02f + 0.02f) : (Math.random() * 0.02f + 0.02f));
+	}
+	
+	public ItemEntity(byte[] data) throws ReflectiveOperationException {
+		super(data);
+		item = (Item)ByteUtil.deserialize(data, 16);
+		rotation = 0;
+		rotationSpeed = ByteUtil.getFloat(data, 16 + ByteUtil.getSerializedLength(data, 16));
+	}
+	
+	@Override
+	public byte[] toBytes() {
+		byte[] sb = super.toBytes();
+		byte[] itemBytes = ByteUtil.serialize(item);
+		byte[] object = new byte[sb.length + itemBytes.length + 4];
+		System.arraycopy(sb, 0, object, 0, sb.length);
+		System.arraycopy(itemBytes, 0, object, sb.length, itemBytes.length);
+		ByteUtil.putFloat(object, sb.length + itemBytes.length, rotationSpeed);
+		return object;
 	}
 	
 	public void update(float time) {
@@ -79,10 +96,4 @@ public final class ItemEntity extends Entity {
 	public String toString() {
 		return super.toString() + ", item = (" + item.toString() + "), rotation = " + rotation + ", rotationSpeed = " + rotationSpeed;
 	}
-
-	@Override
-	public byte[] toBytes() {
-		throw new UnsupportedOperationException("not implemented");
-	}
-	
 }
