@@ -1,6 +1,5 @@
 package world.entity;
 
-import graphics.ModelRenderer;
 import util.ByteUtil;
 
 public class SerializationTestEntity extends Entity {
@@ -8,11 +7,11 @@ public class SerializationTestEntity extends Entity {
 	protected int testInteger;
 	protected float testFloat;
 	
-	public SerializationTestEntity(int testInt, float testFloat) {
-		this.positionX = 52;
-		this.positionY = 10002;
-		this.velocityX = 100.9f;
-		this.velocityY = 2.32f;
+	public SerializationTestEntity(float x, float y, float vx, float vy, int testInt, float testFloat) {
+		this.positionX = x;
+		this.positionY = y;
+		this.velocityX = vx;
+		this.velocityY = vy;
 		this.testInteger = testInt;
 		this.testFloat = testFloat;
 	}
@@ -34,56 +33,42 @@ public class SerializationTestEntity extends Entity {
 	}
 
 	@Override
-	public void render(ModelRenderer renderer) {
-		//TODO implement method 'render'
-
-	}
-
-	@Override
 	public boolean getShouldDelete() {
-		//TODO implement method 'getShouldDelete'
 		return false;
 	}
 
 	@Override
 	public boolean doCollision() {
-		//TODO implement method 'doCollision'
 		return false;
 	}
 
 	@Override
 	public boolean doBlockCollisionResolution() {
-		//TODO implement method 'doBlockCollisionResolution'
 		return false;
 	}
 
 	@Override
 	public boolean doEntityCollisionResolution() {
-		//TODO implement method 'doEntityCollisionResolution'
 		return false;
 	}
 
 	@Override
 	public float getFriction() {
-		//TODO implement method 'getFriction'
 		return 0;
 	}
 
 	@Override
 	public float getWidth() {
-		//TODO implement method 'getWidth'
 		return 0;
 	}
 
 	@Override
 	public float getHeight() {
-		//TODO implement method 'getHeight'
 		return 0;
 	}
 
 	@Override
 	public float getMass() {
-		//TODO implement method 'getMass'
 		return 0;
 	}
 	

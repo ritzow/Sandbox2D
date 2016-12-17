@@ -4,20 +4,22 @@ import static audio.AudioSystem.playSound;
 import static util.Utility.MathUtility.randomFloat;
 
 import graphics.Model;
-import java.io.Externalizable;
 import resource.Sounds;
+import util.Transportable;
 import world.World;
 import world.entity.BlockPlaceParticleEntity;
 import world.entity.ItemEntity;
 import world.item.BlockItem;
 
-public abstract class Block implements Externalizable {
-	private static final long serialVersionUID = -5852957760473837301L;
-	
+public abstract class Block implements Transportable {
 	protected byte integrity;
 	
-	{
+	public Block() {
 		integrity = 100;
+	}
+	
+	public Block(byte[] data) {
+		integrity = data[0];
 	}
 	
 	public abstract String getName();

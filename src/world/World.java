@@ -5,13 +5,13 @@ import static util.Utility.Intersection.combineFriction;
 import graphics.Model;
 import graphics.ModelRenderer;
 import graphics.Renderable;
-import java.io.Externalizable;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import util.ByteUtil;
+import util.Transportable;
 import world.entity.Entity;
 
 /**
@@ -20,21 +20,23 @@ import world.entity.Entity;
  * @author Solomon Ritzow
  *
  */
-public final class World implements Renderable, Iterable<Entity>, Externalizable {
+public final class World implements Renderable, Iterable<Entity>, Transportable {
 	
 	/** collection of entities in the world **/
-	protected List<Entity> entities;
+	protected final List<Entity> entities;
 	
 	/** blocks in the world that collide with entities and and are rendered **/
-	protected BlockGrid foreground, background;
+	protected final BlockGrid foreground, background;
 	
 	/** amount of downwards acceleration to apply to entities in the world **/
 	protected float gravity;
 	
-	public World() {/*for serialization */}
-	
 	public World(int width, int height) {
 		this(width, height, 0.016f);
+	}
+	
+	public String toString() {
+		return foreground.toString() + background.toString() + entities.toString();
 	}
 	
 	/**
@@ -48,6 +50,50 @@ public final class World implements Renderable, Iterable<Entity>, Externalizable
 		foreground = new BlockGrid(this, width, height);
 		background = new BlockGrid(this, width, height);
 		this.gravity = gravity;
+	}
+	
+	public World(byte[] data) throws ReflectiveOperationException {
+		int foregroundLength = ByteUtil.getSerializedLength(data, 4);
+		int backgroundLength = ByteUtil.getSerializedLength(data, 4 + foregroundLength);
+		gravity = ByteUtil.getFloat(data, 0);
+		foreground = (BlockGrid)ByteUtil.deserialize(data, 4);
+		foreground.setWorld(this);
+		background = (BlockGrid)ByteUtil.deserialize(data, 4 + foregroundLength);
+		background.setWorld(this);
+		int numEntities = ByteUtil.getInteger(data, 4 + foregroundLength + backgroundLength);
+		entities = new ArrayList<Entity>(numEntities);
+		
+		int index = 4 + foregroundLength + backgroundLength + 4;
+		for(int i = 0; i < numEntities; i++) {
+			entities.add((Entity)ByteUtil.deserialize(data, index));
+			index += ByteUtil.getSerializedLength(data, index);
+		}
+	}
+	
+	@Override
+	public synchronized byte[] toBytes() {
+		
+		byte[] foreground = ByteUtil.serialize(this.foreground);
+		byte[] background = ByteUtil.serialize(this.background);
+		
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		for(Entity e : entities) {
+			try {
+				out.write(ByteUtil.serialize(e));
+			} catch (IOException e1) {
+				continue;
+			}
+		}
+		
+		byte[] entities = out.toByteArray();
+		
+		byte[] bytes = new byte[4 + 4 + foreground.length + background.length + entities.length];
+		ByteUtil.putFloat(bytes, 0, gravity);
+		System.arraycopy(foreground, 0, bytes, 4, foreground.length);
+		System.arraycopy(background, 0, bytes, 4 + foreground.length, background.length);
+		ByteUtil.putInteger(bytes, 4 + foreground.length + background.length, this.entities.size());
+		System.arraycopy(entities, 0, bytes, 4 + foreground.length + background.length + 4, entities.length);
+		return bytes;
 	}
 	
 	public BlockGrid getForeground() {
@@ -110,7 +156,7 @@ public final class World implements Renderable, Iterable<Entity>, Externalizable
 					if(o.doCollision()) {
 						boolean collision;
 						
-						if(o.doEntityCollisionResolution()) {
+						if(e.doEntityCollisionResolution() && o.doEntityCollisionResolution()) {
 							collision = (e.getMass() < o.getMass()) ? resolveCollision(e, o, time) : resolveCollision(o, e, time);
 						} 
 						
@@ -319,30 +365,5 @@ public final class World implements Renderable, Iterable<Entity>, Externalizable
 	@Override
 	public Iterator<Entity> iterator() {
 		return entities.iterator();
-	}
-
-	@Override
-	public synchronized void writeExternal(ObjectOutput out) throws IOException {
-		out.writeObject(foreground);
-		out.writeObject(background);
-		out.writeFloat(gravity);
-		out.writeInt(entities.size());
-		for(Entity e : entities) {
-			out.writeObject(e);
-		}
-	}
-
-	@Override
-	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-		foreground = (BlockGrid)in.readObject();
-		foreground.world = this;
-		background = (BlockGrid)in.readObject();
-		background.world = this;
-		gravity = in.readFloat();
-		int entityCount = in.readInt();
-		entities = new ArrayList<Entity>(entityCount);
-		for(int i = 0; i < entityCount; i++) {
-			entities.add((Entity)in.readObject());
-		}
 	}
 }

@@ -1,13 +1,17 @@
 package world.block;
 
 import graphics.Model;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
 import resource.Models;
 
 public class RedBlock extends Block {
-	private static final long serialVersionUID = 8312467601285312374L;
+	
+	public RedBlock() {
+		
+	}
+	
+	public RedBlock(byte[] data) {
+		super(data);
+	}
 
 	@Override
 	public Model getModel() {
@@ -40,12 +44,7 @@ public class RedBlock extends Block {
 	}
 
 	@Override
-	public void writeExternal(ObjectOutput out) throws IOException {
-		
-	}
-
-	@Override
-	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-		
+	public byte[] toBytes() {
+		return new byte[] {integrity};
 	}
 }

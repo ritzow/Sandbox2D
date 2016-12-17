@@ -1,11 +1,13 @@
 package world;
 
-import java.io.Serializable;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import util.ByteUtil;
+import util.Transportable;
 import world.block.Block;
 
-public class BlockGrid implements Serializable {
-	private static final long serialVersionUID = 1L;
-
+public class BlockGrid implements Transportable {
 	protected final Block[][] blocks;
 	
 	/** A reference to the containing World object **/
@@ -15,6 +17,45 @@ public class BlockGrid implements Serializable {
 	public BlockGrid(World world, int width, int height) {
 		blocks = new Block[height][width];
 		this.world = world;
+	}
+	
+	public BlockGrid(byte[] data) {
+		blocks = new Block[ByteUtil.getInteger(data, 4)][ByteUtil.getInteger(data, 0)];
+		int index = 8;
+		for(int row = 0; row < blocks.length; row++) {
+			for(int column = 0; column < blocks[row].length; column++) {
+				try {
+					blocks[row][column] = (Block)ByteUtil.deserialize(data, index);
+					index += ByteUtil.getSerializedLength(data, index);
+				} catch (ReflectiveOperationException e) {
+					blocks[row][column] = null;
+					e.printStackTrace(); //for now?
+					continue;
+				}
+			}
+		}
+	}
+	
+	public void setWorld(World world) {
+		this.world = world;
+	}
+	
+	@Override
+	public byte[] toBytes() {
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		DataOutputStream dout = new DataOutputStream(out);
+		try {
+			dout.writeInt(blocks[0].length); //write the width 
+			dout.writeInt(blocks.length); //write the height
+			for(int row = 0; row < blocks.length; row++) {
+				for(int column = 0; column < blocks[row].length; column++) {
+					dout.write(ByteUtil.serialize(blocks[row][column]));
+				}
+			}
+		} catch (IOException e) {
+			return null;
+		}
+		return out.toByteArray();
 	}
 	
 	public String toString() {
