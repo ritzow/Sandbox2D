@@ -11,9 +11,9 @@ import org.lwjgl.glfw.GLFW;
 import resource.Models;
 import util.Updatable;
 import world.World;
+import world.entity.Player;
 import world.entity.TestEntity;
 import world.item.BlockItem;
-import world.entity.Player;
 
 public final class InteractionController extends Controller implements MouseButtonHandler, CursorPosHandler, FramebufferSizeHandler, KeyHandler, Updatable {
 	private boolean primaryAction, secondaryAction, tertiaryAction;

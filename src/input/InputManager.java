@@ -1,12 +1,34 @@
 package input;
 
-import org.lwjgl.glfw.*;
+import static org.lwjgl.glfw.GLFW.glfwSetCursorPosCallback;
+import static org.lwjgl.glfw.GLFW.glfwSetFramebufferSizeCallback;
+import static org.lwjgl.glfw.GLFW.glfwSetKeyCallback;
+import static org.lwjgl.glfw.GLFW.glfwSetMouseButtonCallback;
+import static org.lwjgl.glfw.GLFW.glfwSetScrollCallback;
+import static org.lwjgl.glfw.GLFW.glfwSetWindowCloseCallback;
+import static org.lwjgl.glfw.GLFW.glfwSetWindowFocusCallback;
+import static org.lwjgl.glfw.GLFW.glfwSetWindowIconifyCallback;
+import static org.lwjgl.glfw.GLFW.glfwSetWindowRefreshCallback;
 
-import static org.lwjgl.glfw.GLFW.*;
-
-import input.handler.*;
-
+import input.handler.CursorPosHandler;
+import input.handler.FramebufferSizeHandler;
+import input.handler.KeyHandler;
+import input.handler.MouseButtonHandler;
+import input.handler.ScrollHandler;
+import input.handler.WindowCloseHandler;
+import input.handler.WindowFocusHandler;
+import input.handler.WindowIconifyHandler;
+import input.handler.WindowRefreshHandler;
 import java.util.ArrayList;
+import org.lwjgl.glfw.GLFWCursorPosCallback;
+import org.lwjgl.glfw.GLFWFramebufferSizeCallback;
+import org.lwjgl.glfw.GLFWKeyCallback;
+import org.lwjgl.glfw.GLFWMouseButtonCallback;
+import org.lwjgl.glfw.GLFWScrollCallback;
+import org.lwjgl.glfw.GLFWWindowCloseCallback;
+import org.lwjgl.glfw.GLFWWindowFocusCallback;
+import org.lwjgl.glfw.GLFWWindowIconifyCallback;
+import org.lwjgl.glfw.GLFWWindowRefreshCallback;
 
 public final class InputManager {
 	

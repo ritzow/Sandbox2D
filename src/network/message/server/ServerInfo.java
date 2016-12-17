@@ -1,6 +1,7 @@
 package network.message.server;
 
-import static util.ByteUtil.*;
+import static util.ByteUtil.getInteger;
+import static util.ByteUtil.putInteger;
 
 import network.message.InvalidMessageException;
 import network.message.Message;

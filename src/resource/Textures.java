@@ -1,13 +1,13 @@
 package resource;
 
+import de.matthiasmann.twl.utils.PNGDecoder;
+import de.matthiasmann.twl.utils.PNGDecoder.Format;
 import graphics.data.Texture;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.lwjgl.BufferUtils;
-import de.matthiasmann.twl.utils.*;
-import de.matthiasmann.twl.utils.PNGDecoder.Format;
 
 public final class Textures {
 	public static Texture GRASS;
