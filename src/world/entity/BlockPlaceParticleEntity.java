@@ -1,9 +1,9 @@
 package world.entity;
 
+import static util.Utility.MathUtility.randomFloat;
+
 import world.block.Block;
 import world.entity.component.Graphics;
-
-import static util.Utility.MathUtility.randomFloat;
 
 public final class BlockPlaceParticleEntity extends ParticleEntity {
 	public BlockPlaceParticleEntity(Block block, float posX, float posY) {
