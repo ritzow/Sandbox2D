@@ -93,7 +93,7 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 			File worldFile = new File("data/worlds/testWorld.dat");
 			if(worldFile.length() == 0) {
 				System.out.print("Creating world... ");
-				World preWorld = new World(5000, 1000);
+				World preWorld = new World(500, 200);
 				for(int column = 0; column < preWorld.getForeground().getWidth(); column++) {
 					double height = preWorld.getForeground().getHeight()/2;
 					height += (Math.sin(column * 0.1f) + 1) * (preWorld.getForeground().getHeight() - height) * 0.05f;
@@ -112,7 +112,7 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 				System.out.println("world created.");
 				
 				System.out.print("Saving world... ");
-				byte[] serialized = ByteUtil.serializeCompressed(preWorld);
+				byte[] serialized = ByteUtil.compress(ByteUtil.serialize(preWorld), 2);
 				FileOutputStream out = new FileOutputStream(worldFile);
 				out.write(serialized);
 				out.getChannel().truncate(serialized.length);
@@ -121,16 +121,15 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 			}
 			
 			FileInputStream in = new FileInputStream(worldFile);
-			byte[] fromFile = new byte[(int)worldFile.length()];
-			in.read(fromFile);
+			byte[] worldBytes = new byte[(int)worldFile.length()];
+			in.read(worldBytes);
 			in.close();
 			System.out.print("Loading world... ");
-			world = (World)ByteUtil.deserializeCompressed(fromFile);
+			world = (World)ByteUtil.deserialize(ByteUtil.decompress(worldBytes, 2));
 			System.out.println("done!");
-		} catch (IOException | ClassNotFoundException e) {
+		} catch (IOException | ReflectiveOperationException e) {
 			e.printStackTrace();
 			world = null;
-			System.exit(1);
 		}
 		
 		//create the player's character
@@ -206,11 +205,11 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 					System.out.print("Saving world... ");
 					File file = new File("data/worlds/testWorld.dat");
 					FileOutputStream out = new FileOutputStream(file);
-					byte[] serialized = ByteUtil.serializeCompressed(lastWorld);
+					byte[] serialized = ByteUtil.compress(ByteUtil.serialize(lastWorld), 2);
 					out.write(serialized);
 					out.getChannel().truncate(serialized.length);
 					out.close();
-					System.out.println("done!");
+					System.out.println("world saved to " + serialized.length + " bytes");
 				} catch (IOException e) {
 					e.printStackTrace();
 				} 
