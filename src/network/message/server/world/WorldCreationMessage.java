@@ -1,9 +1,11 @@
 package network.message.server.world;
 
+import static util.ByteUtil.getInteger;
+import static util.ByteUtil.putFloat;
+import static util.ByteUtil.putInteger;
+
 import network.message.InvalidMessageException;
 import network.message.Message;
-
-import static util.ByteUtil.*;
 import world.World;
 
 /**

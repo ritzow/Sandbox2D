@@ -1,7 +1,6 @@
 package graphics.data;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
-
 import org.lwjgl.BufferUtils;
 
 public abstract class Buffer {

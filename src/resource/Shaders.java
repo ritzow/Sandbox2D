@@ -1,7 +1,10 @@
 package resource;
 
+import static org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER;
+import static org.lwjgl.opengl.GL20.GL_VERTEX_SHADER;
 import static org.lwjgl.opengl.GL20.glCompileShader;
 import static org.lwjgl.opengl.GL20.glCreateShader;
+import static org.lwjgl.opengl.GL20.glDeleteShader;
 import static org.lwjgl.opengl.GL20.glShaderSource;
 
 import java.io.File;
@@ -9,7 +12,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.lwjgl.BufferUtils;
-import static org.lwjgl.opengl.GL20.*;
 
 public final class Shaders {
 	public static int VERTEX_SHADER;
