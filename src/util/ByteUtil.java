@@ -1,40 +1,12 @@
 package util;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.util.Arrays;
 import java.util.zip.DeflaterOutputStream;
-import java.util.zip.InflaterInputStream;
-import org.nustaq.serialization.FSTConfiguration;
-import org.nustaq.serialization.FSTObjectInput;
-import org.nustaq.serialization.FSTObjectOutput;
+import java.util.zip.InflaterOutputStream;
 
 public final class ByteUtil {
-	
-	private static final FSTConfiguration fstConfig;
-	
-	static {
-		fstConfig = FSTConfiguration.createDefaultConfiguration();
-//		fstConfig.registerClass(
-//				world.block.Block.class, 
-//				world.block.DirtBlock.class, 
-//				world.block.GrassBlock.class, 
-//				world.block.RedBlock.class, 
-//				world.entity.Entity.class,
-//				world.entity.ItemEntity.class,
-//				world.entity.BlockPlaceParticleEntity.class,
-//				world.entity.LivingEntity.class,
-//				world.entity.ParticleEntity.class,
-//				world.entity.Player.class,
-//				world.entity.component.Inventory.class,
-//				world.BlockGrid.class,
-//				world.World.class,
-//				world.item.BlockItem.class
-//		);
-	}
 	
 	public static byte[] concatenate(byte[]... arrays) {
 		int length = 0;
@@ -52,69 +24,67 @@ public final class ByteUtil {
 		return concatenated;
 	}
 	
-	//Data composition from bytes
+	/* Data composition from bytes */
 	
-	public static short getShort(byte[] array, int index) {
-		return (short)((array[index] << 8) | (array[index + 1] & 0xff));
+	public static float getFloat(byte[] array, int index) {
+		return Float.intBitsToFloat(((array[index] & 255) << 24) | ((array[index + 1] & 255) << 16) | ((array[index + 2] & 255) << 8) | ((array[index + 3] & 255) << 0));
 	}
 	
 	public static int getInteger(byte[] array, int index) {
 		return ((array[index] & 255) << 24) | ((array[index + 1] & 255) << 16) | ((array[index + 2] & 255) << 8) | ((array[index + 3] & 255) << 0);
 	}
 	
-	private static float getFloat(byte a, byte b, byte c, byte d) {
-		return Float.intBitsToFloat(((a & 255) << 24) | ((b & 255) << 16) | ((c & 255) << 8) | ((d & 255) << 0));
-	}
-	
-	public static float getFloat(byte[] array, int index) {
-		return getFloat(array[index], array[index + 1], array[index + 2], array[index + 3]);
+	public static short getShort(byte[] array, int index) {
+		return (short)((array[index] << 8) | (array[index + 1] & 0xff));
 	}
 	
 	public static boolean getBoolean(byte[] array, int index) {
 		return array[index] == 1 ? true : false;
 	}
 	
-	public static Object deserialize(byte[] data) throws ClassNotFoundException, IOException {
-		return deserialize(data, 0, data.length);
+	public static byte[] decompress(byte[] data, int times) throws IOException {
+		return decompress(data, 0, data.length, times);
 	}
 	
-	public static Object deserialize(byte[] data, int offset, int length) throws ClassNotFoundException, IOException {
-		return new ObjectInputStream(new ByteArrayInputStream(data, offset, length)).readObject();
+	public static byte[] decompress(byte[] data, int offset, int length, int times) throws IOException {
+		if(times > 0) {
+			ByteArrayOutputStream output = new ByteArrayOutputStream(length);
+			InflaterOutputStream inflater = new InflaterOutputStream(output);
+			inflater.write(data, offset, length);
+			inflater.close();
+			byte[] bytes = output.toByteArray();
+			return decompress(bytes, 0, bytes.length, times - 1);
+		} else {
+			return data;
+		}
 	}
 	
-	public static Object deserializeCompressed(byte[] data) throws ClassNotFoundException, IOException {
-		return deserializeCompressed(data, 0, data.length);
+	public static <T extends Transportable> T deserialize(byte[] object) throws ReflectiveOperationException {
+		return deserialize(object, 0);
 	}
 	
-	public static Object deserializeCompressed(byte[] data, int offset, int length) throws ClassNotFoundException, IOException {
-		ByteArrayInputStream in = new ByteArrayInputStream(data, offset, length);
-		InflaterInputStream inflater = new InflaterInputStream(in);
-		FSTObjectInput deserializer = fstConfig.getObjectInput(inflater);
-		Object object = deserializer.readObject();
-		inflater.close();
-		return object;
-	}
-	
-	/**
-	 * 
-	 * @param object the object packet, where the first four bytes are an integer representing the length of the class name String, followed by the class name
-	 * @param offset
-	 * @param length
-	 * @return
-	 * @throws ReflectiveOperationException
-	 */
-	public static <T extends Transportable> T deserializeTransportable(byte[] object) throws ReflectiveOperationException {
-		int classNameLength = ByteUtil.getInteger(object, 0);
+	public static <T extends Transportable> T deserialize(byte[] array, int offset) throws ReflectiveOperationException {
+		int nameLength = ByteUtil.getInteger(array, offset);
+		int objectPos = offset + 4 + nameLength + 4;
+		String name = new String(array, offset + 4, nameLength);
+		if(name.equals("null"))
+			return null;
 		@SuppressWarnings("unchecked")
-		Class<T> clazz = (Class<T>)(Class.forName(new String(object, 4, classNameLength)));
-		return deserializeTransportable(clazz, Arrays.copyOfRange(object, classNameLength + 4, object.length));
+		Class<T> clazz = (Class<T>)(Class.forName(name));
+		return deserialize(clazz, Arrays.copyOfRange(array, objectPos, objectPos + ByteUtil.getInteger(array, objectPos - 4)));
 	}
 	
-	public static <T extends Transportable> T deserializeTransportable(Class<T> type, byte[] data) throws ReflectiveOperationException {
+	public static <T extends Transportable> T deserialize(Class<T> type, byte[] data) throws ReflectiveOperationException {
 		return type.getConstructor(byte[].class).newInstance(data);
 	}
 	
-	//Data decomposition to bytes
+	public static int getSerializedLength(byte[] array, int offset) {
+		int classLength = ByteUtil.getInteger(array, offset);
+		int objectLength = ByteUtil.getInteger(array, offset + 4 + classLength);
+		return 4 + classLength + 4 + objectLength;
+	}
+	
+	/* Data decomposition to bytes */
 	
 	public static void putFloat(byte[] array, int index, float value) {
 		int temp = Float.floatToRawIntBits(value);
@@ -124,11 +94,6 @@ public final class ByteUtil {
 		array[index + 3] = (byte)((temp >>>  0) & 0xFF);
 	}
 	
-	public static void putShort(byte[] array, int index, short value) {
-		array[index + 0] = (byte)(((int)value >>> 8) & 0xFF);
-		array[index + 1] = (byte)(((int)value >>> 0) & 0xFF);
-	}
-	
 	public static void putInteger(byte[] array, int index, int value) {
 		array[index + 0] = (byte)(value >>> 24);
 		array[index + 1] = (byte)(value >>> 16);
@@ -136,40 +101,70 @@ public final class ByteUtil {
 		array[index + 3] = (byte)(value >>> 0);
 	}
 	
+	public static void putShort(byte[] array, int index, short value) {
+		array[index + 0] = (byte)(((int)value >>> 8) & 0xFF);
+		array[index + 1] = (byte)(((int)value >>> 0) & 0xFF);
+	}
+	
 	public static void putBoolean(byte[] array, int index, boolean b) {
 		array[index] = (byte) (b ? 1 : 0);
 	}
 	
-	public static byte[] serialize(Object object) throws IOException {
-		ByteArrayOutputStream out = new ByteArrayOutputStream();
-		ObjectOutputStream serializer = new ObjectOutputStream(out);
-		serializer.writeObject(object);
-		serializer.close();
-		return out.toByteArray();
+	/**
+	 * Compressed byte data, shows no exta memory savings after two compressions
+	 * @param data the byte array to compress
+	 * @param times the number of times to compress the data, two times is ideal
+	 * @return a new compressed byte array
+	 * @throws IOException
+	 */
+	public static byte[] compress(byte[] data, int times) throws IOException {
+		if(times > 0) {
+			ByteArrayOutputStream out = new ByteArrayOutputStream();
+			DeflaterOutputStream deflater = new DeflaterOutputStream(out);
+			deflater.write(data);
+			deflater.close();
+			return compress(out.toByteArray(), times - 1);
+		} else {
+			return data;
+		}
 	}
 	
-	public static byte[] serializeCompressed(Object object) throws IOException {
-		ByteArrayOutputStream out = new ByteArrayOutputStream();
-		DeflaterOutputStream compresser = new DeflaterOutputStream(out);
-		FSTObjectOutput serializer = fstConfig.getObjectOutput(compresser);
-		serializer.writeObject(object);
-		serializer.flush();
-		compresser.close();
-		return out.toByteArray();
+	/**
+	 * Serialized an object into a byte array.
+	 * Format: [4 bytes : length of class name string] + [class name] + [4 bytes : object data length] + [object data]
+	 * @param object
+	 * @return
+	 */
+	public static byte[] serialize(Transportable object) {
+		byte[] nameBytes;
+		byte[] objectBytes;
+		if(object == null) {
+			nameBytes = "null".getBytes();
+			objectBytes = new byte[0];
+		} else {
+			nameBytes = object.getClass().getName().getBytes();
+			objectBytes = object.toBytes();
+		}
+		
+		//class name length, class name, object data length, object data
+		byte[] data = new byte[4 + nameBytes.length + 4 + objectBytes.length];
+		
+		//first four bytes are the length of the class name
+		putInteger(data, 0, nameBytes.length);
+		
+		//put the class name in the following bytes
+		System.arraycopy(nameBytes, 0, data, 4, nameBytes.length);
+		
+		//put the length of the object data in the next four bytes after class name
+		putInteger(data, 4 + nameBytes.length, objectBytes.length);
+		
+		//put the object data into the final byte array
+		System.arraycopy(objectBytes, 0, data, 4 + nameBytes.length + 4, objectBytes.length);
+		
+		return data;
 	}
 	
-	public static byte[] serializeTransportable(Transportable object) {
-		String name = object.getClass().getName();
-		byte[] nameBytes = name.getBytes();
-		byte[] objectBytes = object.toBytes();
-		byte[] packet = new byte[4 + nameBytes.length + objectBytes.length];
-		ByteUtil.putInteger(packet, 0, nameBytes.length);
-		System.arraycopy(nameBytes, 0, packet, 4, nameBytes.length);
-		System.arraycopy(objectBytes, 0, packet, nameBytes.length + 4, objectBytes.length);
-		return packet;
-	}
-	
-	public static byte[] serializeTransportableHeaderless(Transportable object) {
+	public static byte[] serializeHeaderless(Transportable object) {
 		return object.toBytes();
 	}
 }
