@@ -32,6 +32,5 @@
 	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-openal-natives-linux.jar"/>
 	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-openal-natives-macos.jar"/>
 	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-openal-natives-windows.jar"/>
-	<classpathentry kind="lib" path="libraries/FST Serialization/fst-2.47-onejar.jar" sourcepath="libraries/FST Serialization/src"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
