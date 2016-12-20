@@ -1,6 +1,8 @@
 #Project
-old/
 bin/
+
+#Eclipse
+.settings
 
 #Mac system files
 .DS_Store
