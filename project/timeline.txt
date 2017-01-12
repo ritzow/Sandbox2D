@@ -7,6 +7,16 @@ October 18th:
 	Resource manager for audio files, textures, vertex data complete
 	Text rendering from .png character atlas
 	Objects can be associated with resources at runtime even before they are loaded.
+	
+As of January 11th:
+	Still have not completed networking and am making slow progress towards completing it. I have implemented a basic serialization system for saving game data/objects.
+	Goal for the end of the semester is to complete the networking system and get a basic multiplayer system running so that two people on seperate computers can play on the same server.
+	To complete the networking system, I need to:
+		finish pipeline for incoming packet processing
+		finish reliable message processing/response
+
+Goals not met:
+
 December 21st (not actual date, may be with next checkpoint):
 	Networking system complete (server can update client's world, clients can connect and disconnect, both server and client can send data reliably)
 	Start reworking user interface system, improving rendering system.
@@ -20,19 +30,3 @@ January 18th:
 January 25th-30th:
 	Basic gameplay is implemented (a match can be started, teams can fight, a team can win by completing "objective"). Will require new gamemode/gameplay systems, may
 	be very difficult to implement well.
-
-
-OLD:
-November 1st:
-	Optimize physics/begin networking.
-November 15th:
-	Networking: ability to send and update world data between client and server.
-	World saving and loading from file.
-November 22nd/24th (Thanksgiving):
-	Improve rendering, particle system.
-	Stretch: world lighting.
-	Game engine complete, content/game creation begins.
-Christmas:
-	Content/gameplay/interface complete, only bugfixes and minor tweaks remaining.
-End of year:
-	Game complete with all features from specification, well polished.
