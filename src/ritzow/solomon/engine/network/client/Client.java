@@ -9,13 +9,10 @@ import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
-import java.util.Arrays;
 import ritzow.solomon.engine.game.Lobby;
 import ritzow.solomon.engine.network.NetworkController;
-import ritzow.solomon.engine.network.message.InvalidMessageException;
 import ritzow.solomon.engine.network.message.MessageProcessor;
 import ritzow.solomon.engine.network.message.Protocol;
-import ritzow.solomon.engine.network.message.ServerInfo;
 import ritzow.solomon.engine.world.WorldManager;
 
 public final class Client extends NetworkController {
@@ -31,25 +28,11 @@ public final class Client extends NetworkController {
 		processor = new ClientMessageHandler();
 	}
 	
-	/**
-	 * Handler of incoming messages to the client
-	 */
+	/** Handles incoming messages **/
 	private class ClientMessageHandler implements MessageProcessor {
-		@Override
-		public void handle(ServerInfo message, SocketAddress sender, int messageID) {
-			if(requestedInfo) {
-				System.out.println(message);
-				requestedInfo = false;
-			}
+		public void processMessage(int messageID, short protocol, SocketAddress sender, byte[] data) {
+			
 		}
-	}
-	
-	public ServerInfo getServerInfo(SocketAddress server) {
-		throw new UnsupportedOperationException("not implemented");
-	}
-	
-	public boolean connectTo(SocketAddress server) {
-		return false;
 	}
 	
 	/**
@@ -75,7 +58,7 @@ public final class Client extends NetworkController {
 			try {
 				socket.receive(response);
 				if(response.getSocketAddress().equals(serverAddress)) {
-					if(Protocol.newServerConnectAcknowledgment(Arrays.copyOfRange(response.getData(), 6, response.getData().length)).isAccepted()) {
+					if(Protocol.deconstructServerConnectResponse(response.getData())) {
 						this.serverAddress = response.getSocketAddress();
 						return true;
 					} else {
@@ -84,8 +67,6 @@ public final class Client extends NetworkController {
 				} else {
 					continue;
 				}
-			} catch(InvalidMessageException e) {
-				continue;
 			} catch(PortUnreachableException e) {
 				return false;
 			} catch(SocketTimeoutException e) {

@@ -11,7 +11,6 @@ import ritzow.solomon.engine.world.World;
 import ritzow.solomon.engine.world.WorldManager;
 
 public class Server extends NetworkController {
-	
 	protected WorldManager worldUpdater;
 	protected final SocketAddress[] clients;
 	
