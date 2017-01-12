@@ -5,49 +5,48 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.SocketAddress;
 import java.net.SocketException;
-import java.util.Map.Entry;
-import java.util.AbstractMap.SimpleImmutableEntry;
-import java.util.concurrent.BlockingQueue;
+import java.net.SocketTimeoutException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import ritzow.solomon.engine.network.message.InvalidMessageException;
-import ritzow.solomon.engine.network.message.Message;
-import ritzow.solomon.engine.network.message.MessageHandler;
+import ritzow.solomon.engine.network.message.MessageProcessor;
 import ritzow.solomon.engine.network.message.Protocol;
-import ritzow.solomon.engine.network.message.UnknownMessageException;
 import ritzow.solomon.engine.util.ByteUtil;
 import ritzow.solomon.engine.util.Exitable;
 import ritzow.solomon.engine.util.Installable;
 
 /**
- * Provides common functionality of a client or server. Manages incoming and outgoing packets.
+ * Provides common functionality of the client and server. Manages incoming and outgoing packets.
  * @author Solomon Ritzow
  *
  */
 public abstract class NetworkController implements Installable, Runnable, Exitable {
-	protected volatile boolean setupComplete, exit, finished;
-	protected volatile MessageHandler messageHandler;
+	private volatile boolean setupComplete, exit, finished;
+	protected volatile MessageProcessor processor;
 	protected final DatagramSocket socket;
-	private final BlockingQueue<Entry<Message, SocketAddress>> unsent;
+	protected final List<Integer> handles;
 	
-	private final DatagramPacket sendBuffer;
-
 	public NetworkController(SocketAddress bindAddress) throws SocketException {
+		handles = new ArrayList<Integer>();
 		socket = new DatagramSocket(bindAddress);
-		unsent = new LinkedBlockingQueue<Entry<Message, SocketAddress>>();
-		sendBuffer = new DatagramPacket(new byte[0], 0);
 	}
 	
-	public void send(Message message, SocketAddress address) {
-		unsent.add(new SimpleImmutableEntry<Message, SocketAddress>(message, address));
+	public void setTimeout(int milliseconds) throws SocketException { //TODO find different solution in client connect method
+		socket.setSoTimeout(milliseconds);
 	}
 	
 	public void send(byte[] packet, SocketAddress address) throws IOException {
-		sendBuffer.setData(packet);
-		sendBuffer.setSocketAddress(address);
-		socket.send(sendBuffer);
+		socket.send(new DatagramPacket(packet, packet.length, address));
+	}
+	
+	public Integer sendReliable(byte[] packet, SocketAddress address) throws IOException {
+		send(packet, address);
+		Integer id = new Integer(ByteUtil.getInteger(packet, 0)); 
+		handles.add(id);
+		return id;
 	}
 	
 	public SocketAddress getSocketAddress() {
@@ -72,33 +71,10 @@ public abstract class NetworkController implements Installable, Runnable, Exitab
 	
 	@Override
 	public void run() {
-		if(messageHandler == null)
+		if(processor == null)
 			throw new RuntimeException("Server has no message handler");
 		
-		Thread sender = new Thread("Packet Sender") {
-			public void run() {
-				while(!exit) {
-					try {
-						Entry<Message, SocketAddress> entry = unsent.take();
-						DatagramPacket packet = Protocol.construct(0, entry.getKey(), entry.getValue()); //TODO implement message ID system
-						socket.send(packet); //wait for a packet to be queued and send it
-						if(entry.getKey().isReliable()) {
-							//TODO 
-							//how do I get incoming packets here?
-						}
-						
-					} catch (InterruptedException | SocketException e) {
-						return; //exit if interrupted while waiting (such as when the network controller exits)
-					} catch (IOException e) {
-						continue;
-					}
-				}
-			}
-		};
-		
-		sender.start();
-		
-		ExecutorService processor = Executors.newCachedThreadPool();
+		ExecutorService dispatcher = Executors.newCachedThreadPool();
 		DatagramPacket buffer = new DatagramPacket(new byte[Protocol.MAX_MESSAGE_LENGTH], Protocol.MAX_MESSAGE_LENGTH);
 		
 		synchronized(this) {
@@ -110,24 +86,22 @@ public abstract class NetworkController implements Installable, Runnable, Exitab
 			try {
 				socket.setSoTimeout(0);
 				socket.receive(buffer);
-				if(buffer.getLength() < 6) //it's a troll, just ignore it.
-					continue;
+				if(buffer.getLength() < 6)
+					continue; //it's a troll, just ignore it.
 				
-				//copy only the contents of the message and pass the parsed id, protocol, and data to the packet processor.
-				int messageID = ByteUtil.getInteger(buffer.getData(), buffer.getOffset());
-				short messageProtocol = ByteUtil.getShort(buffer.getData(), buffer.getOffset() + 4);
-				byte[] data = new byte[buffer.getLength() - 6];
-				System.arraycopy(buffer.getData(), buffer.getOffset() + 6, data, 0, data.length);
-				processor.execute(new Runnable() {
-					SocketAddress address = buffer.getSocketAddress(); //store the address because it wont be available once the socket calls receive
+				dispatcher.execute(new Runnable() {
+					//store the packet data because it wont be available once the socket calls receive again (which happens immediately)
+					byte[] packet = Arrays.copyOfRange(buffer.getData(), buffer.getOffset(), buffer.getOffset() + buffer.getLength());
+					SocketAddress address = buffer.getSocketAddress();
+					
 					public void run() {
-						try {
-							Protocol.process(messageID, messageProtocol, data, address, messageHandler);
-						} catch (UnknownMessageException | InvalidMessageException e) {
-							return;
-						}
+						int messageID = ByteUtil.getInteger(packet, 0);
+						short protocol = ByteUtil.getShort(packet, 4);
+						processor.processMessage(messageID, protocol, address, Arrays.copyOfRange(packet, 6, packet.length));
 					}
 				});
+			} catch(SocketTimeoutException e) {
+				continue;
 			} catch(SocketException e) {
 				if(!socket.isClosed()) {
 					e.printStackTrace();
@@ -138,10 +112,8 @@ public abstract class NetworkController implements Installable, Runnable, Exitab
 		}
 		
 		try {
-			processor.shutdown();
-			processor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
-			sender.interrupt();
-			sender.join();
+			dispatcher.shutdown();
+			dispatcher.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
 			socket.close();
 		} catch (InterruptedException e) {
 			e.printStackTrace();

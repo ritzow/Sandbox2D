@@ -9,18 +9,13 @@ import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
+import java.util.Arrays;
 import ritzow.solomon.engine.game.Lobby;
 import ritzow.solomon.engine.network.NetworkController;
 import ritzow.solomon.engine.network.message.InvalidMessageException;
-import ritzow.solomon.engine.network.message.MessageHandler;
+import ritzow.solomon.engine.network.message.MessageProcessor;
 import ritzow.solomon.engine.network.message.Protocol;
-import ritzow.solomon.engine.network.message.client.ServerConnectRequest;
-import ritzow.solomon.engine.network.message.client.ServerInfoRequest;
-import ritzow.solomon.engine.network.message.server.ServerConnectAcknowledgment;
-import ritzow.solomon.engine.network.message.server.ServerInfo;
-import ritzow.solomon.engine.network.message.server.world.WorldCreationMessage;
-import ritzow.solomon.engine.network.message.server.world.WorldDataMessage;
+import ritzow.solomon.engine.network.message.ServerInfo;
 import ritzow.solomon.engine.world.WorldManager;
 
 public final class Client extends NetworkController {
@@ -33,14 +28,13 @@ public final class Client extends NetworkController {
 	
 	public Client() throws SocketException, UnknownHostException {
 		super(new InetSocketAddress(InetAddress.getLocalHost(), 0));
-		messageHandler = new ClientMessageHandler();
+		processor = new ClientMessageHandler();
 	}
 	
-	protected class ClientMessageHandler implements MessageHandler {
-		
-		ArrayList<WorldDataMessage> worldData;
-		int worldSize;
-		
+	/**
+	 * Handler of incoming messages to the client
+	 */
+	private class ClientMessageHandler implements MessageProcessor {
 		@Override
 		public void handle(ServerInfo message, SocketAddress sender, int messageID) {
 			if(requestedInfo) {
@@ -48,49 +42,15 @@ public final class Client extends NetworkController {
 				requestedInfo = false;
 			}
 		}
-
-		@Override
-		public void handle(WorldCreationMessage message, SocketAddress sender, int messageID) {
-			if(sender.equals(serverAddress)) {
-				if(worldData == null) {
-					worldSize = message.getSize();
-					worldData = new ArrayList<WorldDataMessage>(100);
-				}
-			}
-		}
-
-		@Override
-		public void handle(WorldDataMessage message, SocketAddress sender, int messageID) {
-			if(sender.equals(serverAddress)) {
-				if(worldData != null) {
-//					try {
-//						worldData.add(message);
-//						if(worldBuffer.size() == worldSize) {
-//							World world = (World)ByteUtil.deserialize(worldBuffer.toByteArray());
-//							worldManager = new WorldManager(world);
-//						}
-//					} catch (IOException | ReflectiveOperationException e) {
-//						e.printStackTrace();
-//					}
-				}
-			}
-		}
 	}
 	
-	/**
-	 * Note: currently only works after connecting to a server.
-	 * @param address
-	 */
-	public void requestServerInfo(SocketAddress address) {
-		requestedInfo = true;
-		send(new ServerInfoRequest(), address);
+	public ServerInfo getServerInfo(SocketAddress server) {
+		throw new UnsupportedOperationException("not implemented");
 	}
 	
-	protected int lastMessageID = 0;
-	
-//	public void send(Message message, SocketAddress address) {
-//		send(Protocol.construct(++lastMessageID, message, address));
-//	}
+	public boolean connectTo(SocketAddress server) {
+		return false;
+	}
 	
 	/**
 	 * Connect to a specified SocketAddress using a ServerConnectRequest
@@ -101,21 +61,21 @@ public final class Client extends NetworkController {
 	 * @throws IOException if the socket throws an IOException
 	 */
 	public synchronized boolean connectToServer(SocketAddress serverAddress, int attempts, int timeout) throws IOException {
-		if(timeout != 0 && timeout < attempts)
-			throw new RuntimeException("Specified connection timeout is too small");
 		if(attempts == 0)
 			throw new RuntimeException("Number of connection attempts cannot be zero");
-		socket.setSoTimeout(timeout/attempts);
-		DatagramPacket packet = Protocol.construct(0, new ServerConnectRequest(), serverAddress);
-		socket.send(packet);
-		DatagramPacket response = new DatagramPacket(new byte[10], 10);
+		else if(timeout != 0 && timeout < attempts)
+			throw new RuntimeException("Specified connection timeout is too small");
+		setTimeout(timeout/attempts);
+		byte[] packet = Protocol.constructServerConnectRequest();
+		send(packet, serverAddress);
+		DatagramPacket response = new DatagramPacket(new byte[7], 7);
 		long startTime = System.currentTimeMillis();
 		int attemptsRemaining = attempts;
 		while(attemptsRemaining >= 0 && (System.currentTimeMillis() - startTime < timeout || timeout == 0)) {
 			try {
 				socket.receive(response);
 				if(response.getSocketAddress().equals(serverAddress)) {
-					if(new ServerConnectAcknowledgment(response.getData(), 6).isAccepted()) {
+					if(Protocol.newServerConnectAcknowledgment(Arrays.copyOfRange(response.getData(), 6, response.getData().length)).isAccepted()) {
 						this.serverAddress = response.getSocketAddress();
 						return true;
 					} else {
@@ -130,7 +90,7 @@ public final class Client extends NetworkController {
 				return false;
 			} catch(SocketTimeoutException e) {
 				if(--attemptsRemaining > 0)
-					socket.send(packet);
+					send(packet, serverAddress);
 				continue;
 			}
 		}
