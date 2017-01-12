@@ -12,7 +12,7 @@ import ritzow.solomon.engine.graphics.data.PositionBuffer;
 import ritzow.solomon.engine.graphics.data.Texture;
 import ritzow.solomon.engine.graphics.data.TextureCoordinateBuffer;
 
-public class Model {
+public final class Model {
 	protected final int 						vao;
 	protected final int 						vertexCount;
 	protected final PositionBuffer 				positions;
@@ -30,11 +30,20 @@ public class Model {
 		setup();
 	}
 	
+	public Texture getTexture() {
+		return texture;
+	}
+	
 	public void setup() {
 		glBindVertexArray(vao);
 		positions.specifyFormat();
 		textureCoords.specifyFormat();
 		glBindVertexArray(0);
+	}
+	
+	public void bind() {
+		glBindVertexArray(vao);
+		indices.bind();
 	}
 	
 	public void render() {

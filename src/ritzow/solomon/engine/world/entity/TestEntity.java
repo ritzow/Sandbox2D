@@ -1,36 +1,43 @@
 package ritzow.solomon.engine.world.entity;
 
 import ritzow.solomon.engine.graphics.Graphics;
+import ritzow.solomon.engine.graphics.ImmutableGraphics;
 import ritzow.solomon.engine.graphics.Model;
 import ritzow.solomon.engine.graphics.ModelRenderer;
-import ritzow.solomon.engine.graphics.ModifiableGraphics;
 import ritzow.solomon.engine.resource.Models;
+import ritzow.solomon.engine.util.ByteUtil;
 
 public class TestEntity extends Entity {
-	protected transient ModifiableGraphics graphics;
-	protected float rotationSpeed;
+	protected Graphics graphics;
 	protected float width;
 	protected float height;
 	
 	public TestEntity() {
-		graphics = new ModifiableGraphics(Models.BLUE_SQUARE);
+		this(Models.BLUE_SQUARE, 3, 3, 0, 0);
 	}
 	
 	public TestEntity(Model model, float width, float height, float posX, float posY) {
-		this.graphics = new ModifiableGraphics(model);
-		this.width = width;
+		this.graphics = new ImmutableGraphics(model, 1.0f, width, height, 0.0f);
+		this.width = width; 
 		this.height = height;
 		this.positionX = posX;
 		this.positionY = posY;
 	}
 	
-	@SuppressWarnings("unused")
-	private TestEntity(byte[] data) {
-		throw new UnsupportedOperationException("not implemented");
+	public TestEntity(byte[] data) {
+		super(data);
+		width = ByteUtil.getFloat(data, 16);
+		height = ByteUtil.getFloat(data, 20);
+		graphics = new ImmutableGraphics(Models.BLUE_SQUARE, 1.0f, width, height, 0);
 	}
 	
 	public byte[] getBytes() {
-		throw new UnsupportedOperationException("not implemented");
+		byte[] superBytes = super.getBytes();
+		byte[] bytes = new byte[superBytes.length + 8];
+		ByteUtil.putFloat(bytes, superBytes.length, width);
+		ByteUtil.putFloat(bytes, superBytes.length + 4, height);
+		ByteUtil.copy(superBytes, bytes, 0);
+		return bytes;
 	}
 	
 	public Graphics getGraphics() {
@@ -39,7 +46,6 @@ public class TestEntity extends Entity {
 	
 	public void update(float time) {
 		super.update(time);
-		graphics.setRotation(graphics.getRotation() + rotationSpeed * time);
 	}
 	
 	public void render(ModelRenderer renderer) {
@@ -83,6 +89,6 @@ public class TestEntity extends Entity {
 
 	@Override
 	public float getMass() {
-		return 10;
+		return width * height;
 	}
 }

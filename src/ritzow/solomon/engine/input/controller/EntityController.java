@@ -140,14 +140,16 @@ public final class EntityController extends Controller implements KeyHandler, Up
 	}
 	
 	private boolean entityBelow() {
-		for(Entity o : world) {
-			if(o != null && entity != o && o.doEntityCollisionResolution() && 
-					intersection(entity.getPositionX(), entity.getPositionY() - entity.getHeight()/2, entity.getWidth() - 0.01f, 0.1f, 
-							o.getPositionX(), o.getPositionY(), o.getWidth(), o.getHeight())) {
-				return true;
+		synchronized(world) {
+			for(Entity o : world) {
+				if(o != null && entity != o && o.doEntityCollisionResolution() && 
+						intersection(entity.getPositionX(), entity.getPositionY() - entity.getHeight()/2, entity.getWidth() - 0.01f, 0.1f, 
+								o.getPositionX(), o.getPositionY(), o.getWidth(), o.getHeight())) {
+					return true;
+				}
 			}
+			return false;
 		}
-		return false;
 	}
 	
 	@Override

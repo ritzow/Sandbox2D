@@ -21,7 +21,8 @@ public class Shader {
 			
 			if(path.exists()) {
 				while(sc.hasNextLine()) {
-					data.append(sc.nextLine() + "\n");
+					data.append(sc.nextLine());
+					data.append('\n');
 				}
 				
 				sc.close();
