@@ -2,8 +2,6 @@ package ritzow.solomon.engine.world;
 
 import static ritzow.solomon.engine.util.Utility.Intersection.combineFriction;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -13,8 +11,6 @@ import ritzow.solomon.engine.graphics.Renderable;
 import ritzow.solomon.engine.util.ByteUtil;
 import ritzow.solomon.engine.util.Transportable;
 import ritzow.solomon.engine.world.entity.Entity;
-import ritzow.solomon.engine.world.entity.ParticleEntity;
-import ritzow.solomon.engine.world.entity.Player;
 
 /**
  * Handler and organizer of {@link Entity} and {@link BlockGrid} objects. Handles updating of entities in the world and rendering of entities and blocks. 
@@ -74,42 +70,54 @@ public final class World implements Renderable, Iterable<Entity>, Transportable 
 	
 	@Override
 	public synchronized byte[] getBytes() {
-		byte[] foreground = ByteUtil.serialize(this.foreground);
-		byte[] background = ByteUtil.serialize(this.background);
-		ByteArrayOutputStream out = new ByteArrayOutputStream();
 		
-		int entityCount = 0;
-		for(Entity e : entities) {
-			try {
-				if(!(e instanceof Player || e instanceof ParticleEntity)) { //TODO make better, more configurable world save system?
-					out.write(ByteUtil.serialize(e));
-					entityCount++;
-				}
-			} catch (IOException e1) {
-				continue;
+		//serialize foreground and background
+		byte[] foregroundBytes = ByteUtil.serialize(this.foreground);
+		byte[] backgroundBytes = ByteUtil.serialize(this.background);
+		
+		//number of entities currently in the world
+		int numEntities;
+		
+		//number of bytes of entity data
+		int totalBytes;
+		
+		//array of all of the serialized entities
+		byte[][] eb;
+		
+		synchronized(entities) {
+			numEntities = entities.size();
+			eb = new byte[numEntities][];
+			totalBytes = 0;
+			int index = 0;
+			for(Entity e : this.entities) {
+				byte[] bytes = ByteUtil.serialize(e);
+				eb[index] = bytes;
+				totalBytes += bytes.length;
+				index++;
 			}
 		}
 		
-		//entity data
-		byte[] entities = out.toByteArray();
-		
-		//gravity, foreground data, background data, number of entities, entity data
-		byte[] bytes = new byte[4 + foreground.length + background.length + 4 + entities.length];
+		//gravity, foreground data, background data, number of entities, entity data (size)
+		byte[] bytes = new byte[4 + foregroundBytes.length + backgroundBytes.length + 4 + totalBytes];
 		
 		//write gravity
 		ByteUtil.putFloat(bytes, 0, gravity);
 		
 		//write foreground data
-		ByteUtil.write(foreground, bytes, 4);
+		ByteUtil.copy(foregroundBytes, bytes, 4);
 		
 		//write background data
-		ByteUtil.write(background, bytes, 4 + foreground.length);
+		ByteUtil.copy(backgroundBytes, bytes, 4 + foregroundBytes.length);
 		
 		//write number of entities
-		ByteUtil.putInteger(bytes, 4 + foreground.length + background.length, entityCount);
+		ByteUtil.putInteger(bytes, 4 + foregroundBytes.length + backgroundBytes.length, numEntities);
 		
-		//write entity data
-		ByteUtil.write(entities, bytes, 4 + foreground.length + background.length + 4);
+		//write entity data into final byte array
+		int index = 4 + foregroundBytes.length + backgroundBytes.length + 4;
+		for(byte[] entity : eb) {
+			System.arraycopy(entity, 0, bytes, index, entity.length);
+			index += entity.length;
+		}
 		
 		return bytes;
 	}
