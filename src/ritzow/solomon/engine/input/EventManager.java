@@ -2,6 +2,7 @@ package ritzow.solomon.engine.input;
 
 import static org.lwjgl.glfw.GLFW.glfwInit;
 import static org.lwjgl.glfw.GLFW.glfwTerminate;
+import static org.lwjgl.glfw.GLFW.glfwPostEmptyEvent;
 
 import java.io.IOException;
 import org.lwjgl.glfw.GLFWErrorCallback;
@@ -89,6 +90,7 @@ public final class EventManager implements Runnable, Installable, Exitable {
 	@Override
 	public synchronized void exit() {
 		exit = true;
+		glfwPostEmptyEvent();
 		this.notifyAll();
 	}
 
