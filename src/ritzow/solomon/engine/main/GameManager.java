@@ -43,23 +43,6 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 	
 	@Override
 	public void run() {
-		
-		//if enabled, this will print the current memory usage in megabytes to the console every second
-		if(GameEngine2D.PRINT_MEMORY_USAGE) {
-			new Thread("Memory Usage Thread") {
-				public void run() {
-					try {
-						while(!exit) {
-							System.out.println("Memory Usage: " + ((Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) * 0.000001) + " MB");
-							Thread.sleep(1000);
-						}
-					} catch(InterruptedException e) {
-						return;
-					}
-				}
-			}.start();
-		}
-		
 		EventManager eventManager = this.eventManager;
 		
 		//wait for the Display, and thus InputManager, to be created, then link the game manager to the display so that the escape button and x button exit the game
