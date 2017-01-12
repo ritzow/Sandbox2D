@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.net.SocketAddress;
 import ritzow.solomon.engine.audio.AudioSystem;
 import ritzow.solomon.engine.graphics.Background;
 import ritzow.solomon.engine.graphics.GraphicsManager;
@@ -17,12 +16,11 @@ import ritzow.solomon.engine.input.controller.InteractionController;
 import ritzow.solomon.engine.input.controller.TrackingCameraController;
 import ritzow.solomon.engine.input.handler.KeyHandler;
 import ritzow.solomon.engine.input.handler.WindowCloseHandler;
-import ritzow.solomon.engine.network.client.Client;
-import ritzow.solomon.engine.network.server.Server;
 import ritzow.solomon.engine.resource.Models;
 import ritzow.solomon.engine.util.ByteUtil;
 import ritzow.solomon.engine.util.Utility.Synchronizer;
 import ritzow.solomon.engine.world.World;
+import ritzow.solomon.engine.world.WorldManager;
 import ritzow.solomon.engine.world.block.DirtBlock;
 import ritzow.solomon.engine.world.block.GrassBlock;
 import ritzow.solomon.engine.world.block.RedBlock;
@@ -33,10 +31,8 @@ import ritzow.solomon.engine.world.entity.Player;
  * @author Solomon Ritzow
  *
  */
-final class GameManager implements Runnable, WindowCloseHandler, KeyHandler {
-	private EventManager eventManager;
-	private GraphicsManager graphicsManager;
-	private ClientUpdateManager clientUpdateManager;
+public final class GameManager implements Runnable, WindowCloseHandler, KeyHandler {
+	private final EventManager eventManager;
 	
 	/** signals that the game should exit **/
 	private volatile boolean exit;
@@ -64,10 +60,14 @@ final class GameManager implements Runnable, WindowCloseHandler, KeyHandler {
 			}.start();
 		}
 		
+		EventManager eventManager = this.eventManager;
+		
 		//wait for the Display, and thus InputManager, to be created, then link the game manager to the display so that the escape button and x button exit the game
 		Synchronizer.waitForSetup(eventManager);
 		eventManager.getDisplay().getInputManager().getWindowCloseHandlers().add(this);
 		eventManager.getDisplay().getInputManager().getKeyHandlers().add(this);
+		
+		GraphicsManager graphicsManager;
 		
 		//start the graphics manager, which will load all models into OpenGL and setup the OpenGL context.
 		new Thread(graphicsManager = new GraphicsManager(eventManager.getDisplay()), "Graphics Manager").start();
@@ -88,7 +88,7 @@ final class GameManager implements Runnable, WindowCloseHandler, KeyHandler {
 		File saveFile = new File("data/worlds/testWorld.dat");
 		World world;
 		
-		if(saveFile.length() == 0 || GameEngine2D.RECREATE_WORLD) {
+		if(!saveFile.exists() || saveFile.length() == 0) {
 			System.out.print("Creating world... ");
 			world = new World(750, 500);
 			for(int column = 0; column < world.getForeground().getWidth(); column++) {
@@ -132,7 +132,7 @@ final class GameManager implements Runnable, WindowCloseHandler, KeyHandler {
 		} world.add(player);
 		
 		//create the client update manager and link it with the window events
-		clientUpdateManager = new ClientUpdateManager();
+		ClientUpdateManager clientUpdateManager = new ClientUpdateManager();
 		clientUpdateManager.link(eventManager.getDisplay().getInputManager());
 		
 		//create player controllers so the user can "play the game", for testing purposes
@@ -150,35 +150,38 @@ final class GameManager implements Runnable, WindowCloseHandler, KeyHandler {
 		//start the client update manager
 		new Thread(clientUpdateManager, "Client Updater").start();
 		
+		WorldManager m = new WorldManager(world);
+		new Thread(m, "world updater").start();
+		
 		//Add the background and world to the renderer
 		graphicsManager.getRenderables().add(new Background(Models.CLOUDS));
 		graphicsManager.getRenderables().add(world);
 		
-		
 		//perform a test of the client and server system (work in progress)
-		Client client;
-		Server server;
+//		Client client;
+//		Server server;
 		
-		try {
-			client = new Client();
-			server = new Server(20);
-			new Thread(server, "Game Server").start();
-			Synchronizer.waitForSetup(server);
-			server.startWorld(world);
-			SocketAddress serverAddress = server.getSocketAddress();
-			if(client.connectToServer(serverAddress, 1, 1000)) {
-				System.out.println("Client connected to " + serverAddress);
-				new Thread(client, "Game Client").start();
-			} else {
-				System.out.println("Client failed to connect to " + serverAddress);
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-			client = null;
-			server = null;
-		}
-		
-		final World lastWorld = server.getWorld();
+//		try {
+//			client = new Client();
+//			server = new Server(20);
+//			new Thread(server, "Game Server").start();
+//			Synchronizer.waitForSetup(server);
+//			SocketAddress serverAddress = server.getSocketAddress();
+//			if(client.connectToServer(serverAddress, 1, 1000)) {
+//				new Thread(client, "Game Client").start();
+//				System.out.println("Client connected to " + serverAddress);
+//				server.startWorld(world); //temporary, so that I can play the game, should be handled in Server class automatically on startup
+//			} else {
+//				System.out.println("Client failed to connect to " + serverAddress);
+//				exit();
+//			}
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//			client = null;
+//			server = null;
+//		}
+//		
+		final World lastWorld = world; //server.getWorld();
 		
 		//display the window!
 		eventManager.setReadyToDisplay();
@@ -193,9 +196,9 @@ final class GameManager implements Runnable, WindowCloseHandler, KeyHandler {
 			System.err.println("Game Manager was interrupted");
 		} finally {
 			clientUpdateManager.exit();
-			client.exit();
-			server.exit();
-			
+			//client.exit();
+			//server.exit();
+			m.exit();
 			AudioSystem.stop();
 			
 			//wait for the renderer to stop before closing the window
@@ -203,11 +206,20 @@ final class GameManager implements Runnable, WindowCloseHandler, KeyHandler {
 			eventManager.exit();
 			
 			//make sure the client and server are closed before saving the world
-			Synchronizer.waitUntilFinished(client);
-			Synchronizer.waitUntilFinished(server);
+			//Synchronizer.waitUntilFinished(client);
+			//Synchronizer.waitUntilFinished(server);
 			
 			//save the world to the file "data/worlds/testWorld.dat"
-			try(FileOutputStream out = new FileOutputStream(new File("data/worlds/testWorld.dat"))) {
+			
+			if(!saveFile.exists()) {
+				try {
+					saveFile.createNewFile();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+			
+			try(FileOutputStream out = new FileOutputStream(saveFile)) {
 				System.out.print("Saving world... ");
 				byte[] serialized = ByteUtil.compress(ByteUtil.serialize(lastWorld));
 				out.write(serialized);
@@ -222,17 +234,21 @@ final class GameManager implements Runnable, WindowCloseHandler, KeyHandler {
 			Synchronizer.waitUntilFinished(eventManager);
 		}
 	}
-
-	@Override
-	public synchronized void windowClose() {
+	
+	public synchronized void exit() {
 		exit = true;
 		notifyAll();
 	}
 
 	@Override
+	public void windowClose() {
+		exit();
+	}
+
+	@Override
 	public void keyboardButton(int key, int scancode, int action, int mods) {
 		if(key == Controls.KEYBIND_QUIT && action == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
-			windowClose();
+			exit();
 		}
 		
         else if(key == Controls.KEYBIND_FULLSCREEN && action == org.lwjgl.glfw.GLFW.GLFW_PRESS) {

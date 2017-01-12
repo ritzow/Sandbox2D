@@ -3,9 +3,8 @@ package ritzow.solomon.engine.world;
 import ritzow.solomon.engine.util.Exitable;
 
 public final class BlockGridManager implements Runnable, Exitable {
-	private volatile boolean exit;
-	private volatile boolean finished;
-	private BlockGrid blocks;
+	private volatile boolean exit, finished;
+	private final BlockGrid blocks;
 	
 	public BlockGridManager(BlockGrid blocks) {
 		this.blocks = blocks;
@@ -21,7 +20,8 @@ public final class BlockGridManager implements Runnable, Exitable {
 							blocks.destroy(column, row);
 						}
 					}
-					Thread.sleep(1);
+					if(!exit)
+						Thread.sleep(1);
 				}
 			}
 		} catch (InterruptedException e) {
