@@ -29,8 +29,14 @@ public final class ByteUtil {
 		return concatenated;
 	}
 	
-	public static void write(byte[] original, byte[] destination, int offset) {
+	public static void copy(byte[] original, byte[] destination, int offset) {
 		System.arraycopy(original, 0, destination, offset, original.length);
+	}
+	
+	public static byte[] subArray(byte[] array, int offset, int length) {
+		byte[] sub = new byte[length];
+		System.arraycopy(array, offset, sub, 0, length);
+		return sub;
 	}
 	
 	/* Data composition from bytes */
@@ -162,13 +168,13 @@ public final class ByteUtil {
 		putInteger(data, 0, nameBytes.length);
 		
 		//put the class name in the following bytes
-		ByteUtil.write(nameBytes, data, 4);
+		ByteUtil.copy(nameBytes, data, 4);
 		
 		//put the length of the object data in the next four bytes after class name
 		putInteger(data, 4 + nameBytes.length, objectBytes.length);
 		
 		//put the object data into the final byte array
-		ByteUtil.write(objectBytes, data, 4 + nameBytes.length + 4);
+		ByteUtil.copy(objectBytes, data, 4 + nameBytes.length + 4);
 		
 		return data;
 	}

@@ -46,8 +46,8 @@ public class Player extends LivingEntity {
 		byte[] sb = super.getBytes();
 		byte[] invBytes = ByteUtil.serialize(inventory);
 		byte[] object = new byte[sb.length + invBytes.length];
-		ByteUtil.write(sb, object, 0);
-		ByteUtil.write(invBytes, object, sb.length);
+		ByteUtil.copy(sb, object, 0);
+		ByteUtil.copy(invBytes, object, sb.length);
 		return object;
 	}
 	
