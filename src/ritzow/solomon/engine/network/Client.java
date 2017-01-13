@@ -1,4 +1,4 @@
-package ritzow.solomon.engine.network.client;
+package ritzow.solomon.engine.network;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -10,8 +10,6 @@ import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import ritzow.solomon.engine.game.Lobby;
-import ritzow.solomon.engine.network.NetworkController;
-import ritzow.solomon.engine.network.message.MessageProcessor;
 import ritzow.solomon.engine.network.message.Protocol;
 import ritzow.solomon.engine.world.WorldManager;
 
@@ -25,14 +23,6 @@ public final class Client extends NetworkController {
 	
 	public Client() throws SocketException, UnknownHostException {
 		super(new InetSocketAddress(InetAddress.getLocalHost(), 0));
-		processor = new ClientMessageHandler();
-	}
-	
-	/** Handles incoming messages **/
-	private class ClientMessageHandler implements MessageProcessor {
-		public void processMessage(int messageID, short protocol, SocketAddress sender, byte[] data) {
-			
-		}
 	}
 	
 	/**
@@ -76,5 +66,10 @@ public final class Client extends NetworkController {
 			}
 		}
 		return false;
+	}
+
+	@Override
+	protected void processMessage(int messageID, short protocol, SocketAddress sender, byte[] data) {
+		
 	}
 }

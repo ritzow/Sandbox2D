@@ -1,12 +1,12 @@
-package ritzow.solomon.engine.network.server;
+package ritzow.solomon.engine.network;
 
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import ritzow.solomon.engine.network.NetworkController;
-import ritzow.solomon.engine.network.message.MessageProcessor;
+import ritzow.solomon.engine.network.message.Protocol;
 import ritzow.solomon.engine.world.World;
 import ritzow.solomon.engine.world.WorldManager;
 
@@ -17,12 +17,28 @@ public class Server extends NetworkController {
 	public Server(int maxClients) throws SocketException, UnknownHostException {
 		super(new InetSocketAddress(InetAddress.getLocalHost(), 50000));
 		clients = new SocketAddress[maxClients];
-		processor = new ServerMessageHandler();
 	}
 	
-	protected class ServerMessageHandler implements MessageProcessor {
-		public void processMessage(int messageID, short protocol, SocketAddress sender, byte[] data) {
+	protected void processMessage(int messageID, short protocol, SocketAddress sender, byte[] data) {
+		if(protocol == Protocol.SERVER_CONNECT_REQUEST) {
+			try {
+				boolean canConnect = clientsConnected() < clients.length;
+				send(Protocol.constructServerConnectResponse(canConnect), sender);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		
+		else if(protocol == Protocol.RESPONSE_MESSAGE) {
 			
+		}
+		
+		else if(protocol == 100) {
+			try {
+				send(Protocol.constructMessageResponse(0, messageID), sender);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		}
 	}
 	
