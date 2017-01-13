@@ -1,9 +1,8 @@
 package ritzow.solomon.engine.network.message;
 
-public class MessageHandle {
-	protected int messageID;
+public final class MessageHandle {
+	protected final int messageID;
 	protected boolean received;
-	protected byte[] packet;
 	
 	public MessageHandle(int messageID) {
 		this.messageID = messageID;
@@ -13,7 +12,16 @@ public class MessageHandle {
 		return messageID;
 	}
 	
-	public final void notifyReceived() {
+	public synchronized boolean waitForResponse() throws InterruptedException {
+		return waitForResponse(0);
+	}
+	
+	public synchronized boolean waitForResponse(long milliseconds) throws InterruptedException {
+		this.wait(milliseconds);
+		return received;
+	}
+	
+	public final synchronized void notifyReceived() {
 		received = true;
 		this.notifyAll();
 	}
