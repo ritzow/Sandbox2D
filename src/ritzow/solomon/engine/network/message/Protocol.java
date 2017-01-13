@@ -22,6 +22,13 @@ public final class Protocol {
 		SERVER_CONNECT_ACKNOWLEDGMENT = 3,
 		CLIENT_INFO = 4;
 	
+	public static byte[] constructDummy(int messageID) {
+		 byte[] packet = new byte[6];
+		 ByteUtil.putInteger(packet, 0, messageID);	
+		 ByteUtil.putShort(packet, 4, (short)100);
+		 return packet;
+	}
+	
 	public static byte[] constructServerConnectRequest() {
 		byte[] packet = new byte[6];
 		ByteUtil.putInteger(packet, 0, 0);
