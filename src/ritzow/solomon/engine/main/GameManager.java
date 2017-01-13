@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.SocketAddress;
 import ritzow.solomon.engine.audio.AudioSystem;
 import ritzow.solomon.engine.graphics.Background;
 import ritzow.solomon.engine.graphics.GraphicsManager;
@@ -16,11 +17,13 @@ import ritzow.solomon.engine.input.controller.InteractionController;
 import ritzow.solomon.engine.input.controller.TrackingCameraController;
 import ritzow.solomon.engine.input.handler.KeyHandler;
 import ritzow.solomon.engine.input.handler.WindowCloseHandler;
+import ritzow.solomon.engine.network.Client;
+import ritzow.solomon.engine.network.Server;
+import ritzow.solomon.engine.network.message.Protocol;
 import ritzow.solomon.engine.resource.Models;
 import ritzow.solomon.engine.util.ByteUtil;
 import ritzow.solomon.engine.util.Utility.Synchronizer;
 import ritzow.solomon.engine.world.World;
-import ritzow.solomon.engine.world.WorldManager;
 import ritzow.solomon.engine.world.block.DirtBlock;
 import ritzow.solomon.engine.world.block.GrassBlock;
 import ritzow.solomon.engine.world.block.RedBlock;
@@ -50,10 +53,9 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		eventManager.getDisplay().getInputManager().getWindowCloseHandlers().add(this);
 		eventManager.getDisplay().getInputManager().getKeyHandlers().add(this);
 		
-		GraphicsManager graphicsManager;
-		
 		//start the graphics manager, which will load all models into OpenGL and setup the OpenGL context.
-		new Thread(graphicsManager = new GraphicsManager(eventManager.getDisplay()), "Graphics Manager").start();
+		GraphicsManager graphicsManager = new GraphicsManager(eventManager.getDisplay());
+		new Thread(graphicsManager, "Graphics Manager").start();
 		
 		//start OpenAL and load audio files.
 		AudioSystem.start();
@@ -133,38 +135,37 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 		//start the client update manager
 		new Thread(clientUpdateManager, "Client Updater").start();
 		
-		WorldManager m = new WorldManager(world);
-		new Thread(m, "world updater").start();
-		
 		//Add the background and world to the renderer
 		graphicsManager.getRenderables().add(new Background(Models.CLOUDS));
 		graphicsManager.getRenderables().add(world);
 		
 		//perform a test of the client and server system (work in progress)
-//		Client client;
-//		Server server;
+		Client client;
+		Server server;
 		
-//		try {
-//			client = new Client();
-//			server = new Server(20);
-//			new Thread(server, "Game Server").start();
-//			Synchronizer.waitForSetup(server);
-//			SocketAddress serverAddress = server.getSocketAddress();
-//			if(client.connectToServer(serverAddress, 1, 1000)) {
-//				new Thread(client, "Game Client").start();
-//				System.out.println("Client connected to " + serverAddress);
-//				server.startWorld(world); //temporary, so that I can play the game, should be handled in Server class automatically on startup
-//			} else {
-//				System.out.println("Client failed to connect to " + serverAddress);
-//				exit();
-//			}
-//		} catch (IOException e) {
-//			e.printStackTrace();
-//			client = null;
-//			server = null;
-//		}
-//		
-		final World lastWorld = world; //server.getWorld();
+		try {
+			client = new Client();
+			server = new Server(20);
+			new Thread(server, "Game Server").start();
+			Synchronizer.waitForSetup(server);
+			SocketAddress serverAddress = server.getSocketAddress();
+			if(client.connectToServer(serverAddress, 1, 1000)) {
+				new Thread(client, "Game Client").start();
+				System.out.println("Client connected to " + serverAddress);
+				server.startWorld(world); //temporary, so that I can play the game, should be handled in Server class automatically on startup
+				client.sendReliable(Protocol.constructDummy(23232433), serverAddress);
+				System.out.println("message received");
+			} else {
+				System.out.println("Client failed to connect to " + serverAddress);
+				exit();
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+			client = null;
+			server = null;
+		}
+		
+		final World lastWorld = server.getWorld();
 		
 		//display the window!
 		eventManager.setReadyToDisplay();
@@ -179,9 +180,8 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 			System.err.println("Game Manager was interrupted");
 		} finally {
 			clientUpdateManager.exit();
-			//client.exit();
-			//server.exit();
-			m.exit();
+			client.exit();
+			server.exit();
 			AudioSystem.stop();
 			
 			//wait for the renderer to stop before closing the window
@@ -189,8 +189,7 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 			eventManager.exit();
 			
 			//make sure the client and server are closed before saving the world
-			//Synchronizer.waitUntilFinished(client);
-			//Synchronizer.waitUntilFinished(server);
+			Synchronizer.waitUntilFinished(server);
 			
 			//save the world to the file "data/worlds/testWorld.dat"
 			
@@ -213,6 +212,7 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 			}
 			
 			//make sure the client update manager and event manager are closed before exiting the "game" thread
+			Synchronizer.waitUntilFinished(client);
 	 		Synchronizer.waitUntilFinished(clientUpdateManager);
 			Synchronizer.waitUntilFinished(eventManager);
 		}
