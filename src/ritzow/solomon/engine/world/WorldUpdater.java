@@ -3,11 +3,11 @@ package ritzow.solomon.engine.world;
 import ritzow.solomon.engine.util.Exitable;
 import ritzow.solomon.engine.util.Utility.Synchronizer;
 
-public final class WorldManager implements Runnable, Exitable {
+public final class WorldUpdater implements Runnable, Exitable {
 	private volatile World world;
 	private volatile boolean exit, finished;
 	
-	public WorldManager(World world) {
+	public WorldUpdater(World world) {
 		this.world = world;
 	}
 	
