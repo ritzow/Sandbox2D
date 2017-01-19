@@ -4,9 +4,8 @@ import ritzow.solomon.engine.graphics.Graphics;
 import ritzow.solomon.engine.util.Transportable;
 
 /**
- * Represents a game object that can be held or used by the player
+ * Represents a game object that can be used by the player and stored in an inventory
  * @author Solomon Ritzow
- *
  */
 public abstract class Item implements Transportable {
 	
@@ -19,4 +18,12 @@ public abstract class Item implements Transportable {
 	 * @return a human-readable name that can be presented to the player
 	 */
 	public abstract String getName();
+	
+	/**
+	 * Checks for equality with another item to see if the items can stack
+	 * @param item
+	 * @return whether or not the two items are the same
+	 */
+	public abstract boolean equals(Item item);
+	
 }
