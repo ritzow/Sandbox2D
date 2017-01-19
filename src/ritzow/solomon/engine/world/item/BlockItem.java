@@ -37,5 +37,15 @@ public final class BlockItem extends Item {
 	public String getName() {
 		return block.getName() + " block";
 	}
-	
+
+	@Override
+	public boolean equals(Item item) {
+		if(this == item) {
+			return true;
+		} else if(item instanceof BlockItem) {
+			throw new UnsupportedOperationException("not implemented");
+		} else {
+			return false;
+		}
+	}
 }
