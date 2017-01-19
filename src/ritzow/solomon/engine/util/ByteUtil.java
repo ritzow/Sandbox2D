@@ -29,6 +29,11 @@ public final class ByteUtil {
 		return concatenated;
 	}
 	
+	/**
+	 * @param original the array to copy
+	 * @param destination the destination array
+	 * @param offset the offset into the destination array
+	 */
 	public static void copy(byte[] original, byte[] destination, int offset) {
 		System.arraycopy(original, 0, destination, offset, original.length);
 	}

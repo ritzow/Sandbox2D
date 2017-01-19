@@ -12,7 +12,7 @@ import ritzow.solomon.engine.resource.Models;
 import ritzow.solomon.engine.resource.Sounds;
 import ritzow.solomon.engine.util.ByteUtil;
 import ritzow.solomon.engine.world.World;
-import ritzow.solomon.engine.world.entity.component.Inventory;
+import ritzow.solomon.engine.world.component.Inventory;
 import ritzow.solomon.engine.world.item.Item;
 
 /**
