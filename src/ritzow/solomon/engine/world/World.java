@@ -76,29 +76,29 @@ public final class World implements Renderable, Iterable<Entity>, Transportable 
 		byte[] backgroundBytes = ByteUtil.serialize(this.background);
 		
 		//number of entities currently in the world
-		int numEntities;
+		int numEntities = entities.size();
 		
 		//number of bytes of entity data
-		int totalBytes;
+		int totalEntityBytes = 0;
 		
 		//array of all of the serialized entities
-		byte[][] eb;
+		byte[][] entityBytes = new byte[numEntities][];
 		
-		synchronized(entities) {
-			numEntities = entities.size();
-			eb = new byte[numEntities][];
-			totalBytes = 0;
-			int index = 0;
-			for(Entity e : this.entities) {
+		int index = 0;
+		for(Entity e : entities) {
+			try {
 				byte[] bytes = ByteUtil.serialize(e);
-				eb[index] = bytes;
-				totalBytes += bytes.length;
+				entityBytes[index] = bytes;
+				totalEntityBytes += bytes.length;
 				index++;
+			} catch(Exception ex) {
+				ex.printStackTrace();
+				numEntities--;
 			}
 		}
 		
 		//gravity, foreground data, background data, number of entities, entity data (size)
-		byte[] bytes = new byte[4 + foregroundBytes.length + backgroundBytes.length + 4 + totalBytes];
+		byte[] bytes = new byte[4 + foregroundBytes.length + backgroundBytes.length + 4 + totalEntityBytes];
 		
 		//write gravity
 		ByteUtil.putFloat(bytes, 0, gravity);
@@ -112,11 +112,13 @@ public final class World implements Renderable, Iterable<Entity>, Transportable 
 		//write number of entities
 		ByteUtil.putInteger(bytes, 4 + foregroundBytes.length + backgroundBytes.length, numEntities);
 		
-		//write entity data into final byte array
-		int index = 4 + foregroundBytes.length + backgroundBytes.length + 4;
-		for(byte[] entity : eb) {
-			System.arraycopy(entity, 0, bytes, index, entity.length);
-			index += entity.length;
+		//append entity data to the end of the serialized array
+		int offset = 4 + foregroundBytes.length + backgroundBytes.length + 4;
+		for(byte[] entity : entityBytes) {
+			if(entity != null) {
+				System.arraycopy(entity, 0, bytes, offset, entity.length);
+				offset += entity.length;
+			}
 		}
 		
 		return bytes;
