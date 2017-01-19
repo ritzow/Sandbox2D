@@ -1,4 +1,4 @@
-package ritzow.solomon.engine.world.entity.component;
+package ritzow.solomon.engine.world.component;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
