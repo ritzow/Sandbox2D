@@ -1,4 +1,4 @@
-package ritzow.solomon.engine.network.message;
+package ritzow.solomon.engine.network;
 
 public final class MessageHandle {
 	protected final int messageID;

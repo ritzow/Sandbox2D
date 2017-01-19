@@ -1,4 +1,4 @@
-package ritzow.solomon.engine.network.message;
+package ritzow.solomon.engine.network;
 
 public class InvalidMessageException extends Exception {
 	private static final long serialVersionUID = 1693805154920151682L;
