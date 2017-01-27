@@ -165,7 +165,7 @@ public final class ByteUtil {
 		
 		byte[] nameBytes = object.getClass().getName().getBytes();
 		byte[] objectBytes = object.getBytes();
-		
+
 		//class name length, class name, object data length, object data
 		byte[] data = new byte[4 + nameBytes.length + 4 + objectBytes.length];
 		

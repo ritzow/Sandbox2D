@@ -4,7 +4,7 @@ import static org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_MIDDLE;
 import static org.lwjgl.glfw.GLFW.GLFW_PRESS;
 import static org.lwjgl.glfw.GLFW.GLFW_RELEASE;
 
-import ritzow.solomon.engine.audio.AudioSystem;
+import ritzow.solomon.engine.audio.Audio;
 import ritzow.solomon.engine.graphics.Camera;
 import ritzow.solomon.engine.input.Controls;
 import ritzow.solomon.engine.world.entity.Entity;
@@ -32,7 +32,7 @@ public class TrackingCameraController extends CameraController {
 		camera.setPositionX(target.getPositionX());
 		camera.setPositionY(target.getPositionY());
 		camera.setZoom((Math.max(Math.min(maxZoom, camera.getZoom() + camera.getZoom() * velocityZ), minZoom)));
-		AudioSystem.setListenerProperties(camera.getPositionX(), camera.getPositionY(), -(maxZoom - camera.getZoom()) * soundFalloff, target.getVelocityX(), 
+		Audio.setListenerProperties(camera.getPositionX(), camera.getPositionY(), -(maxZoom - camera.getZoom()) * soundFalloff, target.getVelocityX(), 
 				target.getVelocityY(), target.getVelocityX(), target.getVelocityY());
 	}
 	
