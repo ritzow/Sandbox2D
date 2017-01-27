@@ -33,10 +33,6 @@ public final class World implements Renderable, Iterable<Entity>, Transportable 
 		this(width, height, 0.016f);
 	}
 	
-	public String toString() {
-		return foreground.toString() + background.toString() + entities.toString();
-	}
-	
 	/**
 	 * Initializes a new World object with a foreground, background, entity storage, and gravity.
 	 * @param width the width of the foreground and background
@@ -55,9 +51,7 @@ public final class World implements Renderable, Iterable<Entity>, Transportable 
 		int backgroundLength = ByteUtil.getSerializedLength(data, 4 + foregroundLength);
 		gravity = ByteUtil.getFloat(data, 0);
 		foreground = (BlockGrid)ByteUtil.deserialize(data, 4);
-		foreground.setWorld(this);
 		background = (BlockGrid)ByteUtil.deserialize(data, 4 + foregroundLength);
-		background.setWorld(this);
 		int numEntities = ByteUtil.getInteger(data, 4 + foregroundLength + backgroundLength);
 		entities = new ArrayList<Entity>(numEntities);
 		
@@ -122,6 +116,10 @@ public final class World implements Renderable, Iterable<Entity>, Transportable 
 		}
 		
 		return bytes;
+	}
+	
+	public String toString() {
+		return foreground.toString() + background.toString() + entities.toString();
 	}
 	
 	public BlockGrid getForeground() {
