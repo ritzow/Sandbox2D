@@ -43,7 +43,7 @@ public final class InputManager {
 	private List<WindowFocusHandler> windowFocusHandlers = 			new LinkedList<WindowFocusHandler>();
 	
 	public InputManager(long window) {
-		//TODO use a thread pool executor service to send events to other threads?
+		//TODO use a thread pool executor service with lambda expressions to send events to other threads?
 		
 		glfwSetKeyCallback(window, new GLFWKeyCallback() {
 		    public void invoke (long window, int key, int scancode, int action, int mods) {

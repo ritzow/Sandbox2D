@@ -4,7 +4,7 @@ import static org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_MIDDLE;
 import static org.lwjgl.glfw.GLFW.GLFW_PRESS;
 import static org.lwjgl.glfw.GLFW.GLFW_RELEASE;
 
-import ritzow.solomon.engine.audio.AudioSystem;
+import ritzow.solomon.engine.audio.Audio;
 import ritzow.solomon.engine.graphics.Camera;
 import ritzow.solomon.engine.input.Controls;
 
@@ -38,7 +38,7 @@ public class PanningCameraController extends CameraController {
 		camera.setPositionX(camera.getPositionX() + velocityX);
 		camera.setPositionY(camera.getPositionY() + velocityY);
 		camera.setZoom((Math.max(Math.min(maxZoom, camera.getZoom() + camera.getZoom() * velocityZ), minZoom)));
-		AudioSystem.setListenerPosition(camera.getPositionX(), camera.getPositionY(), camera.getZoom());
+		Audio.setListenerPosition(camera.getPositionX(), camera.getPositionY(), camera.getZoom());
 	}
 
 	@Override
