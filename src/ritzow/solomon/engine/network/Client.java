@@ -12,24 +12,30 @@ import ritzow.solomon.engine.world.WorldUpdater;
 
 public final class Client extends NetworkController {
 	protected SocketAddress server;
-	protected WorldUpdater worldManager;
-	protected boolean connected;
+	protected WorldUpdater worldUpdater;
+	protected volatile boolean connected;
+	
+	protected final Object worldLock;
 	
 	public Client() throws SocketException, UnknownHostException {
 		super(new InetSocketAddress(InetAddress.getLocalHost(), 0));
+		worldLock = new Object();
 	}
 	
 	private byte[][] worldPackets;
 	
 	@Override
-	protected void processMessage(int messageID, short protocol, SocketAddress sender, byte[] data) {
+	protected void process(int messageID, short protocol, SocketAddress sender, byte[] data) {
 		System.out.println("Client received message of ID " + messageID + " and type " + protocol);
 		
+		//process only if the message is received from the server
 		if(sender.equals(server)) {
 			if(protocol == Protocol.SERVER_CONNECT_ACKNOWLEDGMENT) {
-				connected = ByteUtil.getBoolean(data, 0);
-				synchronized(server) {
-					server.notifyAll(); //notify the connectTo method that the client connected to the server successfully.
+				if(server != null) {
+					connected = ByteUtil.getBoolean(data, 0);
+					synchronized(server) {
+						server.notifyAll();
+					}
 				}
 			}
 			
@@ -37,91 +43,92 @@ public final class Client extends NetworkController {
 				worldPackets = new byte[ByteUtil.getInteger(data, 0)][];
 			}
 			
-			else if(protocol == Protocol.WORLD) {
-				for(int i = 0; i < worldPackets.length; i++) {
-					if(worldPackets[i] == null) {
-						worldPackets[i] = data;
-						
-						if(i == worldPackets.length - 1) { //received final packet, create the world
-							World world = Protocol.deconstructWorldPackets(worldPackets);
-							new Thread(worldManager = new WorldUpdater(world), "Client World Manager").start();
+			else if(protocol == Protocol.WORLD_DATA) {
+				synchronized(worldPackets) {
+					for(int i = 0; i < worldPackets.length; i++) {
+						if(worldPackets[i] == null) {
+							worldPackets[i] = data;
+							if(i == worldPackets.length - 1) { //received final packet, create the world
+								World world = Protocol.deconstructWorldPackets(worldPackets);
+								
+								if(world == null) {
+									worldPackets = null;
+									//TODO ask for server to resend world
+								} else {
+									new Thread(worldUpdater = new WorldUpdater(world), "Client World Updater").start();
+									synchronized(worldLock) {
+										worldLock.notifyAll(); //notify waitForWorldStart that the world has started
+									}
+								}
+							}
+							break;
 						}
-						
-						break;
 					}
 				}
 			}
 		}
 	}
 	
-	public World getWorld() {
-		return worldManager == null ? null : worldManager.getWorld();
+	@Override
+	public void exit() {
+		try {
+			stopWorld();
+		} catch(RuntimeException e) {
+			//ignores "no world to stop" exception
+		} finally {
+			super.exit();
+		}
 	}
 	
-	public boolean connectTo(SocketAddress server, int timeout) throws IOException {
+	public void waitForWorldStart() {
+		if(worldUpdater != null && !worldUpdater.isFinished())
+			return;
+		synchronized(worldLock) {
+			try {
+				worldLock.wait();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	protected void startWorld(World world) {
+		if(worldUpdater == null || worldUpdater.isFinished())
+			new Thread(worldUpdater = new WorldUpdater(world), "Server World Updater").start();
+		else
+			throw new RuntimeException("A world is already running");
+	}
+	
+	protected void stopWorld() {
+		if(worldUpdater != null && !worldUpdater.isFinished())
+			worldUpdater.exit();
+		else
+			throw new RuntimeException("There is no world currently running");
+	}
+	
+	public World getWorld() {
+		return worldUpdater == null ? null : worldUpdater.getWorld();
+	}
+	
+	public boolean connectTo(SocketAddress address, int timeout) throws IOException {
 		if(this.server == null) {
 			if(this.isSetupComplete() && !this.isFinished()) {
-				this.server = server;
-				send(Protocol.constructServerConnectRequest(), server);
+				server = address;
 				synchronized(server) {
+					reliableSend(Protocol.constructServerConnectRequest(), address);
 					try {
-						this.wait(timeout);
+						server.wait(timeout);
 					} catch (InterruptedException e) {
 						e.printStackTrace();
 					}
+					return connected;
 				}
-				return connected;
 			} else {
 				throw new RuntimeException("the client must be running to connect to a server");
 			}
 			
 		} else {
-			send(Protocol.constructClientDisconnect(0), server); //TODO what about handling timeouts, etc.?
-			return connectTo(server, timeout);
+			throw new RuntimeException("the client is already connecting to or connected to a server");
 		}
 	}
-	
-//	/**
-//	 * Connect to a specified SocketAddress using a ServerConnectRequest
-//	 * @param serverAddress the socket address of the server
-//	 * @param attempts number of times to resend the connection request
-//	 * @param timeout the total amount of time in milliseconds to wait for the server to respond
-//	 * @return whether or not the server responded and accepted the client's connection
-//	 * @throws IOException if the socket throws an IOException
-//	 */
-//	public synchronized boolean connectToServer(SocketAddress serverAddress, int attempts, int timeout) throws IOException {
-//		if(attempts == 0)
-//			throw new RuntimeException("Number of connection attempts cannot be zero");
-//		else if(timeout != 0 && timeout < attempts)
-//			throw new RuntimeException("Specified connection timeout is too small");
-//		setTimeout(timeout/attempts);
-//		byte[] packet = Protocol.constructServerConnectRequest();
-//		DatagramPacket datagram = new DatagramPacket(packet, packet.length, serverAddress);
-//		socket.send(datagram);
-//		DatagramPacket response = new DatagramPacket(new byte[7], 7);
-//		long startTime = System.currentTimeMillis();
-//		int attemptsRemaining = attempts;
-//		while(attemptsRemaining >= 0 && (System.currentTimeMillis() - startTime < timeout || timeout == 0)) {
-//			try {
-//				socket.receive(response);
-//				if(response.getSocketAddress().equals(serverAddress)) {
-//					if(Protocol.deconstructServerConnectResponse(response.getData())) {
-//						this.server = response.getSocketAddress();
-//						return true;
-//					} else {
-//						return false;
-//					}
-//				} else {
-//					continue;
-//				}
-//			} catch(PortUnreachableException e) {
-//				return false;
-//			} catch(SocketTimeoutException e) {
-//				if(--attemptsRemaining > 0)
-//					socket.send(datagram);
-//				continue;
-//			}
-//		}
-//		return false;
-//	}
 }
