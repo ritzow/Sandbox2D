@@ -10,13 +10,8 @@ import ritzow.solomon.engine.world.block.Block;
 public class BlockGrid implements Transportable {
 	protected final Block[][] blocks;
 	
-	/** A reference to the containing World object **/
-	protected transient World world;
-	
-	//TODO refactor BlockGrid classes to have as little usage of outside classes as possible?
 	public BlockGrid(World world, int width, int height) {
 		blocks = new Block[height][width];
-		this.world = world;
 	}
 	
 	public BlockGrid(byte[] data) {
@@ -34,10 +29,6 @@ public class BlockGrid implements Transportable {
 				}
 			}
 		}
-	}
-	
-	public void setWorld(World world) {
-		this.world = world;
 	}
 	
 	@Override
@@ -107,7 +98,7 @@ public class BlockGrid implements Transportable {
 		blocks[blocks.length - 1 - y][x] = block;
 	}
 	
-	public synchronized boolean destroy(int x, int y) {
+	public synchronized boolean destroy(World world, int x, int y) {
 		if(isBlock(x, y)) {
 			get(x, y).onBreak(world, x, y);
 			set(x, y, null);
@@ -117,7 +108,7 @@ public class BlockGrid implements Transportable {
 		}
 	}
 	
-	public synchronized boolean place(int x, int y, Block block) {
+	public synchronized boolean place(World world, int x, int y, Block block) {
 		if(!isBlock(x, y)) {
 			set(x, y, block);
 			block.onPlace(world, x, y);
@@ -127,7 +118,11 @@ public class BlockGrid implements Transportable {
 		}
 	}
 	
-	/** Returns whether or not there is a block at the specified block coordinates **/
+	/** 
+	 * @param x the horizontal block coordinate to check
+	 * @param y the vertical block coordinate to check
+	 * @return whether or not there is a block at the specified block coordinates
+	 */
 	public boolean isBlock(int x, int y) {
 		return isValid(x, y) && get(x, y) != null;
 	}

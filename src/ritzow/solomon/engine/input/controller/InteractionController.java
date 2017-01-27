@@ -58,7 +58,7 @@ public final class InteractionController extends Controller implements MouseButt
 		
 		if(instantBreak || distance <= 4) {
 			if(primaryAction && (instantBreak || System.currentTimeMillis() - lastBreak > cooldown)) {
-				if(world.getForeground().isValid(blockX, blockY) && (world.getForeground().destroy(blockX, blockY) || world.getBackground().destroy(blockX, blockY))) {
+				if(world.getForeground().isValid(blockX, blockY) && (world.getForeground().destroy(world, blockX, blockY) || world.getBackground().destroy(world, blockX, blockY))) {
 					lastBreak = System.currentTimeMillis();
 				}
 			}
@@ -66,8 +66,8 @@ public final class InteractionController extends Controller implements MouseButt
 			else if(secondaryAction && (System.currentTimeMillis() - lastPlacement > cooldown)) {
 				Item item = player.getSelectedItem();
 				if((item instanceof BlockItem) && world.getForeground().isValid(blockX, blockY) && 
-					(world.getBackground().place(blockX, blockY, ((BlockItem)item).getBlock()) || 
-					world.getForeground().place(blockX, blockY, ((BlockItem)item).getBlock()))) {
+					(world.getBackground().place(world, blockX, blockY, ((BlockItem)item).getBlock()) || 
+					world.getForeground().place(world, blockX, blockY, ((BlockItem)item).getBlock()))) {
 					lastPlacement = System.currentTimeMillis();
 					player.removeSelectedItem();
 				}
