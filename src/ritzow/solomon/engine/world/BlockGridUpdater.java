@@ -2,11 +2,13 @@ package ritzow.solomon.engine.world;
 
 import ritzow.solomon.engine.util.Exitable;
 
-public final class BlockGridManager implements Runnable, Exitable {
+public final class BlockGridUpdater implements Runnable, Exitable {
 	private volatile boolean exit, finished;
 	private final BlockGrid blocks;
+	private final World world;
 	
-	public BlockGridManager(BlockGrid blocks) {
+	public BlockGridUpdater(World world, BlockGrid blocks) {
+		this.world = world;
 		this.blocks = blocks;
 	}
 
@@ -17,7 +19,7 @@ public final class BlockGridManager implements Runnable, Exitable {
 				for(int row = 0; row < blocks.getHeight(); row++) {
 					for(int column = 0; column < blocks.getWidth(); column++) {
 						if(blocks.isBlock(column, row) && !blocks.isSurrounded(column, row) && !isStable(column, row)) {
-							blocks.destroy(column, row);
+							blocks.destroy(world, column, row);
 						}
 					}
 					if(!exit)

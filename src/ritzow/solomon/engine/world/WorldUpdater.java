@@ -13,8 +13,8 @@ public final class WorldUpdater implements Runnable, Exitable {
 	
 	@Override
 	public void run() {
-		BlockGridManager blockManagerForeground = new BlockGridManager(world.getForeground());
-		BlockGridManager blockManagerBackground = new BlockGridManager(world.getBackground());
+		BlockGridUpdater blockManagerForeground = new BlockGridUpdater(world, world.getForeground());
+		BlockGridUpdater blockManagerBackground = new BlockGridUpdater(world, world.getBackground());
 		new Thread(blockManagerForeground, "Foreground Block Updater " + world.hashCode()).start();
 		new Thread(blockManagerBackground, "Background Block Updater " + world.hashCode()).start();
 		

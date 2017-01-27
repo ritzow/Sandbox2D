@@ -27,14 +27,16 @@ import ritzow.solomon.engine.resource.Sounds;
  * @author Solomon Ritzow
  *
  */
-public class AudioSystem {
+public class Audio {
 	
 	private static int[] sources;
 	private static long context;
-	private static long device;
+	private static long device;	
 	
+	private static AudioManager audio;
+	
+	//TODO move audio code into ClientAudioManager and create ServerAudioManager
 	public static void start() {
-		
 		device = alcOpenDevice((ByteBuffer)null);
 		context = alcCreateContext(device, (IntBuffer)null);
 		ALCCapabilities alcCaps = ALC.createCapabilities(device);
@@ -54,6 +56,12 @@ public class AudioSystem {
 		
 		sources = new int[alcGetInteger(device, ALC_MONO_SOURCES)];
 		alGenSources(sources);
+		
+		audio = new ClientAudioManager(); //TODO what?
+	}
+	
+	public static AudioManager getAudioManager() {
+		return audio;
 	}
 	
 	public static void stop() {
@@ -64,6 +72,7 @@ public class AudioSystem {
 		ALC.destroy();
 	}
 	
+	//TODO play sound using current AudioManager instead of hardcoded OpenAL
 	public static int playSound(int buffer, float x, float y, float velocityX, float velocityY, float gain, float pitch) {
 		for(int i = 0; i < sources.length; i++) {
 			int state = alGetSourcei(sources[i], AL_SOURCE_STATE);

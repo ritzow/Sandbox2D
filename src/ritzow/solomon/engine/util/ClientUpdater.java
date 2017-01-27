@@ -1,23 +1,21 @@
-package ritzow.solomon.engine.main;
+package ritzow.solomon.engine.util;
 
 import java.util.ArrayList;
 import java.util.List;
 import ritzow.solomon.engine.input.InputManager;
 import ritzow.solomon.engine.input.handler.WindowFocusHandler;
-import ritzow.solomon.engine.util.Exitable;
-import ritzow.solomon.engine.util.Updatable;
 
 /**
  * Updates all updatable objects stored in the updatables list
  * @author Solomon Ritzow
  *
  */
-public final class ClientUpdateManager implements Runnable, Exitable, WindowFocusHandler {
+public final class ClientUpdater implements Runnable, Exitable, WindowFocusHandler {
 	private volatile boolean exit, finished, focused;
 	
 	private final List<Updatable> updatables;
 	
-	public ClientUpdateManager() {
+	public ClientUpdater() {
 		updatables = new ArrayList<Updatable>();
 	}
 	
