@@ -19,7 +19,7 @@ public final class Protocol {
 		SERVER_CONNECT_ACKNOWLEDGMENT = 3,
 		CLIENT_INFO = 4,
 		WORLD_HEAD = 9,
-		WORLD = 10,
+		WORLD_DATA = 10,
 		CLIENT_DISCONNECT = 11;
 	
 	private static final short[] reliable = {
@@ -41,43 +41,66 @@ public final class Protocol {
 		return packet;
 	}
 	
-	public static World deconstructWorldPackets(byte[][] packets) {
+	public static World deconstructWorldPackets(byte[][] data) {
+		int headerSize = 2;
+		
 		int bytes = 0;
-		for(byte[] a : packets) {
-			bytes += a.length;
+		for(byte[] a : data) {
+			bytes += (a.length - headerSize);
 		}
-		byte[] concatenated = new byte[bytes];
+		
+		byte[] concatenated = new byte[bytes]; //the number of bytes in all the arrays combined without the header packet id
 		
 		int index = 0;
-		for(byte[] a : packets) {
-			System.arraycopy(a, 0, concatenated, index, a.length);
-			index += a.length;
+		short packet = 1;
+		while(packet < data.length) {
+			for(byte[] a : data) {
+				int length = a.length - headerSize;
+				if(ByteUtil.getShort(a, 0) == packet) {
+					System.arraycopy(a, headerSize, concatenated, index, length);
+					index += length;
+					packet++;
+				}
+			}
 		}
+		
 		try {
 			return new World(ByteUtil.decompress(concatenated));
 		} catch(ReflectiveOperationException e) {
+			e.printStackTrace();
 			return null;
 		}
 	}
 	
-	public static byte[][] constructWorldPackets(int messageID, World world) {
+	public static byte[][] constructWorldPackets(int headMessageID, World world) {
+		//serialize the world for transfer, no need to use ByteUtil.serialize because we know what we're serializing (until I start subclassing world)
 		byte[] worldBytes = ByteUtil.compress(world.getBytes());
-		int numWorldPackets = worldBytes.length/MAX_MESSAGE_LENGTH + (worldBytes.length % MAX_MESSAGE_LENGTH > 0 ? 1 : 0);
-		byte[][] packets = new byte[numWorldPackets + 1][];
 		
-		byte[] head = new byte[8];
-		ByteUtil.putInteger(head, 0, messageID);
+		//split world data into evenly sized packets and one extra packet if not evenly divisible by max packet size
+		int packetCount = worldBytes.length/MAX_MESSAGE_LENGTH + (worldBytes.length % MAX_MESSAGE_LENGTH > 0 ? 1 : 0);
+		
+		//create the array to store all the constructed packets to send, in order
+		byte[][] packets = new byte[packetCount + 1][];
+
+		//create the first packet to send, which contains the number of subsequent packets
+		byte[] head = new byte[12];
+		ByteUtil.putInteger(head, 0, headMessageID);
 		ByteUtil.putShort(head, 4, WORLD_HEAD);
-		ByteUtil.putInteger(head, 8, numWorldPackets);
+		ByteUtil.putInteger(head, 6, packetCount);
 		packets[0] = head;
 		
+		//construct the packets containing the world data, which begin with a standard header and contain chunks of world bytes
+		int index = 0;
 		for(short i = 1; i < packets.length; i++) {
-			byte[] packet = new byte[i < packets.length - 1 ? MAX_MESSAGE_LENGTH : worldBytes.length % MAX_MESSAGE_LENGTH];
-			ByteUtil.putInteger(packet, 0, messageID + i); //TODO this aint gonna work
-			ByteUtil.putShort(packet, 4, WORLD);
+			int headerSize = 8;
+			int dataSize = Math.min(MAX_MESSAGE_LENGTH - headerSize, worldBytes.length - index);
+			byte[] packet = new byte[headerSize + dataSize];
+			ByteUtil.putInteger(packet, 0, headMessageID + i); //TODO change to use smarter message ids (perhaps require an input of valid ids?)
+			ByteUtil.putShort(packet, 4, WORLD_DATA); //insert protocol id
 			ByteUtil.putShort(packet, 6, i);
-			System.arraycopy(worldBytes, i * MAX_MESSAGE_LENGTH, packet, 8, packet.length);
+			System.arraycopy(worldBytes, index, packet, headerSize, dataSize);
 			packets[i] = packet;
+			index += dataSize;
 		}
 		return packets;
 	}
