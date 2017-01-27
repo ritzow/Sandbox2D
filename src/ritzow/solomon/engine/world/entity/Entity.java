@@ -16,9 +16,7 @@ public abstract class Entity implements Transportable {
 		positionY += velocityY * time;
 	}
 	
-	public Entity() {
-		
-	}
+	public Entity() {}
 	
 	public Entity(byte[] data) {
 		positionX = ByteUtil.getFloat(data, 0);
@@ -39,31 +37,50 @@ public abstract class Entity implements Transportable {
 	public void render(ModelRenderer renderer) {/* optional implementation */}
 	public void onCollision(World world, Entity e, float time) {/* optional implementation */}
 
+	/** @return true if the entity should be removed from the world **/
 	public abstract boolean getShouldDelete();
+	
+	/** @return true if the entity's onCollision method should be called when colliding with another entity **/
 	public abstract boolean doCollision();
+	
+	/** @return true if the entity should collide with solid blocks rather than fall through them **/
 	public abstract boolean doBlockCollisionResolution();
+	
+	/** @return true if the entity should collide with other entities rather than passing through them **/
 	public abstract boolean doEntityCollisionResolution();
+	
+	/** @return the roughness of the surface of the entity **/
 	public abstract float getFriction();
+	
+	/** @return the physical width of the entity used in collision processing **/
 	public abstract float getWidth();
+	
+	/** @return the physical height of the entity used in collision processing **/
 	public abstract float getHeight();
+	
+	/** @return the mass of the entity **/
 	public abstract float getMass();
 	
 	public final float getSpeed() {
 		return (float)Math.abs(Math.sqrt(velocityX * velocityX + velocityY * velocityY));
 	}
 
+	/** @return the horizontal position of the of the entity in the world **/
 	public final float getPositionX() {
 		return positionX;
 	}
-
+	
+	/** @return the vertical position of the of the entity in the world **/
 	public final float getPositionY() {
 		return positionY;
 	}
 
+	/** @return the distance the entity should move in the horizontal direction each game update **/
 	public final float getVelocityX() {
 		return velocityX;
 	}
 
+	/** @return the distance the entity should move in the vertical direction each game update **/
 	public final float getVelocityY() {
 		return velocityY;
 	}
