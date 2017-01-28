@@ -12,13 +12,15 @@ import ritzow.solomon.engine.world.WorldUpdater;
 
 public final class Client extends NetworkController {
 	protected SocketAddress server;
+	protected volatile int reliableMessageID;
+	protected volatile int unreliableMessageID;
 	protected WorldUpdater worldUpdater;
 	protected volatile boolean connected;
 	
 	protected final Object worldLock;
 	
 	public Client() throws SocketException, UnknownHostException {
-		super(new InetSocketAddress(InetAddress.getLocalHost(), 0));
+		super(new InetSocketAddress(InetAddress.getLocalHost(), 0), Protocol.getReliableProtocols());
 		worldLock = new Object();
 	}
 	
@@ -26,9 +28,6 @@ public final class Client extends NetworkController {
 	
 	@Override
 	protected void process(int messageID, short protocol, SocketAddress sender, byte[] data) {
-		System.out.println("Client received message of ID " + messageID + " and type " + protocol);
-		
-		//process only if the message is received from the server
 		if(sender.equals(server)) {
 			if(protocol == Protocol.SERVER_CONNECT_ACKNOWLEDGMENT) {
 				if(server != null) {
@@ -115,7 +114,7 @@ public final class Client extends NetworkController {
 			if(this.isSetupComplete() && !this.isFinished()) {
 				server = address;
 				synchronized(server) {
-					reliableSend(Protocol.constructServerConnectRequest(), address);
+					reliableSend(Protocol.constructServerConnectRequest(reliableMessageID++), address);
 					try {
 						server.wait(timeout);
 					} catch (InterruptedException e) {
