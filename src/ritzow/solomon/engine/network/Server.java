@@ -5,6 +5,8 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import ritzow.solomon.engine.input.PlayerActions;
+import ritzow.solomon.engine.util.ByteUtil;
 import ritzow.solomon.engine.world.World;
 import ritzow.solomon.engine.world.WorldUpdater;
 
@@ -18,35 +20,36 @@ public class Server extends NetworkController {
 	}
 	
 	public Server(int maxClients) throws SocketException, UnknownHostException {
-		super(new InetSocketAddress(InetAddress.getLocalHost(), 50000));
+		super(new InetSocketAddress(InetAddress.getLocalHost(), 50000), Protocol.getReliableProtocols());
 		clients = new ClientState[maxClients];
 	}
 	
 	protected void process(int messageID, short protocol, SocketAddress sender, byte[] data) {
-		System.out.println("Server received message of ID " + messageID + " and type " + protocol);
-		
 		ClientState client = forAddress(sender);
 		
 		if(client != null) {
-			if(protocol == Protocol.CLIENT_DISCONNECT) {
-				removeClient(forAddress(sender));
+			if(protocol == Protocol.PLAYER_ACTION) {
+				if(ByteUtil.getShort(data, 0) == PlayerActions.BLOCK_DESTROY_TEMP) {
+					worldUpdater.getWorld().getForeground().destroy(worldUpdater.getWorld(), ByteUtil.getInteger(data, 2), ByteUtil.getInteger(data, 6));
+				}
 			}
-		} else {
-			if(protocol == Protocol.SERVER_CONNECT_REQUEST) {
-				//determine if client can connect, and send a response
-				boolean canConnect = client == null && clientsConnected() < clients.length;
-				reliableSend(Protocol.constructServerConnectResponse(canConnect), sender);
-				
-				//add the client to the server and send the world to the client if there is one
-				if(canConnect) {
-					ClientState newClient = new ClientState(sender);
-					addClient(newClient);
-					if(worldUpdater != null & !worldUpdater.isFinished()) {
-						byte[][] worldPackets = Protocol.constructWorldPackets(1, worldUpdater.getWorld());
-						newClient.lastMessageID += worldPackets.length;
-						for(byte[] a : worldPackets) {
-							reliableSend(a, sender);
-						}
+		}
+		
+		else if(protocol == Protocol.SERVER_CONNECT_REQUEST) {
+			//determine if client can connect, and send a response
+			boolean canConnect = clientsConnected() < clients.length;
+			reliableSend(Protocol.constructServerConnectResponse(1, canConnect), sender);
+			
+			//add the client to the server and send the world to the client if there is one
+			if(canConnect) {
+				ClientState newClient = new ClientState(sender);
+				addClient(newClient);
+				newClient.reliableMessageID = 2; //increment server's id after sending connect response
+				if(worldUpdater != null & !worldUpdater.isFinished()) {
+					byte[][] worldPackets = Protocol.constructWorldPackets(newClient.reliableMessageID, worldUpdater.getWorld());
+					newClient.reliableMessageID += worldPackets.length;
+					for(byte[] a : worldPackets) {
+						reliableSend(a, sender);
 					}
 				}
 			}
@@ -62,13 +65,6 @@ public class Server extends NetworkController {
 		} finally {
 			super.exit();
 		}
-	}
-	
-	public void send(byte[] packet, SocketAddress address) {
-		super.send(packet, address);
-		ClientState client = forAddress(address);
-		if(client != null)
-			client.lastMessageID++;
 	}
 	
 	public void startWorld(World world) {
@@ -91,7 +87,7 @@ public class Server extends NetworkController {
 	
 	protected ClientState forAddress(SocketAddress address) {
 		for(ClientState client : clients) {
-			if(client != null && client.getAddress().equals(address)) {
+			if(client != null && client.address.equals(address)) {
 				return client;
 			}
 		}
@@ -105,7 +101,7 @@ public class Server extends NetworkController {
 	 */
 	protected boolean addressPresent(SocketAddress address) {
 		for(ClientState client : clients) {
-			if(client != null && client.getAddress().equals(address)) {
+			if(client != null && client.address.equals(address)) {
 				return true;
 			}
 		}
