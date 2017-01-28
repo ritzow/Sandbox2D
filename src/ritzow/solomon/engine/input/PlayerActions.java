@@ -1,6 +1,6 @@
 package ritzow.solomon.engine.input;
 
-public final class UserActions {
+public final class PlayerActions {
 	/** Player world-based action **/
 	public static final short
 		BEGIN_MOVE_UP = 0,
@@ -12,5 +12,6 @@ public final class UserActions {
 		BEGIN_MOVE_DOWN = 6,
 		END_MOVE_DOWN = 7,
 		BEGIN_PRIMARY_ACTION = 8,
-		END_PRIMARY_ACTION = 9;
+		END_PRIMARY_ACTION = 9,
+		BLOCK_DESTROY_TEMP = 10;
 }

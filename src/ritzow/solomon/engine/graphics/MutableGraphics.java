@@ -1,19 +1,17 @@
 package ritzow.solomon.engine.graphics;
 
-import ritzow.solomon.engine.util.Transportable;
-
-public class ModifiableGraphics extends Graphics implements Transportable {
+public class MutableGraphics extends Graphics {
 	protected Model model;
 	protected float opacity;
 	protected float scaleX;
 	protected float scaleY;
 	protected float rotation;
 	
-	public ModifiableGraphics(Model model) {
+	public MutableGraphics(Model model) {
 		this(model, 1.0f, 1.0f, 1.0f, 0.0f);
 	}
 	
-	public ModifiableGraphics(Graphics graphics, float opacity, float scaleX, float scaleY, float rotation) {
+	public MutableGraphics(Graphics graphics, float opacity, float scaleX, float scaleY, float rotation) {
 		this.model = graphics.getModel();
 		this.opacity = graphics.getOpacity() * opacity;
 		this.scaleX = graphics.getScaleX() * scaleX;
@@ -21,20 +19,12 @@ public class ModifiableGraphics extends Graphics implements Transportable {
 		this.rotation = graphics.getRotation() + rotation;
 	}
 	
-	public ModifiableGraphics(Model model, float opacity, float scaleX, float scaleY, float rotation) {
+	public MutableGraphics(Model model, float opacity, float scaleX, float scaleY, float rotation) {
 		this.model = model;
 		this.opacity = opacity;
 		this.scaleX = scaleX;
 		this.scaleY = scaleY;
 		this.rotation = rotation;
-	}
-	
-	public ModifiableGraphics(byte[] data) {
-		throw new UnsupportedOperationException("not implemented");
-	}
-	
-	public byte[] getBytes() {
-		throw new UnsupportedOperationException("not implemented");
 	}
 	
 	public void render(ModelRenderer renderer, float x, float y) {

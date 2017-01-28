@@ -5,7 +5,7 @@ package ritzow.solomon.engine.audio;
  * @author Solomon Ritzow
  *
  */
-public class ServerAudioManager implements AudioManager {
+public class ServerAudioSystem implements AudioSystem {
 
 	@Override
 	public void playSound(int sound, float x, float y, float velocityX, float velocityY, float gain, float pitch) {

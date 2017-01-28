@@ -1,15 +1,11 @@
-package ritzow.solomon.engine.audio;
+package ritzow.solomon.engine.resource;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import org.lwjgl.BufferUtils;
 
-/**
- * Instances of WAVEDecoder will decode a .wav file from an InputStream
- * @author Solomon Ritzow
- *
- */
+/** Instances of WAVEDecoder will decode a .wav file from an InputStream **/
 public final class WAVEDecoder {
 	
 	private final InputStream input;

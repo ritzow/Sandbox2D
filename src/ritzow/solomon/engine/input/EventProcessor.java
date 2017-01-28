@@ -16,7 +16,7 @@ import ritzow.solomon.engine.util.Installable;
  * @author Solomon Ritzow
  *
  */
-public final class EventManager implements Runnable, Installable, Exitable {
+public final class EventProcessor implements Runnable, Installable, Exitable {
 	
 	/** status markers for the state of the event manager thread **/
 	private volatile boolean setupComplete, shouldDisplay, exit, finished;
