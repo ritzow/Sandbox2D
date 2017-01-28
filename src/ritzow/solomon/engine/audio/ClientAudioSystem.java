@@ -3,9 +3,8 @@ package ritzow.solomon.engine.audio;
 /**
  * Plays audio events using OpenAL
  * @author Solomon Ritzow
- *
  */
-public class ClientAudioManager implements AudioManager {
+public class ClientAudioSystem implements AudioSystem {
 
 	@Override
 	public void playSound(int sound, float x, float y, float velocityX, float velocityY, float gain, float pitch) {

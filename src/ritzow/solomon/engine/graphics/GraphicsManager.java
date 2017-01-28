@@ -71,7 +71,7 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 		}
 		
 		try {
-			while(!exit) { //TODO remove as much synchronization stuff as possible (all the volatile fields)
+			while(!exit) {
 				if(focused) {
 					if(updateFrameSize) {
 						glViewport(0, 0, framebufferWidth, framebufferHeight);
