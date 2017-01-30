@@ -11,7 +11,6 @@ import static org.lwjgl.openal.AL10.alGenBuffers;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import ritzow.solomon.engine.audio.WAVEDecoder;
 
 public final class Sounds {
 	public static int BLOCK_BREAK;

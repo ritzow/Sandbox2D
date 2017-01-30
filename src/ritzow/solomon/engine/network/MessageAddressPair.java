@@ -5,7 +5,7 @@ import java.net.SocketAddress;
 public final class MessageAddressPair {
 	private final int messageID;
 	private final SocketAddress recipient;
-	private boolean received;
+	private volatile boolean received;
 	
 	public MessageAddressPair(int messageID, SocketAddress recipient) {
 		this.messageID = messageID;
@@ -21,11 +21,11 @@ public final class MessageAddressPair {
 		return recipient;
 	}
 	
-	public synchronized boolean getReceived() {
+	public boolean getReceived() {
 		return received;
 	}
 	
-	public synchronized void setReceived() {
+	public void setReceived() {
 		received = true;
 	}
 }

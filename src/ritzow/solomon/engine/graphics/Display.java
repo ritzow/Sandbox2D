@@ -5,9 +5,8 @@ import static org.lwjgl.glfw.GLFW.*;
 import ritzow.solomon.engine.input.InputManager;
 
 public final class Display {
-	
-	protected long displayID;
-	protected InputManager input;
+	protected final long displayID;
+	protected final InputManager input;
 	
 	protected int windowedX;
 	protected int windowedY;

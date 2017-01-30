@@ -12,12 +12,12 @@ import ritzow.solomon.engine.world.WorldUpdater;
 
 public final class Client extends NetworkController {
 	protected SocketAddress server;
-	protected volatile int reliableMessageID;
-	protected volatile int unreliableMessageID;
-	protected WorldUpdater worldUpdater;
 	protected volatile boolean connected;
 	
+	protected WorldUpdater worldUpdater;
 	protected final Object worldLock;
+	
+	protected volatile int reliableMessageID, unreliableMessageID;
 	
 	public Client() throws SocketException, UnknownHostException {
 		super(new InetSocketAddress(InetAddress.getLocalHost(), 0), Protocol.getReliableProtocols());

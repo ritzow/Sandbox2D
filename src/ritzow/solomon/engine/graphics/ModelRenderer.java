@@ -2,11 +2,13 @@ package ritzow.solomon.engine.graphics;
 
 import static ritzow.solomon.engine.util.Utility.Matrix.multiply;
 
+import java.io.FileNotFoundException;
+
 public final class ModelRenderer extends ShaderProgram {
 	private volatile Camera camera;
-	private int uniform_transform;
-	private int uniform_opacity;
-	private int uniform_view;
+	private final int uniform_transform;
+	private final int uniform_opacity;
+	private final int uniform_view;
 	
 	private float framebufferWidth;
 	private float framebufferHeight;
@@ -46,7 +48,7 @@ public final class ModelRenderer extends ShaderProgram {
 			0, 0, 0, 1,
 	};
 	
-	public ModelRenderer(Camera camera) {
+	public ModelRenderer(Camera camera) throws FileNotFoundException {
 		super(
 			new Shader("resources/shaders/vertexShader", org.lwjgl.opengl.GL20.GL_VERTEX_SHADER),
 			new Shader("resources/shaders/fragmentShader", org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER)

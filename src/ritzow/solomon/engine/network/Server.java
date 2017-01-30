@@ -13,7 +13,6 @@ import ritzow.solomon.engine.world.WorldUpdater;
 public class Server extends NetworkController {
 	protected WorldUpdater worldUpdater;
 	protected final ClientState[] clients;
-	protected int localMessageID;
 	
 	public Server() throws SocketException, UnknownHostException {
 		this(20);

@@ -15,13 +15,12 @@ import static org.lwjgl.opengl.GL20.glUseProgram;
 import static org.lwjgl.opengl.GL20.glValidateProgram;
 
 public class ShaderProgram {
-	
 	public static final int ATTRIBUTE_POSITIONS = 0;
 	public static final int ATTRIBUTE_TEXTURE_COORDS = 1;
 	public static final int ATTRIBUTE_INDICES = 2;
 	
-	protected int programID;
-	protected Shader[] shaders;
+	protected final int programID;
+	protected final Shader[] shaders;
 	
 	public ShaderProgram(Shader... shaders) {
 		this.shaders = shaders;

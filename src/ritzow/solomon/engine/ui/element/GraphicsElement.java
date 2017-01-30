@@ -3,14 +3,14 @@ package ritzow.solomon.engine.ui.element;
 import ritzow.solomon.engine.graphics.Graphics;
 import ritzow.solomon.engine.graphics.Model;
 import ritzow.solomon.engine.graphics.ModelRenderer;
-import ritzow.solomon.engine.graphics.ModifiableGraphics;
+import ritzow.solomon.engine.graphics.MutableGraphics;
 
 public class GraphicsElement extends Element {
 	
-	protected final ModifiableGraphics graphics;
+	protected final MutableGraphics graphics;
 	
 	public GraphicsElement(Model model) {
-		graphics = new ModifiableGraphics(model);
+		graphics = new MutableGraphics(model);
 	}
 	
 	public Graphics getGraphics() {

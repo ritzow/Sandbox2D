@@ -92,11 +92,8 @@ public final class ByteUtil {
 		if(nameLength == 0)
 			return null;
 		int objectPos = offset + 4 + nameLength + 4;
-		return deserialize(Class.forName(new String(array, offset + 4, nameLength)), Arrays.copyOfRange(array, objectPos, objectPos + getInteger(array, objectPos - 4)));
-	}
-	
-	public static Object deserialize(Class<?> type, byte[] data) throws ReflectiveOperationException {
-		return type.getConstructor(byte[].class).newInstance(data);
+		return Class.forName(new String(array, offset + 4, nameLength)).getConstructor(byte[].class)
+				.newInstance(Arrays.copyOfRange(array, objectPos, objectPos + getInteger(array, objectPos - 4)));
 	}
 	
 	public static int getSerializedLength(byte[] array, int offset) {
@@ -154,14 +151,13 @@ public final class ByteUtil {
 	}
 	
 	/**
-	 * Serialized an object into a byte array.
-	 * Format: [4 bytes : length of class name string] + [class name] + [4 bytes : object data length] + [object data]
-	 * @param object
-	 * @return
+	 * Serialized an object into a byte array. Format: [4 bytes : length of class name string] + [class name] + [4 bytes : object data length] + [object data]
+	 * @param object the Transportable object to serialize
+	 * @return a byte array representing a serialized version of {@code object}
 	 */
 	public static byte[] serialize(Transportable object) {
 		if(object == null)
-			return new byte[4]; //return a name length of 0
+			return new byte[4]; //return a name length of 0, which is interpreted by deserialize as null
 		
 		byte[] nameBytes = object.getClass().getName().getBytes();
 		byte[] objectBytes = object.getBytes();
@@ -173,13 +169,13 @@ public final class ByteUtil {
 		putInteger(data, 0, nameBytes.length);
 		
 		//put the class name in the following bytes
-		ByteUtil.copy(nameBytes, data, 4);
+		copy(nameBytes, data, 4);
 		
 		//put the length of the object data in the next four bytes after class name
 		putInteger(data, 4 + nameBytes.length, objectBytes.length);
 		
 		//put the object data into the final byte array
-		ByteUtil.copy(objectBytes, data, 4 + nameBytes.length + 4);
+		copy(objectBytes, data, 4 + nameBytes.length + 4);
 		
 		return data;
 	}
