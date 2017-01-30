@@ -10,11 +10,7 @@ import static org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT;
 import static org.lwjgl.glfw.GLFW.GLFW_KEY_RIGHT;
 import static org.lwjgl.glfw.GLFW.GLFW_KEY_UP;
 
-/**
- * Some constants for GLFW keycodes used in controllers
- * @author Solomon Ritzow
- *
- */
+/** Some constants for GLFW keycodes used in controllers **/
 public final class Controls {
 	public static int KEYBIND_UP = 				GLFW_KEY_UP; //GLFW_KEY_W;
 	public static int KEYBIND_DOWN = 			GLFW_KEY_DOWN; //GLFW_KEY_S;

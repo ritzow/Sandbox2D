@@ -23,7 +23,7 @@ import org.lwjgl.openal.ALUtil;
 import ritzow.solomon.engine.resource.Sounds;
 
 /**
- * Manages OpenAL functionality
+ * Manages sound playing
  * @author Solomon Ritzow
  *
  */

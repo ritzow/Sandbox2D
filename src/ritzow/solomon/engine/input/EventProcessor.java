@@ -11,11 +11,7 @@ import ritzow.solomon.engine.resource.Cursors;
 import ritzow.solomon.engine.util.Exitable;
 import ritzow.solomon.engine.util.Installable;
 
-/**
- * Initializes GLFW, loads mouse cursors, processes all GLFW events
- * @author Solomon Ritzow
- *
- */
+/** Initializes GLFW, loads mouse cursors, processes all GLFW events **/
 public final class EventProcessor implements Runnable, Installable, Exitable {
 	
 	/** status markers for the state of the event manager thread **/

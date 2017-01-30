@@ -21,7 +21,7 @@ public abstract class Item implements Transportable {
 	
 	/**
 	 * Checks for equality with another item to see if the items can stack
-	 * @param item
+	 * @param item the item to compare this item to
 	 * @return whether or not the two items are the same
 	 */
 	public abstract boolean equals(Item item);

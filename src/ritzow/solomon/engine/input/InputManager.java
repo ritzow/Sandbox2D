@@ -31,6 +31,7 @@ import ritzow.solomon.engine.input.handler.WindowFocusHandler;
 import ritzow.solomon.engine.input.handler.WindowIconifyHandler;
 import ritzow.solomon.engine.input.handler.WindowRefreshHandler;
 
+/** Dispatches GLFW events to handlers in an object oriented fashion **/
 public final class InputManager {
 	private List<CursorPosHandler> cursorPosHandlers = 				new LinkedList<CursorPosHandler>();
 	private List<FramebufferSizeHandler> framebufferSizeHandlers = 	new LinkedList<FramebufferSizeHandler>();
