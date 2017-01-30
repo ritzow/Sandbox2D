@@ -25,17 +25,13 @@ import ritzow.solomon.engine.resource.Sounds;
 /**
  * Manages sound playing
  * @author Solomon Ritzow
- *
  */
-public class Audio {
-	
+public final class Audio {
 	private static int[] sources;
 	private static long context;
-	private static long device;	
+	private static long device;
 	
-	private static AudioManager audio;
-	
-	//TODO move audio code into ClientAudioManager and create ServerAudioManager
+	//TODO move audio code into ClientAudioSystem and create ServerAudioSystem
 	public static void start() {
 		device = alcOpenDevice((ByteBuffer)null);
 		context = alcCreateContext(device, (IntBuffer)null);
@@ -56,12 +52,6 @@ public class Audio {
 		
 		sources = new int[alcGetInteger(device, ALC_MONO_SOURCES)];
 		alGenSources(sources);
-		
-		audio = new ClientAudioManager(); //TODO what?
-	}
-	
-	public static AudioManager getAudioManager() {
-		return audio;
 	}
 	
 	public static void stop() {

@@ -9,34 +9,26 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.Scanner;
 
-public class Shader {
-	
-	protected int shaderID;
+public final class Shader {
+	protected final int shaderID;
 
-	public Shader(String file, int glShaderType) {
-		try {
-			File path = new File(file);
-			Scanner sc = new Scanner(path);
-			StringBuilder data = new StringBuilder();
-			
-			if(path.exists()) {
-				while(sc.hasNextLine()) {
-					data.append(sc.nextLine());
-					data.append('\n');
-				}
-				
-				sc.close();
+	public Shader(String file, int glShaderType) throws FileNotFoundException {
+		File path = new File(file);
+		Scanner sc = new Scanner(path);
+		StringBuilder data = new StringBuilder();
+		
+		if(path.exists()) {
+			while(sc.hasNextLine()) {
+				data.append(sc.nextLine());
+				data.append('\n');
 			}
 			
-			shaderID = glCreateShader(glShaderType);
-			glShaderSource(shaderID, data);
-			glCompileShader(shaderID);
+			sc.close();
 		}
 		
-		catch (FileNotFoundException e) {
-			e.printStackTrace();
-			shaderID = -1;
-		}
+		shaderID = glCreateShader(glShaderType);
+		glShaderSource(shaderID, data);
+		glCompileShader(shaderID);
 	}
 	
 	public int getShaderID() {

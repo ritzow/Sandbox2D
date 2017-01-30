@@ -1,6 +1,6 @@
 package ritzow.solomon.engine.util;
 
-import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import ritzow.solomon.engine.input.InputManager;
 import ritzow.solomon.engine.input.handler.WindowFocusHandler;
@@ -16,7 +16,7 @@ public final class ClientUpdater implements Runnable, Exitable, WindowFocusHandl
 	private final List<Updatable> updatables;
 	
 	public ClientUpdater() {
-		updatables = new ArrayList<Updatable>();
+		updatables = new LinkedList<Updatable>();
 	}
 	
 	public List<Updatable> getUpdatables() {
@@ -25,8 +25,9 @@ public final class ClientUpdater implements Runnable, Exitable, WindowFocusHandl
 
 	@Override
 	public void run() {
-		try {
-			while(!exit) {
+		
+		while(!exit) {
+			try {
 				if(focused) {
 					for(int i = 0; i < updatables.size(); i++) {
 						updatables.get(i).update();
@@ -39,9 +40,9 @@ public final class ClientUpdater implements Runnable, Exitable, WindowFocusHandl
 						}
 					}
 				}
+			} catch(InterruptedException e) {
+				e.printStackTrace();
 			}
-		} catch(InterruptedException e) {
-			e.printStackTrace();
 		}
 		
 		synchronized(this) {

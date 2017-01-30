@@ -7,7 +7,7 @@ import ritzow.solomon.engine.audio.Audio;
 import ritzow.solomon.engine.graphics.Graphics;
 import ritzow.solomon.engine.graphics.ImmutableGraphics;
 import ritzow.solomon.engine.graphics.ModelRenderer;
-import ritzow.solomon.engine.graphics.ModifiableGraphics;
+import ritzow.solomon.engine.graphics.MutableGraphics;
 import ritzow.solomon.engine.resource.Models;
 import ritzow.solomon.engine.resource.Sounds;
 import ritzow.solomon.engine.util.ByteUtil;
@@ -22,7 +22,7 @@ import ritzow.solomon.engine.world.item.Item;
  */
 public class Player extends LivingEntity {
 	protected final Graphics head;
-	protected final ModifiableGraphics body;
+	protected final MutableGraphics body;
 	protected final Inventory inventory;
 	protected int selected;
 	
@@ -30,15 +30,15 @@ public class Player extends LivingEntity {
 		super(100);
 		this.inventory = new Inventory(9);
 		this.head = new ImmutableGraphics(Models.GREEN_FACE, 1.0f, 1.0f, 1.0f, 0.0f);
-		this.body = new ModifiableGraphics(Models.RED_SQUARE, 1.0f, 1.0f, 1.0f, 0.0f);
+		this.body = new MutableGraphics(Models.RED_SQUARE, 1.0f, 1.0f, 1.0f, 0.0f);
 	}
 	
 	public Player(byte[] data) throws ReflectiveOperationException {
 		super(data);
-		this.inventory = (Inventory)ByteUtil.deserialize(data, 24);
+		this.inventory = (Inventory)ByteUtil.deserialize(data, 28);
 		selected = 0;
 		this.head = new ImmutableGraphics(Models.GREEN_FACE, 1.0f, 1.0f, 1.0f, 0.0f);
-		this.body = new ModifiableGraphics(Models.RED_SQUARE, 1.0f, 1.0f, 1.0f, 0.0f);
+		this.body = new MutableGraphics(Models.RED_SQUARE, 1.0f, 1.0f, 1.0f, 0.0f);
 	}
 	
 	@Override

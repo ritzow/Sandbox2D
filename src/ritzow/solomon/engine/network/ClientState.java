@@ -6,7 +6,6 @@ import ritzow.solomon.engine.world.entity.Player;
 class ClientState {
 	protected volatile int unreliableMessageID;
 	protected volatile int reliableMessageID;
-	
 	protected volatile Player player;
 	protected volatile String username;
 	protected final SocketAddress address;

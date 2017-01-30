@@ -17,22 +17,6 @@ public class Utility {
 		}
 	}
 	
-	public static class Time {
-		/**
-		 * Get the time elapsed between two times
-		 * @param initial the start time in nanoseconds
-		 * @param end the end time in nanoseconds
-		 * @return the elapsed time in milliseconds
-		 */
-		public static float getElapsedTime(long initial, long end) {
-			return (float)((end - initial) * 0.000001);
-		}
-		
-		public static float nanoToMillis(long nano) {
-			return (float)(nano * 0.000001);
-		}
-	}
-	
 	public static class Synchronizer {
 		public static void waitForSetup(Installable installable) {
 			synchronized(installable) {
@@ -65,7 +49,7 @@ public class Utility {
 	}
 
 	
-	public static final class Matrix {
+	public final static class Matrix {
 		
 		/** return the transpose of a 4 by 4 matrix **/
 		public static final float[] getTranspose(float[] matrix) {

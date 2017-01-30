@@ -8,7 +8,6 @@ package ritzow.solomon.engine.util;
  *
  */
 public interface Transportable {
-	
 	/** @return a byte array representing the object, which can be restored exactly by calling the byte array constructor of the object **/
 	public byte[] getBytes();
 }

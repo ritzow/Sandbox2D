@@ -12,6 +12,7 @@ import static org.lwjgl.opengl.GL11.glEnable;
 import static org.lwjgl.opengl.GL11.glViewport;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
@@ -63,7 +64,11 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 			e.printStackTrace();
 		}
 
-		renderer = new ModelRenderer(new Camera( 0, 0, 1));
+		try {
+			renderer = new ModelRenderer(new Camera( 0, 0, 1));
+		} catch (FileNotFoundException e1) {
+			e1.printStackTrace();
+		}
 		
 		synchronized(this) {
 			setupComplete = true;
