@@ -6,6 +6,7 @@ import ritzow.solomon.engine.util.Transportable;
 import ritzow.solomon.engine.world.World;
 
 public abstract class Entity implements Transportable {
+	protected int entityID;
 	protected float positionX;
 	protected float positionY;
 	protected float velocityX;
@@ -19,18 +20,20 @@ public abstract class Entity implements Transportable {
 	public Entity() {}
 	
 	public Entity(byte[] data) {
-		positionX = ByteUtil.getFloat(data, 0);
-		positionY = ByteUtil.getFloat(data, 4);
-		velocityX = ByteUtil.getFloat(data, 8);
-		velocityY = ByteUtil.getFloat(data, 12);
+		entityID = ByteUtil.getInteger(data, 0);
+		positionX = ByteUtil.getFloat(data, 4);
+		positionY = ByteUtil.getFloat(data, 8);
+		velocityX = ByteUtil.getFloat(data, 12);
+		velocityY = ByteUtil.getFloat(data, 16);
 	}
 	
 	public byte[] getBytes() {
-		byte[] data = new byte[16];
-		ByteUtil.putFloat(data, 0, positionX);
-		ByteUtil.putFloat(data, 4, positionY);
-		ByteUtil.putFloat(data, 8, velocityX);
-		ByteUtil.putFloat(data, 12, velocityY);
+		byte[] data = new byte[20];
+		ByteUtil.putInteger(data, 0, entityID);
+		ByteUtil.putFloat(data, 4, positionX);
+		ByteUtil.putFloat(data, 8, positionY);
+		ByteUtil.putFloat(data, 12, velocityX);
+		ByteUtil.putFloat(data, 16, velocityY);
 		return data;
 	}
 	

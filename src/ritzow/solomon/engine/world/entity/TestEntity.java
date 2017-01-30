@@ -26,8 +26,8 @@ public class TestEntity extends Entity {
 	
 	public TestEntity(byte[] data) {
 		super(data);
-		width = ByteUtil.getFloat(data, 16);
-		height = ByteUtil.getFloat(data, 20);
+		width = ByteUtil.getFloat(data, 20);
+		height = ByteUtil.getFloat(data, 24);
 		graphics = new ImmutableGraphics(Models.BLUE_SQUARE, 1.0f, width, height, 0);
 	}
 	

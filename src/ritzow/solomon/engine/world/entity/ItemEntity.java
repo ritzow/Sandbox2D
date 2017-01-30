@@ -23,9 +23,9 @@ public final class ItemEntity extends Entity {
 	
 	public ItemEntity(byte[] data) throws ReflectiveOperationException {
 		super(data);
-		item = (Item)ByteUtil.deserialize(data, 16);
+		item = (Item)ByteUtil.deserialize(data, 20);
 		rotation = 0;
-		rotationSpeed = ByteUtil.getFloat(data, 16 + ByteUtil.getSerializedLength(data, 16));
+		rotationSpeed = ByteUtil.getFloat(data, 20 + ByteUtil.getSerializedLength(data, 20));
 	}
 	
 	@Override

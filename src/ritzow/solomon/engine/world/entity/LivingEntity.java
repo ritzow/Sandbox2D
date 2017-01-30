@@ -13,16 +13,16 @@ public abstract class LivingEntity extends Entity {
 	
 	public LivingEntity(byte[] data) {
 		super(data);
-		maxHealth = ByteUtil.getInteger(data, 16);
-		health = ByteUtil.getInteger(data, 20);
+		maxHealth = ByteUtil.getInteger(data, 20);
+		health = ByteUtil.getInteger(data, 24);
 	}
 	
 	public byte[] getBytes() {
 		byte[] sb = super.getBytes();
 		byte[] data = new byte[sb.length + 8];
 		System.arraycopy(sb, 0, data, 0, sb.length);
-		ByteUtil.putInteger(data, 16, maxHealth);
-		ByteUtil.putInteger(data, 20, health);
+		ByteUtil.putInteger(data, sb.length, maxHealth);
+		ByteUtil.putInteger(data, sb.length + 4, health);
 		return data;
 	}
 	
