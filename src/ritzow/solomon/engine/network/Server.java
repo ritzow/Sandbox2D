@@ -5,8 +5,6 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import ritzow.solomon.engine.input.PlayerActions;
-import ritzow.solomon.engine.util.ByteUtil;
 import ritzow.solomon.engine.world.World;
 import ritzow.solomon.engine.world.WorldUpdater;
 
@@ -28,9 +26,9 @@ public class Server extends NetworkController {
 		
 		if(client != null) {
 			if(protocol == Protocol.PLAYER_ACTION) {
-				if(ByteUtil.getShort(data, 0) == PlayerActions.BLOCK_DESTROY_TEMP) {
-					worldUpdater.getWorld().getForeground().destroy(worldUpdater.getWorld(), ByteUtil.getInteger(data, 2), ByteUtil.getInteger(data, 6));
-				}
+//				if(ByteUtil.getShort(data, 0) == PlayerActions.BLOCK_DESTROY_TEMP) {
+//					worldUpdater.getWorld().getForeground().destroy(worldUpdater.getWorld(), ByteUtil.getInteger(data, 2), ByteUtil.getInteger(data, 6));
+//				}
 			}
 		}
 		
