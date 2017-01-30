@@ -1,6 +1,6 @@
 package ritzow.solomon.engine.graphics;
 
-public class MutableGraphics extends Graphics {
+public class MutableGraphics implements Graphics {
 	protected Model model;
 	protected float opacity;
 	protected float scaleX;
