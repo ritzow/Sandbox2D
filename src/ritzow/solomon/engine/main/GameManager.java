@@ -9,7 +9,7 @@ import ritzow.solomon.engine.audio.Audio;
 import ritzow.solomon.engine.graphics.Background;
 import ritzow.solomon.engine.graphics.GraphicsManager;
 import ritzow.solomon.engine.input.Controls;
-import ritzow.solomon.engine.input.EventManager;
+import ritzow.solomon.engine.input.EventProcessor;
 import ritzow.solomon.engine.input.InputManager;
 import ritzow.solomon.engine.input.controller.Controller;
 import ritzow.solomon.engine.input.controller.EntityController;
@@ -37,12 +37,12 @@ import ritzow.solomon.engine.world.entity.Player;
 public final class GameManager implements Runnable, WindowCloseHandler, KeyHandler {
 	
 	/** the game's window/OS event processor **/
-	private final EventManager eventManager;
+	private final EventProcessor eventManager;
 	
 	/** signals that the game should exit **/
 	private volatile boolean exit;
 	
-	public GameManager(EventManager eventManager) {
+	public GameManager(EventProcessor eventManager) {
 		this.eventManager = eventManager;
 	}
 	
@@ -68,6 +68,7 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 					System.out.println("done!");
 					server.startWorld(world); //start the world on the server, which will send it to clients that connect
 				} catch(IOException | ReflectiveOperationException e) {
+					System.err.println("Couldn't load world from file: " + e.getLocalizedMessage() + ": " + e.getCause());
 					e.printStackTrace();
 					System.exit(1);
 				}
@@ -107,8 +108,7 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 			//start OpenAL and load audio files (will run on this thread, not the best solution)
 			Audio.start();
 			
-			//TODO make audio/graphics systems not affect other game components
-			
+			//the server's address so the client can connect
 			SocketAddress serverAddress = server.getSocketAddress();
 			
 			//connect to the server once the client side graphics and whatnot is finished being set up
