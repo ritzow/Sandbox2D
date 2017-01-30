@@ -1,6 +1,6 @@
 package ritzow.solomon.engine.graphics;
 
-public final class ImmutableGraphics extends Graphics {
+public final class ImmutableGraphics implements Graphics {
 	protected final Model model;
 	protected final float opacity;
 	protected final float scaleX;
