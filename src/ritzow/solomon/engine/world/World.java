@@ -47,9 +47,9 @@ public final class World implements Renderable, Iterable<Entity>, Transportable 
 	}
 	
 	public World(byte[] data) throws ReflectiveOperationException {
+		gravity = ByteUtil.getFloat(data, 0);
 		int foregroundLength = ByteUtil.getSerializedLength(data, 4);
 		int backgroundLength = ByteUtil.getSerializedLength(data, 4 + foregroundLength);
-		gravity = ByteUtil.getFloat(data, 0);
 		foreground = (BlockGrid)ByteUtil.deserialize(data, 4);
 		background = (BlockGrid)ByteUtil.deserialize(data, 4 + foregroundLength);
 		int numEntities = ByteUtil.getInteger(data, 4 + foregroundLength + backgroundLength);
@@ -77,7 +77,7 @@ public final class World implements Renderable, Iterable<Entity>, Transportable 
 		
 		//array of all of the serialized entities
 		byte[][] entityBytes = new byte[numEntities][];
-		
+
 		int index = 0;
 		for(Entity e : entities) {
 			try {
@@ -85,9 +85,9 @@ public final class World implements Renderable, Iterable<Entity>, Transportable 
 				entityBytes[index] = bytes;
 				totalEntityBytes += bytes.length;
 				index++;
-			} catch(Exception ex) {
-				ex.printStackTrace();
+			} catch(Exception x) {
 				numEntities--;
+				System.err.println("couldn't serialize an entity: " + x.getLocalizedMessage());
 			}
 		}
 		
@@ -119,7 +119,15 @@ public final class World implements Renderable, Iterable<Entity>, Transportable 
 	}
 	
 	public String toString() {
-		return foreground.toString() + background.toString() + entities.toString();
+		StringBuilder builder = new StringBuilder();
+		builder.append(foreground.toString());
+		builder.append(background.toString());
+		
+		for(Entity e : entities) {
+			builder.append(e);
+			builder.append('\n');
+		}
+		return builder.toString();
 	}
 	
 	public BlockGrid getForeground() {
@@ -241,7 +249,7 @@ public final class World implements Renderable, Iterable<Entity>, Transportable 
 					Model blockModel = background.get(column, row).getModel();
 					
 					if(blockModel != null) {
-						renderer.loadOpacity(0.5f); //TODO temporary representation of background blocks, in actuality, they will be opaque but have lighting
+						renderer.loadOpacity(0.5f); //TODO imrove rendering appearance of background blocks
 						renderer.loadTransformationMatrix(column, row, 1, 1, 0);
 						blockModel.render();
 					}
