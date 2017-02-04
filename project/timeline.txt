@@ -7,26 +7,23 @@ October 18th:
 	Resource manager for audio files, textures, vertex data complete
 	Text rendering from .png character atlas
 	Objects can be associated with resources at runtime even before they are loaded.
-	
 As of January 11th:
 	Still have not completed networking and am making slow progress towards completing it. I have implemented a basic serialization system for saving game data/objects.
 	Goal for the end of the semester is to complete the networking system and get a basic multiplayer system running so that two people on seperate computers can play on the same server.
 	To complete the networking system, I need to:
-		finish pipeline for incoming packet processing
-		finish reliable message processing/response
-
-Goals not met:
-
-December 21st (not actual date, may be with next checkpoint):
-	Networking system complete (server can update client's world, clients can connect and disconnect, both server and client can send data reliably)
-	Start reworking user interface system, improving rendering system.
-January 4th:
-	User interface system complete.
-	Rendering system satisfactory (world lighting, i.e. everything not in light is dark). I'll have to continue learning OpenGL which may take lots of time.
-	Start menu/gameplay/content creation.
-January 18th:
-	Startup menu is complete (singleplayer, multiplayer connect, settings menu).
-	Basic game assets and objects are implemented (some player/item/weapon/block models complete and functional). I'm not a very good artist, perhaps seek help?
-January 25th-30th:
-	Basic gameplay is implemented (a match can be started, teams can fight, a team can win by completing "objective"). Will require new gamemode/gameplay systems, may
-	be very difficult to implement well.
+		finish pipeline for incoming packet processing.
+		finish reliable message processing/response.
+S2 Checkpoint 1:
+	Implement basic player networking into the client and server. Ability to send entity updates from server to client and player actions from the client to the server.
+S2 Checkpoint 2:
+	Create game lobby/better client connecting and disconnecting so that players can join and leave games.
+S2 Checkpoint 3:
+	Begin implementing lighting system, which may require some heavy changes to the way models and scales/rotations are stored. 
+S2 Checkpoint 4:
+	The lighting system is complete when light entities/blocks can be created and placed in the world, areas obscured from light sources are dark and areas in the light can be seen and have textures.
+S2 Checkpoint 5:
+	Rewrite user interface system.
+S2 Checkpoint 6:
+	Improve physics system by implementing mass in a meaningful way.
+S2 Checkpoint 7:
+	Create world generation system.
