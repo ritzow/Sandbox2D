@@ -9,19 +9,24 @@ import java.net.UnknownHostException;
 import ritzow.solomon.engine.util.ByteUtil;
 import ritzow.solomon.engine.world.World;
 import ritzow.solomon.engine.world.WorldUpdater;
+import ritzow.solomon.engine.world.entity.Player;
 
 public final class Client extends NetworkController {
 	protected SocketAddress server;
 	protected volatile boolean connected;
 	
+	protected volatile int unreliableMessageID, reliableMessageID;
+	
 	protected WorldUpdater worldUpdater;
 	protected final Object worldLock;
 	
-	protected volatile int reliableMessageID, unreliableMessageID;
+	protected Player player;
+	protected final Object playerLock;
 	
 	public Client() throws SocketException, UnknownHostException {
 		super(new InetSocketAddress(InetAddress.getLocalHost(), 0), Protocol.getReliableProtocols());
 		worldLock = new Object();
+		playerLock = new Object();
 	}
 	
 	private byte[][] worldPackets;
@@ -63,6 +68,19 @@ public final class Client extends NetworkController {
 							break;
 						}
 					}
+				}
+			}
+			
+			else if(protocol == Protocol.PLAYER_ENTITY) {
+				try {
+					this.player = (Player)ByteUtil.deserialize(ByteUtil.decompress(data));
+					waitForWorldStart();
+					getWorld().add(player);
+					synchronized(playerLock) {
+						playerLock.notifyAll();
+					}
+				} catch (ReflectiveOperationException e) {
+					e.printStackTrace();
 				}
 			}
 		}
@@ -107,6 +125,19 @@ public final class Client extends NetworkController {
 	
 	public World getWorld() {
 		return worldUpdater == null ? null : worldUpdater.getWorld();
+	}
+	
+	public Player getPlayer() {
+		synchronized(playerLock) {
+			while(player == null) {
+				try {
+					playerLock.wait();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		return player;
 	}
 	
 	public boolean connectTo(SocketAddress address, int timeout) throws IOException {

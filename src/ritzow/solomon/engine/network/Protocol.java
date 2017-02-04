@@ -17,10 +17,11 @@ public final class Protocol {
 		SERVER_CONNECT_REQUEST = 2,
 		SERVER_CONNECT_ACKNOWLEDGMENT = 3,
 		CLIENT_INFO = 4,
-		WORLD_HEAD = 9,
-		WORLD_DATA = 10,
-		CLIENT_DISCONNECT = 11,
-		PLAYER_ACTION = 12;
+		WORLD_HEAD = 5,
+		WORLD_DATA = 6,
+		CLIENT_DISCONNECT = 7,
+		PLAYER_ACTION = 8,
+		PLAYER_ENTITY = 9;
 	
 	public static final short[] reliable = {
 		SERVER_CONNECT_REQUEST,
@@ -28,7 +29,9 @@ public final class Protocol {
 		CLIENT_INFO,
 		WORLD_HEAD,
 		WORLD_DATA,
-		CLIENT_DISCONNECT
+		CLIENT_DISCONNECT,
+		PLAYER_ACTION,
+		PLAYER_ENTITY
 	};
 	
 	public static short[] getReliableProtocols() {
@@ -39,6 +42,14 @@ public final class Protocol {
 		byte[] packet = new byte[6];
 		ByteUtil.putInteger(packet, 0, messageID);
 		ByteUtil.putShort(packet, 4, CLIENT_DISCONNECT);
+		return packet;
+	}
+	
+	public static byte[] constructPacket(int messageID, short protocol, byte[] data) {
+		byte[] packet = new byte[6 + data.length];
+		ByteUtil.putInteger(packet, 0, messageID);
+		ByteUtil.putShort(packet, 4, protocol);
+		ByteUtil.copy(data, packet, 6);
 		return packet;
 	}
 	

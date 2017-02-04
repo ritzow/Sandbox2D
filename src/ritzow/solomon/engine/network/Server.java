@@ -1,16 +1,15 @@
 package ritzow.solomon.engine.network;
 
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
-import java.net.SocketException;
-import java.net.UnknownHostException;
+import java.net.*;
+import ritzow.solomon.engine.util.ByteUtil;
 import ritzow.solomon.engine.world.World;
 import ritzow.solomon.engine.world.WorldUpdater;
+import ritzow.solomon.engine.world.entity.Player;
 
 public class Server extends NetworkController {
 	protected WorldUpdater worldUpdater;
 	protected final ClientState[] clients;
+	protected int localMessageID;
 	
 	public Server() throws SocketException, UnknownHostException {
 		this(20);
@@ -26,9 +25,7 @@ public class Server extends NetworkController {
 		
 		if(client != null) {
 			if(protocol == Protocol.PLAYER_ACTION) {
-//				if(ByteUtil.getShort(data, 0) == PlayerActions.BLOCK_DESTROY_TEMP) {
-//					worldUpdater.getWorld().getForeground().destroy(worldUpdater.getWorld(), ByteUtil.getInteger(data, 2), ByteUtil.getInteger(data, 6));
-//				}
+				System.out.println("Player action: " + new String(data));
 			}
 		}
 		
@@ -48,6 +45,11 @@ public class Server extends NetworkController {
 					for(byte[] a : worldPackets) {
 						reliableSend(a, sender);
 					}
+					
+					Player player = new Player();
+					getWorld().add(player);
+					newClient.player = player;
+					reliableSend(Protocol.constructPacket(newClient.reliableMessageID++, Protocol.PLAYER_ENTITY, ByteUtil.compress(ByteUtil.serialize(new Player()))), sender);
 				}
 			}
 		}
