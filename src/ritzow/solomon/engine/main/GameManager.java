@@ -5,6 +5,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.SocketAddress;
+import java.util.Iterator;
 import ritzow.solomon.engine.audio.Audio;
 import ritzow.solomon.engine.graphics.Background;
 import ritzow.solomon.engine.graphics.GraphicsManager;
@@ -27,13 +28,9 @@ import ritzow.solomon.engine.world.World;
 import ritzow.solomon.engine.world.block.DirtBlock;
 import ritzow.solomon.engine.world.block.GrassBlock;
 import ritzow.solomon.engine.world.block.RedBlock;
+import ritzow.solomon.engine.world.entity.Entity;
 import ritzow.solomon.engine.world.entity.Player;
 
-/**
- * An instance of this class manages game startup and shutdown, and is currently mostly used for testing
- * @author Solomon Ritzow
- *
- */
 public final class GameManager implements Runnable, WindowCloseHandler, KeyHandler {
 	
 	/** the game's window/OS event processor **/
@@ -59,7 +56,7 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 			File saveFile = new File("data/worlds/testWorld.dat");
 			
 			//if a world exists, load it.
-			if(saveFile.exists() && saveFile.length() > 1000) {
+			if(saveFile.exists()) {
 				try(FileInputStream in = new FileInputStream(saveFile)) {
 					byte[] data = new byte[(int)saveFile.length()];
 					in.read(data);
@@ -118,20 +115,23 @@ public final class GameManager implements Runnable, WindowCloseHandler, KeyHandl
 				//wait for client to receive world from server
 				client.waitForWorldStart();
 				
+				//get the world after the client receives it from teh server
+				World world = client.getWorld();
+				
+				//remove all the player entities from the world (temporary)
+				Iterator<Entity> iterator = world.iterator();
+				while(iterator.hasNext()) {
+					if(iterator.next() instanceof Player) {
+						iterator.remove();
+					}
+				}
+				
 				//create the client update manager and link it with the window events
 				ClientUpdater clientUpdater = new ClientUpdater();
 				clientUpdater.link(eventManager.getDisplay().getInputManager());
 				
 				//Add the background and world to the renderer
 				graphicsManager.getRenderables().add(new Background(Models.CLOUDS));
-				
-				World world = client.getWorld();
-				
-				if(world == null) {
-					System.err.println("world is null");
-					System.exit(1);
-				}
-				
 				graphicsManager.getRenderables().add(world);
 				
 				//create the player's character at the middle top of the world
