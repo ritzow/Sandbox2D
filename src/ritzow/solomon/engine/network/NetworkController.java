@@ -12,7 +12,7 @@ import ritzow.solomon.engine.util.Installable;
 import ritzow.solomon.engine.util.MutableInteger;
 
 /** Provides common functionality of the client and server. Manages incoming and outgoing packets. **/
-public abstract class NetworkController implements Installable, Runnable, Exitable {
+abstract class NetworkController implements Installable, Runnable, Exitable {
 	private volatile boolean setupComplete, exit, finished;
 	private final DatagramSocket socket;
 	private final List<MessageAddressPair> reliable;

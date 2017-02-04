@@ -2,7 +2,7 @@ package ritzow.solomon.engine.network;
 
 import java.net.SocketAddress;
 
-public final class MessageAddressPair {
+final class MessageAddressPair {
 	private final int messageID;
 	private final SocketAddress recipient;
 	private volatile boolean received;
