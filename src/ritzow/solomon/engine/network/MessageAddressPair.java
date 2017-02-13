@@ -3,29 +3,12 @@ package ritzow.solomon.engine.network;
 import java.net.SocketAddress;
 
 final class MessageAddressPair {
-	private final int messageID;
-	private final SocketAddress recipient;
-	private volatile boolean received;
+	protected final SocketAddress recipient;
+	protected final int messageID;
+	protected volatile boolean received;
 	
-	public MessageAddressPair(int messageID, SocketAddress recipient) {
+	public MessageAddressPair(SocketAddress recipient, int messageID) {
 		this.messageID = messageID;
 		this.recipient = recipient;
-		this.received = false;
-	}
-	
-	public int getMessageID() {
-		return messageID;
-	}
-	
-	public SocketAddress getRecipient() {
-		return recipient;
-	}
-	
-	public boolean getReceived() {
-		return received;
-	}
-	
-	public void setReceived() {
-		received = true;
 	}
 }
