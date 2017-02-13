@@ -39,7 +39,7 @@ public class GrassBlock extends Block {
 	}
 
 	@Override
-	public boolean doCollision() {
+	public boolean isSolid() {
 		return true;
 	}
 

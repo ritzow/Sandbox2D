@@ -39,7 +39,7 @@ public class DirtBlock extends Block {
 	}
 
 	@Override
-	public boolean doCollision() {
+	public boolean isSolid() {
 		return true;
 	}
 

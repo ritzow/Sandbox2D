@@ -3,10 +3,10 @@ package ritzow.solomon.engine.world.entity;
 import ritzow.solomon.engine.graphics.ModelRenderer;
 import ritzow.solomon.engine.util.ByteUtil;
 import ritzow.solomon.engine.util.Transportable;
-import ritzow.solomon.engine.world.World;
+import ritzow.solomon.engine.world.base.World;
 
 public abstract class Entity implements Transportable {
-	protected int entityID;
+	protected final int entityID;
 	protected float positionX;
 	protected float positionY;
 	protected float velocityX;
@@ -17,7 +17,9 @@ public abstract class Entity implements Transportable {
 		positionY += velocityY * time;
 	}
 	
-	public Entity() {}
+	public Entity() {
+		entityID = 0;
+	}
 	
 	public Entity(byte[] data) {
 		entityID = ByteUtil.getInteger(data, 0);
@@ -64,6 +66,7 @@ public abstract class Entity implements Transportable {
 	/** @return the mass of the entity **/
 	public abstract float getMass();
 	
+	/** @return the speed of the Entity based on the velocity in the x and y directions **/
 	public final float getSpeed() {
 		return (float)Math.abs(Math.sqrt(velocityX * velocityX + velocityY * velocityY));
 	}
