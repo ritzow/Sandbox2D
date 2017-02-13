@@ -1,7 +1,6 @@
-package ritzow.solomon.engine.world;
+package ritzow.solomon.engine.world.base;
 
 import ritzow.solomon.engine.util.Exitable;
-import ritzow.solomon.engine.util.Utility.Synchronizer;
 
 public final class WorldUpdater implements Runnable, Exitable {
 	private volatile World world;
@@ -32,9 +31,8 @@ public final class WorldUpdater implements Runnable, Exitable {
 		} catch (InterruptedException e) {
 			System.err.println("World update loop was interrupted");
 		} finally {
-			Synchronizer.waitForExit(blockManagerForeground);
-			Synchronizer.waitForExit(blockManagerBackground);
-			
+			blockManagerForeground.waitForExit();
+			blockManagerBackground.waitForExit();
 			synchronized(this) {
 				finished = true;
 				notifyAll();

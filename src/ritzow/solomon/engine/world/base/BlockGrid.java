@@ -1,4 +1,4 @@
-package ritzow.solomon.engine.world;
+package ritzow.solomon.engine.world.base;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
