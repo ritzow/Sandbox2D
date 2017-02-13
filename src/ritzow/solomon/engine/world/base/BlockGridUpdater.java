@@ -1,4 +1,4 @@
-package ritzow.solomon.engine.world;
+package ritzow.solomon.engine.world.base;
 
 import ritzow.solomon.engine.util.Exitable;
 
