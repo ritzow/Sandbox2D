@@ -6,7 +6,7 @@ import ritzow.solomon.engine.audio.Audio;
 import ritzow.solomon.engine.graphics.Model;
 import ritzow.solomon.engine.resource.Sounds;
 import ritzow.solomon.engine.util.Transportable;
-import ritzow.solomon.engine.world.World;
+import ritzow.solomon.engine.world.base.World;
 import ritzow.solomon.engine.world.entity.BlockPlaceParticleEntity;
 import ritzow.solomon.engine.world.entity.ItemEntity;
 import ritzow.solomon.engine.world.item.BlockItem;
@@ -26,7 +26,7 @@ public abstract class Block implements Transportable {
 	public abstract Model getModel();
 	public abstract int getHardness();
 	public abstract float getFriction();
-	public abstract boolean doCollision();
+	public abstract boolean isSolid();
 	public abstract Block createNew();
 	
 	public int getIntegrity() {

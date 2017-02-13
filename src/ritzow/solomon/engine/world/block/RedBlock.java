@@ -39,7 +39,7 @@ public class RedBlock extends Block {
 	}
 
 	@Override
-	public boolean doCollision() {
+	public boolean isSolid() {
 		return true;
 	}
 

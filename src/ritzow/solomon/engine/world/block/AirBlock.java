@@ -46,7 +46,7 @@ public class AirBlock extends Block {
 	}
 
 	@Override
-	public boolean doCollision() {
+	public boolean isSolid() {
 		return false;
 	}
 }

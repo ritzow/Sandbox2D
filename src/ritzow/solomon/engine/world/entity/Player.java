@@ -11,7 +11,7 @@ import ritzow.solomon.engine.graphics.MutableGraphics;
 import ritzow.solomon.engine.resource.Models;
 import ritzow.solomon.engine.resource.Sounds;
 import ritzow.solomon.engine.util.ByteUtil;
-import ritzow.solomon.engine.world.World;
+import ritzow.solomon.engine.world.base.World;
 import ritzow.solomon.engine.world.component.Inventory;
 import ritzow.solomon.engine.world.item.Item;
 
@@ -24,44 +24,99 @@ public class Player extends LivingEntity {
 	protected final Graphics head;
 	protected final MutableGraphics body;
 	protected final Inventory inventory;
-	protected int selected;
+	protected volatile int selected;
+	
+	protected final float agility;
+	protected volatile boolean left;
+	protected volatile boolean right;
+	protected volatile boolean up;
+	protected volatile boolean down;
 	
 	public Player() {
 		super(100);
 		this.inventory = new Inventory(9);
 		this.head = new ImmutableGraphics(Models.GREEN_FACE, 1.0f, 1.0f, 1.0f, 0.0f);
 		this.body = new MutableGraphics(Models.RED_SQUARE, 1.0f, 1.0f, 1.0f, 0.0f);
+		this.agility = 0.2f;
 	}
 	
 	public Player(byte[] data) throws ReflectiveOperationException {
 		super(data);
 		this.inventory = (Inventory)ByteUtil.deserialize(data, 28);
 		selected = 0;
-		this.head = new ImmutableGraphics(Models.GREEN_FACE, 1.0f, 1.0f, 1.0f, 0.0f);
+		this.head = new ImmutableGraphics(Models.GREEN_FACE, 1.0f, 1.0f, 1.0f, 0.0f); //TODO decouple graphics from game data, this code will be messed up if run before graphics manager setup
 		this.body = new MutableGraphics(Models.RED_SQUARE, 1.0f, 1.0f, 1.0f, 0.0f);
+		this.agility = 0.2f; //TODO serialize agility?
 	}
 	
 	@Override
 	public byte[] getBytes() {
-		byte[] sb = super.getBytes();
+		byte[] superBytes = super.getBytes();
 		byte[] invBytes = ByteUtil.serialize(inventory);
-		byte[] object = new byte[sb.length + invBytes.length];
-		ByteUtil.copy(sb, object, 0);
-		ByteUtil.copy(invBytes, object, sb.length);
-		return object;
+		byte[] bytes = new byte[superBytes.length + invBytes.length];
+		ByteUtil.copy(superBytes, bytes, 0);
+		ByteUtil.copy(invBytes, bytes, superBytes.length);
+		return bytes;
 	}
 	
 	public void update(float time) {
-		super.update(time);
-		body.setRotation(body.getRotation() + velocityX * time); //TODO clamp to 2pi range?
+		if(left)
+			velocityX = -agility;
+		else if(right)
+			velocityX = agility;
+		if(up) {
+			velocityY = agility;
+			up = false;
+		}
+			
+		positionX += velocityX * time;
+		positionY += velocityY * time;
+		body.setRotation(body.getRotation() + velocityX * time);
+	}
+	
+	public float getAgility() {
+		return agility;
+	}
+	
+	public boolean isLeft() {
+		return left;
+	}
+
+	public boolean isRight() {
+		return right;
+	}
+
+	public boolean isUp() {
+		return up;
+	}
+
+	public boolean isDown() {
+		return down;
+	}
+
+	public void setLeft(boolean left) {
+		this.left = left;
+	}
+
+	public void setRight(boolean right) {
+		this.right = right;
+	}
+
+	public void setUp(boolean up) {
+		this.up = up;
+	}
+
+	public void setDown(boolean down) {
+		this.down = down;
 	}
 
 	@Override
 	public void render(ModelRenderer renderer) {
 		head.render(renderer, positionX, positionY + 0.5f);
 		body.render(renderer, positionX, positionY - 0.5f);
-		if(inventory.get(selected) != null) {
-			inventory.get(selected)
+		Item selectedItem = inventory.get(selected);
+		if(selectedItem != null) {
+			selectedItem
 			.getGraphics()
 			.render(renderer, positionX + velocityX * 2,  positionY, 1.0f, 0.5f, 0.5f, velocityX != 0 ? (float)Math.PI/4 * (velocityX < 0 ? -1 : 1) : 0);
 		}
