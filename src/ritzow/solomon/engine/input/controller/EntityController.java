@@ -8,15 +8,14 @@ import ritzow.solomon.engine.input.Controls;
 import ritzow.solomon.engine.input.InputManager;
 import ritzow.solomon.engine.input.handler.KeyHandler;
 import ritzow.solomon.engine.util.Updatable;
-import ritzow.solomon.engine.world.World;
+import ritzow.solomon.engine.world.base.World;
 import ritzow.solomon.engine.world.entity.Entity;
 
 public final class EntityController extends Controller implements KeyHandler, Updatable {
-	
-	private World world;
-	private Entity entity;
-	private float movementSpeed;
-	private boolean allowFlight;
+	private final World world;
+	private final Entity entity;
+	private final float movementSpeed;
+	private final boolean allowFlight;
 	
 	private boolean left;
 	private boolean right;
@@ -39,9 +38,7 @@ public final class EntityController extends Controller implements KeyHandler, Up
 			else if(!blockLeft(entity.getPositionX(), entity.getPositionY() + getJumpHeight(world.getGravity()), entity.getWidth(), entity.getHeight()) && canJump()) {
 				entity.setVelocityY(movementSpeed);
 			}
-		}
-		
-		if(right) {
+		} else if(right) {
 			if(!blockRight()) {
 				entity.setVelocityX(movementSpeed);
 			}
@@ -66,9 +63,7 @@ public final class EntityController extends Controller implements KeyHandler, Up
 			else if(action == GLFW_RELEASE) {
 				up = false;
 			}
-		}
-		
-		else if(key == Controls.KEYBIND_LEFT) {
+		} else if(key == Controls.KEYBIND_LEFT) {
 			if(action == GLFW_PRESS) {
 				left = true;
 			}
@@ -76,9 +71,7 @@ public final class EntityController extends Controller implements KeyHandler, Up
 			else if(action == GLFW_RELEASE) {
 				left = false;
 			}
-		}
-		
-		else if(key == Controls.KEYBIND_RIGHT) {
+		} else if(key == Controls.KEYBIND_RIGHT) {
 			if(action == GLFW_PRESS) {
 				right = true;
 			}
@@ -103,8 +96,8 @@ public final class EntityController extends Controller implements KeyHandler, Up
 	
 	private boolean blockBelow(float x, float y, float width, float height) {
 		for(float h = x - width/2; h <= x + width/2; h++) {	
-			if(world.getForeground().isBlock(h + (h < x ? +0.05f : -0.05f), y - height/2 - 0.05f) 
-					&& world.getForeground().get(h + (h < x ? +0.05f : -0.05f), y - height/2 - 0.05f).doCollision()) {
+			if(world.getForeground().isBlock(h + (h < x ? +0.05f : -0.05f), y - height/2 - 0.05f)
+					&& world.getForeground().get(h + (h < x ? +0.05f : -0.05f), y - height/2 - 0.05f).isSolid()) {
 				return true;
 			}
 		}
@@ -118,7 +111,7 @@ public final class EntityController extends Controller implements KeyHandler, Up
 	private boolean blockLeft(float x, float y, float width, float height) {
 		for(float v = y - height/2; v <= y + height/2; v++) {
 			if(world.getForeground().isBlock(x - width/2 - 0.05f, v + (v < y ? +0.05f : -0.05f)) 
-					&& world.getForeground().get(x - width/2 - 0.05f, v + (v < y ? +0.05f : -0.05f)).doCollision()) {
+					&& world.getForeground().get(x - width/2 - 0.05f, v + (v < y ? +0.05f : -0.05f)).isSolid()) {
 				return true;
 			}
 		}
@@ -132,7 +125,7 @@ public final class EntityController extends Controller implements KeyHandler, Up
 	private boolean blockRight(float x, float y, float width, float height) {
 		for(float v = y - height/2; v <= y + height/2; v++) {
 			if(world.getForeground().isBlock(x + width/2 + 0.05f, v + (v < y ? +0.05f : -0.05f)) && world.getForeground()
-					.get(x + width/2 + 0.05f, v + (v < y ? +0.05f : -0.05f)).doCollision()) {
+					.get(x + width/2 + 0.05f, v + (v < y ? +0.05f : -0.05f)).isSolid()) {
 				return true;
 			}
 		}

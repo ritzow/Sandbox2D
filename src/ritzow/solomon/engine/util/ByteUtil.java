@@ -12,7 +12,6 @@ import java.util.zip.InflaterOutputStream;
  *
  */
 public final class ByteUtil {
-	
 	public static byte[] concatenate(byte[]... arrays) {
 		int length = 0;
 		for(int i = 0; i < arrays.length; i++) {
