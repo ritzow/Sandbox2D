@@ -10,7 +10,7 @@ import ritzow.solomon.engine.input.handler.KeyHandler;
 import ritzow.solomon.engine.input.handler.MouseButtonHandler;
 import ritzow.solomon.engine.resource.Models;
 import ritzow.solomon.engine.util.Updatable;
-import ritzow.solomon.engine.world.World;
+import ritzow.solomon.engine.world.base.World;
 import ritzow.solomon.engine.world.entity.Player;
 import ritzow.solomon.engine.world.entity.TestEntity;
 import ritzow.solomon.engine.world.item.BlockItem;

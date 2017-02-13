@@ -12,7 +12,6 @@ import static org.lwjgl.opengl.GL11.glEnable;
 import static org.lwjgl.opengl.GL11.glViewport;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
@@ -25,20 +24,15 @@ import ritzow.solomon.engine.resource.Models;
 import ritzow.solomon.engine.resource.Textures;
 import ritzow.solomon.engine.util.Exitable;
 import ritzow.solomon.engine.util.Installable;
-/**
- * Initializes OpenGL and loads data to the GPU, then renders any Renderable objects added to the List returned by getUpdatables()
- * @author Solomon Ritzow
- *
- */
+
+/** Initializes OpenGL and loads data to the GPU, then renders any Renderable objects added to the List returned by getUpdatables() **/
 public final class GraphicsManager implements Runnable, Installable, Exitable, FramebufferSizeHandler, WindowFocusHandler {
 	private volatile boolean setupComplete, exit, finished;
 	private volatile int framebufferWidth, framebufferHeight;
 	private volatile boolean updateFrameSize;
 	private volatile boolean focused;
-	
-	private ModelRenderer renderer;
 	private final Display display;
-	
+	private ModelRenderer renderer;
 	private final LinkedList<Renderable> renderables;
 	
 	public GraphicsManager(Display display) {
@@ -60,16 +54,11 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 			Textures.loadAll(new File("resources/assets/textures"));
 			Models.loadAll();
 			Fonts.loadAll(new File("resources/assets/fonts"));
+			renderer = new ModelRenderer(new Camera( 0, 0, 1));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 
-		try {
-			renderer = new ModelRenderer(new Camera( 0, 0, 1));
-		} catch (FileNotFoundException e1) {
-			e1.printStackTrace();
-		}
-		
 		synchronized(this) {
 			setupComplete = true;
 			this.notifyAll();
