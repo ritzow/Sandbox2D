@@ -7,4 +7,16 @@ package ritzow.solomon.engine.util;
  */
 public interface Installable {
 	public boolean isSetupComplete();
+	
+	default public void waitForSetup() {
+		synchronized(this) {
+			while(!isSetupComplete()) {
+				try {
+					wait();
+				} catch (InterruptedException e){
+					continue;
+				}
+			}
+		}
+	}
 }
