@@ -17,38 +17,6 @@ public class Utility {
 		}
 	}
 	
-	public static class Synchronizer {
-		public static void waitForSetup(Installable installable) {
-			synchronized(installable) {
-				while(!installable.isSetupComplete()) {
-					try {
-						installable.wait();
-					} catch (InterruptedException e){
-						continue;
-					}
-				}
-			}
-		}
-		
-		public static void waitForExit(Exitable exitable) {
-			exitable.exit();
-			waitUntilFinished(exitable);
-		}
-		
-		public static void waitUntilFinished(Exitable exitable) {
-			synchronized(exitable) {
-				while(!exitable.isFinished()) {
-					try {
-						exitable.wait();
-					} catch (InterruptedException e){
-						continue;
-					}
-				}
-			}
-		}
-	}
-
-	
 	public final static class Matrix {
 		
 		/** return the transpose of a 4 by 4 matrix **/
@@ -105,5 +73,4 @@ public class Utility {
 			return (friction1 + friction2)/2;
 		}
 	}
-
 }
