@@ -23,7 +23,7 @@ public abstract class Block implements Transportable {
 	}
 	
 	public abstract String getName();
-	public abstract Model getModel();
+	public abstract int getModelIndex();
 	public abstract int getHardness();
 	public abstract float getFriction();
 	public abstract boolean isSolid();

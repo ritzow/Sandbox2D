@@ -1,31 +1,32 @@
 package ritzow.solomon.engine.world.entity;
 
-import ritzow.solomon.engine.graphics.Graphics;
 import ritzow.solomon.engine.graphics.ModelRenderer;
 
 public class ParticleEntity extends Entity {
-	protected final Graphics graphics;
+	protected final int model;
+	protected final float scaleX;
+	protected final float scaleY;
 	protected float rotation;
 	protected float opacity;
 	protected float rotationSpeed;
-	protected boolean fade;
-	protected boolean shouldDelete;
-	protected long birthtime;
-	protected long lifetime;
+	protected final boolean fade;
+	protected final long birthtime;
+	protected final long lifetime;
+	
+	protected boolean remove;
 
-	public ParticleEntity(Graphics graphics, float posX, float posY, float velocityX, float velocityY,  float rotationSpeed, long lifetime, boolean fade) {
-		this.graphics = graphics;
-		this.positionX = posX;
-		this.positionY = posY;
-		this.velocityX = velocityX;
-		this.velocityY = velocityY;
-		this.rotationSpeed = rotationSpeed;
-		this.lifetime = lifetime;
+	public ParticleEntity(int entityID, int model, float scaleX, float scaleY, long lifetime, boolean fade) {
+		super(entityID);
+		this.model = model;
+		this.scaleX = scaleX;
+		this.scaleY = scaleY;
 		this.fade = fade;
+		this.lifetime = lifetime;
 		this.birthtime = System.currentTimeMillis();
 	}
 	
 	public ParticleEntity(byte[] data) {
+		super(-1);
 		throw new UnsupportedOperationException("not implemented");
 	}
 	
@@ -38,7 +39,7 @@ public class ParticleEntity extends Entity {
 		float remaining = getLifetimeRemaining();
 		
 		if(remaining <= 0) {
-			this.shouldDelete = true;
+			this.remove = true;
 		}
 		
 		else {
@@ -53,7 +54,7 @@ public class ParticleEntity extends Entity {
 
 	@Override
 	public void render(ModelRenderer renderer) {
-		graphics.render(renderer, positionX, positionY, opacity, 1, 1, rotation);
+		renderer.renderModel(model, opacity, positionX, positionY, scaleX, scaleY, rotation);
 	}
 	
 	protected long getLifetimeRemaining() {
@@ -62,7 +63,7 @@ public class ParticleEntity extends Entity {
 
 	@Override
 	public boolean getShouldDelete() {
-		return shouldDelete;
+		return remove;
 	}
 
 	@Override
@@ -87,12 +88,12 @@ public class ParticleEntity extends Entity {
 
 	@Override
 	public float getWidth() {
-		return graphics.getScaleX();
+		return scaleX;
 	}
 
 	@Override
 	public float getHeight() {
-		return graphics.getScaleY();
+		return scaleY;
 	}
 
 	@Override

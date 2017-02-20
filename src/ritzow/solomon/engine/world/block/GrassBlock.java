@@ -14,8 +14,8 @@ public class GrassBlock extends Block {
 	}
 
 	@Override
-	public Model getModel() {
-		return Models.GRASS_MODEL;
+	public int getModelIndex() {
+		return Models.GRASS_INDEX;
 	}
 
 	@Override
