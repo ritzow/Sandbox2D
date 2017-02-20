@@ -7,17 +7,21 @@ import static ritzow.solomon.engine.util.Utility.Intersection.intersection;
 import ritzow.solomon.engine.input.Controls;
 import ritzow.solomon.engine.input.InputManager;
 import ritzow.solomon.engine.input.handler.KeyHandler;
+import ritzow.solomon.engine.network.Client;
+import ritzow.solomon.engine.network.Protocol;
 import ritzow.solomon.engine.world.base.World;
 import ritzow.solomon.engine.world.entity.Entity;
-import ritzow.solomon.engine.world.entity.Player;
+import ritzow.solomon.engine.world.entity.PlayerEntity;
 
 public class PlayerController extends Controller implements KeyHandler {
-	protected final Player player;
+	protected final PlayerEntity player;
 	protected final World world;
+	protected final Client client;
 	
-	public PlayerController(Player player, World world) {
+	public PlayerController(PlayerEntity player, World world, Client client) {
 		this.player = player;
 		this.world = world;
+		this.client = client;
 	}
 
 	@Override
@@ -37,31 +41,45 @@ public class PlayerController extends Controller implements KeyHandler {
 
 	@Override
 	public void keyboardButton(int key, int scancode, int action, int mods) {
-		if(key == Controls.KEYBIND_UP) {
+		
+		switch(key) {
+		case Controls.KEYBIND_UP:
 			if(action == GLFW_PRESS && canJump()) {
 				player.setUp(true);
+				client.send(Protocol.PlayerAction.buildPlayerMovementAction(Protocol.PlayerAction.PLAYER_UP, true));
 			} else if(action == GLFW_RELEASE) {
 				player.setUp(false);
+				client.send(Protocol.PlayerAction.buildPlayerMovementAction(Protocol.PlayerAction.PLAYER_UP, false));
 			}
-		} else if(key == Controls.KEYBIND_LEFT) {
-			if(action == GLFW_PRESS) {
-				player.setLeft(true);
-			} else if(action == GLFW_RELEASE) {
-				player.setLeft(false);
-			}
-		} else if(key == Controls.KEYBIND_RIGHT) {
+			break;
+		case Controls.KEYBIND_RIGHT:
 			if(action == GLFW_PRESS) {
 				player.setRight(true);
+				client.send(Protocol.PlayerAction.buildPlayerMovementAction(Protocol.PlayerAction.PLAYER_RIGHT, true));
 			} else if(action == GLFW_RELEASE) {
 				player.setRight(false);
+				client.send(Protocol.PlayerAction.buildPlayerMovementAction(Protocol.PlayerAction.PLAYER_RIGHT, false));
 			}
-		} else if(key == Controls.KEYBIND_DOWN) {
+			break;
+		case Controls.KEYBIND_LEFT:
+			if(action == GLFW_PRESS) {
+				player.setLeft(true);
+				client.send(Protocol.PlayerAction.buildPlayerMovementAction(Protocol.PlayerAction.PLAYER_LEFT, true));
+			} else if(action == GLFW_RELEASE) {
+				player.setLeft(false);
+				client.send(Protocol.PlayerAction.buildPlayerMovementAction(Protocol.PlayerAction.PLAYER_LEFT, false));
+			}
+			break;
+		case Controls.KEYBIND_DOWN:
 			if(action == GLFW_PRESS) {
 				player.setDown(true);
+				client.send(Protocol.PlayerAction.buildPlayerMovementAction(Protocol.PlayerAction.PLAYER_DOWN, true));
 			} else if(action == GLFW_RELEASE) {
 				player.setDown(false);
+				client.send(Protocol.PlayerAction.buildPlayerMovementAction(Protocol.PlayerAction.PLAYER_DOWN, false));
 			}
-		} 
+			break;
+		}
 	}
 	
 	private boolean canJump() {

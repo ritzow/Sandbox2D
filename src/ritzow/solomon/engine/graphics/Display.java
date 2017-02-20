@@ -8,14 +8,14 @@ public final class Display {
 	protected final long displayID;
 	protected final InputManager input;
 	
-	protected int windowedX;
-	protected int windowedY;
-	protected int windowedWidth;
-	protected int windowedHeight;
+	private int windowedX;
+	private int windowedY;
+	private int windowedWidth;
+	private int windowedHeight;
 	
 	public Display(String title) {
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 		glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);	
 		glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);

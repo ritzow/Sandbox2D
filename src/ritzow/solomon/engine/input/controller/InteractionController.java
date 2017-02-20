@@ -2,22 +2,19 @@ package ritzow.solomon.engine.input.controller;
 
 import org.lwjgl.glfw.GLFW;
 import ritzow.solomon.engine.graphics.Camera;
-import ritzow.solomon.engine.input.Controls;
 import ritzow.solomon.engine.input.InputManager;
 import ritzow.solomon.engine.input.handler.CursorPosHandler;
 import ritzow.solomon.engine.input.handler.FramebufferSizeHandler;
 import ritzow.solomon.engine.input.handler.KeyHandler;
 import ritzow.solomon.engine.input.handler.MouseButtonHandler;
-import ritzow.solomon.engine.resource.Models;
 import ritzow.solomon.engine.util.Updatable;
 import ritzow.solomon.engine.world.base.World;
-import ritzow.solomon.engine.world.entity.Player;
-import ritzow.solomon.engine.world.entity.TestEntity;
+import ritzow.solomon.engine.world.entity.PlayerEntity;
 import ritzow.solomon.engine.world.item.BlockItem;
 import ritzow.solomon.engine.world.item.Item;
 
 public final class InteractionController extends Controller implements MouseButtonHandler, CursorPosHandler, FramebufferSizeHandler, KeyHandler, Updatable {
-	private boolean primaryAction, secondaryAction, tertiaryAction;
+	private boolean primaryAction, secondaryAction;
 	private final boolean instantBreak;
 	private float frameWidth, frameHeight;
 	private volatile double mouseX, mouseY;
@@ -27,10 +24,10 @@ public final class InteractionController extends Controller implements MouseButt
 	private long cooldown;
 	
 	private World world;
-	private Player player;
+	private PlayerEntity player;
 	private Camera camera;
 	
-	public InteractionController(Player player, World world, Camera camera, long cooldownMilliseconds, boolean instantBreak) {
+	public InteractionController(PlayerEntity player, World world, Camera camera, long cooldownMilliseconds, boolean instantBreak) {
 		this.world = world;
 		this.player = player;
 		this.camera = camera;
@@ -72,12 +69,6 @@ public final class InteractionController extends Controller implements MouseButt
 					player.removeSelectedItem();
 				}
 			}
-		}
-		
-		if(tertiaryAction) {
-			TestEntity entity = new TestEntity(Models.BLUE_SQUARE, 3, 3, worldX, worldY);
-			world.add(entity);
-			tertiaryAction = false;
 		}
 	}
 	
@@ -131,11 +122,7 @@ public final class InteractionController extends Controller implements MouseButt
 
 	@Override
 	public void keyboardButton(int key, int scancode, int action, int mods) {
-		if(key == Controls.KEYBIND_ACTIVATE && action == GLFW.GLFW_PRESS) {
-			tertiaryAction = true;
-		}
-		
-		else if(key == GLFW.GLFW_KEY_L && action == GLFW.GLFW_PRESS) {
+		if(key == GLFW.GLFW_KEY_L && action == GLFW.GLFW_PRESS) {
 			player.dropSelectedItem(world);
 		}
 		
