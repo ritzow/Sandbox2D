@@ -1,13 +1,13 @@
-package ritzow.solomon.engine.resource;
+package ritzow.solomon.engine.graphics;
 
 import de.matthiasmann.twl.utils.PNGDecoder;
 import de.matthiasmann.twl.utils.PNGDecoder.Format;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import org.lwjgl.BufferUtils;
-import ritzow.solomon.engine.graphics.data.Texture;
 
 public final class Textures {
 	public static Texture GRASS;
@@ -27,7 +27,7 @@ public final class Textures {
 	}
 	
 	public static Texture loadTexture(File file) throws IOException {
-		FileInputStream data = new FileInputStream(file);
+		InputStream data = new FileInputStream(file);
 		PNGDecoder decoder = new PNGDecoder(data);
 		ByteBuffer pixels = BufferUtils.createByteBuffer(decoder.getWidth() * decoder.getHeight() * 4);
 		decoder.decodeFlipped(pixels, decoder.getWidth() * 4, Format.RGBA);

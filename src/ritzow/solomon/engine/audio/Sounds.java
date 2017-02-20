@@ -1,4 +1,4 @@
-package ritzow.solomon.engine.resource;
+package ritzow.solomon.engine.audio;
 
 import static org.lwjgl.openal.AL10.AL_FORMAT_MONO16;
 import static org.lwjgl.openal.AL10.AL_FORMAT_MONO8;

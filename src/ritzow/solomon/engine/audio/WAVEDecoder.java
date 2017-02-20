@@ -1,4 +1,4 @@
-package ritzow.solomon.engine.resource;
+package ritzow.solomon.engine.audio;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -9,6 +9,7 @@ import org.lwjgl.BufferUtils;
 public final class WAVEDecoder {
 	
 	private final InputStream input;
+	private ByteBuffer data;
 	
 	private short format; //1 for PCM audio, other numbers indicate compression
 	private short numChannels; //1 = mono, 2 = stereo
@@ -17,33 +18,37 @@ public final class WAVEDecoder {
 	private short blockAlign; //numChannels * bitsPerSample/8
 	private short bitsPerSample; //8 bits = 8, 16 bits = 16, etc.
 	
-	private ByteBuffer data;
-	
 	public WAVEDecoder(InputStream input) {
 		this.input = input;
 	}
 	
 	public final short getFormat() {
+		checkStatus();
 		return format;
 	}
 
 	public final short getChannels() {
+		checkStatus();
 		return numChannels;
 	}
 
 	public final int getSampleRate() {
+		checkStatus();
 		return sampleRate;
 	}
 
 	public final int getByteRate() {
+		checkStatus();
 		return byteRate;
 	}
 
 	public final short getBlockAlign() {
+		checkStatus();
 		return blockAlign;
 	}
 
 	public final short getBitsPerSample() {
+		checkStatus();
 		return bitsPerSample;
 	}
 	
@@ -61,11 +66,18 @@ public final class WAVEDecoder {
 	}
 
 	public String toString() {
+		checkStatus();
 		return "Format: " + format + "\nChannels: " + numChannels + "\nSample Rate: " + sampleRate + "\nByte Rate: "  + byteRate + "\nBlock Align: " + blockAlign + "\nBits per sample: " + bitsPerSample;
 	}
 	
 	public ByteBuffer getData() {
+		checkStatus();
 		return data;
+	}
+	
+	private void checkStatus() {
+		if(data == null)
+			throw new RuntimeException("file has not been decoded yet");
 	}
 	
 	private void checkHeader() throws IOException {
