@@ -6,28 +6,19 @@ import static org.lwjgl.opengl.GL20.glDeleteShader;
 import static org.lwjgl.opengl.GL20.glShaderSource;
 
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.util.Scanner;
+import java.io.FileInputStream;
+import java.io.IOException;
 
-public final class Shader {
+final class Shader {
 	protected final int shaderID;
 
-	public Shader(String file, int glShaderType) throws FileNotFoundException {
-		File path = new File(file);
-		Scanner sc = new Scanner(path);
-		StringBuilder data = new StringBuilder();
-		
-		if(path.exists()) {
-			while(sc.hasNextLine()) {
-				data.append(sc.nextLine());
-				data.append('\n');
-			}
-			
-			sc.close();
-		}
-		
+	public Shader(File file, int glShaderType) throws IOException {
+		byte[] data = new byte[(int)file.length()];
+		FileInputStream reader = new FileInputStream(file);
+		reader.read(data);
+		reader.close();
 		shaderID = glCreateShader(glShaderType);
-		glShaderSource(shaderID, data);
+		glShaderSource(shaderID, new String(data));
 		glCompileShader(shaderID);
 	}
 	
