@@ -1,10 +1,12 @@
 package ritzow.solomon.engine.main;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import ritzow.solomon.engine.audio.Audio;
+import ritzow.solomon.engine.audio.ClientAudioSystem;
+import ritzow.solomon.engine.audio.Sounds;
 import ritzow.solomon.engine.graphics.Background;
 import ritzow.solomon.engine.graphics.GraphicsManager;
 import ritzow.solomon.engine.graphics.Models;
@@ -19,7 +21,7 @@ import ritzow.solomon.engine.input.handler.KeyHandler;
 import ritzow.solomon.engine.input.handler.WindowCloseHandler;
 import ritzow.solomon.engine.network.Client;
 import ritzow.solomon.engine.util.ClientUpdater;
-import ritzow.solomon.engine.world.base.World;
+import ritzow.solomon.engine.world.base.DefaultWorld;
 import ritzow.solomon.engine.world.base.WorldUpdater;
 import ritzow.solomon.engine.world.entity.PlayerEntity;
 
@@ -69,11 +71,20 @@ class ClientManager implements Runnable, WindowCloseHandler, KeyHandler {
 	@Override
 	public void run() {
 		
-		//start OpenAL and load audio files (will run on this thread, not the best solution)
-		Audio.start();
+		//initializes OpenAL
+		ClientAudioSystem audio = new ClientAudioSystem();
+		
+		audio.setVolume(1.0f);
+		
+		try {
+			Sounds.loadAll(new File("resources/assets/audio"));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		
 		//wait for the client to receive the world and return it
-		final World world = client.getWorld();
+		final DefaultWorld world = (DefaultWorld)client.getWorld(); //TODO this probably wont work
+		world.setAudioSystem(audio);
 		
 		//wait for the Display, and thus InputManager, to be created, then link the game manager to the display so that the escape button and x button exit the game
 		eventProcessor.waitForSetup();
@@ -102,7 +113,7 @@ class ClientManager implements Runnable, WindowCloseHandler, KeyHandler {
 		Controller[] controllers = new Controller[] {
 				new PlayerController(player, world, client),
 				new InteractionController(player, world, graphicsManager.getRenderer().getCamera(), 200, false),
-				new TrackingCameraController(graphicsManager.getRenderer().getCamera(), player, 0.005f, 0.05f, 0.6f)
+				new TrackingCameraController(graphicsManager.getRenderer().getCamera(), player, audio, 0.005f, 0.05f, 0.6f)
 		};
 		
 		//add the controllers to the input manager so they receive input events
@@ -142,8 +153,7 @@ class ClientManager implements Runnable, WindowCloseHandler, KeyHandler {
 		eventProcessor.exit();
  		eventProcessor.waitUntilFinished();
 		worldUpdater.waitUntilFinished();
-		
-		Audio.stop();
+		audio.shutdown();
 		
 		//make sure the client updater and event manager are closed before exiting the "game" thread
  		clientUpdater.waitUntilFinished();

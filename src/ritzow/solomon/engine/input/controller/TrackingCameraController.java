@@ -4,7 +4,7 @@ import static org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_MIDDLE;
 import static org.lwjgl.glfw.GLFW.GLFW_PRESS;
 import static org.lwjgl.glfw.GLFW.GLFW_RELEASE;
 
-import ritzow.solomon.engine.audio.Audio;
+import ritzow.solomon.engine.audio.ClientAudioSystem;
 import ritzow.solomon.engine.graphics.Camera;
 import ritzow.solomon.engine.input.Controls;
 import ritzow.solomon.engine.world.entity.Entity;
@@ -12,13 +12,14 @@ import ritzow.solomon.engine.world.entity.Entity;
 public class TrackingCameraController extends CameraController {
 	protected Camera camera;
 	protected Entity target;
+	protected ClientAudioSystem audio;
 	protected float zoomSpeed;
 	protected float soundFalloff;
 	protected float velocityZ;
 	protected float minZoom;
 	protected float maxZoom;
 	
-	public TrackingCameraController(Camera camera, Entity target, float zoomSpeed, float minZoom, float maxZoom) {
+	public TrackingCameraController(Camera camera, Entity target, ClientAudioSystem audio, float zoomSpeed, float minZoom, float maxZoom) {
 		this.camera = camera;
 		this.zoomSpeed = zoomSpeed;
 		this.target = target;
@@ -26,14 +27,17 @@ public class TrackingCameraController extends CameraController {
 		this.maxZoom = maxZoom;
 		this.soundFalloff = 1.5f;
 		this.camera.setZoom(minZoom);
+		this.audio = audio;
 	}
 	
 	public void update() {
 		camera.setPositionX(target.getPositionX());
 		camera.setPositionY(target.getPositionY());
 		camera.setZoom((Math.max(Math.min(maxZoom, camera.getZoom() + camera.getZoom() * velocityZ), minZoom)));
-		Audio.setListenerProperties(camera.getPositionX(), camera.getPositionY(), -(maxZoom - camera.getZoom()) * soundFalloff, target.getVelocityX(), 
-				target.getVelocityY(), target.getVelocityX(), target.getVelocityY());
+		//Audio.setListenerProperties(camera.getPositionX(), camera.getPositionY(), -(maxZoom - camera.getZoom()) * soundFalloff, target.getVelocityX(), 
+		//		target.getVelocityY(), target.getVelocityX(), target.getVelocityY());
+		//TODO reimplement audio
+		audio.setRelativePosition(camera.getPositionX(), camera.getPositionY());
 	}
 	
 	public Camera getCamera() {

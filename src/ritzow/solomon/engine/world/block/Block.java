@@ -2,7 +2,6 @@ package ritzow.solomon.engine.world.block;
 
 import static ritzow.solomon.engine.util.Utility.MathUtility.randomFloat;
 
-import ritzow.solomon.engine.audio.Audio;
 import ritzow.solomon.engine.audio.Sounds;
 import ritzow.solomon.engine.util.Transportable;
 import ritzow.solomon.engine.world.base.World;
@@ -22,11 +21,11 @@ public abstract class Block implements Transportable {
 		drop.setVelocityX(-0.2f + ((float)Math.random() * (0.4f)));
 		drop.setVelocityY((float)Math.random() * (0.35f));
 		world.add(drop);
-		Audio.playSound(Sounds.BLOCK_BREAK, x, y, drop.getVelocityX(), drop.getVelocityY(), randomFloat(0.75f, 1.5f), randomFloat(0.75f, 1.5f));
+		world.getAudioSystem().playSound(Sounds.BLOCK_BREAK, x, y, drop.getVelocityX(), drop.getVelocityY(), randomFloat(0.75f, 1.5f), randomFloat(0.75f, 1.5f));
 	}
 	
 	public void onPlace(World world, float x, float y) {
-		Audio.playSound(Sounds.BLOCK_PLACE, x, y, 0, 0, 1, randomFloat(0.9f, 1.1f));
+		world.getAudioSystem().playSound(Sounds.BLOCK_PLACE, x, y, 0, 0, 1, randomFloat(0.9f, 1.1f));
 	}
 	
 	public String toString() {

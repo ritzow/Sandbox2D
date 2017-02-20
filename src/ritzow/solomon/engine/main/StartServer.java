@@ -7,6 +7,8 @@ import java.io.IOException;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Scanner;
+import ritzow.solomon.engine.audio.AudioSystem;
+import ritzow.solomon.engine.audio.ServerAudioSystem;
 import ritzow.solomon.engine.network.ConsoleMessage;
 import ritzow.solomon.engine.network.Server;
 import ritzow.solomon.engine.util.ByteUtil;
@@ -33,6 +35,8 @@ public class StartServer {
 		
 		server.waitForSetup();
 		
+		AudioSystem audio = new ServerAudioSystem();
+		
 		//the save file to try to load the world from
 		final File saveFile = new File("data/worlds/testWorld.dat");
 		
@@ -49,7 +53,7 @@ public class StartServer {
 				System.exit(1);
 			}
 		} else { //if no world can be loaded, create a new one.
-			World world = new DefaultWorld(100, 100);
+			World world = new DefaultWorld(audio, 100, 100);
 			for(int column = 0; column < world.getForeground().getWidth(); column++) {
 				double height = world.getForeground().getHeight()/2;
 				height += (Math.sin(column * 0.1f) + 1) * (world.getForeground().getHeight() - height) * 0.05f;
