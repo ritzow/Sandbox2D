@@ -1,8 +1,9 @@
-package ritzow.solomon.engine.resource;
+package ritzow.solomon.engine.ui;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import ritzow.solomon.engine.graphics.Font;
 
 public final class Fonts {
 	
