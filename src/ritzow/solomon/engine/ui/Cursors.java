@@ -1,4 +1,4 @@
-package ritzow.solomon.engine.resource;
+package ritzow.solomon.engine.ui;
 
 import static org.lwjgl.glfw.GLFW.glfwCreateCursor;
 
