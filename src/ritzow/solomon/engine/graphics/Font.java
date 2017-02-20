@@ -6,9 +6,9 @@ import java.util.Scanner;
 
 public final class Font {
 	protected Model[] characterModels;
-	protected Texture charsetASCII;
-	protected String name;
+	protected Texture charsetLatin;
 	protected final File directory;
+	protected String name;
 	
 	/** A class for loading and managing fonts, should only be used in GraphicsManager 
 	 * @throws IOException if unable to load texture */
@@ -19,7 +19,7 @@ public final class Font {
 		File sheet01 = new File(directory, "sheet01.png");
 		
 		if(sheet01.exists() && sheet01.canRead()) {
-			charsetASCII = Textures.loadTexture(sheet01);
+			charsetLatin = Textures.loadTexture(sheet01);
 		} else {
 			throw new IOException("Font directory does not contain character sheet 1");
 		}
@@ -39,7 +39,7 @@ public final class Font {
 			}
 		}
 		
-		charsetASCII.delete();
+		charsetLatin.delete();
 	}
 	
 	public Model getModel(char c) {
@@ -77,7 +77,7 @@ public final class Font {
 		};
 		
 		for(int i = 0; i < characters.length; i++) {
-			loadCharacter(characters[i], charsetASCII, getTextureCoordinates(textureWidth, textureHeight, horizontalPadding, verticalPadding, i));
+			loadCharacter(characters[i], charsetLatin, getTextureCoordinates(textureWidth, textureHeight, horizontalPadding, verticalPadding, i));
 		}
 	}
 	
