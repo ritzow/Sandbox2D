@@ -14,8 +14,8 @@ public class RedBlock extends Block {
 	}
 
 	@Override
-	public Model getModel() {
-		return Models.RED_SQUARE;
+	public int getModelIndex() {
+		return Models.RED_SQUARE_INDEX;
 	}
 
 	@Override

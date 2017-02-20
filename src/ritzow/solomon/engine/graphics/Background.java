@@ -1,9 +1,9 @@
 package ritzow.solomon.engine.graphics;
 
 public class Background implements Renderable {
-	protected final Model model;
+	protected final int model;
 	
-	public Background(Model model) {
+	public Background(int model) {
 		this.model = model;
 	}
 	
@@ -20,7 +20,7 @@ public class Background implements Renderable {
 			renderer.loadTransformationMatrix(0, 0, 2 * renderer.getFramebufferHeight()/renderer.getFramebufferWidth(), 2, 0);
 		}
 		
-		model.render();
+		renderer.renderModelIndex(model);
+		
 	}
-	
 }

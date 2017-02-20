@@ -7,11 +7,6 @@ import static org.lwjgl.opengl.GL30.glBindVertexArray;
 import static org.lwjgl.opengl.GL30.glDeleteVertexArrays;
 import static org.lwjgl.opengl.GL30.glGenVertexArrays;
 
-import ritzow.solomon.engine.graphics.data.IndexBuffer;
-import ritzow.solomon.engine.graphics.data.PositionBuffer;
-import ritzow.solomon.engine.graphics.data.Texture;
-import ritzow.solomon.engine.graphics.data.TextureCoordinateBuffer;
-
 public final class Model {
 	protected final int 						vao;
 	protected final int 						vertexCount;

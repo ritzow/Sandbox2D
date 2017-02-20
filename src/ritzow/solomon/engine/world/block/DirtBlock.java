@@ -14,8 +14,8 @@ public class DirtBlock extends Block {
 	}
 
 	@Override
-	public Model getModel() {
-		return Models.DIRT_MODEL;
+	public int getModelIndex() {
+		return Models.DIRT_INDEX;
 	}
 
 	@Override

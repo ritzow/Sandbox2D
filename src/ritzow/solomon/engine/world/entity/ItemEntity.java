@@ -9,12 +9,14 @@ public final class ItemEntity extends Entity {
 	protected float rotation;
 	protected float rotationSpeed;
 	
-	public ItemEntity(Item item) {
+	public ItemEntity(int entityID, Item item) {
+		super(entityID);
 		this.item = item;
 		this.rotationSpeed = (float) (Math.random() < 0.5f ? -(Math.random() * 0.02f + 0.02f) : (Math.random() * 0.02f + 0.02f));
 	}
 	
-	public ItemEntity(Item item, float x, float y) {
+	public ItemEntity(int entityID, Item item, float x, float y) {
+		super(entityID);
 		this.item = item;
 		this.positionX = x;
 		this.positionY = y;
@@ -46,7 +48,7 @@ public final class ItemEntity extends Entity {
 
 	@Override
 	public void render(ModelRenderer renderer) {
-		item.getGraphics().render(renderer, positionX, positionY, 1.0f, 0.5f, 0.5f, rotation);
+		renderer.renderGraphics(item.getGraphics(), 1.0f, positionX, positionY, 0.5f, 0.5f, rotation);
 	}
 	
 	public Item getItem() {

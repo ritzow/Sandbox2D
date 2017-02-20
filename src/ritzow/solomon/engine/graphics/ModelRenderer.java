@@ -2,7 +2,8 @@ package ritzow.solomon.engine.graphics;
 
 import static ritzow.solomon.engine.util.Utility.Matrix.multiply;
 
-import java.io.FileNotFoundException;
+import java.io.File;
+import java.io.IOException;
 
 public final class ModelRenderer extends ShaderProgram {
 	private volatile Camera camera;
@@ -10,6 +11,7 @@ public final class ModelRenderer extends ShaderProgram {
 	private final int uniform_opacity;
 	private final int uniform_view;
 	
+	//TODO create field that stores list of all models used for rendering
 	private float framebufferWidth;
 	private float framebufferHeight;
 	
@@ -48,10 +50,10 @@ public final class ModelRenderer extends ShaderProgram {
 			0, 0, 0, 1,
 	};
 	
-	public ModelRenderer(Camera camera) throws FileNotFoundException {
+	public ModelRenderer(Camera camera) throws IOException {
 		super(
-			new Shader("resources/shaders/vertexShader", org.lwjgl.opengl.GL20.GL_VERTEX_SHADER),
-			new Shader("resources/shaders/fragmentShader", org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER)
+			new Shader(new File("resources/shaders/vertexShader"), org.lwjgl.opengl.GL20.GL_VERTEX_SHADER),
+			new Shader(new File("resources/shaders/fragmentShader"), org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER)
 		);
 		
 		this.camera = camera;
@@ -62,6 +64,24 @@ public final class ModelRenderer extends ShaderProgram {
 	
 	public final void loadOpacity(float opacity) {
 		loadFloat(uniform_opacity, opacity);
+	}
+	
+	public final void renderModelIndex(int modelIndex) {
+		Models.get(modelIndex).render();
+	}
+	
+	public final void renderModel(int modelIndex, float opacity, float posX, float posY, float scaleX, float scaleY, float rotation) {
+		loadOpacity(opacity);
+		loadTransformationMatrix(posX, posY, scaleX, scaleY, rotation);
+		Models.get(modelIndex).render();
+	}
+	
+	public final void renderGraphics(Graphics g, float posX, float posY) {
+		renderModel(g.getModelIndex(), g.getOpacity(), posX, posY,  g.getScaleX(), g.getScaleY(), g.getRotation());
+	}
+	
+	public final void renderGraphics(Graphics g, float opacity, float posX, float posY, float scaleX, float scaleY, float rotation) {
+		renderModel(g.getModelIndex(), g.getOpacity() * opacity, posX, posY, g.getScaleX() * scaleX, g.getScaleY() * scaleY, g.getRotation() + rotation);
 	}
 	
 	public final void loadTransformationMatrix(float posX, float posY, float scaleX, float scaleY, float rotation) {

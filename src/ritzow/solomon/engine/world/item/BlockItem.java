@@ -11,12 +11,12 @@ public final class BlockItem extends Item {
 	
 	public BlockItem(byte[] data) throws ReflectiveOperationException {
 		this.block = (Block)ByteUtil.deserialize(data);
-		this.graphics = new ImmutableGraphics(block.getModel());
+		this.graphics = new ImmutableGraphics(block.getModelIndex(), 1.0f, 1.0f, 1.0f, 0.0f);
 	}
 	
 	public BlockItem(Block block) {
 		this.block = block;
-		this.graphics = new ImmutableGraphics(block.getModel());
+		this.graphics = new ImmutableGraphics(block.getModelIndex(), 1.0f, 1.0f, 1.0f, 0.0f);
 	}
 	
 	@Override
