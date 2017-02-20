@@ -1,11 +1,13 @@
-package ritzow.solomon.engine.resource;
+package ritzow.solomon.engine.ui;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Scanner;
 import ritzow.solomon.engine.graphics.Model;
-import ritzow.solomon.engine.graphics.data.Texture;
-import ritzow.solomon.engine.graphics.data.TextureCoordinateBuffer;
+import ritzow.solomon.engine.graphics.Models;
+import ritzow.solomon.engine.graphics.Texture;
+import ritzow.solomon.engine.graphics.TextureCoordinateBuffer;
+import ritzow.solomon.engine.graphics.Textures;
 
 public final class Font {
 	
@@ -53,7 +55,7 @@ public final class Font {
 		}
 		
 		else {
-			return Models.RED_SQUARE; //return an error model TODO make a custom unknown character model
+			return null; //return an error model TODO make a custom unknown character model
 		}
 	}
 	
