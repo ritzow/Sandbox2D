@@ -3,10 +3,7 @@ package ritzow.solomon.engine.world.item;
 import ritzow.solomon.engine.graphics.Graphics;
 import ritzow.solomon.engine.util.Transportable;
 
-/**
- * Represents a game object that can be used by the player and stored in an inventory
- * @author Solomon Ritzow
- */
+/** Represents a game object that can be used by the player and stored in an inventory **/
 public abstract class Item implements Transportable {
 	
 	/**
@@ -15,7 +12,7 @@ public abstract class Item implements Transportable {
 	public abstract Graphics getGraphics();
 	
 	/**
-	 * @return a human-readable name that can be presented to the player
+	 * @return a human-readable name that can be presented to the user
 	 */
 	public abstract String getName();
 	
@@ -26,4 +23,7 @@ public abstract class Item implements Transportable {
 	 */
 	public abstract boolean equals(Item item);
 	
+	public boolean equals(Object object) {
+		return object instanceof Item && equals((Item)object);
+	}
 }
