@@ -95,6 +95,22 @@ public final class ByteUtil {
 				.newInstance(Arrays.copyOfRange(array, objectPos, objectPos + getInteger(array, objectPos - 4)));
 	}
 	
+	/** Deserializes {@code count} entities from the array starting at position {@code offset} 
+	 * @throws ReflectiveOperationException **/
+	public static Transportable[] deserialize(byte[] array, int offset, int count) throws ReflectiveOperationException {
+		Transportable[] objects = new Transportable[count];
+		int index = offset;
+		int num = 0;
+		
+		while(num < count) {
+			deserialize(array, index);
+			index += getSerializedLength(array, index);
+			num++;
+		}
+		
+		return objects;
+	}
+	
 	public static int getSerializedLength(byte[] array, int offset) {
 		int classLength = getInteger(array, offset);
 		if(classLength == 0)
