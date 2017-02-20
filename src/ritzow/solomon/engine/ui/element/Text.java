@@ -1,7 +1,7 @@
 package ritzow.solomon.engine.ui.element;
 
+import ritzow.solomon.engine.graphics.Font;
 import ritzow.solomon.engine.graphics.ModelRenderer;
-import ritzow.solomon.engine.resource.Font;
 
 public class Text extends Element {
 	

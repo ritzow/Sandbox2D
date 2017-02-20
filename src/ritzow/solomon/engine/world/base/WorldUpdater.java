@@ -1,10 +1,10 @@
 package ritzow.solomon.engine.world.base;
 
-import ritzow.solomon.engine.util.Exitable;
+import ritzow.solomon.engine.util.Service;
 
-public final class WorldUpdater implements Runnable, Exitable {
+public final class WorldUpdater implements Service {
 	private volatile World world;
-	private volatile boolean exit, finished;
+	private volatile boolean setup, exit, finished;
 	
 	public WorldUpdater(World world) {
 		this.world = world;
@@ -14,8 +14,13 @@ public final class WorldUpdater implements Runnable, Exitable {
 	public void run() {
 		BlockGridUpdater blockManagerForeground = new BlockGridUpdater(world, world.getForeground());
 		BlockGridUpdater blockManagerBackground = new BlockGridUpdater(world, world.getBackground());
-		new Thread(blockManagerForeground, "Foreground Block Updater " + world.hashCode()).start();
-		new Thread(blockManagerBackground, "Background Block Updater " + world.hashCode()).start();
+		new Thread(blockManagerForeground, "Foreground Block Updater").start();
+		new Thread(blockManagerBackground, "Background Block Updater").start();
+		
+		synchronized(this) {
+			setup = true;
+			this.notifyAll();
+		}
 		
 		try {
 			long currentTime;
@@ -31,8 +36,10 @@ public final class WorldUpdater implements Runnable, Exitable {
 		} catch (InterruptedException e) {
 			System.err.println("World update loop was interrupted");
 		} finally {
-			blockManagerForeground.waitForExit();
-			blockManagerBackground.waitForExit();
+			blockManagerForeground.exit();
+			blockManagerForeground.waitUntilFinished();
+			blockManagerBackground.exit();
+			blockManagerBackground.waitUntilFinished();
 			synchronized(this) {
 				finished = true;
 				notifyAll();
@@ -51,5 +58,10 @@ public final class WorldUpdater implements Runnable, Exitable {
 	@Override
 	public boolean isFinished() {
 		return finished;
+	}
+
+	@Override
+	public boolean isSetupComplete() {
+		return setup;
 	}
 }

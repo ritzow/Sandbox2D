@@ -1,13 +1,13 @@
 package ritzow.solomon.engine.input;
 
 import static org.lwjgl.glfw.GLFW.glfwInit;
-import static org.lwjgl.glfw.GLFW.glfwTerminate;
 import static org.lwjgl.glfw.GLFW.glfwPostEmptyEvent;
+import static org.lwjgl.glfw.GLFW.glfwTerminate;
 
 import java.io.IOException;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import ritzow.solomon.engine.graphics.Display;
-import ritzow.solomon.engine.resource.Cursors;
+import ritzow.solomon.engine.ui.Cursors;
 import ritzow.solomon.engine.util.Exitable;
 import ritzow.solomon.engine.util.Installable;
 

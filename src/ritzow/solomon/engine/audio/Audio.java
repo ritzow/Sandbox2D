@@ -20,7 +20,6 @@ import org.lwjgl.openal.ALC;
 import org.lwjgl.openal.ALCCapabilities;
 import org.lwjgl.openal.ALCapabilities;
 import org.lwjgl.openal.ALUtil;
-import ritzow.solomon.engine.resource.Sounds;
 
 /**
  * Manages sound playing
@@ -63,7 +62,9 @@ public final class Audio {
 	}
 	
 	//TODO play sound using current AudioManager instead of hardcoded OpenAL
-	public static int playSound(int buffer, float x, float y, float velocityX, float velocityY, float gain, float pitch) {
+	public static void playSound(int buffer, float x, float y, float velocityX, float velocityY, float gain, float pitch) {
+		if(sources == null)
+			return;
 		for(int i = 0; i < sources.length; i++) {
 			int state = alGetSourcei(sources[i], AL_SOURCE_STATE);
 			if(state == AL_STOPPED || state == AL_INITIAL) {
@@ -73,11 +74,8 @@ public final class Audio {
 				alSourcef(sources[i], AL_GAIN, gain);
 				alSourcef(sources[i], AL_PITCH, pitch);
 				alSourcePlay(sources[i]);
-				return sources[i];
 			}
 		}
-		
-		return -1;
 	}
 	
 	public static void stopSound(int source) {
