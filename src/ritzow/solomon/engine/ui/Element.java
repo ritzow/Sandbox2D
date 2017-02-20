@@ -1,4 +1,4 @@
-package ritzow.solomon.engine.ui.element;
+package ritzow.solomon.engine.ui;
 
 import ritzow.solomon.engine.graphics.Renderable;
 

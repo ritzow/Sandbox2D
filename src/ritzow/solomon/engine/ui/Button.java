@@ -1,4 +1,4 @@
-package ritzow.solomon.engine.ui.element.button;
+package ritzow.solomon.engine.ui;
 
 public interface Button {
 	public void onPress();

@@ -11,8 +11,6 @@ import ritzow.solomon.engine.input.InputManager;
 import ritzow.solomon.engine.input.handler.CursorPosHandler;
 import ritzow.solomon.engine.input.handler.FramebufferSizeHandler;
 import ritzow.solomon.engine.input.handler.MouseButtonHandler;
-import ritzow.solomon.engine.ui.element.Element;
-import ritzow.solomon.engine.ui.element.button.Button;
 import ritzow.solomon.engine.util.Utility.Intersection;
 
 public class InterfaceElementManager extends ElementManager implements CursorPosHandler, MouseButtonHandler, FramebufferSizeHandler {

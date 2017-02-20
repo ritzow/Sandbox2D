@@ -1,16 +1,17 @@
-package ritzow.solomon.engine.ui.element;
+package ritzow.solomon.engine.ui;
 
 import java.util.ArrayList;
+import java.util.List;
 import ritzow.solomon.engine.graphics.ModelRenderer;
 
 public class ContainerElement extends Element {
-	protected final ArrayList<Element> elements;
+	protected final List<Element> elements;
 	
-	{
+	public ContainerElement() {
 		elements = new ArrayList<Element>();
 	}
 	
-	public ArrayList<Element> getElements() {
+	public List<Element> getElements() {
 		return elements;
 	}
 
