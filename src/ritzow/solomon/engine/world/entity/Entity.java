@@ -7,18 +7,20 @@ import ritzow.solomon.engine.world.base.World;
 
 public abstract class Entity implements Transportable {
 	protected final int entityID;
-	protected float positionX;
-	protected float positionY;
-	protected float velocityX;
-	protected float velocityY;
+	
+	protected float 
+		positionX,
+		positionY,
+		velocityX,
+		velocityY;
 	
 	public void update(float time) {
 		positionX += velocityX * time;
 		positionY += velocityY * time;
 	}
 	
-	public Entity() {
-		entityID = 0;
+	public Entity(int entityID) {
+		this.entityID = entityID;
 	}
 	
 	public Entity(byte[] data) {
@@ -37,6 +39,10 @@ public abstract class Entity implements Transportable {
 		ByteUtil.putFloat(data, 12, velocityX);
 		ByteUtil.putFloat(data, 16, velocityY);
 		return data;
+	}
+	
+	public final int getID() {
+		 return entityID;
 	}
 	
 	public void render(ModelRenderer renderer) {/* optional implementation */}

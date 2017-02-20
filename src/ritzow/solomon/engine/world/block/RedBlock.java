@@ -1,7 +1,6 @@
 package ritzow.solomon.engine.world.block;
 
-import ritzow.solomon.engine.graphics.Model;
-import ritzow.solomon.engine.resource.Models;
+import ritzow.solomon.engine.graphics.Models;
 
 public class RedBlock extends Block {
 	
@@ -10,9 +9,9 @@ public class RedBlock extends Block {
 	}
 	
 	public RedBlock(byte[] data) {
-		super(data);
+		
 	}
-
+	
 	@Override
 	public int getModelIndex() {
 		return Models.RED_SQUARE_INDEX;
@@ -45,6 +44,6 @@ public class RedBlock extends Block {
 
 	@Override
 	public byte[] getBytes() {
-		return new byte[] {integrity};
+		return new byte[0];
 	}
 }

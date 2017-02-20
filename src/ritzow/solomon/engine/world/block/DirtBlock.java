@@ -1,7 +1,6 @@
 package ritzow.solomon.engine.world.block;
 
-import ritzow.solomon.engine.graphics.Model;
-import ritzow.solomon.engine.resource.Models;
+import ritzow.solomon.engine.graphics.Models;
 
 public class DirtBlock extends Block {
 	
@@ -10,7 +9,7 @@ public class DirtBlock extends Block {
 	}
 	
 	public DirtBlock(byte[] data) {
-		super(data);
+		
 	}
 
 	@Override
@@ -45,7 +44,7 @@ public class DirtBlock extends Block {
 
 	@Override
 	public byte[] getBytes() {
-		return new byte[] {integrity};
+		return new byte[0];
 	}
 
 }
