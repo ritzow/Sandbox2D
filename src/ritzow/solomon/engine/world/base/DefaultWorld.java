@@ -5,6 +5,8 @@ import static ritzow.solomon.engine.util.Utility.Intersection.combineFriction;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import ritzow.solomon.engine.audio.AudioSystem;
+import ritzow.solomon.engine.audio.DummyAudioSystem;
 import ritzow.solomon.engine.graphics.ModelRenderer;
 import ritzow.solomon.engine.util.ByteUtil;
 import ritzow.solomon.engine.world.entity.Entity;
@@ -26,8 +28,11 @@ public final class DefaultWorld extends World {
 	/** amount of downwards acceleration to apply to entities in the world **/
 	protected float gravity;
 	
-	public DefaultWorld(int width, int height) {
-		this(width, height, 0.016f);
+	/** AudioSystem to allow entities to play sounds **/
+	protected AudioSystem audio;
+	
+	public DefaultWorld(AudioSystem audio, int width, int height) {
+		this(audio, width, height, 0.016f);
 	}
 	
 	/**
@@ -36,7 +41,8 @@ public final class DefaultWorld extends World {
 	 * @param height the height of the foreground and background
 	 * @param gravity the amount of gravity
 	 */
-	public DefaultWorld(int width, int height, float gravity) {
+	public DefaultWorld(AudioSystem audio, int width, int height, float gravity) {
+		this.audio = audio;
 		entities = new ArrayList<Entity>(100);
 		foreground = new BlockGrid(this, width, height);
 		background = new BlockGrid(this, width, height);
@@ -44,6 +50,7 @@ public final class DefaultWorld extends World {
 	}
 	
 	public DefaultWorld(byte[] data) throws ReflectiveOperationException {
+		audio = new DummyAudioSystem(); //TODO figure out how to implement serialized audio system
 		gravity = ByteUtil.getFloat(data, 0);
 		int foregroundLength = ByteUtil.getSerializedLength(data, 4);
 		int backgroundLength = ByteUtil.getSerializedLength(data, 4 + foregroundLength);
@@ -429,5 +436,14 @@ public final class DefaultWorld extends World {
 	@Override
 	public Iterator<Entity> iterator() {
 		return entities.iterator();
+	}
+
+	@Override
+	public AudioSystem getAudioSystem() {
+		return audio;
+	}
+	
+	public synchronized void setAudioSystem(AudioSystem audio) {
+		this.audio = audio;
 	}
 }

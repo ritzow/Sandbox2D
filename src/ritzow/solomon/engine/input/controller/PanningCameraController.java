@@ -4,13 +4,13 @@ import static org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_MIDDLE;
 import static org.lwjgl.glfw.GLFW.GLFW_PRESS;
 import static org.lwjgl.glfw.GLFW.GLFW_RELEASE;
 
-import ritzow.solomon.engine.audio.Audio;
+import ritzow.solomon.engine.audio.ClientAudioSystem;
 import ritzow.solomon.engine.graphics.Camera;
 import ritzow.solomon.engine.input.Controls;
 
-public class PanningCameraController extends CameraController {
-	
-	protected Camera camera;
+public final class PanningCameraController extends CameraController {
+	protected final Camera camera;
+	protected final ClientAudioSystem audio;
 	protected float panSpeed;
 	protected float zoomSpeed;
 	protected float minZoom;
@@ -25,8 +25,9 @@ public class PanningCameraController extends CameraController {
 	protected boolean left;
 	protected boolean right;
 	
-	public PanningCameraController(Camera camera, float panSpeed, float minZoom, float maxZoom) {
+	public PanningCameraController(Camera camera, ClientAudioSystem audio, float panSpeed, float minZoom, float maxZoom) {
 		this.camera = camera;
+		this.audio = audio;
 		this.panSpeed = panSpeed;
 		this.minZoom = minZoom;
 		this.maxZoom = maxZoom;
@@ -34,11 +35,11 @@ public class PanningCameraController extends CameraController {
 	
 	@Override
 	public void update() {
-		
 		camera.setPositionX(camera.getPositionX() + velocityX);
 		camera.setPositionY(camera.getPositionY() + velocityY);
 		camera.setZoom((Math.max(Math.min(maxZoom, camera.getZoom() + camera.getZoom() * velocityZ), minZoom)));
-		Audio.setListenerPosition(camera.getPositionX(), camera.getPositionY(), camera.getZoom());
+		//Audio.setListenerPosition(camera.getPositionX(), camera.getPositionY(), camera.getZoom());
+		audio.setRelativePosition(camera.getPositionX(), camera.getPositionY());
 	}
 
 	@Override

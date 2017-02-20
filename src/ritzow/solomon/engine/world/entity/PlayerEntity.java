@@ -1,6 +1,5 @@
 package ritzow.solomon.engine.world.entity;
 
-import ritzow.solomon.engine.audio.Audio;
 import ritzow.solomon.engine.audio.Sounds;
 import ritzow.solomon.engine.graphics.ModelRenderer;
 import ritzow.solomon.engine.graphics.Models;
@@ -93,12 +92,12 @@ public class PlayerEntity extends Entity implements Living {
 		if(e instanceof ItemEntity) {
 			if(inventory.add(((ItemEntity)e).getItem())) {
 				world.remove(e);
-				Audio.playSound(Sounds.ITEM_PICKUP, e.getPositionX(), e.getPositionY(), 0, 0.2f, 1, (float)Math.random() * 0.4f + 0.8f);
+				world.getAudioSystem().playSound(Sounds.ITEM_PICKUP, e.getPositionX(), e.getPositionY(), 0, 0.2f, 1, (float)Math.random() * 0.4f + 0.8f);
 			}
 		}
 		
 		else if(e.getSpeed() > 0.3f) {
-			Audio.playSound(Sounds.SNAP, e.positionX, e.positionY, e.velocityX, e.velocityY, 1.0f, 1.0f);
+			world.getAudioSystem().playSound(Sounds.SNAP, e.positionX, e.positionY, e.velocityX, e.velocityY, 1.0f, 1.0f);
 		}
 	}
 	
@@ -110,7 +109,7 @@ public class PlayerEntity extends Entity implements Living {
 			entity.setVelocityY((float) (Math.random() * 0.3f));
 			world.add(entity);
 			selected = (selected == inventory.getSize() - 1 ? selected = 0 : selected + 1);
-			Audio.playSound(Sounds.THROW, positionX, positionY, entity.getVelocityX(), entity.getVelocityY(), 1.0f, 1f);
+			world.getAudioSystem().playSound(Sounds.THROW, positionX, positionY, entity.getVelocityX(), entity.getVelocityY(), 1.0f, 1f);
 		}
 		return item;
 	}
