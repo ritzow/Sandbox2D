@@ -14,7 +14,9 @@ import static org.lwjgl.opengl.GL20.glUniformMatrix4fv;
 import static org.lwjgl.opengl.GL20.glUseProgram;
 import static org.lwjgl.opengl.GL20.glValidateProgram;
 
-public class ShaderProgram {
+import org.lwjgl.opengl.GL11;
+
+class ShaderProgram {
 	public static final int ATTRIBUTE_POSITIONS = 0;
 	public static final int ATTRIBUTE_TEXTURE_COORDS = 1;
 	public static final int ATTRIBUTE_INDICES = 2;
@@ -36,6 +38,12 @@ public class ShaderProgram {
 		glLinkProgram(programID);
 		glValidateProgram(programID);
 		glUseProgram(programID);
+		
+		int error = GL11.glGetError();
+		
+		if(error != 0) {
+			throw new OpenGLException("OpenGL Error Code: " + Integer.toString(error));
+		}
 	}
 	
 	public int getUniformID(String name) {
