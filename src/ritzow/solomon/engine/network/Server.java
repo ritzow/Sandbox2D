@@ -178,6 +178,15 @@ public class Server extends NetworkController {
 	public void exit() {
 		try {
 			stopWorld();
+			for(int i = 0; i < clients.length; i++) {
+				ClientState client = clients[i];
+				if(client != null) {
+					disconnectClient(client);
+					worldUpdater.getWorld().remove(client.player);
+					clients[i] = null;
+				}
+			}
+			
 		} catch(RuntimeException e) {
 			//ignores "no world to stop" exception
 		} finally {
