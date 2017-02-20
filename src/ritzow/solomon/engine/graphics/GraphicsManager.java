@@ -19,9 +19,7 @@ import org.lwjgl.opengl.GL;
 import ritzow.solomon.engine.input.InputManager;
 import ritzow.solomon.engine.input.handler.FramebufferSizeHandler;
 import ritzow.solomon.engine.input.handler.WindowFocusHandler;
-import ritzow.solomon.engine.resource.Fonts;
-import ritzow.solomon.engine.resource.Models;
-import ritzow.solomon.engine.resource.Textures;
+import ritzow.solomon.engine.ui.Fonts;
 import ritzow.solomon.engine.util.Exitable;
 import ritzow.solomon.engine.util.Installable;
 
@@ -33,7 +31,7 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 	private volatile boolean focused;
 	private final Display display;
 	private ModelRenderer renderer;
-	private final LinkedList<Renderable> renderables;
+	private final List<Renderable> renderables;
 	
 	public GraphicsManager(Display display) {
 		this.display = display;
