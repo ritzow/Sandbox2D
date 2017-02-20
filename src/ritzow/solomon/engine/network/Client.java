@@ -6,21 +6,31 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 import ritzow.solomon.engine.util.ByteUtil;
 import ritzow.solomon.engine.world.base.World;
-import ritzow.solomon.engine.world.entity.Player;
+import ritzow.solomon.engine.world.entity.Entity;
+import ritzow.solomon.engine.world.entity.PlayerEntity;
 
 public final class Client extends NetworkController {
+	
+	/** The server's address **/
 	protected SocketAddress server;
+	
+	/** if the server has been successfully connected to **/
 	protected volatile boolean connected;
+	
+	/** messageID **/
 	protected volatile int unreliableMessageID, reliableMessageID;
 	
+	/** The World object sent by the server **/
+	protected volatile World world;
 	private byte[][] worldPackets;
 	protected final Object worldLock;
-	protected volatile World world;
 	
-	protected Player player;
+	/** The Player object sent by the server for the client to control **/
+	protected PlayerEntity player;
 	protected final Object playerLock;
 	
 	public Client() throws SocketException, UnknownHostException {
@@ -32,49 +42,87 @@ public final class Client extends NetworkController {
 	@Override
 	protected void process(SocketAddress sender, int messageID, byte[] data) {
 		final short protocol = ByteUtil.getShort(data, 0);
+		
 		if(sender.equals(server)) {
-			if(protocol == Protocol.SERVER_CONNECT_ACKNOWLEDGMENT) {
-				connected = ByteUtil.getBoolean(data, 2);
-				synchronized(server)  {
-					server.notifyAll();
+			switch(protocol) {
+				case Protocol.SERVER_CONNECT_ACKNOWLEDGMENT: {
+					connected = ByteUtil.getBoolean(data, 2);
+					synchronized(server)  {
+						server.notifyAll();
+					}
+					break;
 				}
-			}
-			
-			else if(protocol == Protocol.SERVER_WORLD_HEAD) {
-				worldPackets = new byte[ByteUtil.getInteger(data, 2)][];
-			}
-			
-			else if(protocol == Protocol.SERVER_WORLD_DATA) {
-				synchronized(worldPackets) {
-					for(int i = 0; i < worldPackets.length; i++) {
-						//find an empty slot to put the received data
-						if(worldPackets[i] == null) {
-							worldPackets[i] = data;
-							
-							//received final packet? create the world.
-							if(i == worldPackets.length - 1) {
-								world = deconstructWorldPackets(worldPackets);
-								synchronized(worldLock) {
-									worldLock.notifyAll(); //notify waitForWorldStart that the world has started
-								}
+				case Protocol.SERVER_WORLD_HEAD: {
+					worldPackets = new byte[ByteUtil.getInteger(data, 2)][];
+					break;
+				}
+				case Protocol.SERVER_WORLD_DATA: {
+					synchronized(worldPackets) {
+						for(int i = 0; i < worldPackets.length; i++) {
+							//find an empty slot to put the received data
+							if(worldPackets[i] == null) {
+								worldPackets[i] = data;
 								
-								worldPackets = null;
+								//received final packet? create the world.
+								if(i == worldPackets.length - 1) {
+									world = deconstructWorldPackets(worldPackets);
+									synchronized(worldLock) {
+										worldLock.notifyAll(); //notify waitForWorldStart that the world has started
+									}
+									
+									worldPackets = null;
+								}
+								break;
 							}
-							break;
+						}
+					}
+					break;
+				}
+				case Protocol.SERVER_PLAYER_ENTITY: {
+					try {
+						this.player = (PlayerEntity)ByteUtil.deserialize(ByteUtil.decompress(data, 2, data.length - 2));
+						getWorld().add(player);
+						synchronized(playerLock) {
+							playerLock.notifyAll();
+						}
+					} catch (ReflectiveOperationException e) {
+						e.printStackTrace();
+					}
+					break;
+				}
+				case Protocol.CONSOLE_MESSAGE: {
+					System.out.println("[Server] " + new String(data, 2, data.length - 2, Charset.forName("UTF-8")));
+					break;
+				}
+				case Protocol.GENERIC_ENTITY_UPDATE: {
+					if(world != null) {
+						int entityID = ByteUtil.getInteger(data, 2);
+						for(Entity e : world) {
+							if(e.getID() == entityID) {
+								synchronized(e) {
+									e.setPositionX(ByteUtil.getFloat(data, 6));
+									e.setPositionY(ByteUtil.getFloat(data, 10));
+									e.setVelocityX(ByteUtil.getFloat(data, 14));
+									e.setVelocityY(ByteUtil.getFloat(data, 18));
+								}
+								break;
+							}
+						}
+					}
+					break;
+				}
+				case Protocol.SERVER_ADD_ENTITY: {
+					if(world != null) {
+						try {
+							world.add((Entity)ByteUtil.deserialize(ByteUtil.decompress(Arrays.copyOfRange(data, 2, data.length))));
+						} catch(ClassCastException | ReflectiveOperationException e) {
+							System.err.println("Error while deserializing received entity");
 						}
 					}
 				}
-			}
-			
-			else if(protocol == Protocol.SERVER_PLAYER_ENTITY) {
-				try {
-					this.player = (Player)ByteUtil.deserialize(ByteUtil.decompress(data, 2, data.length - 2));
-					getWorld().add(player);
-					synchronized(playerLock) {
-						playerLock.notifyAll();
-					}
-				} catch (ReflectiveOperationException e) {
-					e.printStackTrace();
+				break;
+				default: {
+					System.err.println("Client received message of unknown protocol " + protocol);
 				}
 			}
 		}
@@ -99,52 +147,74 @@ public final class Client extends NetworkController {
 		}
 		
 		try {
-			return new World(ByteUtil.decompress(worldBytes));
+			return (World)ByteUtil.deserialize(ByteUtil.decompress(worldBytes));
 		} catch(ReflectiveOperationException e) {
 			e.printStackTrace();
 			return null;
 		}
 	}
 	
-	protected void send(byte[] data) {
-		if(server == null)
-			throw new RuntimeException("client is not currently connected to a server");
-		if(Arrays.binarySearch(Protocol.RELIABLE_PROTOCOLS, ByteUtil.getShort(data, 0)) >= 0) {
-			super.sendReliable(server, reliableMessageID++, data, 10, 100);
+	public void send(byte[] data) {
+		if(isConnected()) {
+			try {
+				if(Arrays.binarySearch(Protocol.RELIABLE_PROTOCOLS, ByteUtil.getShort(data, 0)) >= 0) {
+					super.sendReliable(server, reliableMessageID++, data, 10, 100);
+				} else {
+					super.sendUnreliable(server, unreliableMessageID++, data);
+				}
+			} catch(TimeoutException e) {
+				disconnect();
+			}
 		} else {
-			super.sendUnreliable(server, unreliableMessageID++, data);
+			throw new ConnectionException("client is not connected to a server");
 		}
+	}
+	
+	public boolean isConnected() {
+		return server != null && connected;
+	}
+	
+	public SocketAddress getServer() {
+		return server;
 	}
 	
 	public World getWorld() {
-		synchronized(worldLock) {
-			while(world == null) {
-				try {
-					worldLock.wait();
-				} catch(InterruptedException e) {
-					continue;
+		if(isConnected()) {
+			synchronized(worldLock) {
+				while(world == null) {
+					try {
+						worldLock.wait();
+					} catch(InterruptedException e) {
+						continue;
+					}
 				}
+				return world;
 			}
+		} else {
+			throw new ConnectionException("client is not connected to a server");
 		}
-		return world;
 	}
 	
-	public Player getPlayer() {
-		synchronized(playerLock) {
-			while(player == null) {
-				try {
-					playerLock.wait();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
+	public PlayerEntity getPlayer() {
+		if(isConnected()) {
+			synchronized(playerLock) {
+				while(player == null) {
+					try {
+						playerLock.wait();
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
 				}
 			}
+			return player;
+		} else {
+			throw new ConnectionException("client is not connected to a server");
 		}
-		return player;
 	}
 	
 	public boolean connectTo(SocketAddress address, int timeout) throws IOException {
 		if(isSetupComplete() && !isFinished()) {
-			if(server == null) {
+			if(!isConnected()) {
 				server = address;
 				byte[] packet = new byte[2];
 				ByteUtil.putShort(packet, 0, Protocol.CLIENT_CONNECT_REQUEST);
@@ -171,18 +241,26 @@ public final class Client extends NetworkController {
 		}
 	}
 	
+	public void exit() {
+		disconnect();
+		super.exit();
+	}
+	
 	public void disconnect() {
-		byte[] packet = new byte[2];
-		ByteUtil.putShort(packet, 0, Protocol.CLIENT_DISCONNECT);
-		try {
-			send(packet);
-		} finally {
-			server = null;
-			unreliableMessageID = 0;
-			reliableMessageID = 0;
-			worldPackets = null;
-			player = null;
-			world = null;
+		if(isConnected()) {
+			byte[] packet = new byte[2];
+			ByteUtil.putShort(packet, 0, Protocol.CLIENT_DISCONNECT);
+			try {
+				send(packet);
+			} finally {
+				server = null;
+				connected = false;
+				unreliableMessageID = 0;
+				reliableMessageID = 0;
+				worldPackets = null;
+				player = null;
+				world = null;
+			}
 		}
 	}
 }

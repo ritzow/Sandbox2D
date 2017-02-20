@@ -1,18 +1,24 @@
 package ritzow.solomon.engine.network;
 
 import java.io.IOException;
-import java.net.*;
-import java.util.*;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.SocketAddress;
+import java.net.SocketException;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import ritzow.solomon.engine.util.ByteUtil;
-import ritzow.solomon.engine.util.Exitable;
-import ritzow.solomon.engine.util.Installable;
-import ritzow.solomon.engine.util.MutableInteger;
+import ritzow.solomon.engine.util.Service;
 
 /** Provides common functionality of the client and server. Manages incoming and outgoing packets. **/
-abstract class NetworkController implements Installable, Runnable, Exitable {
+abstract class NetworkController implements Service, Runnable {
 	private volatile boolean setupComplete, exit, finished;
 	private final DatagramSocket socket;
 	private final List<MessageAddressPair> reliableQueue;
@@ -44,8 +50,9 @@ abstract class NetworkController implements Installable, Runnable, Exitable {
 	 * @param recipient the SocketAddress to send data to
 	 * @param messageID the unique ID of the message, must be one greater than the last message sent to the specified recipient
 	 * @param data the data to send to the recipient, including any protocol or other data
+	 * @throws TimeoutException if all send attempts have occurred but no message was received
 	 */
-	protected void sendReliable(SocketAddress recipient, int messageID, byte[] data, int attempts, int resendInterval) {
+	protected void sendReliable(SocketAddress recipient, int messageID, byte[] data, int attempts, int resendInterval) throws TimeoutException {
 		if(messageID < 0)
 			throw new RuntimeException("messageID must be greater than or equal to zero");
 		else if(data.length > Protocol.MAX_MESSAGE_LENGTH)
@@ -133,8 +140,7 @@ abstract class NetworkController implements Installable, Runnable, Exitable {
 				//parse the packet information
 				final SocketAddress sender = 	buffer.getSocketAddress();
 				final int messageID = 			ByteUtil.getInteger(buffer.getData(), buffer.getOffset());
-				final boolean reliable = 		ByteUtil.getBoolean(buffer.getData(), buffer.getOffset() + 4);
-				final byte[] data = 			Arrays.copyOfRange(buffer.getData(), buffer.getOffset() + 5, buffer.getLength());
+				final byte[] data = 			Arrays.copyOfRange(buffer.getData(), buffer.getOffset() + 5, buffer.getOffset() + buffer.getLength());
 
 				//if message is a response, rather than data
 				if(messageID == -1) {
@@ -148,25 +154,29 @@ abstract class NetworkController implements Installable, Runnable, Exitable {
 									pair.received = true;
 									pair.notifyAll();
 								}
-								iterator.remove();
+								iterator.remove(); //TODO timeout cases are not covered
 							}
 						}
 					}
-				} else if(reliable) { //handle reliable messages by first checking if the received message is reliable
-					if(!lastReceived.containsKey(sender)) { //if sender isn't registered yet, add it to hashmap, if the ack isn't received, it will be resent on next send
+				} else if(ByteUtil.getBoolean(buffer.getData(), buffer.getOffset() + 4)) {  //message is reliable
+					//handle reliable messages by first checking if the received message is reliable
+					if(!lastReceived.containsKey(sender)) {
+						//if sender isn't registered yet, add it to hashmap, if the ack isn't received, it will be resent on next send
 						lastReceived.put(sender, new MutableInteger(messageID));
-						dispatcher.execute(() -> process(sender, messageID, data));
+						dispatcher.execute(new PacketRunnable(sender, messageID, data));
 						sendResponse(sender, messageID);
-					} else if(messageID == lastReceived.get(sender).intValue() + 1) { //if the message is the next one, process it and update last message
+					} else if(messageID == lastReceived.get(sender).intValue() + 1) {
+						//if the message is the next one, process it and update last message
 						lastReceived.get(sender).set(messageID);
-						dispatcher.execute(() -> process(sender, messageID, data));
+						dispatcher.execute(new PacketRunnable(sender, messageID, data));
 						sendResponse(sender, messageID);
-					} else { //if the message was already received
+					} else { 
+						//if the message was already received
 						sendResponse(sender, messageID);
-						continue; //dont process the message because it isn't new
 					}
-				} else { //if the message isnt a response and isn't reliable, process it without doing anything else!
-					dispatcher.execute(() -> process(sender, messageID, data));
+				} else {
+					//if the message isnt a response and isn't reliable, process it without doing anything else!
+					dispatcher.execute(new PacketRunnable(sender, messageID, data));
 				}
 			} catch(SocketException e) {
 				if(!socket.isClosed())
@@ -209,4 +219,49 @@ abstract class NetworkController implements Installable, Runnable, Exitable {
 	public boolean isFinished() {
 		return finished;
 	}
+	
+	private final class PacketRunnable implements Runnable {
+		private final SocketAddress address;
+		private final int messageID;
+		private final byte[] data;
+		
+		public PacketRunnable(SocketAddress address, int messageID, byte[] data) {
+			this.address = address;
+			this.messageID = messageID;
+			this.data = data;
+		}
+
+		@Override
+		public void run() {
+			process(address, messageID, data);
+		}
+	}
+	
+	private static final class MessageAddressPair {
+		protected final SocketAddress recipient;
+		protected final int messageID;
+		protected volatile boolean received;
+		
+		public MessageAddressPair(SocketAddress recipient, int messageID) {
+			this.messageID = messageID;
+			this.recipient = recipient;
+		}
+	}
+	
+	private static final class MutableInteger {
+	    private int value;
+	    
+	    public MutableInteger(int value) {
+	        this.value = value;
+	    }
+	    
+	    public void set(int value) {
+	        this.value = value;
+	    }
+	    
+	    public int intValue() {
+	        return value;
+	    }
+	}
+	
 }
