@@ -1,7 +1,5 @@
 package ritzow.solomon.engine.graphics;
 
-import static ritzow.solomon.engine.util.Utility.Matrix.multiply;
-
 import java.io.File;
 import java.io.IOException;
 

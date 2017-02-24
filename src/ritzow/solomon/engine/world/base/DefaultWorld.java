@@ -1,6 +1,6 @@
 package ritzow.solomon.engine.world.base;
 
-import static ritzow.solomon.engine.util.Utility.Intersection.combineFriction;
+import static ritzow.solomon.engine.util.Utility.combineFriction;
 
 import java.util.ArrayList;
 import java.util.Iterator;

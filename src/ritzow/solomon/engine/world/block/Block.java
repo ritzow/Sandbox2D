@@ -1,6 +1,6 @@
 package ritzow.solomon.engine.world.block;
 
-import static ritzow.solomon.engine.util.Utility.MathUtility.randomFloat;
+import static ritzow.solomon.engine.util.Utility.randomFloat;
 
 import ritzow.solomon.engine.audio.Sounds;
 import ritzow.solomon.engine.util.Transportable;
