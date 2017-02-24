@@ -7,7 +7,6 @@ import org.lwjgl.BufferUtils;
 
 /** Instances of WAVEDecoder will decode a .wav file from an InputStream **/
 public final class WAVEDecoder {
-	
 	private final InputStream input;
 	private ByteBuffer data;
 	
@@ -61,13 +60,21 @@ public final class WAVEDecoder {
 		data.flip();
 	}
 
-	public void close() throws IOException {
-		input.close();
-	}
-
 	public String toString() {
 		checkStatus();
-		return "Format: " + format + "\nChannels: " + numChannels + "\nSample Rate: " + sampleRate + "\nByte Rate: "  + byteRate + "\nBlock Align: " + blockAlign + "\nBits per sample: " + bitsPerSample;
+		return 
+			"Format: " 
+			+ format 
+			+ "\nChannels: " 
+			+ numChannels 
+			+ "\nSample Rate: " 
+			+ sampleRate 
+			+ "\nByte Rate: "  
+			+ byteRate 
+			+ "\nBlock Align: " 
+			+ blockAlign 
+			+ "\nBits per sample: " 
+			+ bitsPerSample;
 	}
 	
 	public ByteBuffer getData() {

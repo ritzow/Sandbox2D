@@ -28,8 +28,10 @@ public final class Sounds {
 	}
 	
 	public static int loadAudio(File file) throws IOException {
-		WAVEDecoder decoder = new WAVEDecoder(new FileInputStream(file));
+		FileInputStream input = new FileInputStream(file);
+		WAVEDecoder decoder = new WAVEDecoder(input);
 		decoder.decode();
+		input.close();
 		
     	int format = AL_FORMAT_STEREO16;
     	
@@ -47,20 +49,15 @@ public final class Sounds {
     		}
     	}
     	
-    	decoder.getData().position(0);
-    	
     	int buffer = alGenBuffers();
     	alBufferData(buffer, format, decoder.getData(), decoder.getSampleRate());
-    	
-    	decoder.close();
-    	
     	return buffer;
 	}
 	
 	public static void deleteAll() {
-		alDeleteBuffers(Sounds.BLOCK_BREAK);
-		alDeleteBuffers(Sounds.BLOCK_PLACE);
-		alDeleteBuffers(Sounds.ITEM_PICKUP);
-		alDeleteBuffers(Sounds.THROW);
+		alDeleteBuffers(BLOCK_BREAK);
+		alDeleteBuffers(BLOCK_PLACE);
+		alDeleteBuffers(ITEM_PICKUP);
+		alDeleteBuffers(THROW);
 	}
 }
