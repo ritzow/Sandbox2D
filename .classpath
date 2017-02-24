@@ -32,5 +32,8 @@
 	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-openal-natives-linux.jar"/>
 	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-openal-natives-macos.jar"/>
 	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-openal-natives-windows.jar"/>
+	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-opengl-natives-linux.jar"/>
+	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-opengl-natives-macos.jar"/>
+	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-opengl-natives-windows.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
