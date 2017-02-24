@@ -10,7 +10,7 @@ import ritzow.solomon.engine.world.block.Block;
 public class BlockGrid implements Transportable {
 	protected final Block[][] blocks;
 	
-	public BlockGrid(World world, int width, int height) {
+	public BlockGrid(int width, int height) {
 		blocks = new Block[height][width];
 	}
 	
@@ -87,18 +87,22 @@ public class BlockGrid implements Transportable {
 	}
 	
 	public Block get(int x, int y) {
-		return blocks[blocks.length - 1 - y][x];
+		synchronized(blocks) {
+			return blocks[blocks.length - 1 - y][x];
+		}
 	}
 	
 	public Block get(float worldX, float worldY) {
 		return get(Math.round(worldX), Math.round(worldY));
 	}
 	
-	public synchronized void set(int x, int y, Block block) {
-		blocks[blocks.length - 1 - y][x] = block;
+	public void set(int x, int y, Block block) {
+		synchronized(blocks) {
+			blocks[blocks.length - 1 - y][x] = block;
+		}
 	}
 	
-	public synchronized boolean destroy(World world, int x, int y) {
+	public boolean destroy(World world, int x, int y) {
 		if(isBlock(x, y)) {
 			get(x, y).onBreak(world, x, y);
 			set(x, y, null);
@@ -108,7 +112,7 @@ public class BlockGrid implements Transportable {
 		}
 	}
 	
-	public synchronized boolean place(World world, int x, int y, Block block) {
+	public boolean place(World world, int x, int y, Block block) {
 		if(!isBlock(x, y)) {
 			set(x, y, block);
 			block.onPlace(world, x, y);
