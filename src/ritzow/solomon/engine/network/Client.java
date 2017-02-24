@@ -45,125 +45,55 @@ public final class Client extends NetworkController {
 		
 		if(sender.equals(server)) {
 			switch(protocol) {
-				case Protocol.SERVER_CONNECT_ACKNOWLEDGMENT: {
+				case Protocol.SERVER_CONNECT_ACKNOWLEDGMENT:
 					connected = ByteUtil.getBoolean(data, 2);
 					synchronized(server)  {
 						server.notifyAll();
 					}
 					break;
-				}
-				case Protocol.SERVER_WORLD_HEAD: {
+				case Protocol.SERVER_WORLD_HEAD:
 					worldPackets = new byte[ByteUtil.getInteger(data, 2)][];
 					break;
-				}
-				case Protocol.SERVER_WORLD_DATA: {
-					synchronized(worldPackets) {
-						for(int i = 0; i < worldPackets.length; i++) {
-							//find an empty slot to put the received data
-							if(worldPackets[i] == null) {
-								worldPackets[i] = data;
-								
-								//received final packet? create the world.
-								if(i == worldPackets.length - 1) {
-									world = deconstructWorldPackets(worldPackets);
-									synchronized(worldLock) {
-										worldLock.notifyAll(); //notify waitForWorldStart that the world has started
-									}
-									
-									worldPackets = null;
-								}
-								break;
-							}
-						}
-					}
+				case Protocol.SERVER_WORLD_DATA:
+					processReceiveWorldData(data);
 					break;
-				}
-				case Protocol.SERVER_PLAYER_ENTITY: {
-					try {
-						this.player = (PlayerEntity)ByteUtil.deserialize(ByteUtil.decompress(data, 2, data.length - 2));
-						getWorld().add(player);
-						synchronized(playerLock) {
-							playerLock.notifyAll();
-						}
-					} catch (ReflectiveOperationException e) {
-						e.printStackTrace();
-					}
+				case Protocol.SERVER_PLAYER_ENTITY:
+					processReceivePlayerEntity(data);
 					break;
-				}
-				case Protocol.CONSOLE_MESSAGE: {
+				case Protocol.CONSOLE_MESSAGE:
 					System.out.println("[Server] " + new String(data, 2, data.length - 2, Charset.forName("UTF-8")));
 					break;
-				}
-				case Protocol.GENERIC_ENTITY_UPDATE: {
+				case Protocol.GENERIC_ENTITY_UPDATE:
+					processGenericEntityUpdate(data);
+					break;
+				case Protocol.SERVER_ADD_ENTITY:
+					processAddEntity(data);
+					break;
+				case Protocol.SERVER_REMOVE_ENTITY:
 					if(world != null) {
-						int entityID = ByteUtil.getInteger(data, 2);
-						for(Entity e : world) {
-							if(e.getID() == entityID) {
-								synchronized(e) {
-									e.setPositionX(ByteUtil.getFloat(data, 6));
-									e.setPositionY(ByteUtil.getFloat(data, 10));
-									e.setVelocityX(ByteUtil.getFloat(data, 14));
-									e.setVelocityY(ByteUtil.getFloat(data, 18));
-								}
-								break;
-							}
-						}
+						world.remove(ByteUtil.getInteger(data, 2));
 					}
 					break;
-				}
-				case Protocol.SERVER_ADD_ENTITY: {
-					if(world != null) {
-						try {
-							world.add((Entity)ByteUtil.deserialize(ByteUtil.decompress(Arrays.copyOfRange(data, 2, data.length))));
-						} catch(ClassCastException | ReflectiveOperationException e) {
-							System.err.println("Error while deserializing received entity");
-						}
-					}
-				}
-				break;
-				default: {
+				case Protocol.SERVER_CLIENT_DISCONNECT:
+					disconnect(false);
+					exit(); //TODO exit just for now
+					break;
+				default:
 					System.err.println("Client received message of unknown protocol " + protocol);
-				}
 			}
-		}
-	}
-	
-	private static World deconstructWorldPackets(byte[][] data) {
-		final int headerSize = 2; //WORLD_DATA protocol
-		//create a sum of the number of bytes so that a single byte array can be allocated
-		int bytes = 0;
-		for(byte[] a : data) {
-			bytes += (a.length - headerSize);
-		}
-		
-		//the size of the world data (sum of all arrays without 2 byte headers)
-		byte[] worldBytes = new byte[bytes];
-		
-		//copy the received packets into the final world data array
-		int index = 0;
-		for(byte[] array : data) {
-			System.arraycopy(array, headerSize, worldBytes, index, array.length - headerSize);
-			index += (array.length - headerSize);
-		}
-		
-		try {
-			return (World)ByteUtil.deserialize(ByteUtil.decompress(worldBytes));
-		} catch(ReflectiveOperationException e) {
-			e.printStackTrace();
-			return null;
 		}
 	}
 	
 	public void send(byte[] data) {
 		if(isConnected()) {
 			try {
-				if(Arrays.binarySearch(Protocol.RELIABLE_PROTOCOLS, ByteUtil.getShort(data, 0)) >= 0) {
+				if(Protocol.isReliable(ByteUtil.getShort(data, 0))) {
 					super.sendReliable(server, reliableMessageID++, data, 10, 100);
 				} else {
 					super.sendUnreliable(server, unreliableMessageID++, data);
 				}
 			} catch(TimeoutException e) {
-				disconnect();
+				disconnect(false);
 			}
 		} else {
 			throw new ConnectionException("client is not connected to a server");
@@ -233,7 +163,7 @@ public final class Client extends NetworkController {
 					return false;
 				}
 			} else {
-				disconnect();
+				disconnect(true);
 				return connectTo(address, timeout);
 			}
 		} else {
@@ -241,17 +171,20 @@ public final class Client extends NetworkController {
 		}
 	}
 	
+	@Override
 	public void exit() {
-		disconnect();
+		disconnect(true);
 		super.exit();
 	}
 	
-	public void disconnect() {
+	public void disconnect(boolean notifyServer) {
 		if(isConnected()) {
-			byte[] packet = new byte[2];
-			ByteUtil.putShort(packet, 0, Protocol.CLIENT_DISCONNECT);
 			try {
-				send(packet);
+				if(notifyServer) {
+					byte[] packet = new byte[2];
+					ByteUtil.putShort(packet, 0, Protocol.CLIENT_DISCONNECT);
+					send(packet);
+				}
 			} finally {
 				server = null;
 				connected = false;
@@ -260,6 +193,67 @@ public final class Client extends NetworkController {
 				worldPackets = null;
 				player = null;
 				world = null;
+			}
+		}
+	}
+	
+	private void processReceivePlayerEntity(byte[] data) {
+		try {
+			this.player = (PlayerEntity)ByteUtil.deserialize(ByteUtil.decompress(data, 2, data.length - 2));
+			getWorld().add(player);
+			synchronized(playerLock) {
+				playerLock.notifyAll();
+			}
+		} catch (ReflectiveOperationException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	private void processAddEntity(byte[] data) {
+		if(world != null) {
+			try {
+				world.add((Entity)ByteUtil.deserialize(ByteUtil.decompress(Arrays.copyOfRange(data, 2, data.length))));
+			} catch(ClassCastException | ReflectiveOperationException e) {
+				System.err.println("Error while deserializing received entity");
+			}
+		}
+	}
+	
+	private void processGenericEntityUpdate(byte[] data) {
+		if(world != null) {
+			int entityID = ByteUtil.getInteger(data, 2);
+			for(Entity e : world) {
+				if(e.getID() == entityID) {
+					synchronized(e) {
+						e.setPositionX(ByteUtil.getFloat(data, 6));
+						e.setPositionY(ByteUtil.getFloat(data, 10));
+						e.setVelocityX(ByteUtil.getFloat(data, 14));
+						e.setVelocityY(ByteUtil.getFloat(data, 18));
+					}
+					break;
+				}
+			}
+		}
+	}
+	
+	private void processReceiveWorldData(byte[] data) {
+		synchronized(worldPackets) {
+			for(int i = 0; i < worldPackets.length; i++) {
+				//find an empty slot to put the received data
+				if(worldPackets[i] == null) {
+					worldPackets[i] = data;
+					
+					//received final packet? create the world.
+					if(i == worldPackets.length - 1) {
+						world = Protocol.reconstructWorld(worldPackets);
+						synchronized(worldLock) {
+							worldLock.notifyAll(); //notify waitForWorldStart that the world has started
+						}
+						
+						worldPackets = null;
+					}
+					break;
+				}
 			}
 		}
 	}
