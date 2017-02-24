@@ -2,7 +2,7 @@ package ritzow.solomon.engine.input.controller;
 
 import static org.lwjgl.glfw.GLFW.GLFW_PRESS;
 import static org.lwjgl.glfw.GLFW.GLFW_RELEASE;
-import static ritzow.solomon.engine.util.Utility.Intersection.intersection;
+import static ritzow.solomon.engine.util.Utility.intersection;
 
 import ritzow.solomon.engine.input.Controls;
 import ritzow.solomon.engine.input.InputManager;
