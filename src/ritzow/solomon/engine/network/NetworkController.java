@@ -30,7 +30,7 @@ abstract class NetworkController implements Service, Runnable {
 		lastReceived = new HashMap<SocketAddress, MutableInteger>();
 	}
 	
-	protected void sendUnreliable(SocketAddress recipient, int messageID, byte[] data) {
+	protected final void sendUnreliable(SocketAddress recipient, int messageID, byte[] data) {
 		if(messageID < 0)
 			throw new RuntimeException("messageID must be greater than or equal to zero");
 		else if(data.length > Protocol.MAX_MESSAGE_LENGTH)
@@ -52,7 +52,7 @@ abstract class NetworkController implements Service, Runnable {
 	 * @param data the data to send to the recipient, including any protocol or other data
 	 * @throws TimeoutException if all send attempts have occurred but no message was received
 	 */
-	protected void sendReliable(SocketAddress recipient, int messageID, byte[] data, int attempts, int resendInterval) throws TimeoutException {
+	protected final void sendReliable(SocketAddress recipient, int messageID, byte[] data, int attempts, int resendInterval) throws TimeoutException {
 		if(messageID < 0)
 			throw new RuntimeException("messageID must be greater than or equal to zero");
 		else if(data.length > Protocol.MAX_MESSAGE_LENGTH)
@@ -75,7 +75,7 @@ abstract class NetworkController implements Service, Runnable {
 				try {
 					socket.send(datagram);
 					attemptsRemaining--;
-					pair.wait(resendInterval);
+					pair.wait(resendInterval); //release the lock this method's thread has on pair, and wait for it to be modified/notified by incoming packet thread
 				} catch (InterruptedException | IOException e) {
 					e.printStackTrace();
 					continue;
@@ -83,6 +83,10 @@ abstract class NetworkController implements Service, Runnable {
 			}
 			
 			if(!pair.received) {
+				synchronized(reliableQueue) {
+					reliableQueue.remove(pair); //remove the timed out message
+				}
+				
 				throw new TimeoutException();
 			}
 		}
@@ -100,23 +104,25 @@ abstract class NetworkController implements Service, Runnable {
 		}
 	}
 	
-	protected void removeSender(SocketAddress address) {
+	protected final void removeSender(SocketAddress address) {
 		synchronized(lastReceived) {
 			lastReceived.remove(address);
 		}
 	}
 	
 	/**
-	 * implemented by a client/server to process any incoming packets. Packets are not guaranteed to be received in order, and message responses must be handled in this method.
+	 * implemented by a client/server to process any incoming packets. 
+	 * Packets are not guaranteed to be received in order, 
+	 * and message responses must be handled in this method.
 	 * @param messageID the unique ID of the message received
-	 * @param protocol the type of message receieved
+	 * @param protocol the type of message received
 	 * @param sender the address the message was received from
 	 * @param data the body of the message received
 	 */
 	protected abstract void process(SocketAddress sender, int messageID, byte[] data);
 	
 	@Override
-	public void run() {
+	public final void run() {
 		//Create the thread dispatcher for processing received messages
 		ExecutorService dispatcher = Executors.newCachedThreadPool();
 		
@@ -129,37 +135,49 @@ abstract class NetworkController implements Service, Runnable {
 		}
 
 		while(!exit) {
+			//wait for a packet to be received
 			try {
-				//wait for a packet to be received
 				socket.receive(buffer);
-				
-				//ignore received packets that are too short
-				if(buffer.getLength() < 5)
+			} catch(SocketException e) {
+				if(!socket.isClosed()) {
+					e.printStackTrace();
 					continue;
-				
-				//parse the packet information
-				final SocketAddress sender = 	buffer.getSocketAddress();
-				final int messageID = 			ByteUtil.getInteger(buffer.getData(), buffer.getOffset());
-				final byte[] data = 			Arrays.copyOfRange(buffer.getData(), buffer.getOffset() + 5, buffer.getOffset() + buffer.getLength());
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+				continue;
+			}
 
-				//if message is a response, rather than data
-				if(messageID == -1) {
-					int responseMessageID = ByteUtil.getInteger(data, 0);
-					synchronized(reliableQueue) {
-						Iterator<MessageAddressPair> iterator = reliableQueue.iterator();
-						while(iterator.hasNext()) {
-							MessageAddressPair pair = iterator.next();
-							if(pair.messageID == responseMessageID && pair.recipient.equals(sender)) {
-								synchronized(pair) {
-									pair.received = true;
-									pair.notifyAll();
-								}
-								iterator.remove(); //TODO timeout cases are not covered
+			
+			//ignore received packets that are not large enough to contain the full header
+			if(buffer.getLength() < 5) {
+				continue;
+			}
+			
+			//parse the packet information
+			final SocketAddress sender = 	buffer.getSocketAddress();
+			final int messageID = 			ByteUtil.getInteger(buffer.getData(), buffer.getOffset());
+			final byte[] data = 			Arrays.copyOfRange(buffer.getData(), buffer.getOffset() + 5, buffer.getOffset() + buffer.getLength());
+
+			//if message is a response, rather than data
+			if(messageID == -1) {
+				int responseMessageID = ByteUtil.getInteger(data, 0);
+				synchronized(reliableQueue) {
+					Iterator<MessageAddressPair> iterator = reliableQueue.iterator();
+					while(iterator.hasNext()) {
+						MessageAddressPair pair = iterator.next();
+						if(pair.messageID == responseMessageID && pair.recipient.equals(sender)) {
+							iterator.remove();
+							synchronized(pair) {
+								pair.received = true;
+								pair.notifyAll();
 							}
 						}
 					}
-				} else if(ByteUtil.getBoolean(buffer.getData(), buffer.getOffset() + 4)) {  //message is reliable
-					//handle reliable messages by first checking if the received message is reliable
+				}
+			} else if(ByteUtil.getBoolean(buffer.getData(), buffer.getOffset() + 4)) {  //message is reliable
+				//handle reliable messages by first checking if the received message is reliable
+				synchronized(lastReceived) {
 					if(!lastReceived.containsKey(sender)) {
 						//if sender isn't registered yet, add it to hashmap, if the ack isn't received, it will be resent on next send
 						lastReceived.put(sender, new MutableInteger(messageID));
@@ -174,15 +192,10 @@ abstract class NetworkController implements Service, Runnable {
 						//if the message was already received
 						sendResponse(sender, messageID);
 					}
-				} else {
-					//if the message isnt a response and isn't reliable, process it without doing anything else!
-					dispatcher.execute(new PacketRunnable(sender, messageID, data));
 				}
-			} catch(SocketException e) {
-				if(!socket.isClosed())
-					e.printStackTrace();
-			} catch (IOException e) {
-				e.printStackTrace();
+			} else {
+				//if the message isnt a response and isn't reliable, process it without doing anything else!
+				dispatcher.execute(new PacketRunnable(sender, messageID, data));
 			}
 		}
 		
