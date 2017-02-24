@@ -4,56 +4,52 @@ import java.io.File;
 import java.io.IOException;
 
 public final class ModelRenderer extends ShaderProgram {
-	private volatile Camera camera;
+	private final Camera camera;
 	private final int uniform_transform;
 	private final int uniform_opacity;
 	private final int uniform_view;
 	
-	//TODO create field that stores list of all models used for rendering
+	//store models in ModelRenderer, rather than Models class
 	private float framebufferWidth;
 	private float framebufferHeight;
 	
-	private static final float[] identityMatrix = new float[] {
+	private static final float[] identityMatrix = {
 			1, 0, 0, 0,
 			0, 1, 0, 0,
 			0, 0, 0, 0,
 			0, 0, 0, 1,
 	};
 	
-	private final float[] aspectMatrix = new float[] {
+	private final float[] aspectMatrix = {
 			1, 0, 0, 0,
 			0, 1, 0, 0,
 			0, 0, 0, 0,
 			0, 0, 0, 1,
 	};
 	
-	private final float[] cameraMatrix = new float[] {
+	private final float[] cameraMatrix = {
 			1, 0, 0, 0,
 			0, 1, 0, 0,
 			0, 0, 0, 0,
 			0, 0, 0, 1,
 	};
 	
-	private final float[] viewMatrix = new float[] {
+	private final float[] viewMatrix = {
 			0, 0, 0, 0,
 			0, 0, 0, 0,
 			0, 0, 0, 0,
 			0, 0, 0, 0,
 	};
 	
-	private final float[] transformationMatrix = new float[] {
+	private final float[] transformationMatrix = {
 			1, 0, 0, 0,
 			0, 1, 0, 0,
 			0, 0, 0, 0,
 			0, 0, 0, 1,
 	};
 	
-	public ModelRenderer(Camera camera) throws IOException {
-		super(
-			new Shader(new File("resources/shaders/vertexShader"), org.lwjgl.opengl.GL20.GL_VERTEX_SHADER),
-			new Shader(new File("resources/shaders/fragmentShader"), org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER)
-		);
-		
+	public ModelRenderer(File vertexShader, File fragmentShader, Camera camera) throws IOException {
+		super(new Shader(vertexShader, org.lwjgl.opengl.GL20.GL_VERTEX_SHADER), new Shader(fragmentShader, org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER));
 		this.camera = camera;
 		this.uniform_transform = getUniformID("transform");
 		this.uniform_opacity = getUniformID("opacity");
@@ -155,10 +151,6 @@ public final class ModelRenderer extends ShaderProgram {
 	public final Camera getCamera() {
 		return camera;
 	}
-
-	public final void setCamera(Camera camera) {
-		this.camera = camera;
-	}
 	
 	public final float getFramebufferWidth() {
 		return framebufferWidth;
@@ -171,5 +163,23 @@ public final class ModelRenderer extends ShaderProgram {
 	public final void setResolution(float framebufferWidth, float framebufferHeight) {
 		this.framebufferWidth = framebufferWidth;
 		this.framebufferHeight = framebufferHeight;
+	}
+	
+	private static final void multiply(float[] a, float[] b, float[] destination) {
+		for(int i = 0; i < 4; i++){
+			for(int j = 0; j < 4; j++){
+				for(int k = 0; k < 4; k++){
+					set(destination, i, j, get(destination, i, j) + get(a, i, k) * get(b, k, j));
+				}
+			}
+		}
+	}
+	
+	private static final float get(float[] array, int row, int column) {
+		return array[(row * 4) + column];
+	}
+	
+	private static final void set(float[] array, int row, int column, float value) {
+		array[(row * 4) + column] =  value;
 	}
 }

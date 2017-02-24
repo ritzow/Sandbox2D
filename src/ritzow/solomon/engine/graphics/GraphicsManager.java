@@ -52,7 +52,7 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 			Textures.loadAll(new File("resources/assets/textures"));
 			Models.loadAll();
 			Fonts.loadAll(new File("resources/assets/fonts"));
-			renderer = new ModelRenderer(new Camera( 0, 0, 1));
+			renderer = new ModelRenderer(new File("resources/shaders/vertexShader"), new File("resources/shaders/fragmentShader"), new Camera( 0, 0, 1));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
