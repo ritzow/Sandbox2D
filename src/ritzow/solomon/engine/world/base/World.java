@@ -8,9 +8,9 @@ import ritzow.solomon.engine.world.entity.Entity;
 public abstract class World implements Renderable, Transportable, Iterable<Entity> {
 	public abstract void add(Entity e);
 	public abstract void remove(Entity e);
+	public abstract void remove(int entityID);
 	public abstract void update(float time);
 	public abstract BlockGrid getForeground();
 	public abstract BlockGrid getBackground();
-	public abstract float getGravity();
 	public abstract AudioSystem getAudioSystem();
 }

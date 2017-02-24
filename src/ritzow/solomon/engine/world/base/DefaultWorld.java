@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import ritzow.solomon.engine.audio.AudioSystem;
-import ritzow.solomon.engine.audio.DummyAudioSystem;
 import ritzow.solomon.engine.graphics.ModelRenderer;
 import ritzow.solomon.engine.util.ByteUtil;
 import ritzow.solomon.engine.world.entity.Entity;
@@ -14,22 +13,20 @@ import ritzow.solomon.engine.world.entity.Entity;
 /**
  * Handler and organizer of {@link Entity} and {@link BlockGrid} objects. Handles updating of entities in the world and rendering of entities and blocks. 
  * Contains a foreground and background.
- * @author Solomon Ritzow
- *
  */
 public final class DefaultWorld extends World {
 	
 	/** collection of entities in the world **/
-	protected final List<Entity> entities;
+	private final List<Entity> entities;
 	
 	/** blocks in the world that collide with entities and and are rendered **/
-	protected final BlockGrid foreground, background;
+	private final BlockGrid foreground, background;
 	
 	/** amount of downwards acceleration to apply to entities in the world **/
-	protected float gravity;
+	private volatile float gravity;
 	
 	/** AudioSystem to allow entities to play sounds **/
-	protected AudioSystem audio;
+	private volatile AudioSystem audio;
 	
 	public DefaultWorld(AudioSystem audio, int width, int height) {
 		this(audio, width, height, 0.016f);
@@ -44,13 +41,13 @@ public final class DefaultWorld extends World {
 	public DefaultWorld(AudioSystem audio, int width, int height, float gravity) {
 		this.audio = audio;
 		entities = new ArrayList<Entity>(100);
-		foreground = new BlockGrid(this, width, height);
-		background = new BlockGrid(this, width, height);
+		foreground = new BlockGrid(width, height);
+		background = new BlockGrid(width, height);
 		this.gravity = gravity;
 	}
 	
 	public DefaultWorld(byte[] data) throws ReflectiveOperationException {
-		audio = new DummyAudioSystem(); //TODO figure out how to implement serialized audio system
+		audio = null;
 		gravity = ByteUtil.getFloat(data, 0);
 		int foregroundLength = ByteUtil.getSerializedLength(data, 4);
 		int backgroundLength = ByteUtil.getSerializedLength(data, 4 + foregroundLength);
@@ -72,7 +69,6 @@ public final class DefaultWorld extends World {
 	
 	@Override
 	public synchronized byte[] getBytes() {
-		
 		//serialize foreground and background
 		byte[] foregroundBytes = ByteUtil.serialize(foreground);
 		byte[] backgroundBytes = ByteUtil.serialize(background);
@@ -158,11 +154,17 @@ public final class DefaultWorld extends World {
 		}
 	}
 	
+	public void remove(int entityID) {
+		synchronized(entities) {
+			entities.removeIf(e -> e.getID() == entityID);
+		}
+	}
+	
 	public float getGravity() {
 		return gravity;
 	}
 
-	public synchronized void setGravity(float gravity) {
+	public void setGravity(float gravity) {
 		this.gravity = gravity;
 	}
 
@@ -443,7 +445,7 @@ public final class DefaultWorld extends World {
 		return audio;
 	}
 	
-	public synchronized void setAudioSystem(AudioSystem audio) {
+	public void setAudioSystem(AudioSystem audio) {
 		this.audio = audio;
 	}
 }
