@@ -95,10 +95,6 @@ public class PlayerEntity extends Entity implements Living {
 				world.getAudioSystem().playSound(Sounds.ITEM_PICKUP, e.getPositionX(), e.getPositionY(), 0, 0.2f, 1, (float)Math.random() * 0.4f + 0.8f);
 			}
 		}
-		
-		else if(e.getSpeed() > 0.3f) {
-			world.getAudioSystem().playSound(Sounds.SNAP, e.positionX, e.positionY, e.velocityX, e.velocityY, 1.0f, 1.0f);
-		}
 	}
 	
 	protected Item dropItem(World world, int slot) { //TODO should this be implemented here, or should I just use removeSelectedItem?
