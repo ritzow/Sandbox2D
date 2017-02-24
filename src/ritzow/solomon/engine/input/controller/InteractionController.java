@@ -13,7 +13,7 @@ import ritzow.solomon.engine.world.entity.PlayerEntity;
 import ritzow.solomon.engine.world.item.BlockItem;
 import ritzow.solomon.engine.world.item.Item;
 
-public final class InteractionController extends Controller implements MouseButtonHandler, CursorPosHandler, FramebufferSizeHandler, KeyHandler, Updatable {
+public final class InteractionController implements Controller, MouseButtonHandler, CursorPosHandler, FramebufferSizeHandler, KeyHandler, Updatable {
 	private boolean primaryAction, secondaryAction;
 	private final boolean instantBreak;
 	private float frameWidth, frameHeight;

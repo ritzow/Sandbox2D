@@ -13,7 +13,7 @@ import ritzow.solomon.engine.world.base.World;
 import ritzow.solomon.engine.world.entity.Entity;
 import ritzow.solomon.engine.world.entity.PlayerEntity;
 
-public class PlayerController extends Controller implements KeyHandler {
+public class PlayerController implements Controller, KeyHandler {
 	protected final PlayerEntity player;
 	protected final World world;
 	protected final Client client;
