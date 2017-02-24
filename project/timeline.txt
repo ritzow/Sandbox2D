@@ -26,4 +26,4 @@ S2 Checkpoint 5:
 S2 Checkpoint 6:
 	Improve physics system by implementing mass in a meaningful way.
 S2 Checkpoint 7:
-	Create world generation system.
+	Create world generation system. Finish audio system.

@@ -88,7 +88,7 @@ public final class Font {
 		}
 	}
 	
-	protected void loadCharacter(char c, Texture characterSheet, float[] textureCoordinates) { //TODO why is vertex count six for character models?
+	protected void loadCharacter(char c, Texture characterSheet, float[] textureCoordinates) {
 		characterModels[(int)c] = new Model(6, Models.SQUARE_POSITIONS_BUFFER, characterSheet, new TextureCoordinateBuffer(textureCoordinates), Models.RECTANGLE_INDICES_BUFFER);
 	}
 	

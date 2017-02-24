@@ -7,3 +7,7 @@ data/
 
 #Mac system files
 .DS_Store
+
+#Netbeans files
+/nbproject/private/
+/build/

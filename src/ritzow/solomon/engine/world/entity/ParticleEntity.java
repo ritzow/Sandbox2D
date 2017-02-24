@@ -13,7 +13,7 @@ public class ParticleEntity extends Entity {
 	protected final long birthtime;
 	protected final long lifetime;
 	
-	protected boolean remove;
+	protected volatile boolean remove;
 
 	public ParticleEntity(int entityID, int model, float scaleX, float scaleY, long lifetime, boolean fade) {
 		super(entityID);
