@@ -8,10 +8,11 @@ import ritzow.solomon.engine.input.Controls;
 import ritzow.solomon.engine.input.InputManager;
 import ritzow.solomon.engine.input.handler.KeyHandler;
 import ritzow.solomon.engine.util.Updatable;
+import ritzow.solomon.engine.world.base.DefaultWorld;
 import ritzow.solomon.engine.world.base.World;
 import ritzow.solomon.engine.world.entity.Entity;
 
-public final class EntityController extends Controller implements KeyHandler, Updatable {
+public final class EntityController implements Controller, KeyHandler, Updatable {
 	private final World world;
 	private final Entity entity;
 	private final float movementSpeed;
@@ -35,7 +36,7 @@ public final class EntityController extends Controller implements KeyHandler, Up
 				entity.setVelocityX(-movementSpeed);
 			}
 			
-			else if(!blockLeft(entity.getPositionX(), entity.getPositionY() + getJumpHeight(world.getGravity()), entity.getWidth(), entity.getHeight()) && canJump()) {
+			else if(!blockLeft(entity.getPositionX(), entity.getPositionY() + getJumpHeight(((DefaultWorld)world).getGravity()), entity.getWidth(), entity.getHeight()) && canJump()) {
 				entity.setVelocityY(movementSpeed);
 			}
 		} else if(right) {
@@ -43,7 +44,7 @@ public final class EntityController extends Controller implements KeyHandler, Up
 				entity.setVelocityX(movementSpeed);
 			}
 			
-			else if(!blockRight(entity.getPositionX(), entity.getPositionY() + getJumpHeight(world.getGravity()), entity.getWidth(), entity.getHeight()) && canJump()) {
+			else if(!blockRight(entity.getPositionX(), entity.getPositionY() + getJumpHeight(((DefaultWorld)world).getGravity()), entity.getWidth(), entity.getHeight()) && canJump()) {
 				entity.setVelocityY(movementSpeed);
 			}
 		}

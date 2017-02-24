@@ -11,10 +11,10 @@ import ritzow.solomon.engine.input.Controls;
 public final class PanningCameraController extends CameraController {
 	protected final Camera camera;
 	protected final ClientAudioSystem audio;
-	protected float panSpeed;
-	protected float zoomSpeed;
-	protected float minZoom;
-	protected float maxZoom;
+	protected final float panSpeed;
+	protected final float zoomSpeed;
+	protected final float minZoom;
+	protected final float maxZoom;
 	
 	protected float velocityX;
 	protected float velocityY;
@@ -31,6 +31,7 @@ public final class PanningCameraController extends CameraController {
 		this.panSpeed = panSpeed;
 		this.minZoom = minZoom;
 		this.maxZoom = maxZoom;
+		this.zoomSpeed = 0.2f;
 	}
 	
 	@Override
