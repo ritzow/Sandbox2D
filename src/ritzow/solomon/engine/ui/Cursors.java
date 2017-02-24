@@ -13,11 +13,10 @@ import org.lwjgl.BufferUtils;
 import org.lwjgl.glfw.GLFWImage;
 
 public final class Cursors {
-	public static long LEAFY_STICK;
+	
 	public static long PICKAXE;
 	
 	public static void loadAll() throws FileNotFoundException, IOException {
-		Cursors.LEAFY_STICK = loadCursor(new File("resources/assets/textures/cursors/cursor.png"), 0, 0);
 		Cursors.PICKAXE = loadCursor(new File("resources/assets/textures/cursors/pickaxe32.png"), 0, 0.66f);
 	}
 	
