@@ -1,6 +1,16 @@
 package ritzow.solomon.engine.graphics;
 
+import static org.lwjgl.opengl.GL11.GL_TEXTURE_2D;
+import static org.lwjgl.opengl.GL11.GL_TRIANGLES;
+import static org.lwjgl.opengl.GL11.GL_UNSIGNED_INT;
+import static org.lwjgl.opengl.GL11.glBindTexture;
+import static org.lwjgl.opengl.GL11.glDrawElements;
+import static org.lwjgl.opengl.GL15.GL_ELEMENT_ARRAY_BUFFER;
+import static org.lwjgl.opengl.GL15.glBindBuffer;
+import static org.lwjgl.opengl.GL30.glBindVertexArray;
+
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 
 public final class ModelRenderer extends ShaderProgram {
@@ -49,36 +59,39 @@ public final class ModelRenderer extends ShaderProgram {
 	};
 	
 	public ModelRenderer(File vertexShader, File fragmentShader, Camera camera) throws IOException {
-		super(new Shader(vertexShader, org.lwjgl.opengl.GL20.GL_VERTEX_SHADER), new Shader(fragmentShader, org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER));
+		super(
+			new Shader(new FileInputStream(vertexShader), org.lwjgl.opengl.GL20.GL_VERTEX_SHADER), 
+			new Shader(new FileInputStream(fragmentShader), org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER)
+		);
 		this.camera = camera;
 		this.uniform_transform = getUniformID("transform");
 		this.uniform_opacity = getUniformID("opacity");
 		this.uniform_view = getUniformID("view");
 	}
 	
-	public final void loadOpacity(float opacity) {
+	public void loadOpacity(float opacity) {
 		loadFloat(uniform_opacity, opacity);
 	}
 	
-	public final void renderModelIndex(int modelIndex) {
-		Models.get(modelIndex).render();
+	@SuppressWarnings("static-method")
+	public void render(Model model) {
+		glBindVertexArray(model.vao);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model.indices);
+		glBindTexture(GL_TEXTURE_2D, model.texture);
+		glDrawElements(GL_TRIANGLES, model.vertexCount, GL_UNSIGNED_INT, 0);
 	}
 	
-	public final void renderModel(int modelIndex, float opacity, float posX, float posY, float scaleX, float scaleY, float rotation) {
+	public void render(Model model, float opacity, float posX, float posY, float scaleX, float scaleY, float rotation) {
 		loadOpacity(opacity);
 		loadTransformationMatrix(posX, posY, scaleX, scaleY, rotation);
-		Models.get(modelIndex).render();
+		render(model);
 	}
 	
-	public final void renderGraphics(Graphics g, float posX, float posY) {
-		renderModel(g.getModelIndex(), g.getOpacity(), posX, posY,  g.getScaleX(), g.getScaleY(), g.getRotation());
+	public void renderGraphics(Graphics g, float opacity, float posX, float posY, float scaleX, float scaleY, float rotation) {
+		render(Models.forIndex(g.getModelIndex()), g.getOpacity() * opacity, posX, posY, g.getScaleX() * scaleX, g.getScaleY() * scaleY, g.getRotation() + rotation);
 	}
 	
-	public final void renderGraphics(Graphics g, float opacity, float posX, float posY, float scaleX, float scaleY, float rotation) {
-		renderModel(g.getModelIndex(), g.getOpacity() * opacity, posX, posY, g.getScaleX() * scaleX, g.getScaleY() * scaleY, g.getRotation() + rotation);
-	}
-	
-	public final void loadTransformationMatrix(float posX, float posY, float scaleX, float scaleY, float rotation) {
+	public void loadTransformationMatrix(float posX, float posY, float scaleX, float scaleY, float rotation) {
 		transformationMatrix[0] = scaleX * (float) Math.cos(rotation);
 		transformationMatrix[1] = scaleY * (float) Math.sin(rotation);
 		transformationMatrix[3] = posX;
@@ -88,11 +101,11 @@ public final class ModelRenderer extends ShaderProgram {
 		loadMatrix(uniform_transform, transformationMatrix);
 	}
 	
-	public final void loadViewMatrixIdentity() {
+	public void loadViewMatrixIdentity() {
 		loadMatrix(uniform_view, identityMatrix);
 	}
 	
-	public final void loadViewMatrix(boolean includeCamera) {
+	public void loadViewMatrix(boolean includeCamera) {
 		aspectMatrix[0] = framebufferHeight/framebufferWidth;
 		
 		if(includeCamera) {
@@ -107,65 +120,65 @@ public final class ModelRenderer extends ShaderProgram {
 		}
 	}
 	
-	private final void clearMatrix(float[] matrix) {
+	private static void clearMatrix(float[] matrix) {
 		for(int i = 0; i < matrix.length; i++) {
 			matrix[i] = 0;
 		}
 	}
 	
-	private final void loadCameraMatrix(float[] matrix) {
+	private void loadCameraMatrix(float[] matrix) {
 		matrix[0] = camera.getZoom();
 		matrix[3] = -camera.getPositionX() * camera.getZoom();
 		matrix[5] = camera.getZoom();
 		matrix[7] = -camera.getPositionY() * camera.getZoom();
 	}
 	
-	public final float getWorldViewportLeftBound() {
+	public float getWorldViewportLeftBound() {
 		float worldX = -framebufferWidth/framebufferHeight; //far left of screen after accounting for aspect ratio
 		worldX /= camera.getZoom();
 		worldX += camera.getPositionX();
 		return worldX;
 	}
 	
-	public final float getWorldViewportRightBound() {
+	public float getWorldViewportRightBound() {
 		float worldX = framebufferWidth/framebufferHeight; //far right of screen, after accounting for aspect ratio
 		worldX /= camera.getZoom();
 		worldX += camera.getPositionX();
 		return worldX;
 	}
 	
-	public final float getWorldViewportTopBound() {
+	public float getWorldViewportTopBound() {
 		float worldY = 1;
 		worldY /= camera.getZoom();
 		worldY += camera.getPositionY();
 		return worldY;
 	}
 	
-	public final float getWorldViewportBottomBound() {
+	public float getWorldViewportBottomBound() {
 		float worldY = -1;
 		worldY /= camera.getZoom();
 		worldY += camera.getPositionY();
 		return worldY;
 	}
 
-	public final Camera getCamera() {
+	public Camera getCamera() {
 		return camera;
 	}
 	
-	public final float getFramebufferWidth() {
+	public float getFramebufferWidth() {
 		return framebufferWidth;
 	}
 	
-	public final float getFramebufferHeight() {
+	public float getFramebufferHeight() {
 		return framebufferHeight;
 	}
 	
-	public final void setResolution(float framebufferWidth, float framebufferHeight) {
+	public void setResolution(float framebufferWidth, float framebufferHeight) {
 		this.framebufferWidth = framebufferWidth;
 		this.framebufferHeight = framebufferHeight;
 	}
 	
-	private static final void multiply(float[] a, float[] b, float[] destination) {
+	private static void multiply(float[] a, float[] b, float[] destination) {
 		for(int i = 0; i < 4; i++){
 			for(int j = 0; j < 4; j++){
 				for(int k = 0; k < 4; k++){
@@ -175,11 +188,11 @@ public final class ModelRenderer extends ShaderProgram {
 		}
 	}
 	
-	private static final float get(float[] array, int row, int column) {
+	private static float get(float[] array, int row, int column) {
 		return array[(row * 4) + column];
 	}
 	
-	private static final void set(float[] array, int row, int column, float value) {
+	private static void set(float[] array, int row, int column, float value) {
 		array[(row * 4) + column] =  value;
 	}
 }
