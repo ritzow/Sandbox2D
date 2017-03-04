@@ -27,6 +27,7 @@ import ritzow.solomon.engine.world.entity.PlayerEntity;
 
 public final class StartClient {
 	public static void main(String... args) throws IOException {
+		
 		Client client = new Client();
 		new Thread(client, "Client Thread").start();
 		client.waitForSetup();
@@ -109,7 +110,7 @@ public final class StartClient {
 			final PlayerEntity player = client.getPlayer();
 			
 			//create player controllers so the user can "play the game", for testing purposes
-			Controller[] controllers = new Controller[] {
+			Controller[] controllers = {
 					new PlayerController(player, world, client),
 					new InteractionController(player, world, graphicsManager.getRenderer().getCamera(), 200, false),
 					new TrackingCameraController(graphicsManager.getRenderer().getCamera(), player, audio, 0.005f, 0.05f, 0.6f)
