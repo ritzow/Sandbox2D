@@ -5,20 +5,26 @@ import static org.lwjgl.opengl.GL20.glCreateShader;
 import static org.lwjgl.opengl.GL20.glDeleteShader;
 import static org.lwjgl.opengl.GL20.glShaderSource;
 
-import java.io.File;
-import java.io.FileInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 
 final class Shader {
 	protected final int shaderID;
 
-	public Shader(File file, int glShaderType) throws IOException {
-		byte[] data = new byte[(int)file.length()];
-		FileInputStream reader = new FileInputStream(file);
-		reader.read(data);
-		reader.close();
+	public Shader(InputStream input, int glShaderType) throws IOException {
+		byte[] temp = new byte[input.available()];
+		ByteArrayOutputStream buffer = new ByteArrayOutputStream(temp.length);
+		
+		int read = 0;
+		while((read = input.read(temp)) > 0) {
+			buffer.write(temp, 0, read);
+		}
+		
+		input.close();
+		buffer.flush();
 		shaderID = glCreateShader(glShaderType);
-		glShaderSource(shaderID, new String(data));
+		glShaderSource(shaderID, new String(buffer.toByteArray()));
 		glCompileShader(shaderID);
 	}
 	
