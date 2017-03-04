@@ -10,10 +10,6 @@ import ritzow.solomon.engine.graphics.ModelRenderer;
 import ritzow.solomon.engine.util.ByteUtil;
 import ritzow.solomon.engine.world.entity.Entity;
 
-/**
- * Handler and organizer of {@link Entity} and {@link BlockGrid} objects. Handles updating of entities in the world and rendering of entities and blocks. 
- * Contains a foreground and background.
- */
 public final class DefaultWorld extends World {
 	
 	/** collection of entities in the world **/
