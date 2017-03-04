@@ -21,32 +21,32 @@ public final class WAVEDecoder {
 		this.input = input;
 	}
 	
-	public final short getFormat() {
+	public short getFormat() {
 		checkStatus();
 		return format;
 	}
 
-	public final short getChannels() {
+	public short getChannels() {
 		checkStatus();
 		return numChannels;
 	}
 
-	public final int getSampleRate() {
+	public int getSampleRate() {
 		checkStatus();
 		return sampleRate;
 	}
 
-	public final int getByteRate() {
+	public int getByteRate() {
 		checkStatus();
 		return byteRate;
 	}
 
-	public final short getBlockAlign() {
+	public short getBlockAlign() {
 		checkStatus();
 		return blockAlign;
 	}
 
-	public final short getBitsPerSample() {
+	public short getBitsPerSample() {
 		checkStatus();
 		return bitsPerSample;
 	}
@@ -60,6 +60,7 @@ public final class WAVEDecoder {
 		data.flip();
 	}
 
+	@Override
 	public String toString() {
 		checkStatus();
 		return 

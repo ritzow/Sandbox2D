@@ -174,6 +174,7 @@ public final class DefaultWorld extends World {
 	 * are resolved.
 	 * @param time the amount of time to simulate.
 	 */
+	@Override
 	public void update(float time) {
 		synchronized(entities) {
 			for(int i = 0; i < entities.size(); i++) {
@@ -287,7 +288,7 @@ public final class DefaultWorld extends World {
 	 * @param o an entity
 	 * @return true if the entities intersect eachother, false otherwise
 	 */
-	protected final boolean checkCollision(Entity e, Entity o) {
+	protected final static boolean checkCollision(Entity e, Entity o) {
 		return checkCollision(e, o.getPositionX(), o.getPositionY(), o.getWidth(), o.getHeight());
 	}
 
@@ -300,7 +301,7 @@ public final class DefaultWorld extends World {
 	 * @param otherHeight the height of the hitbox
 	 * @return true if the entity and hitbox intersect, false otherwise;
 	 */
-	protected final boolean checkCollision(Entity e, float otherX, float otherY, float otherWidth, float otherHeight) {
+	protected final static boolean checkCollision(Entity e, float otherX, float otherY, float otherWidth, float otherHeight) {
 		 return (Math.abs(e.getPositionX() - otherX) * 2 < (e.getWidth() + otherWidth)) &&  (Math.abs(e.getPositionY() - otherY) * 2 < (e.getHeight() + otherHeight));
 	}
 
@@ -311,7 +312,7 @@ public final class DefaultWorld extends World {
 	 * @param time the amount of time to simulate during the collision resolution
 	 * @return true if a collision occurred, false otherwise
 	 */
-	protected final boolean resolveCollision(Entity e, Entity o, float time) {
+	protected final static boolean resolveCollision(Entity e, Entity o, float time) {
 		return resolveCollision(e, o.getPositionX(), o.getPositionY(), o.getWidth(), o.getHeight(), o.getFriction(), time);
 	}
 	
@@ -326,7 +327,7 @@ public final class DefaultWorld extends World {
 	 * @param time the amount of time that the resolution should simulate
 	 * @return true if a collision occurred
 	 */
-	protected boolean resolveCollision(Entity e, float otherX, float otherY, float otherWidth, float otherHeight, float otherFriction, float time) {
+	protected static boolean resolveCollision(Entity e, float otherX, float otherY, float otherWidth, float otherHeight, float otherFriction, float time) {
 		float width = 0.5f * (e.getWidth() + otherWidth);
 		float height = 0.5f * (e.getHeight() + otherHeight);
 		float deltaX = otherX - e.getPositionX();
@@ -380,7 +381,7 @@ public final class DefaultWorld extends World {
 		return false;
 	}
 	
-	protected boolean resolveBlockCollision(Entity e, float blockX, float blockY, float blockFriction, float time, 
+	protected static boolean resolveBlockCollision(Entity e, float blockX, float blockY, float blockFriction, float time, 
 			boolean blockUp, boolean blockLeft, boolean blockRight, boolean blockDown) {
 		float width = 0.5f * (e.getWidth() + 1);
 		float height = 0.5f * (e.getHeight() + 1);

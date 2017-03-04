@@ -35,6 +35,7 @@ public class ParticleEntity extends Entity {
 		throw new UnsupportedOperationException("not implemented");
 	}
 	
+	@Override
 	public void update(float time) {
 		float remaining = getLifetimeRemaining();
 		

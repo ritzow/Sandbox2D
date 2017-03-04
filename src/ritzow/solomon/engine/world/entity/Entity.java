@@ -31,6 +31,7 @@ public abstract class Entity implements Transportable {
 		velocityY = ByteUtil.getFloat(data, 16);
 	}
 	
+	@Override
 	public byte[] getBytes() {
 		byte[] data = new byte[20];
 		ByteUtil.putInteger(data, 0, entityID);
@@ -113,6 +114,7 @@ public abstract class Entity implements Transportable {
 		this.velocityY = velocityY;
 	}
 	
+	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
 		builder.append("positionX = ");

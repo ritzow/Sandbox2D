@@ -54,6 +54,7 @@ public class Text extends Element {
 		this.spacing = spacing;
 	}
 	
+	@Override
 	public float getWidth() {
 		return 1; //TODO implement text width
 	}

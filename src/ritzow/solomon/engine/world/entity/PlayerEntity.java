@@ -47,6 +47,7 @@ public class PlayerEntity extends Entity implements Living {
 		return bytes;
 	}
 	
+	@Override
 	public void update(float time) {
 		if(left)
 			velocityX = -getMass();

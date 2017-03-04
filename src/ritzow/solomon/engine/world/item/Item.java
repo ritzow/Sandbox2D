@@ -23,6 +23,7 @@ public abstract class Item implements Transportable {
 	 */
 	public abstract boolean equals(Item item);
 	
+	@Override
 	public boolean equals(Object object) {
 		return object instanceof Item && equals((Item)object);
 	}
