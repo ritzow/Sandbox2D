@@ -1,6 +1,7 @@
 #Project
 bin/
 data/
+libraries/
 
 #Eclipse
 .settings
