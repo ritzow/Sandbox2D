@@ -7,8 +7,8 @@ import ritzow.solomon.engine.util.ByteUtil;
 import ritzow.solomon.engine.util.Transportable;
 import ritzow.solomon.engine.world.block.Block;
 
-public class BlockGrid implements Transportable {
-	protected final Block[][] blocks;
+public final class BlockGrid implements Transportable {
+	private final Block[][] blocks;
 	
 	public BlockGrid(int width, int height) {
 		blocks = new Block[height][width];
@@ -49,6 +49,7 @@ public class BlockGrid implements Transportable {
 		return out.toByteArray();
 	}
 	
+	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
 		
@@ -83,7 +84,7 @@ public class BlockGrid implements Transportable {
 	}
 	
 	public boolean isValid(int x, int y) {
-		return y < blocks.length && y >= 0 && x < blocks[y].length && x >= 0;
+		return y >= 0 && x >= 0 && y < blocks.length && x < blocks[y].length;
 	}
 	
 	public Block get(int x, int y) {
@@ -127,7 +128,7 @@ public class BlockGrid implements Transportable {
 	 * @param y the vertical block coordinate to check
 	 * @return whether or not there is a block at the specified block coordinates
 	 */
-	public boolean isBlock(int x, int y) {
+	public final boolean isBlock(int x, int y) {
 		return isValid(x, y) && get(x, y) != null;
 	}
 	
