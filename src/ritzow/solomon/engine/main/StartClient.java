@@ -8,7 +8,7 @@ import java.net.SocketAddress;
 import ritzow.solomon.engine.audio.ClientAudioSystem;
 import ritzow.solomon.engine.audio.Sounds;
 import ritzow.solomon.engine.graphics.Background;
-import ritzow.solomon.engine.graphics.GraphicsManager;
+import ritzow.solomon.engine.graphics.GraphicsUpdater;
 import ritzow.solomon.engine.graphics.Models;
 import ritzow.solomon.engine.input.Controls;
 import ritzow.solomon.engine.input.EventProcessor;
@@ -92,7 +92,7 @@ public final class StartClient {
 			eventProcessor.getDisplay().getInputManager().getKeyHandlers().add(this);
 			
 			//start the graphics manager, which will load all models into OpenGL and setup the OpenGL context.
-			final GraphicsManager graphicsManager = new GraphicsManager(eventProcessor.getDisplay());
+			final GraphicsUpdater graphicsManager = new GraphicsUpdater(eventProcessor.getDisplay());
 			new Thread(graphicsManager, "Graphics Manager").start();
 			
 			//wait for the graphics manager to finish setup.

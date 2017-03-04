@@ -23,7 +23,7 @@ import ritzow.solomon.engine.util.Exitable;
 import ritzow.solomon.engine.util.Installable;
 
 /** Initializes OpenGL and loads data to the GPU, then renders any Renderable objects added to the List returned by getUpdatables() **/
-public final class GraphicsManager implements Runnable, Installable, Exitable, FramebufferSizeHandler, WindowFocusHandler {
+public final class GraphicsUpdater implements Runnable, Installable, Exitable, FramebufferSizeHandler, WindowFocusHandler {
 	private volatile boolean setupComplete, exit, finished;
 	private volatile int framebufferWidth, framebufferHeight;
 	private volatile boolean updateFrameSize, focused;
@@ -31,7 +31,7 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 	private ModelRenderer renderer;
 	private final List<Renderable> renderables;
 	
-	public GraphicsManager(Display display) {
+	public GraphicsUpdater(Display display) {
 		this.display = display;
 		this.renderables = new LinkedList<Renderable>();
 		this.link(display.getInputManager());
@@ -64,7 +64,8 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 				if(focused) {
 					if(updateFrameSize) {
 						glViewport(0, 0, framebufferWidth, framebufferHeight);
-						renderer.setResolution(framebufferWidth, framebufferHeight);
+						renderer.framebufferWidth = framebufferWidth;
+						renderer.framebufferHeight = framebufferHeight;
 						updateFrameSize = false;
 					}
 					
@@ -76,14 +77,12 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 					
 					display.refresh();
 					Thread.sleep(1);
-				}
-				
-				else {
+				} else {
 					synchronized(this) {
-						while(!focused && !exit) {
-							this.wait();
+						while(!(focused || exit)) {
+							this.wait(); //pause rendering to lower CPU usage when not active
 						}
-						updateFrameSize = true;
+						//updateFrameSize = true; TODO determine if frame size actually needs to be updated or not
 					}
 				}
 			}
