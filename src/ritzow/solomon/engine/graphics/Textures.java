@@ -18,21 +18,20 @@ public final class Textures {
 	public static Texture DIRT;
 	
 	public static void loadAll(File directory) throws IOException {
-		Textures.BLUE_SQUARE = loadTexture(new File(directory, "blueSquare.png"));
-		Textures.RED_SQUARE = loadTexture(new File(directory, "redSquare.png"));
-		Textures.GREEN_FACE = loadTexture(new File(directory, "greenFace.png"));
-		Textures.DIRT = loadTexture(new File(directory, "dirt.png"));
-		Textures.GRASS = loadTexture(new File(directory, "grass.png"));
-		Textures.CLOUDS = loadTexture(new File(directory, "clouds.png"));
+		Textures.BLUE_SQUARE = 	loadTexture(new FileInputStream(new File(directory, "blueSquare.png")));
+		Textures.RED_SQUARE = 	loadTexture(new FileInputStream(new File(directory, "redSquare.png")));
+		Textures.GREEN_FACE = 	loadTexture(new FileInputStream(new File(directory, "greenFace.png")));
+		Textures.DIRT = 		loadTexture(new FileInputStream(new File(directory, "dirt.png")));
+		Textures.GRASS = 		loadTexture(new FileInputStream(new File(directory, "grass.png")));
+		Textures.CLOUDS = 		loadTexture(new FileInputStream(new File(directory, "clouds.png")));
 	}
 	
-	public static Texture loadTexture(File file) throws IOException {
-		InputStream data = new FileInputStream(file);
-		PNGDecoder decoder = new PNGDecoder(data);
+	public static Texture loadTexture(InputStream input) throws IOException {
+		PNGDecoder decoder = new PNGDecoder(input);
 		ByteBuffer pixels = BufferUtils.createByteBuffer(decoder.getWidth() * decoder.getHeight() * 4);
 		decoder.decodeFlipped(pixels, decoder.getWidth() * 4, Format.RGBA);
 		pixels.flip();
-		data.close();
+		input.close();
 		return new Texture(pixels, decoder.getWidth(), decoder.getHeight());
 	}
 }

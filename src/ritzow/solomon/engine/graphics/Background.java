@@ -20,7 +20,7 @@ public class Background implements Renderable {
 			renderer.loadTransformationMatrix(0, 0, 2 * renderer.getFramebufferHeight()/renderer.getFramebufferWidth(), 2, 0);
 		}
 		
-		renderer.renderModelIndex(model);
+		renderer.render(Models.forIndex(model));
 		
 	}
 }

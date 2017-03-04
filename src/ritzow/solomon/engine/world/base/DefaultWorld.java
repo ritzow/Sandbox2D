@@ -259,11 +259,9 @@ public final class DefaultWorld extends World {
 		for(int row = bottomBound; row <= topBound; row++) {
 			for(int column = leftBound; column <= rightBound; column++) {
 				if(foreground.isBlock(column, row)) {
-					renderer.renderModel(foreground.get(column, row).getModelIndex(), 1.0f, column, row, 1.0f, 1.0f, 0.0f);
-				}
-				
-				else if(background.isBlock(column, row)) {
-					renderer.renderModel(background.get(column, row).getModelIndex(), 0.5f, column, row, 1.0f, 1.0f, 0.0f);
+					renderer.render(Models.forIndex(foreground.get(column, row).getModelIndex()), 1.0f, column, row, 1.0f, 1.0f, 0.0f);
+				} else if(background.isBlock(column, row)) {
+					renderer.render(Models.forIndex(background.get(column, row).getModelIndex()), 0.5f, column, row, 1.0f, 1.0f, 0.0f);
 				}
 			}
 		}

@@ -19,7 +19,6 @@ import org.lwjgl.opengl.GL;
 import ritzow.solomon.engine.input.InputManager;
 import ritzow.solomon.engine.input.handler.FramebufferSizeHandler;
 import ritzow.solomon.engine.input.handler.WindowFocusHandler;
-import ritzow.solomon.engine.ui.Fonts;
 import ritzow.solomon.engine.util.Exitable;
 import ritzow.solomon.engine.util.Installable;
 
@@ -27,8 +26,7 @@ import ritzow.solomon.engine.util.Installable;
 public final class GraphicsManager implements Runnable, Installable, Exitable, FramebufferSizeHandler, WindowFocusHandler {
 	private volatile boolean setupComplete, exit, finished;
 	private volatile int framebufferWidth, framebufferHeight;
-	private volatile boolean updateFrameSize;
-	private volatile boolean focused;
+	private volatile boolean updateFrameSize, focused;
 	private final Display display;
 	private ModelRenderer renderer;
 	private final List<Renderable> renderables;
@@ -51,7 +49,6 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 		try {
 			Textures.loadAll(new File("resources/assets/textures"));
 			Models.loadAll();
-			Fonts.loadAll(new File("resources/assets/fonts"));
 			renderer = new ModelRenderer(new File("resources/shaders/vertexShader"), new File("resources/shaders/fragmentShader"), new Camera( 0, 0, 1));
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -91,10 +88,9 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 				}
 			}
 		} catch(InterruptedException e) {
-			System.err.println("Graphics Manager " + this.hashCode() + " was interrupted");
+			e.printStackTrace();
 		} finally {
 			renderables.clear();
-			Models.deleteAll();
 			display.closeContext();
 			GL.destroy();
 			

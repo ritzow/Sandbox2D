@@ -1,10 +1,8 @@
 package ritzow.solomon.engine.ui;
 
-import ritzow.solomon.engine.graphics.Font;
 import ritzow.solomon.engine.graphics.ModelRenderer;
 
 public class Text extends Element {
-	
 	protected String text;
 	protected Font font;
 	protected int size;
@@ -25,7 +23,7 @@ public class Text extends Element {
 		float charWidth = (size * 0.02f) + (size * 0.02f * spacing);
 		for(float pos = positionX; index < text.length(); pos += charWidth) {
 			renderer.loadTransformationMatrix(pos, positionY, size * 0.02f, size * 0.021f, 0);
-			font.getModel(text.charAt(index)).render();
+			renderer.render(font.getModel(text.charAt(index)));
 			index++;
 		}
 	}

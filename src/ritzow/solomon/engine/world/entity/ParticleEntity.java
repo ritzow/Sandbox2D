@@ -1,6 +1,7 @@
 package ritzow.solomon.engine.world.entity;
 
 import ritzow.solomon.engine.graphics.ModelRenderer;
+import ritzow.solomon.engine.graphics.Models;
 
 public class ParticleEntity extends Entity {
 	protected final int model;
@@ -55,7 +56,7 @@ public class ParticleEntity extends Entity {
 
 	@Override
 	public void render(ModelRenderer renderer) {
-		renderer.renderModel(model, opacity, positionX, positionY, scaleX, scaleY, rotation);
+		renderer.render(Models.forIndex(model), opacity, positionX, positionY, scaleX, scaleY, rotation);
 	}
 	
 	protected long getLifetimeRemaining() {
