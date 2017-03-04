@@ -51,7 +51,7 @@ public final class ClientAudioSystem implements AudioSystem {
 		alGenSources(sources);
 	}
 	
-	public void shutdown() {
+	public synchronized void shutdown() {
 		alDeleteSources(sources);
 		Sounds.deleteAll();
 		alcMakeContextCurrent(0);
@@ -61,29 +61,31 @@ public final class ClientAudioSystem implements AudioSystem {
 	}
 
 	@Override
-	public void playSound(int sound, float x, float y, float velocityX, float velocityY, float gain, float pitch) {
-		for(int i = 0; i < sources.length; i++) {
-			int state = alGetSourcei(sources[i], AL_SOURCE_STATE);
+	public synchronized void playSound(int sound, float x, float y, float velocityX, float velocityY, float gain, float pitch) {
+		for(int source : sources) {
+			int state = alGetSourcei(source, AL_SOURCE_STATE);
 			if(state == AL_STOPPED || state == AL_INITIAL) {
-				alSourcei(sources[i], AL_BUFFER, sound);
-				alSource3f(sources[i], AL_POSITION, x, y, 0);
-				alSource3f(sources[i], AL_VELOCITY, velocityX, velocityY, 0);
-				alSourcef(sources[i], AL_GAIN, gain);
-				alSourcef(sources[i], AL_PITCH, pitch);
-				alSourcePlay(sources[i]);
+				alSourcei(source, AL_BUFFER, sound);
+				alSource3f(source, AL_POSITION, x, y, 0);
+				alSource3f(source, AL_VELOCITY, velocityX, velocityY, 0);
+				alSourcef(source, AL_GAIN, gain);
+				alSourcef(source, AL_PITCH, pitch);
+				alSourcePlay(source);
 			}
 		}
 	}
 
 	@Override
-	public void playSoundGlobal(int sound, float gain, float pitch) {
+	public synchronized void playSoundGlobal(int sound, float gain, float pitch) {
 		System.out.println("client global sound playing not implemented");
 	}
 
+	@SuppressWarnings("static-method")
 	public synchronized void setVolume(float gain) {
 		alListenerf(AL_GAIN, gain);
 	}
 
+	@SuppressWarnings("static-method")
 	public synchronized void setRelativePosition(float x, float y) {
 		alListener3f(AL_POSITION, x, y, 0);
 	}
