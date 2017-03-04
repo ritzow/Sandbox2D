@@ -20,8 +20,8 @@ public final class ModelRenderer extends ShaderProgram {
 	private final int uniform_view;
 	
 	//store models in ModelRenderer, rather than Models class
-	private float framebufferWidth;
-	private float framebufferHeight;
+	protected float framebufferWidth;
+	protected float framebufferHeight;
 	
 	private static final float[] identityMatrix = {
 			1, 0, 0, 0,

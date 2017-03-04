@@ -17,12 +17,6 @@ final class PositionBuffer {
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
 	
-//	public void specifyFormat() {
-//		glBindBuffer(GL_ARRAY_BUFFER, id);
-//		glEnableVertexAttribArray(ShaderProgram.ATTRIBUTE_POSITIONS);
-//		glVertexAttribPointer(ShaderProgram.ATTRIBUTE_POSITIONS, 2, GL_FLOAT, false, 0, 0);
-//	}
-	
 	public void delete() {
 		glDeleteBuffers(id);
 	}
