@@ -7,6 +7,7 @@ import java.util.Iterator;
 import java.util.List;
 import ritzow.solomon.engine.audio.AudioSystem;
 import ritzow.solomon.engine.graphics.ModelRenderer;
+import ritzow.solomon.engine.graphics.Models;
 import ritzow.solomon.engine.util.ByteUtil;
 import ritzow.solomon.engine.world.entity.Entity;
 
@@ -118,6 +119,7 @@ public final class DefaultWorld extends World {
 		return bytes;
 	}
 	
+	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
 		builder.append(foreground.toString());
@@ -130,26 +132,31 @@ public final class DefaultWorld extends World {
 		return builder.toString();
 	}
 	
+	@Override
 	public BlockGrid getForeground() {
 		return foreground;
 	}
 	
+	@Override
 	public BlockGrid getBackground() {
 		return background;
 	}
 	
+	@Override
 	public void add(Entity e) {
 		synchronized(entities) {
 			entities.add(e);
 		}
 	}
 	
+	@Override
 	public void remove(Entity e) {
 		synchronized(entities) {
 			entities.remove(e);
 		}
 	}
 	
+	@Override
 	public void remove(int entityID) {
 		synchronized(entities) {
 			entities.removeIf(e -> e.getID() == entityID);

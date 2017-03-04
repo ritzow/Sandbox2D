@@ -43,7 +43,7 @@ public final class StartServer {
 					System.exit(1);
 				}
 			} else { //if no world can be loaded, create a new one.
-				World world = new DefaultWorld(audio, 1000, 100);
+				World world = new DefaultWorld(audio, 100, 50);
 				for(int column = 0; column < world.getForeground().getWidth(); column++) {
 					double height = world.getForeground().getHeight()/2;
 					height += (Math.sin(column * 0.1f) + 1) * (world.getForeground().getHeight() - height) * 0.05f;
@@ -76,6 +76,10 @@ public final class StartServer {
 						}
 						server.exit();
 						server.waitUntilFinished();
+						
+						if(!saveFile.exists()) {
+							saveFile.createNewFile();
+						}
 						
 						try(FileOutputStream out = new FileOutputStream(saveFile)) {
 							System.out.print("Server saving world... ");
