@@ -57,17 +57,20 @@ public final class Client extends NetworkController {
 				case Protocol.SERVER_WORLD_DATA:
 					processReceiveWorldData(data);
 					break;
-				case Protocol.SERVER_PLAYER_ENTITY:
+				case Protocol.SERVER_PLAYER_ENTITY_COMPRESSED:
 					processReceivePlayerEntity(data);
 					break;
 				case Protocol.CONSOLE_MESSAGE:
 					System.out.println("[Server] " + new String(data, 2, data.length - 2, Charset.forName("UTF-8")));
 					break;
-				case Protocol.GENERIC_ENTITY_UPDATE:
+				case Protocol.SERVER_ENTITY_UPDATE:
 					processGenericEntityUpdate(data);
 					break;
 				case Protocol.SERVER_ADD_ENTITY:
-					processAddEntity(data);
+					processAddEntity(data, false);
+					break;
+				case Protocol.SERVER_ADD_ENTITY_COMPRESSED:
+					processAddEntity(data, true);
 					break;
 				case Protocol.SERVER_REMOVE_ENTITY:
 					if(world != null) {
@@ -209,10 +212,10 @@ public final class Client extends NetworkController {
 		}
 	}
 	
-	private void processAddEntity(byte[] data) {
+	private void processAddEntity(byte[] data, boolean compressed) {
 		if(world != null) {
 			try {
-				world.add((Entity)ByteUtil.deserialize(ByteUtil.decompress(Arrays.copyOfRange(data, 2, data.length))));
+				world.add((Entity)ByteUtil.deserialize(compressed ? ByteUtil.decompress(Arrays.copyOfRange(data, 2, data.length)) : Arrays.copyOfRange(data, 2, data.length)));
 			} catch(ClassCastException | ReflectiveOperationException e) {
 				System.err.println("Error while deserializing received entity");
 			}

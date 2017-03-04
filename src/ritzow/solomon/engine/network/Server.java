@@ -138,12 +138,12 @@ public final class Server extends NetworkController {
 					//send the player object to the client
 					byte[] playerData = ByteUtil.compress(ByteUtil.serialize(player));
 					byte[] playerPacket = new byte[2 + playerData.length];
-					ByteUtil.putShort(playerPacket, 0, Protocol.SERVER_PLAYER_ENTITY);
+					ByteUtil.putShort(playerPacket, 0, Protocol.SERVER_PLAYER_ENTITY_COMPRESSED);
 					ByteUtil.copy(playerData, playerPacket, 2);
 					send(playerPacket, newClient);
 					
 					//change the packet to an add entity packet and broadcast it to all already-connected clients
-					ByteUtil.putShort(playerPacket, 0, Protocol.SERVER_ADD_ENTITY);
+					ByteUtil.putShort(playerPacket, 0, Protocol.SERVER_ADD_ENTITY_COMPRESSED);
 					broadcast(playerPacket);
 					world.add(player);
 				}
