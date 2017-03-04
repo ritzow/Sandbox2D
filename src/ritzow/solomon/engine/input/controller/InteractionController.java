@@ -35,6 +35,7 @@ public final class InteractionController implements Controller, MouseButtonHandl
 		this.instantBreak = instantBreak;
 	}
 	
+	@Override
 	public void update() {
 		update(camera, frameWidth, frameHeight);
 	}
@@ -47,25 +48,25 @@ public final class InteractionController implements Controller, MouseButtonHandl
 		worldY /= camera.getZoom();
 		worldX += camera.getPositionX(); 							//apply camera position
 		worldY += camera.getPositionY();
-		int blockX = (int)Math.round(worldX);						//convert world coordinate to block grid coordinate
-		int blockY = (int)Math.round(worldY);
+		int blockX = Math.round(worldX);						//convert world coordinate to block grid coordinate
+		int blockY = Math.round(worldY);
 		float playerX = player.getPositionX();						//get player position
 		float playerY = player.getPositionY();
 		double distance = Math.sqrt((playerX - blockX) * (playerX - blockX) + (playerY - blockY) * (playerY - blockY));
 		
 		if(instantBreak || distance <= 4) {
-			if(primaryAction && (instantBreak || System.currentTimeMillis() - lastBreak > cooldown)) {
+			if(primaryAction && (instantBreak || System.nanoTime() - lastBreak > cooldown * 1000000)) {
 				if(world.getForeground().isValid(blockX, blockY) && (world.getForeground().destroy(world, blockX, blockY) || world.getBackground().destroy(world, blockX, blockY))) {
-					lastBreak = System.currentTimeMillis();
+					lastBreak = System.nanoTime();
 				}
 			}
 			
-			else if(secondaryAction && (System.currentTimeMillis() - lastPlacement > cooldown)) {
+			else if(secondaryAction && (System.nanoTime() - lastPlacement > cooldown * 1000000)) {
 				Item item = player.getSelectedItem();
 				if((item instanceof BlockItem) && world.getForeground().isValid(blockX, blockY) && 
 					(world.getBackground().place(world, blockX, blockY, ((BlockItem)item).getBlock()) || 
 					world.getForeground().place(world, blockX, blockY, ((BlockItem)item).getBlock()))) {
-					lastPlacement = System.currentTimeMillis();
+					lastPlacement = System.nanoTime();
 					player.removeSelectedItem();
 				}
 			}
