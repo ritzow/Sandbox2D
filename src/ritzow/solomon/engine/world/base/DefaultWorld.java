@@ -210,7 +210,8 @@ public final class DefaultWorld extends World {
 							boolean collision;
 							
 							if(e.doEntityCollisionResolution() && o.doEntityCollisionResolution()) {
-								collision = (e.getMass() < o.getMass()) ? resolveCollision(e, o, time) : resolveCollision(o, e, time);
+								//TODO improve collision priority/interaction (should both entities move in opposite directions?)
+								collision = (e.getMass() <= o.getMass() || e.getID() < o.getID()) ? resolveCollision(e, o, time) : resolveCollision(o, e, time);
 							} 
 							
 							else {
@@ -254,10 +255,15 @@ public final class DefaultWorld extends World {
 	public void render(ModelRenderer renderer) {
 		renderer.loadViewMatrix(true);
 		
-		int leftBound = 	Math.max(0, (int)Math.floor(renderer.getWorldViewportLeftBound()));
-		int bottomBound = 	Math.max(0, (int)Math.floor(renderer.getWorldViewportBottomBound()));
-		int rightBound = 	Math.min(foreground.getWidth(), (int)Math.ceil(renderer.getWorldViewportRightBound()));
-		int topBound = 		Math.min(foreground.getHeight(), (int)Math.ceil(renderer.getWorldViewportTopBound()));
+		float worldLeft = renderer.getWorldViewportLeftBound();
+		float worldRight = renderer.getWorldViewportRightBound();
+		float worldTop = renderer.getWorldViewportTopBound();
+		float worldBottom = renderer.getWorldViewportBottomBound();
+		
+		int leftBound = 	Math.max(0, (int)Math.floor(worldLeft));
+		int rightBound = 	Math.min(foreground.getWidth(), (int)Math.ceil(worldRight));
+		int topBound = 		Math.min(foreground.getHeight(), (int)Math.ceil(worldTop));
+		int bottomBound = 	Math.max(0, (int)Math.floor(worldBottom));
 		
 		for(int row = bottomBound; row <= topBound; row++) {
 			for(int column = leftBound; column <= rightBound; column++) {
@@ -272,14 +278,16 @@ public final class DefaultWorld extends World {
 		for(int i = 0; i < entities.size(); i++) {
 			Entity e = entities.get(i);
 			
-			if(e == null)
-				continue;
-			
-			if(e.getPositionX() < renderer.getWorldViewportRightBound() + e.getWidth()/2 
-				&& e.getPositionX() > renderer.getWorldViewportLeftBound() - e.getWidth()/2 
-				&& e.getPositionY() < renderer.getWorldViewportTopBound() + e.getHeight()/2 
-				&& e.getPositionY() > renderer.getWorldViewportBottomBound() - e.getHeight()/2)
-						e.render(renderer);
+			if(e != null) {
+				float posX = e.getPositionX();
+				float posY = e.getPositionY();
+				float halfWidth = e.getWidth()/2;
+				float halfHeight = e.getHeight()/2;
+				
+				if(posX < worldRight + halfWidth && posX > worldLeft - halfWidth && posY < worldTop + halfHeight && posY > worldBottom - halfHeight) {
+					e.render(renderer);	
+				}
+			}
 		}
 	}
 	
@@ -350,22 +358,14 @@ public final class DefaultWorld extends World {
 		        	e.setPositionX(otherX + width);
 		        	if(e.getVelocityX() < 0) {
 						e.setVelocityX(0);
-					} if(e.getVelocityY() > 0) {
-		        		e.setVelocityY(Math.max(0, e.getVelocityY() - combineFriction(e.getFriction(), otherFriction) * time));
-		        	} else if(e.getVelocityY() < 0) {
-		        		e.setVelocityY(Math.min(0, e.getVelocityY() + combineFriction(e.getFriction(), otherFriction) * time));
-		        	}
+					}
 		        }
 		    } else {
 		        if (wy > -hx) { /* collision on the right of e */
 		        	e.setPositionX(otherX - width);
 		        	if(e.getVelocityX() > 0) {
 						e.setVelocityX(0);
-					} if(e.getVelocityY() > 0) {
-		        		e.setVelocityY(Math.max(0, e.getVelocityY() - combineFriction(e.getFriction(), otherFriction) * time));
-		        	} else if(e.getVelocityY() < 0) {
-		        		e.setVelocityY(Math.min(0, e.getVelocityY() + combineFriction(e.getFriction(), otherFriction) * time));
-		        	}
+					}
 		        } else { /* collision on the bottom of e */
 		        	e.setPositionY(otherY + height);
 		        	if(e.getVelocityY() < 0) {
@@ -405,22 +405,14 @@ public final class DefaultWorld extends World {
 		        	e.setPositionX(blockX + width);
 		        	if(e.getVelocityX() < 0) {
 						e.setVelocityX(0);
-					} if(e.getVelocityY() > 0) {
-		        		e.setVelocityY(Math.max(0, e.getVelocityY() - combineFriction(e.getFriction(), blockFriction) * time));
-		        	} else if(e.getVelocityY() < 0) {
-		        		e.setVelocityY(Math.min(0, e.getVelocityY() + combineFriction(e.getFriction(), blockFriction) * time));
-		        	}
+					}
 		        }
 		    } else {
 		        if (!blockLeft && wy > -hx) { /* collision on left of block */
 		        	e.setPositionX(blockX - width);
 		        	if(e.getVelocityX() > 0) {
 						e.setVelocityX(0);
-					} if(e.getVelocityY() > 0) {
-		        		e.setVelocityY(Math.max(0, e.getVelocityY() - combineFriction(e.getFriction(), blockFriction) * time));
-		        	} else if(e.getVelocityY() < 0) {
-		        		e.setVelocityY(Math.min(0, e.getVelocityY() + combineFriction(e.getFriction(), blockFriction) * time));
-		        	}
+					}
 		        } else if(!blockUp) { /* collision on top of block */
 		        	e.setPositionY(blockY + height);
 		        	if(e.getVelocityY() < 0) {
