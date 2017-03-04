@@ -41,6 +41,7 @@ public class Inventory implements Transportable {
 		return out.toByteArray();
 	}
 	
+	@Override
 	public String toString() {
 		StringBuilder list = new StringBuilder("Size: " + items.length + " [");
 		for(int i = 0; i < items.length - 1; i++) {

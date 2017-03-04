@@ -47,7 +47,8 @@ public final class InputManager {
 		//TODO use a thread pool executor service with lambda expressions to send events to other threads?
 		
 		glfwSetKeyCallback(window, new GLFWKeyCallback() {
-		    public void invoke (long window, int key, int scancode, int action, int mods) {
+		    @Override
+			public void invoke (long window, int key, int scancode, int action, int mods) {
 				for(KeyHandler handler : keyHandlers) {
 					handler.keyboardButton(key, scancode, action, mods);
 				}
@@ -55,6 +56,7 @@ public final class InputManager {
 		});
 		
 		glfwSetScrollCallback(window, new GLFWScrollCallback() {
+			@Override
 			public void invoke(long window, double xoffset, double yoffset) {
 				for(ScrollHandler handler : scrollHandlers) {
 					handler.mouseScroll(xoffset, yoffset);
@@ -63,6 +65,7 @@ public final class InputManager {
 		});
 		
 		glfwSetMouseButtonCallback(window, new GLFWMouseButtonCallback() {
+			@Override
 			public void invoke(long window, int button, int action, int mods) {
 				for(MouseButtonHandler handler : mouseButtonHandlers) {
 					handler.mouseButton(button, action, mods);
@@ -71,6 +74,7 @@ public final class InputManager {
 		});
 		
 		glfwSetCursorPosCallback(window, new GLFWCursorPosCallback() {
+			@Override
 			public void invoke(long window, double xpos, double ypos) {
 				for(CursorPosHandler handler : cursorPosHandlers) {
 					handler.cursorPos(xpos, ypos);
@@ -79,6 +83,7 @@ public final class InputManager {
 		});
 		
 		glfwSetFramebufferSizeCallback(window, new GLFWFramebufferSizeCallback() {
+			@Override
 			public void invoke(long window, int width, int height) {
 				for(FramebufferSizeHandler handler : framebufferSizeHandlers) {
 					handler.framebufferSize(width, height);
@@ -87,6 +92,7 @@ public final class InputManager {
 		});
 		
 		glfwSetWindowRefreshCallback(window, new GLFWWindowRefreshCallback() {
+			@Override
 			public void invoke(long window) {
 				for(WindowRefreshHandler handler : windowRefreshHandlers) {
 					handler.windowRefresh();
@@ -95,6 +101,7 @@ public final class InputManager {
 		});
 		
 		glfwSetWindowCloseCallback(window, new GLFWWindowCloseCallback() {
+			@Override
 			public void invoke(long window) {
 				for(WindowCloseHandler handler : windowCloseHandlers) {
 					handler.windowClose();
@@ -103,6 +110,7 @@ public final class InputManager {
 		});
 		
 		glfwSetWindowIconifyCallback(window, new GLFWWindowIconifyCallback() {
+			@Override
 			public void invoke(long window, boolean iconified) {
 				for(WindowIconifyHandler handler : windowIconifyHandlers) {
 					handler.windowIconify(iconified);
@@ -111,6 +119,7 @@ public final class InputManager {
 		});
 		
 		glfwSetWindowFocusCallback(window, new GLFWWindowFocusCallback() {
+			@Override
 			public void invoke(long window, boolean focused) {
 				for(WindowFocusHandler handler : windowFocusHandlers) {
 					handler.windowFocus(focused);

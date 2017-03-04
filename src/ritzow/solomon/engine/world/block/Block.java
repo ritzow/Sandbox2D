@@ -28,6 +28,7 @@ public abstract class Block implements Transportable {
 		world.getAudioSystem().playSound(Sounds.BLOCK_PLACE, x, y, 0, 0, 1, randomFloat(0.9f, 1.1f));
 	}
 	
+	@Override
 	public String toString() {
 		return getName();
 	}

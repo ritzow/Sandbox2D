@@ -41,6 +41,7 @@ public final class ItemEntity extends Entity {
 		return object;
 	}
 	
+	@Override
 	public void update(float time) {
 		super.update(time);
 		rotation = ((rotation + rotationSpeed > Math.PI * 2) ? (float)(rotation + rotationSpeed * time - Math.PI * 2) : rotation + rotationSpeed * time);
@@ -95,6 +96,7 @@ public final class ItemEntity extends Entity {
 		return 1f;
 	}
 	
+	@Override
 	public String toString() {
 		return super.toString() + ", item = (" + item.toString() + "), rotation = " + rotation + ", rotationSpeed = " + rotationSpeed;
 	}

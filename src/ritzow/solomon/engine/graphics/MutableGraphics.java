@@ -27,22 +27,27 @@ public class MutableGraphics implements Graphics {
 		this.rotation = rotation;
 	}
 
+	@Override
 	public final int getModelIndex() {
 		return model;
 	}
 
+	@Override
 	public final float getOpacity() {
 		return opacity;
 	}
 
+	@Override
 	public final float getScaleX() {
 		return scaleX;
 	}
 
+	@Override
 	public final float getScaleY() {
 		return scaleY;
 	}
 
+	@Override
 	public final float getRotation() {
 		return rotation;
 	}

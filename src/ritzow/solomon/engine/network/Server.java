@@ -71,6 +71,7 @@ public final class Server extends NetworkController {
 		}
 	}
 	
+	@Override
 	protected final void process(SocketAddress sender, int messageID, byte[] data) {
 		final short protocol = ByteUtil.getShort(data, 0);
 		final ClientState client = forAddress(sender);
@@ -265,6 +266,7 @@ public final class Server extends NetworkController {
 			username = "anonymous";
 		}
 		
+		@Override
 		public boolean equals(Object o) {
 			if(o instanceof ClientState) {
 				ClientState c = (ClientState)o;
@@ -278,6 +280,7 @@ public final class Server extends NetworkController {
 			}
 		}
 		
+		@Override
 		public String toString() {
 			return username + " " + address;
 		}
@@ -291,19 +294,23 @@ public final class Server extends NetworkController {
 			this.world = world;
 		}
 
+		@Override
 		public synchronized boolean isSetupComplete() {
 			return setup;
 		}
 
+		@Override
 		public synchronized void exit() {
 			exit = true;
 			this.notifyAll();
 		}
 
+		@Override
 		public synchronized boolean isFinished() {
 			return finished;
 		}
 
+		@Override
 		public void run() {
 			synchronized(this) {
 				setup = true;

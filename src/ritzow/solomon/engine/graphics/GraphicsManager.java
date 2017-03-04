@@ -113,14 +113,17 @@ public final class GraphicsManager implements Runnable, Installable, Exitable, F
 		return renderables;
 	}
 	
+	@Override
 	public boolean isSetupComplete() {
 		return setupComplete;
 	}
 	
+	@Override
 	public boolean isFinished() {
 		return finished;
 	}
 	
+	@Override
 	public synchronized void exit() {
 		exit = true;
 		this.notifyAll();

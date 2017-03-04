@@ -30,6 +30,7 @@ public class TrackingCameraController extends CameraController {
 		this.audio = audio;
 	}
 	
+	@Override
 	public void update() {
 		camera.setPositionX(target.getPositionX());
 		camera.setPositionY(target.getPositionY());

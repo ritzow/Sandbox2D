@@ -51,6 +51,7 @@ public final class WorldUpdater implements Service {
 		return world;
 	}
 	
+	@Override
 	public void exit() {
 		exit = true;
 	}

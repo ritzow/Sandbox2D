@@ -51,6 +51,7 @@ public final class ClientUpdater implements Runnable, Exitable, WindowFocusHandl
 		}
 	}
 	
+	@Override
 	public void exit() {
 		exit = true;
 	}
