@@ -83,9 +83,10 @@ public class PlayerEntity extends Entity implements Living {
 		renderer.render(Models.forIndex(Models.RED_SQUARE_INDEX), 1.0f, positionX, positionY - 0.5f, 1.0f, 1.0f, positionX);
 		
 		Item selectedItem = inventory.get(selected);
+		
 		if(selectedItem != null) {
-			renderer.renderGraphics(selectedItem.getGraphics(), positionX + velocityX * 2, positionY, 
-					1.0f, 0.5f, 0.5f, velocityX != 0 ? (float)Math.PI/4 * (velocityX < 0 ? -1 : 1) : 0);
+			renderer.render(Models.forIndex(selectedItem.getGraphics().getModelIndex()), 1.0f, positionX + velocityX * 2, positionY, 0.5f, 0.5f, 
+					velocityX != 0 ? (float)Math.PI/4 * (velocityX < 0 ? -1 : 1) : 0);
 		}
 	}
 
@@ -99,25 +100,8 @@ public class PlayerEntity extends Entity implements Living {
 		}
 	}
 	
-	protected Item dropItem(World world, int slot) { //TODO should this be implemented here, or should I just use removeSelectedItem?
-		Item item = inventory.remove(slot);
-		if(item != null) {
-			ItemEntity entity = new ItemEntity(0, item, positionX, positionY + this.getHeight()); //TODO deal with entityID for entities created outside server directly
-			entity.setVelocityX((float) (Math.random() * 0.4f - 0.2f));
-			entity.setVelocityY((float) (Math.random() * 0.3f));
-			world.add(entity);
-			selected = (selected == inventory.getSize() - 1 ? selected = 0 : selected + 1);
-			world.getAudioSystem().playSound(Sounds.THROW, positionX, positionY, entity.getVelocityX(), entity.getVelocityY(), 1.0f, 1f);
-		}
-		return item;
-	}
-	
 	public Inventory getInventory() {
 		return inventory;
-	}
-	
-	public Item dropSelectedItem(World world) {
-		return dropItem(world, selected);
 	}
 	
 	public Item removeSelectedItem() {
