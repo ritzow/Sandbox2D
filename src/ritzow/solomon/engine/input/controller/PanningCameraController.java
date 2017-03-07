@@ -40,7 +40,7 @@ public final class PanningCameraController extends CameraController {
 		camera.setPositionY(camera.getPositionY() + velocityY);
 		camera.setZoom((Math.max(Math.min(maxZoom, camera.getZoom() + camera.getZoom() * velocityZ), minZoom)));
 		//Audio.setListenerPosition(camera.getPositionX(), camera.getPositionY(), camera.getZoom());
-		audio.setRelativePosition(camera.getPositionX(), camera.getPositionY());
+		audio.setPosition(camera.getPositionX(), camera.getPositionY());
 	}
 
 	@Override

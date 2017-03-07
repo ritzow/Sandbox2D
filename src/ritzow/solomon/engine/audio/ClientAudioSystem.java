@@ -32,23 +32,32 @@ import org.lwjgl.openal.ALC;
 import org.lwjgl.openal.ALCCapabilities;
 
 public final class ClientAudioSystem implements AudioSystem {
+	
+	//ensures there's only one instance of ClientAudioSystem because there can only be one OpenAL context
+	private static volatile boolean initialized;
+	
 	private final int[] sources;
 	private final long context;
 	private final long device;
 	
 	public ClientAudioSystem() {
-		device = alcOpenDevice((ByteBuffer)null);
-		context = alcCreateContext(device, (IntBuffer)null);
-		ALCCapabilities alcCaps = ALC.createCapabilities(device);
-		alcMakeContextCurrent(context);
-		
-		if(!AL.createCapabilities(alcCaps).OpenAL11) {
-			System.err.println("OpenAL 1.1 not supported");
-			shutdown();
+		if(initialized) {
+			throw new UnsupportedOperationException("OpenAL already initialized");
+		} else {
+			initialized = true;
+			device = alcOpenDevice((ByteBuffer)null);
+			context = alcCreateContext(device, (IntBuffer)null);
+			ALCCapabilities alcCaps = ALC.createCapabilities(device);
+			alcMakeContextCurrent(context);
+			
+			if(!AL.createCapabilities(alcCaps).OpenAL11) {
+				System.err.println("OpenAL 1.1 not supported");
+				shutdown();
+			}
+			
+			sources = new int[alcGetInteger(device, ALC_MONO_SOURCES)];
+			alGenSources(sources);
 		}
-		
-		sources = new int[alcGetInteger(device, ALC_MONO_SOURCES)];
-		alGenSources(sources);
 	}
 	
 	public synchronized void shutdown() {
@@ -71,6 +80,7 @@ public final class ClientAudioSystem implements AudioSystem {
 				alSourcef(source, AL_GAIN, gain);
 				alSourcef(source, AL_PITCH, pitch);
 				alSourcePlay(source);
+				break;
 			}
 		}
 	}
@@ -86,7 +96,7 @@ public final class ClientAudioSystem implements AudioSystem {
 	}
 
 	@SuppressWarnings("static-method")
-	public synchronized void setRelativePosition(float x, float y) {
+	public synchronized void setPosition(float x, float y) {
 		alListener3f(AL_POSITION, x, y, 0);
 	}
 }

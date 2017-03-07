@@ -35,10 +35,7 @@ public class TrackingCameraController extends CameraController {
 		camera.setPositionX(target.getPositionX());
 		camera.setPositionY(target.getPositionY());
 		camera.setZoom((Math.max(Math.min(maxZoom, camera.getZoom() + camera.getZoom() * velocityZ), minZoom)));
-		//Audio.setListenerProperties(camera.getPositionX(), camera.getPositionY(), -(maxZoom - camera.getZoom()) * soundFalloff, target.getVelocityX(), 
-		//		target.getVelocityY(), target.getVelocityX(), target.getVelocityY());
-		//TODO reimplement audio
-		audio.setRelativePosition(camera.getPositionX(), camera.getPositionY());
+		audio.setPosition(camera.getPositionX(), camera.getPositionY());
 	}
 	
 	public Camera getCamera() {
