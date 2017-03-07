@@ -9,7 +9,7 @@ import ritzow.solomon.engine.graphics.Camera;
 import ritzow.solomon.engine.input.Controls;
 import ritzow.solomon.engine.world.entity.Entity;
 
-public class TrackingCameraController extends CameraController {
+public final class TrackingCameraController extends CameraController {
 	protected final Camera camera;
 	protected final Entity target;
 	protected final ClientAudioSystem audio;
@@ -19,7 +19,7 @@ public class TrackingCameraController extends CameraController {
 	protected final float minZoom;
 	protected final float maxZoom;
 	
-	public TrackingCameraController(Camera camera, Entity target, ClientAudioSystem audio, float zoomSpeed, float minZoom, float maxZoom) {
+	public TrackingCameraController(Camera camera, ClientAudioSystem audio, Entity target, float zoomSpeed, float minZoom, float maxZoom) {
 		this.camera = camera;
 		this.zoomSpeed = zoomSpeed;
 		this.target = target;

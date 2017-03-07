@@ -18,7 +18,7 @@ import ritzow.solomon.engine.util.ByteUtil;
 import ritzow.solomon.engine.util.Service;
 
 /** Provides common functionality of the client and server. Manages incoming and outgoing packets. **/
-abstract class NetworkController implements Service, Runnable {
+abstract class NetworkController implements Service {
 	private volatile boolean setupComplete, exit, finished;
 	private final DatagramSocket socket;
 	private final List<MessageAddressPair> reliableQueue;
