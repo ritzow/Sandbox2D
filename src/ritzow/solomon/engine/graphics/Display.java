@@ -83,19 +83,29 @@ public final class Display {
 
 	public void setFullscreen(boolean fullscreen) {
 		if(fullscreen) {
-			int[] storeH = new int[1], storeV = new int[1];
-			glfwGetWindowSize(displayID, storeH, storeV);	windowedWidth = storeH[0]; 	windowedHeight = storeV[0];
-			glfwGetWindowPos(displayID, storeH, storeV);	windowedX = storeH[0]; 		windowedY = storeV[0];
+			if(glfwGetWindowMonitor(displayID) == 0) {
+				//create buffers to store window properties
+				int[] storeH = new int[1], storeV = new int[1];
+				
+				//store window size in storeH and storeV
+				glfwGetWindowSize(displayID, storeH, storeV);
+				
+				//store storeH and storeV into fields
+				windowedWidth = storeH[0]; 	windowedHeight = storeV[0];
+				
+				//repeat with window position
+				glfwGetWindowPos(displayID, storeH, storeV);
+				windowedX = storeH[0]; 		windowedY = storeV[0];
+			}
 			
-			glfwSetWindowMonitor(displayID, glfwGetPrimaryMonitor(), 0, 0, 
-					glfwGetVideoMode(glfwGetPrimaryMonitor()).width(), 
-					glfwGetVideoMode(glfwGetPrimaryMonitor()).height(), 
-					glfwGetVideoMode(glfwGetPrimaryMonitor()).refreshRate());
+			//make the window fullscreen
+			int width = glfwGetVideoMode(glfwGetPrimaryMonitor()).width();
+			int height = glfwGetVideoMode(glfwGetPrimaryMonitor()).height();
+			int refreshRate = glfwGetVideoMode(glfwGetPrimaryMonitor()).refreshRate();
+			glfwSetWindowMonitor(displayID, glfwGetPrimaryMonitor(), 0, 0, width, height, refreshRate);
 			glfwFocusWindow(displayID);
-		}
-		
-		else {
-			glfwSetWindowMonitor(displayID, 0, windowedX, windowedY, windowedWidth, windowedHeight, glfwGetVideoMode(glfwGetPrimaryMonitor()).refreshRate());
+		} else {
+			glfwSetWindowMonitor(displayID, 0, windowedX, windowedY, windowedWidth, windowedHeight, GLFW_DONT_CARE);
 		}
 	}
 }
