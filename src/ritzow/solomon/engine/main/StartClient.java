@@ -45,6 +45,8 @@ public final class StartClient {
 			address = new InetSocketAddress(InetAddress.getLocalHost(), 50000);
 		}
 		
+		System.out.println("Connecting to " + address);
+		
 		//attempt to connect to the server for one second, if the client connects, run the game code and event processor
 		if(client.connectTo(address, 1000)) {
 			System.out.println("Client connected to " + address);
@@ -113,7 +115,7 @@ public final class StartClient {
 			Controller[] controllers = {
 					new PlayerController(player, world, client),
 					new InteractionController(player, world, graphicsManager.getRenderer().getCamera(), 200, false),
-					new TrackingCameraController(graphicsManager.getRenderer().getCamera(), player, audio, 0.005f, 0.05f, 0.6f)
+					new TrackingCameraController(graphicsManager.getRenderer().getCamera(), audio, player, 0.005f, 0.05f, 0.6f)
 			};
 			
 			//add the controllers to the input manager so they receive input events
@@ -161,6 +163,7 @@ public final class StartClient {
 		
 		/** can be called from any thread to exit the game **/
 		public synchronized void exit() {
+			eventProcessor.getDisplay().setVisible(false);
 			exit = true;
 			notifyAll();
 		}

@@ -79,7 +79,6 @@ public final class Client extends NetworkController {
 					break;
 				case Protocol.SERVER_CLIENT_DISCONNECT:
 					disconnect(false);
-					exit(); //TODO exit just for now
 					break;
 				default:
 					System.err.println("Client received message of unknown protocol " + protocol);
