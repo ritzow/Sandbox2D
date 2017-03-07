@@ -9,6 +9,8 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import ritzow.solomon.engine.util.ByteUtil;
 import ritzow.solomon.engine.util.Service;
 import ritzow.solomon.engine.world.base.World;
@@ -22,34 +24,35 @@ public final class Server extends NetworkController {
 	protected volatile int lastEntityID;
 	protected final List<ClientState> clients;
 	
+	protected final ExecutorService broadcaster;
+	
 	public Server() throws SocketException, UnknownHostException {
 		this(20);
 	}
 	
 	public Server(int maxClients) throws SocketException, UnknownHostException {
 		super(new InetSocketAddress(InetAddress.getLocalHost(), 50000));
+		this.broadcaster = Executors.newCachedThreadPool();
 		this.clients = Collections.synchronizedList(new LinkedList<ClientState>());
 	}
 	
 	public void broadcast(byte[] data) {
-		if(Protocol.isReliable(ByteUtil.getShort(data, 0))) {
-			synchronized(clients) {
-				for(ClientState client : clients) {
-					if(client != null) {
-						try {
-							sendReliable(client.address, client.reliableMessageID++, data, 10, 100); //TODO will go slowly, one client at a time, use multiple threads
-						} catch(TimeoutException e) {
-							if(clients.contains(client)) {
-								removeAndDisconnect(client);
+		boolean reliable = Protocol.isReliable(ByteUtil.getShort(data, 0));
+		
+		synchronized(clients) {
+			for(ClientState client : clients) {
+				if(client != null) {
+					if(reliable) {
+						broadcaster.execute(() -> {
+							try {
+								super.sendReliable(client.address, client.reliableMessageID++, data, 10, 100);
+							} catch(TimeoutException e) {
+								if(clients.contains(client)) {
+									removeAndDisconnect(client);
+								}
 							}
-						}
-					}
-				}
-			}
-		} else {
-			synchronized(clients) {
-				for(ClientState client : clients) {
-					if(client != null) {
+						});
+					} else {
 						sendUnreliable(client.address, client.unreliableMessageID++, data);
 					}
 				}
@@ -103,7 +106,7 @@ public final class Server extends NetworkController {
 			byte[] response = new byte[3];
 			ByteUtil.putShort(response, 0, Protocol.SERVER_CONNECT_ACKNOWLEDGMENT);
 			ByteUtil.putBoolean(response, 2, canConnect);
-			sendReliable(sender, 0, response, 10, 100);
+			super.sendReliable(sender, 0, response, 10, 100);
 			
 			if(canConnect) {
 				//create the client's ClientState object to track their information
