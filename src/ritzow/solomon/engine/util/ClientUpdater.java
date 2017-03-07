@@ -11,7 +11,7 @@ import ritzow.solomon.engine.input.handler.WindowFocusHandler;
  *
  */
 public final class ClientUpdater implements Runnable, Exitable, WindowFocusHandler {
-	private volatile boolean exit, finished, focused;
+	private volatile boolean focused, exit, finished;
 	
 	private final List<Updatable> updatables;
 	
@@ -35,8 +35,9 @@ public final class ClientUpdater implements Runnable, Exitable, WindowFocusHandl
 					Thread.sleep(1);
 				} else {
 					synchronized(this) {
-						while(!focused && !exit) {
-							this.wait();
+						//pauses updating when window is not active to reduce idle CPU usage
+						while(!(focused || exit)) {
+							wait();
 						}
 					}
 				}
@@ -52,8 +53,9 @@ public final class ClientUpdater implements Runnable, Exitable, WindowFocusHandl
 	}
 	
 	@Override
-	public void exit() {
+	public synchronized void exit() {
 		exit = true;
+		notifyAll();
 	}
 
 	@Override
@@ -63,8 +65,8 @@ public final class ClientUpdater implements Runnable, Exitable, WindowFocusHandl
 
 	@Override
 	public synchronized void windowFocus(boolean focused) {
-		this.focused = focused;
-		if(focused) {
+		//if the window just became focused, notify the updater to stop waiting
+		if(this.focused = focused) {
 			notifyAll();
 		}
 	}
