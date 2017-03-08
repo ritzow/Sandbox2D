@@ -255,6 +255,23 @@ public final class Server extends NetworkController {
 		return count;
 	}
 	
+	@Override
+	public void exit() {
+		try {
+			this.canConnect = false;
+			broadcast(Protocol.buildServerDisconnect());
+			stopWorld();
+			logicProcessor.exit();
+			disconnectAll();  //TODO causing problems if clients are still connected?
+			broadcaster.shutdown();
+			broadcaster.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+			logicProcessor.waitUntilFinished();
+		} catch(RuntimeException | InterruptedException e) {
+			//ignores "no world to stop" exception
+		} finally {
+			super.exit();
+		}
+	}
 	/**
 	 * Holder of information about clients connected to the server
 	 */
