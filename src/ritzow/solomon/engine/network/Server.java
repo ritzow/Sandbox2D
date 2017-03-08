@@ -6,25 +6,27 @@ import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import ritzow.solomon.engine.util.ByteUtil;
 import ritzow.solomon.engine.util.Service;
+import ritzow.solomon.engine.world.base.ClientWorldUpdater;
 import ritzow.solomon.engine.world.base.World;
-import ritzow.solomon.engine.world.base.WorldUpdater;
 import ritzow.solomon.engine.world.entity.Entity;
 import ritzow.solomon.engine.world.entity.PlayerEntity;
 
 public final class Server extends NetworkController {
-	protected Service logicProcessor;
-	protected WorldUpdater worldUpdater;
-	protected volatile int lastEntityID;
-	protected final List<ClientState> clients;
+	private volatile int lastEntityID;
+	private volatile boolean canConnect;
 	
-	protected final ExecutorService broadcaster;
+	private Service logicProcessor;
+	private final ExecutorService broadcaster;
+	private ClientWorldUpdater worldUpdater;
+	private final List<ClientState> clients;
+	
 	
 	public Server() throws SocketException, UnknownHostException {
 		this(20);
@@ -34,45 +36,7 @@ public final class Server extends NetworkController {
 		super(new InetSocketAddress(InetAddress.getLocalHost(), 50000));
 		this.broadcaster = Executors.newCachedThreadPool();
 		this.clients = Collections.synchronizedList(new LinkedList<ClientState>());
-		byte[] decoration = ('<' + client.username + "> ").getBytes(Protocol.CHARSET);
-	}
-	
-	public void broadcast(byte[] data) {
-		boolean reliable = Protocol.isReliable(ByteUtil.getShort(data, 0));
-		
-		synchronized(clients) {
-			for(ClientState client : clients) {
-				if(client != null) {
-					if(reliable) {
-						broadcaster.execute(() -> {
-							try {
-								super.sendReliable(client.address, client.reliableMessageID++, data, 10, 100);
-							} catch(TimeoutException e) {
-								if(clients.contains(client)) {
-									removeAndDisconnect(client);
-								}
-							}
-						});
-					} else {
-						sendUnreliable(client.address, client.unreliableMessageID++, data);
-					}
-				}
-			}
-		}
-	}
-	
-	protected void send(byte[] data, ClientState client) {
-		if(Protocol.isReliable(ByteUtil.getShort(data, 0))) {
-			try {
-				super.sendReliable(client.address, client.reliableMessageID++, data, 10, 100);
-			} catch(TimeoutException e) {
-				if(clients.contains(client)) {
-					removeAndDisconnect(client);
-				}
-			}
-		} else {
-			super.sendUnreliable(client.address, client.unreliableMessageID++, data);
-		}
+		this.canConnect = true;
 	}
 	
 	@Override
@@ -82,107 +46,76 @@ public final class Server extends NetworkController {
 		
 		if(client != null) {
 			switch(protocol) {
-			case Protocol.CLIENT_DISCONNECT:
-				removeAndDisconnect(client);
-				break;
-			case Protocol.CONSOLE_MESSAGE:
-				byte[] decoration = ('<' + client.username + "> ").getBytes();
-				byte[] broadcast = new byte[2 + decoration.length + data.length - 2];
-				ByteUtil.putShort(broadcast, 0, Protocol.CONSOLE_MESSAGE);
-				ByteUtil.copy(decoration, broadcast, 2);
-				System.arraycopy(data, 2, broadcast, 2 + decoration.length, data.length - 2);
-				broadcast(broadcast);
-				break;
-			case Protocol.CLIENT_PLAYER_ACTION:
-				if(client.player != null) {
-					Protocol.PlayerAction.processPlayerMovementAction(data, client.player);
-				}
-				break;
-			default:
-				System.out.println("received unknown protocol " + protocol);
+				case Protocol.CLIENT_DISCONNECT:
+					remove(client);
+					break;
+				case Protocol.CONSOLE_MESSAGE:
+					processClientMessage(client, data);
+					break;
+				case Protocol.CLIENT_PLAYER_ACTION:
+					if(client.player != null) {
+						Protocol.PlayerAction.processPlayerMovementAction(data, client.player);
+					}
+					break;
+				default:
+					System.out.println("received unknown protocol " + protocol);
 			}
 		} else if(protocol == Protocol.CLIENT_CONNECT_REQUEST) {
-			//determine if client can connect, and send a response
-			boolean canConnect = true; //clientCount() < clients.size();
-			byte[] response = new byte[3];
-			ByteUtil.putShort(response, 0, Protocol.SERVER_CONNECT_ACKNOWLEDGMENT);
-			ByteUtil.putBoolean(response, 2, canConnect);
-			super.sendReliable(sender, 0, response, 10, 100);
-			
-			if(canConnect) {
-				//create the client's ClientState object to track their information
-				ClientState newClient = new ClientState(1, sender);
-				System.out.println(newClient + " connected");
-				
-				//if a world is currently running
-				if(worldUpdater != null && !worldUpdater.isFinished()) {
-					
-					//send the world to the client
-					for(byte[] a : Protocol.constructWorldPackets(worldUpdater.getWorld())) {
-						send(a, newClient);
-					}
-					
-					//construct a new player for the client
-					PlayerEntity player = new PlayerEntity(++lastEntityID);
-					newClient.player = player;
-					
-					World world = worldUpdater.getWorld();
-					
-					//set the player's position to directly above the ground in the center of the world
-					player.setPositionX(world.getForeground().getWidth()/2);
-					for(int i = world.getForeground().getHeight() - 2; i > 1; i--) {
-						if(world.getForeground().get(player.getPositionX(), i) == null 
-								&& world.getForeground().get(player.getPositionX(), i + 1) == null 
-								&& world.getForeground().get(player.getPositionX(), i - 1) != null) {
-							player.setPositionY(i);
-							break;
-						}
-					}
-					
-					//send the player object to the client
-					byte[] playerData = ByteUtil.compress(ByteUtil.serialize(player));
-					byte[] playerPacket = new byte[2 + playerData.length];
-					ByteUtil.putShort(playerPacket, 0, Protocol.SERVER_PLAYER_ENTITY_COMPRESSED);
-					ByteUtil.copy(playerData, playerPacket, 2);
-					send(playerPacket, newClient);
-					
-					//change the packet to an add entity packet and broadcast it to all already-connected clients
-					ByteUtil.putShort(playerPacket, 0, Protocol.SERVER_ADD_ENTITY_COMPRESSED);
-					broadcast(playerPacket);
-					world.add(player);
-				}
-				
-				//add the newly connected client to the clients list
-				clients.add(newClient);
-			}
+			connectClient(sender);
 		}
 	}
 	
-	@Override
-	public void exit() {
-		try {
-			broadcast(Protocol.buildServerDisconnect());
-			stopWorld();
-			synchronized(clients) {
-				Iterator<ClientState> iterator = clients.iterator();
-				while(iterator.hasNext()) {
-					ClientState client = iterator.next();
-					if(client != null) {
-						disconnect(client);
+	protected void processClientMessage(ClientState client, byte[] data) {
+		byte[] decoration = ('<' + client.username + "> ").getBytes(Protocol.CHARSET);
+		byte[] broadcast = new byte[2 + decoration.length + data.length - 2];
+		ByteUtil.putShort(broadcast, 0, Protocol.CONSOLE_MESSAGE);
+		ByteUtil.copy(decoration, broadcast, 2);
+		System.arraycopy(data, 2, broadcast, 2 + decoration.length, data.length - 2);
+		broadcast(broadcast);
+	}
+	
+	/**
+	 * Broadcsts {@code data} to each client connected to this Server and returns immediately TODO doesit return immediately?
+	 * @param data the packet of data to send
+	 */
+	public void broadcast(byte[] data) {
+		boolean reliable = Protocol.isReliable(ByteUtil.getShort(data, 0));
+		synchronized(clients) {
+			clients.forEach(client -> {
+				if(client != null) {
+					if(reliable) {
+						broadcaster.execute(() -> {
+							try {
+								super.sendReliable(client.address, client.reliableMessageID++, data, 10, 100);
+							} catch(TimeoutException e) {
+								remove(client);
+							}
+						});
+					} else {
+						sendUnreliable(client.address, client.unreliableMessageID++, data);
 					}
 				}
-				clients.clear();
+			});
+		}
+	}
+	
+	protected void send(byte[] data, ClientState client) {
+		if(Protocol.isReliable(ByteUtil.getShort(data, 0))) {
+			try {
+				super.sendReliable(client.address, client.reliableMessageID++, data, 10, 100);
+			} catch(TimeoutException e) {
+				if(clients.contains(client)) {
+					remove(client);
+				}
 			}
-		} catch(RuntimeException e) {
-			//ignores "no world to stop" exception
-		} finally {
-			super.exit();
+		} else {
+			super.sendUnreliable(client.address, client.unreliableMessageID++, data);
 		}
 	}
 	
 	public void startWorld(World world) {
 		if(worldUpdater == null || worldUpdater.isFinished()) {
-			new Thread(worldUpdater = new WorldUpdater(world), "Server World Updater").start();
+			new Thread(worldUpdater = new ClientWorldUpdater(world), "Server World Updater").start();
 			new Thread(logicProcessor = new WorldLogicProcessor(world), "World Logic Updater").start();
 		} else {
 			throw new RuntimeException("A world is already running");	
@@ -192,8 +125,9 @@ public final class Server extends NetworkController {
 	public void stopWorld() {
 		if(worldUpdater != null && worldUpdater.isRunning()) {
 			worldUpdater.exit();
-			if(logicProcessor != null && logicProcessor.isRunning())
-			logicProcessor.exit();
+			if(logicProcessor != null && logicProcessor.isRunning()) {
+				logicProcessor.exit();
+			}
 		} else {
 			throw new RuntimeException("There is no world currently running");
 		}
@@ -203,25 +137,38 @@ public final class Server extends NetworkController {
 		return worldUpdater == null ? null : worldUpdater.getWorld();
 	}
 	
-	/**
-	 * Removes ClientState {@code client} from {@code clients} and disconnects it.
-	 * @param client the client to remove and disconnect
-	 */
-	protected void removeAndDisconnect(ClientState client) {
+	/** Disconnects a client without telling the client **/
+	protected void remove(ClientState client) {
+		super.removeSender(client.address);
+		if(client.player != null) {
+			worldUpdater.getWorld().remove(client.player);
+		}
 		clients.remove(client);
-		disconnect(client);
+		System.out.println(client + " disconnected");
 	}
 	
-	/**
-	 * Disconnects ClientState {@code client}, but does not remove it from the list of clients.
-	 * @param client the client to disconnect
-	 */
+	/** Disconnects all clients without telling any of them **/
+	protected void removeAll() {
+		super.removeSenders();
+		clients.forEach(client -> {
+			if(client.player != null) {
+				worldUpdater.getWorld().remove(client.player);
+			}
+		});
+		clients.clear();
+		System.out.println("Disconnected all clients");
+	}
+	
+	/** Disconnects a client after notifying it **/
 	protected void disconnect(ClientState client) {
-		System.out.println(client + " disconnected");
-		removeSender(client.address);
-		if(worldUpdater != null)
-			worldUpdater.getWorld().remove(client.player);
-		broadcast(Protocol.buildGenericEntityRemoval(client.player.getID()));
+		send(Protocol.buildServerDisconnect(), client);
+		remove(client);
+	}
+	
+	/** Disconnect all clients after notifying them **/
+	protected void disconnectAll() {
+		broadcast(Protocol.buildServerDisconnect());
+		removeAll();
 	}
 	
 	/**
@@ -255,6 +202,62 @@ public final class Server extends NetworkController {
 		return count;
 	}
 	
+	private void connectClient(SocketAddress client) {
+		//determine if client can connect, and send a response
+		boolean canConnect = this.canConnect;
+		byte[] response = new byte[3];
+		ByteUtil.putShort(response, 0, Protocol.SERVER_CONNECT_ACKNOWLEDGMENT);
+		ByteUtil.putBoolean(response, 2, canConnect);
+		super.sendReliable(client, 0, response, 10, 100);
+		
+		if(canConnect) {
+			//create the client's ClientState object to track their information
+			ClientState newClient = new ClientState(1, client);
+			System.out.println(newClient + " connected");
+			
+			//if a world is currently running
+			if(worldUpdater != null && !worldUpdater.isFinished()) {
+				
+				//send the world to the client
+				for(byte[] a : Protocol.constructWorldPackets(worldUpdater.getWorld())) {
+					send(a, newClient);
+				}
+				
+				//construct a new player for the client
+				PlayerEntity player = new PlayerEntity(++lastEntityID);
+				newClient.player = player;
+				
+				World world = worldUpdater.getWorld();
+				
+				//set the player's position to directly above the ground in the center of the world
+				player.setPositionX(world.getForeground().getWidth()/2);
+				for(int i = world.getForeground().getHeight() - 2; i > 1; i--) {
+					if(world.getForeground().get(player.getPositionX(), i) == null 
+							&& world.getForeground().get(player.getPositionX(), i + 1) == null 
+							&& world.getForeground().get(player.getPositionX(), i - 1) != null) {
+						player.setPositionY(i);
+						break;
+					}
+				}
+				
+				//send the player object to the client
+				byte[] playerData = ByteUtil.compress(ByteUtil.serialize(player));
+				byte[] playerPacket = new byte[2 + playerData.length];
+				ByteUtil.putShort(playerPacket, 0, Protocol.SERVER_PLAYER_ENTITY_COMPRESSED);
+				ByteUtil.copy(playerData, playerPacket, 2);
+				send(playerPacket, newClient);
+				
+				//change the packet to an add entity packet and broadcast it to all already-connected clients
+				ByteUtil.putShort(playerPacket, 0, Protocol.SERVER_ADD_ENTITY_COMPRESSED);
+				broadcast(playerPacket);
+				world.add(player);
+			}
+			
+			//add the newly connected client to the clients list
+			clients.add(newClient);
+		}
+	}
+	
 	@Override
 	public void exit() {
 		try {
@@ -272,6 +275,7 @@ public final class Server extends NetworkController {
 			super.exit();
 		}
 	}
+	
 	/**
 	 * Holder of information about clients connected to the server
 	 */
@@ -337,19 +341,22 @@ public final class Server extends NetworkController {
 				setup = true;
 				this.notifyAll();
 			}
+			
 			while(!exit) {
 				try {
 					for(Entity e : world) {
 						synchronized(e) {
+							//TODO build this into some sort of ServerWorldUpdater, perhaps put all message sending in one thread?
 							broadcast(Protocol.buildGenericEntityUpdate(e));
 						}
 					}
 					Thread.sleep(100);
-				} catch (Exception e) {
+				} catch (InterruptedException e) {
 					e.printStackTrace();
 					continue;
 				}
 			}
+			
 			synchronized(this) {
 				finished = true;
 				this.notifyAll();
