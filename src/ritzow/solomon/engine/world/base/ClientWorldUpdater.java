@@ -2,11 +2,11 @@ package ritzow.solomon.engine.world.base;
 
 import ritzow.solomon.engine.util.Service;
 
-public final class WorldUpdater implements Service {
+public final class ClientWorldUpdater implements Service {
 	private volatile World world;
 	private volatile boolean setup, exit, finished;
 	
-	public WorldUpdater(World world) {
+	public ClientWorldUpdater(World world) {
 		this.world = world;
 	}
 	
