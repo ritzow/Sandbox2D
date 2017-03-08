@@ -21,30 +21,17 @@ import ritzow.solomon.engine.input.handler.KeyHandler;
 import ritzow.solomon.engine.input.handler.WindowCloseHandler;
 import ritzow.solomon.engine.network.Client;
 import ritzow.solomon.engine.util.ClientUpdater;
+import ritzow.solomon.engine.world.base.ClientWorldUpdater;
 import ritzow.solomon.engine.world.base.DefaultWorld;
-import ritzow.solomon.engine.world.base.WorldUpdater;
 import ritzow.solomon.engine.world.entity.PlayerEntity;
 
 public final class StartClient {
 	public static void main(String... args) throws IOException {
-		
-		Client client = new Client();
+		final Client client = new Client();
 		new Thread(client, "Client Thread").start();
 		client.waitForSetup();
-
-		SocketAddress address;
-
-		if(args.length == 2) {
-			try {
-				address = new InetSocketAddress(args[0], Integer.parseInt(args[1]));
-			} catch(IllegalArgumentException | SecurityException e) {
-				System.out.println("Cannot connect to the specified address: " + e.getLocalizedMessage());
-				address = new InetSocketAddress(InetAddress.getLocalHost(), 50000);
-			}
-		} else {
-			address = new InetSocketAddress(InetAddress.getLocalHost(), 50000);
-		}
 		
+		final SocketAddress address = args.length == 2 ? new InetSocketAddress(args[0], Integer.parseInt(args[1])) : new InetSocketAddress(InetAddress.getLocalHost(), 50000);
 		System.out.println("Connecting to " + address);
 		
 		//attempt to connect to the server for one second, if the client connects, run the game code and event processor
@@ -82,7 +69,7 @@ public final class StartClient {
 				e.printStackTrace();
 			}
 			
-			audio.setVolume(1.0f);
+			audio.setVolume(3.0f);
 			
 			//wait for the client to receive the world and return it
 			final DefaultWorld world = (DefaultWorld)client.getWorld(); //TODO bad design, what if the world isnt a DefaultWorld?
@@ -128,7 +115,7 @@ public final class StartClient {
 			new Thread(clientUpdater, "Client Updater Thread").start();
 			
 			//start updating the world
-			WorldUpdater worldUpdater = new WorldUpdater(world);
+			ClientWorldUpdater worldUpdater = new ClientWorldUpdater(world);
 			new Thread(worldUpdater, "World Updater Thread").start();
 			
 			//display the window now that everything is set up.
@@ -156,7 +143,7 @@ public final class StartClient {
 	 		eventProcessor.waitUntilFinished();
 			worldUpdater.waitUntilFinished();
 			audio.shutdown();
-			
+
 			//make sure the client updater and event manager are closed before exiting the "game" thread
 	 		clientUpdater.waitUntilFinished();
 		}
