@@ -71,7 +71,7 @@ abstract class NetworkController implements Service {
 			
 			int attemptsRemaining = attempts;
 			
-			while((attempts == 0 || attemptsRemaining > 0) && !pair.received) {
+			while((attempts == 0 || attemptsRemaining > 0) && !pair.received && !socket.isClosed()) {
 				try {
 					socket.send(datagram);
 					attemptsRemaining--;
@@ -107,6 +107,12 @@ abstract class NetworkController implements Service {
 	protected final void removeSender(SocketAddress address) {
 		synchronized(lastReceived) {
 			lastReceived.remove(address);
+		}
+	}
+	
+	protected final void removeSenders() {
+		synchronized(lastReceived) {
+			lastReceived.clear();
 		}
 	}
 	
