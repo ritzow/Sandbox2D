@@ -4,8 +4,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.net.SocketException;
-import java.net.UnknownHostException;
 import java.util.Scanner;
 import ritzow.solomon.engine.audio.AudioSystem;
 import ritzow.solomon.engine.audio.ServerAudioSystem;
@@ -63,39 +61,33 @@ public final class StartServer {
 			
 			System.out.println("World loaded");
 			
-			new Thread() {
-				@Override
-				public void run() {
-					try {
-						try (Scanner scanner = new Scanner(System.in)) {
-							String line;
-							while(!(line = scanner.nextLine()).equalsIgnoreCase("exit")) {
-								server.broadcast(Protocol.buildConsoleMessage(line));
-								System.out.println("Message sent.");
-							}
-						}
-						server.exit();
-						server.waitUntilFinished();
-						
-						if(!saveFile.exists()) {
-							saveFile.createNewFile();
-						}
-						
-						try(FileOutputStream out = new FileOutputStream(saveFile)) {
-							System.out.print("Server saving world... ");
-							byte[] serialized = ByteUtil.compress(ByteUtil.serialize(server.getWorld()));
-							out.write(serialized);
-							out.getChannel().truncate(serialized.length);
-							System.out.println("world saved to " + serialized.length + " bytes");
-						} catch (IOException e) {
-							e.printStackTrace();
-						}
-					} catch(Exception e) {
-						e.printStackTrace();
-					}
+			try(Scanner scanner = new Scanner(System.in)) {
+				String line;
+				while(!(line = scanner.nextLine()).equalsIgnoreCase("exit")) {
+					server.broadcast(Protocol.buildConsoleMessage(line));
+					System.out.println("Sent message \'" + line + "\' to all connected clients");
 				}
-			}.start();
-		} catch (SocketException | UnknownHostException e) {
+			}
+			
+			server.exit();
+			server.waitUntilFinished();
+			
+			System.out.println("Server closed");
+			
+			if(!saveFile.exists()) {
+				saveFile.createNewFile();
+			}
+			
+			try(FileOutputStream out = new FileOutputStream(saveFile)) {
+				System.out.print("Saving world... ");
+				byte[] serialized = ByteUtil.compress(ByteUtil.serialize(server.getWorld()));
+				out.write(serialized);
+				out.getChannel().truncate(serialized.length);
+				System.out.println("world saved to " + serialized.length + " bytes");
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
