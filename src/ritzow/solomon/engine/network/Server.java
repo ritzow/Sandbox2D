@@ -34,6 +34,7 @@ public final class Server extends NetworkController {
 		super(new InetSocketAddress(InetAddress.getLocalHost(), 50000));
 		this.broadcaster = Executors.newCachedThreadPool();
 		this.clients = Collections.synchronizedList(new LinkedList<ClientState>());
+		byte[] decoration = ('<' + client.username + "> ").getBytes(Protocol.CHARSET);
 	}
 	
 	public void broadcast(byte[] data) {

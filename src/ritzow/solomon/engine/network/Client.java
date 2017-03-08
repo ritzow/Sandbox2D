@@ -6,7 +6,6 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.nio.charset.Charset;
 import java.util.Arrays;
 import ritzow.solomon.engine.util.ByteUtil;
 import ritzow.solomon.engine.world.base.World;
@@ -47,9 +46,7 @@ public final class Client extends NetworkController {
 			switch(protocol) {
 				case Protocol.SERVER_CONNECT_ACKNOWLEDGMENT:
 					connected = ByteUtil.getBoolean(data, 2);
-					synchronized(server)  {
-						server.notifyAll();
-					}
+					synchronized(server) {server.notifyAll();}
 					break;
 				case Protocol.SERVER_WORLD_HEAD:
 					worldPackets = new byte[ByteUtil.getInteger(data, 2)][];
@@ -61,7 +58,7 @@ public final class Client extends NetworkController {
 					processReceivePlayerEntity(data);
 					break;
 				case Protocol.CONSOLE_MESSAGE:
-					System.out.println("[Server] " + new String(data, 2, data.length - 2, Charset.forName("UTF-8")));
+					System.out.println("[Server] " + new String(data, 2, data.length - 2, Protocol.CHARSET));
 					break;
 				case Protocol.SERVER_ENTITY_UPDATE:
 					processGenericEntityUpdate(data);
