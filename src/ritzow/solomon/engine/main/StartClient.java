@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.util.Arrays;
 import ritzow.solomon.engine.audio.ClientAudioSystem;
 import ritzow.solomon.engine.audio.Sounds;
 import ritzow.solomon.engine.graphics.Background;
@@ -13,7 +14,6 @@ import ritzow.solomon.engine.graphics.Models;
 import ritzow.solomon.engine.input.Controls;
 import ritzow.solomon.engine.input.EventProcessor;
 import ritzow.solomon.engine.input.InputManager;
-import ritzow.solomon.engine.input.controller.Controller;
 import ritzow.solomon.engine.input.controller.InteractionController;
 import ritzow.solomon.engine.input.controller.PlayerController;
 import ritzow.solomon.engine.input.controller.TrackingCameraController;
@@ -98,18 +98,15 @@ public final class StartClient {
 			//get the client's player object, which has already been added to the world
 			final PlayerEntity player = client.getPlayer();
 			
-			//create player controllers so the user can "play the game", for testing purposes
-			Controller[] controllers = {
+			//create and link player controllers so the user can play the game
+			Arrays.asList(
 					new PlayerController(player, world, client),
 					new InteractionController(player, world, graphicsManager.getRenderer().getCamera(), 200, false),
 					new TrackingCameraController(graphicsManager.getRenderer().getCamera(), audio, player, 0.005f, 0.05f, 0.6f)
-			};
-			
-			//add the controllers to the input manager so they receive input events
-			for(Controller c : controllers) {
-				c.link(eventProcessor.getDisplay().getInputManager());
-				clientUpdater.getUpdatables().add(c);
-			}
+			).forEach(controller -> {
+				controller.link(eventProcessor.getDisplay().getInputManager());
+				clientUpdater.getUpdatables().add(controller);
+			});
 			
 			//start the client updater
 			new Thread(clientUpdater, "Client Updater Thread").start();
@@ -150,9 +147,8 @@ public final class StartClient {
 		
 		/** can be called from any thread to exit the game **/
 		public synchronized void exit() {
-			eventProcessor.getDisplay().setVisible(false);
 			exit = true;
-			notifyAll();
+			notifyAll(); //notify that ClientManager should exit
 		}
 
 		@Override
