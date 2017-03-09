@@ -7,7 +7,10 @@ import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Arrays;
+import java.util.function.Supplier;
+import ritzow.solomon.engine.game.Lobby;
 import ritzow.solomon.engine.util.ByteUtil;
+import ritzow.solomon.engine.util.Transportable;
 import ritzow.solomon.engine.world.base.World;
 import ritzow.solomon.engine.world.entity.Entity;
 import ritzow.solomon.engine.world.entity.PlayerEntity;
@@ -15,7 +18,7 @@ import ritzow.solomon.engine.world.entity.PlayerEntity;
 public final class Client extends NetworkController {
 	
 	/** The server's address **/
-	protected SocketAddress server;
+	protected volatile SocketAddress server;
 	
 	/** if the server has been successfully connected to **/
 	protected volatile boolean connected;
@@ -26,16 +29,21 @@ public final class Client extends NetworkController {
 	/** The World object sent by the server **/
 	protected volatile World world;
 	private byte[][] worldPackets;
-	protected final Object worldLock;
 	
 	/** The Player object sent by the server for the client to control **/
 	protected PlayerEntity player;
-	protected final Object playerLock;
+	
+	/** The Lobby object sent by the server for the client to display **/
+	protected Lobby serverLobby;
+	
+	/** lock object for synchronizing server-initiated actions with the client **/
+	protected final Object worldLock, playerLock, lobbyLock;
 	
 	public Client() throws SocketException, UnknownHostException {
 		super(new InetSocketAddress(InetAddress.getLocalHost(), 0));
 		worldLock = new Object();
 		playerLock = new Object();
+		lobbyLock = new Object();
 	}
 	
 	@Override
@@ -77,10 +85,41 @@ public final class Client extends NetworkController {
 				case Protocol.SERVER_CLIENT_DISCONNECT:
 					disconnect(false);
 					break;
+				case Protocol.SERVER_CREATE_LOBBY:
+					setupServerLobby(data);
+					break;
 				default:
 					System.err.println("Client received message of unknown protocol " + protocol);
 			}
 		}
+	}
+	
+	public void sendPlayerAction(PlayerAction action, boolean enable) {
+		byte code = 0;
+		
+		switch(action) {
+			case MOVE_LEFT:
+				code = Protocol.PlayerAction.PLAYER_LEFT;
+				break;
+			case MOVE_RIGHT:
+				code = Protocol.PlayerAction.PLAYER_RIGHT;
+				break;
+			case MOVE_UP:
+				code = Protocol.PlayerAction.PLAYER_UP;
+				break;
+			case MOVE_DOWN:
+				code = Protocol.PlayerAction.PLAYER_DOWN;
+				break;
+		}
+		
+		send(Protocol.PlayerAction.buildPlayerMovementAction(code, enable));
+	}
+	
+	public static enum PlayerAction {
+		MOVE_LEFT,
+		MOVE_RIGHT,
+		MOVE_UP,
+		MOVE_DOWN
 	}
 	
 	public void send(byte[] data) {
@@ -107,38 +146,39 @@ public final class Client extends NetworkController {
 		return server;
 	}
 	
-	public World getWorld() {
+	/**
+	 * Waits on {@code lock} and returns {@code object} as soon as it has a value
+	 * @param lock the object to wait to be notified by
+	 * @param object the value to wait to be non-null
+	 * @return the value of object
+	 */
+	protected <T extends Transportable> T receiveObject(Object lock, Supplier<T> object) {
 		if(isConnected()) {
-			synchronized(worldLock) {
-				while(world == null) {
+			synchronized(lock) {
+				while(object.get() == null) {
 					try {
-						worldLock.wait();
+						lock.wait();
 					} catch(InterruptedException e) {
 						continue;
 					}
 				}
-				return world;
+				return object.get();
 			}
 		} else {
 			throw new ConnectionException("client is not connected to a server");
-		}
+		}	
+	}
+	
+	public Lobby getLobby() {
+		return receiveObject(lobbyLock, () -> serverLobby);
+	}
+	
+	public World getWorld() {
+		return receiveObject(worldLock, () -> world);
 	}
 	
 	public PlayerEntity getPlayer() {
-		if(isConnected()) {
-			synchronized(playerLock) {
-				while(player == null) {
-					try {
-						playerLock.wait();
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}
-				}
-			}
-			return player;
-		} else {
-			throw new ConnectionException("client is not connected to a server");
-		}
+		return receiveObject(playerLock, () -> player);
 	}
 	
 	public boolean connectTo(SocketAddress address, int timeout) throws IOException {
@@ -194,6 +234,10 @@ public final class Client extends NetworkController {
 				world = null;
 			}
 		}
+	}
+	
+	private void setupServerLobby(byte[] data) {
+		
 	}
 	
 	private void processReceivePlayerEntity(byte[] data) {

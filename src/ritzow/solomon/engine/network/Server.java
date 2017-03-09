@@ -27,7 +27,6 @@ public final class Server extends NetworkController {
 	private ClientWorldUpdater worldUpdater;
 	private final List<ClientState> clients;
 	
-	
 	public Server() throws SocketException, UnknownHostException {
 		this(20);
 	}
@@ -74,8 +73,12 @@ public final class Server extends NetworkController {
 		broadcast(broadcast);
 	}
 	
+	public void broadcastMessage(String message) {
+		this.broadcast(Protocol.buildConsoleMessage(message));
+	}
+	
 	/**
-	 * Broadcsts {@code data} to each client connected to this Server and returns immediately TODO doesit return immediately?
+	 * Broadcasts {@code data} to each client connected to this Server and returns immediately
 	 * @param data the packet of data to send
 	 */
 	public void broadcast(byte[] data) {
@@ -118,7 +121,7 @@ public final class Server extends NetworkController {
 			new Thread(worldUpdater = new ClientWorldUpdater(world), "Server World Updater").start();
 			new Thread(logicProcessor = new WorldLogicProcessor(world), "World Logic Updater").start();
 		} else {
-			throw new RuntimeException("A world is already running");	
+			throw new RuntimeException("A world is already running");
 		}
 	}
 	
@@ -265,7 +268,7 @@ public final class Server extends NetworkController {
 			broadcast(Protocol.buildServerDisconnect());
 			stopWorld();
 			logicProcessor.exit();
-			disconnectAll();  //TODO causing problems if clients are still connected?
+			disconnectAll();
 			broadcaster.shutdown();
 			broadcaster.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
 			logicProcessor.waitUntilFinished();
@@ -288,7 +291,7 @@ public final class Server extends NetworkController {
 		public ClientState(int initReliable, SocketAddress address) {
 			this.reliableMessageID = initReliable;
 			this.address = address;
-			username = "anonymous";
+			username = "Unknown";
 		}
 		
 		@Override
