@@ -265,6 +265,7 @@ public final class DefaultWorld extends World {
 		int topBound = 		Math.min(foreground.getHeight(), (int)Math.ceil(worldTop));
 		int bottomBound = 	Math.max(0, (int)Math.floor(worldBottom));
 		
+		//render the blocks visible in the viewport
 		for(int row = bottomBound; row <= topBound; row++) {
 			for(int column = leftBound; column <= rightBound; column++) {
 				if(foreground.isBlock(column, row)) {
@@ -275,6 +276,7 @@ public final class DefaultWorld extends World {
 			}
 		}
 		
+		//render the entities
 		for(int i = 0; i < entities.size(); i++) {
 			Entity e = entities.get(i);
 			
@@ -284,6 +286,7 @@ public final class DefaultWorld extends World {
 				float halfWidth = e.getWidth()/2;
 				float halfHeight = e.getHeight()/2;
 				
+				//check if the entity is visible inside the viewport and render it
 				if(posX < worldRight + halfWidth && posX > worldLeft - halfWidth && posY < worldTop + halfHeight && posY > worldBottom - halfHeight) {
 					e.render(renderer);	
 				}
