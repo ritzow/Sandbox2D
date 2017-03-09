@@ -7,7 +7,7 @@ import ritzow.solomon.engine.world.base.World;
 import ritzow.solomon.engine.world.entity.Entity;
 import ritzow.solomon.engine.world.entity.PlayerEntity;
 
-public final class Protocol {
+final class Protocol {
 	
 	/** The Charset used by the client and server **/
 	public static final Charset CHARSET = Charset.forName("UTF-8");
@@ -26,7 +26,8 @@ public final class Protocol {
 		SERVER_ADD_ENTITY = 12,
 		SERVER_ADD_ENTITY_COMPRESSED = 13,
 		SERVER_REMOVE_ENTITY = 14,
-		SERVER_CLIENT_DISCONNECT = 15;
+		SERVER_CLIENT_DISCONNECT = 15,
+		SERVER_CREATE_LOBBY = 16;
 	
 	/** Client message protocol ID **/
 	public static final short

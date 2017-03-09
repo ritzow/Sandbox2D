@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.util.Scanner;
 import ritzow.solomon.engine.audio.AudioSystem;
 import ritzow.solomon.engine.audio.ServerAudioSystem;
-import ritzow.solomon.engine.network.Protocol;
 import ritzow.solomon.engine.network.Server;
 import ritzow.solomon.engine.util.ByteUtil;
 import ritzow.solomon.engine.world.base.DefaultWorld;
@@ -64,7 +63,7 @@ public final class StartServer {
 			try(Scanner scanner = new Scanner(System.in)) {
 				String line;
 				while(!(line = scanner.nextLine()).equalsIgnoreCase("exit")) {
-					server.broadcast(Protocol.buildConsoleMessage(line));
+					server.broadcastMessage(line);
 					System.out.println("Sent message \'" + line + "\' to all connected clients");
 				}
 			}
