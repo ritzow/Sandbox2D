@@ -8,7 +8,7 @@ import ritzow.solomon.engine.input.Controls;
 import ritzow.solomon.engine.input.InputManager;
 import ritzow.solomon.engine.input.handler.KeyHandler;
 import ritzow.solomon.engine.network.Client;
-import ritzow.solomon.engine.network.Protocol;
+import ritzow.solomon.engine.network.Client.PlayerAction;
 import ritzow.solomon.engine.world.base.World;
 import ritzow.solomon.engine.world.entity.Entity;
 import ritzow.solomon.engine.world.entity.PlayerEntity;
@@ -46,37 +46,37 @@ public class PlayerController implements Controller, KeyHandler {
 		case Controls.KEYBIND_UP:
 			if(action == GLFW_PRESS && canJump()) {
 				player.setUp(true);
-				client.send(Protocol.PlayerAction.buildPlayerMovementAction(Protocol.PlayerAction.PLAYER_UP, true));
+				client.sendPlayerAction(PlayerAction.MOVE_UP, true);
 			} else if(action == GLFW_RELEASE) {
 				player.setUp(false);
-				client.send(Protocol.PlayerAction.buildPlayerMovementAction(Protocol.PlayerAction.PLAYER_UP, false));
+				client.sendPlayerAction(PlayerAction.MOVE_UP, false);
 			}
 			break;
 		case Controls.KEYBIND_RIGHT:
 			if(action == GLFW_PRESS) {
 				player.setRight(true);
-				client.send(Protocol.PlayerAction.buildPlayerMovementAction(Protocol.PlayerAction.PLAYER_RIGHT, true));
+				client.sendPlayerAction(PlayerAction.MOVE_RIGHT, true);
 			} else if(action == GLFW_RELEASE) {
 				player.setRight(false);
-				client.send(Protocol.PlayerAction.buildPlayerMovementAction(Protocol.PlayerAction.PLAYER_RIGHT, false));
+				client.sendPlayerAction(PlayerAction.MOVE_RIGHT, false);
 			}
 			break;
 		case Controls.KEYBIND_LEFT:
 			if(action == GLFW_PRESS) {
 				player.setLeft(true);
-				client.send(Protocol.PlayerAction.buildPlayerMovementAction(Protocol.PlayerAction.PLAYER_LEFT, true));
+				client.sendPlayerAction(PlayerAction.MOVE_LEFT, true);
 			} else if(action == GLFW_RELEASE) {
 				player.setLeft(false);
-				client.send(Protocol.PlayerAction.buildPlayerMovementAction(Protocol.PlayerAction.PLAYER_LEFT, false));
+				client.sendPlayerAction(PlayerAction.MOVE_LEFT, false);
 			}
 			break;
 		case Controls.KEYBIND_DOWN:
 			if(action == GLFW_PRESS) {
 				player.setDown(true);
-				client.send(Protocol.PlayerAction.buildPlayerMovementAction(Protocol.PlayerAction.PLAYER_DOWN, true));
+				client.sendPlayerAction(PlayerAction.MOVE_DOWN, true);
 			} else if(action == GLFW_RELEASE) {
 				player.setDown(false);
-				client.send(Protocol.PlayerAction.buildPlayerMovementAction(Protocol.PlayerAction.PLAYER_DOWN, false));
+				client.sendPlayerAction(PlayerAction.MOVE_DOWN, false);
 			}
 			break;
 		}
