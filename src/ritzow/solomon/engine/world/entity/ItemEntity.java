@@ -1,7 +1,7 @@
 package ritzow.solomon.engine.world.entity;
 
-import ritzow.solomon.engine.graphics.ModelRenderer;
 import ritzow.solomon.engine.util.ByteUtil;
+import ritzow.solomon.engine.world.base.ModelRenderProgram;
 import ritzow.solomon.engine.world.item.Item;
 
 public final class ItemEntity extends Entity {
@@ -48,7 +48,7 @@ public final class ItemEntity extends Entity {
 	}
 
 	@Override
-	public void render(ModelRenderer renderer) {
+	public void render(ModelRenderProgram renderer) {
 		renderer.renderGraphics(item.getGraphics(), 1.0f, positionX, positionY, 0.5f, 0.5f, rotation);
 	}
 	
