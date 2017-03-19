@@ -2,11 +2,7 @@ package ritzow.solomon.engine.graphics;
 
 import static org.lwjgl.opengl.GL20.*;
 
-class ShaderProgram {
-	public static final int ATTRIBUTE_POSITIONS = 0;
-	public static final int ATTRIBUTE_TEXTURE_COORDS = 1;
-	public static final int ATTRIBUTE_INDICES = 2;
-	
+public class ShaderProgram {
 	protected final int programID;
 	protected final Shader[] shaders;
 	
@@ -18,11 +14,14 @@ class ShaderProgram {
 			glAttachShader(programID, s.getShaderID());
 		}
 		
-		glBindAttribLocation(programID, ATTRIBUTE_POSITIONS, "position");
-		glBindAttribLocation(programID, ATTRIBUTE_TEXTURE_COORDS, "textureCoord");
-		
 		glLinkProgram(programID);
 		glValidateProgram(programID);
+		glUseProgram(programID);
+		
+		OpenGLException.checkErrors();
+	}
+	
+	public void setCurrent() {
 		glUseProgram(programID);
 	}
 	

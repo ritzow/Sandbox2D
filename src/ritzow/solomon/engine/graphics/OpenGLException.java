@@ -1,6 +1,6 @@
 package ritzow.solomon.engine.graphics;
 
-class OpenGLException extends RuntimeException {
+public class OpenGLException extends RuntimeException {
 
 	private static final long serialVersionUID = 1L;
 
@@ -34,7 +34,6 @@ class OpenGLException extends RuntimeException {
 				errorMsg.append(error);
 				errorMsg.append(", ");
 			}
-			
 			throw new OpenGLException(errorMsg.toString());
 		}
 	}

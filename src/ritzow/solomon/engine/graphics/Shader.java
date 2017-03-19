@@ -9,7 +9,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
-final class Shader {
+public final class Shader {
 	protected final int shaderID;
 
 	public Shader(InputStream input, int glShaderType) throws IOException {

@@ -1,9 +1,9 @@
 package ritzow.solomon.engine.world.entity;
 
 import ritzow.solomon.engine.audio.Sounds;
-import ritzow.solomon.engine.graphics.ModelRenderer;
 import ritzow.solomon.engine.graphics.Models;
 import ritzow.solomon.engine.util.ByteUtil;
+import ritzow.solomon.engine.world.base.ModelRenderProgram;
 import ritzow.solomon.engine.world.base.World;
 import ritzow.solomon.engine.world.component.Inventory;
 import ritzow.solomon.engine.world.component.Living;
@@ -78,7 +78,7 @@ public class PlayerEntity extends Entity implements Living {
 	}
 
 	@Override
-	public void render(ModelRenderer renderer) {
+	public void render(ModelRenderProgram renderer) {
 		renderer.render(Models.forIndex(Models.GREEN_FACE_INDEX), 1.0f, positionX, positionY + 0.5f, 1.0f, 1.0f, 0.0f);
 		renderer.render(Models.forIndex(Models.RED_SQUARE_INDEX), 1.0f, positionX, positionY - 0.5f, 1.0f, 1.0f, positionX);
 		
