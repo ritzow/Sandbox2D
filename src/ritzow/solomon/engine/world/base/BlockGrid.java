@@ -128,24 +128,13 @@ public final class BlockGrid implements Transportable {
 	 * @param y the vertical block coordinate to check
 	 * @return whether or not there is a block at the specified block coordinates
 	 */
-	public final boolean isBlock(int x, int y) {
+	public boolean isBlock(int x, int y) {
 		return isValid(x, y) && get(x, y) != null;
 	}
 	
 	/** Returns whether or not there is a block at the specified world coordinates **/
 	public boolean isBlock(float worldX, float worldY) {
 		return isBlock(Math.round(worldX), Math.round(worldY));
-	}
-	
-	public boolean isSurrounded(int x, int y) {
-		return 	isBlock(x - 1, y) &&
-				isBlock(x + 1, y) &&
-				isBlock(x, y - 1) &&
-				isBlock(x, y + 1);
-	}
-	
-	public boolean isFloating(int x, int y) {
-		return !(isBlock(x - 1, y) || isBlock(x + 1, y) || isBlock(x, y - 1) || isBlock(x, y + 1));
 	}
 	
 	public int getWidth() {

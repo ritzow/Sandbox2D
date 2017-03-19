@@ -40,7 +40,7 @@ public final class StartServer {
 					System.exit(1);
 				}
 			} else { //if no world can be loaded, create a new one.
-				World world = new DefaultWorld(audio, 100, 50);
+				World world = new DefaultWorld(audio, 300, 200);
 				for(int column = 0; column < world.getForeground().getWidth(); column++) {
 					double height = world.getForeground().getHeight()/2;
 					height += (Math.sin(column * 0.1f) + 1) * (world.getForeground().getHeight() - height) * 0.05f;

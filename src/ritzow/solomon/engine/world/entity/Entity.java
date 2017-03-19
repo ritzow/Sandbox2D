@@ -1,9 +1,10 @@
 package ritzow.solomon.engine.world.entity;
 
-import ritzow.solomon.engine.graphics.ModelRenderer;
 import ritzow.solomon.engine.util.ByteUtil;
 import ritzow.solomon.engine.util.Transportable;
+import ritzow.solomon.engine.world.base.ModelRenderProgram;
 import ritzow.solomon.engine.world.base.World;
+import ritzow.solomon.engine.world.block.Block;
 
 public abstract class Entity implements Transportable {
 	protected final int entityID;
@@ -46,13 +47,14 @@ public abstract class Entity implements Transportable {
 		 return entityID;
 	}
 	
-	public void render(ModelRenderer renderer) {/* optional implementation */}
+	public void render(ModelRenderProgram renderer) {/* optional implementation */}
 	public void onCollision(World world, Entity e, float time) {/* optional implementation */}
+	public void onCollision(World world, Block block, float blockX, float blockY, float time) {/* optional implementation */};
 
 	/** @return true if the entity should be removed from the world **/
 	public abstract boolean getShouldDelete();
 	
-	/** @return true if the entity's onCollision method should be called when colliding with another entity **/
+	/** @return true if the entity has any form of collision **/
 	public abstract boolean doCollision();
 	
 	/** @return true if the entity should collide with solid blocks rather than fall through them **/
