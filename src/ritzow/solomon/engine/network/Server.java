@@ -15,7 +15,6 @@ import ritzow.solomon.engine.util.ByteUtil;
 import ritzow.solomon.engine.util.Service;
 import ritzow.solomon.engine.world.base.ClientWorldUpdater;
 import ritzow.solomon.engine.world.base.World;
-import ritzow.solomon.engine.world.entity.Entity;
 import ritzow.solomon.engine.world.entity.PlayerEntity;
 
 public final class Server extends NetworkController {
@@ -346,17 +345,19 @@ public final class Server extends NetworkController {
 			}
 			
 			while(!exit) {
-				try {
-					for(Entity e : world) {
-						synchronized(e) {
+				synchronized(world) {
+					world.forEach(entity -> {
+						synchronized(entity) {
 							//TODO build this into some sort of ServerWorldUpdater, perhaps put all message sending in one thread?
-							broadcast(Protocol.buildGenericEntityUpdate(e));
+							broadcast(Protocol.buildGenericEntityUpdate(entity));
 						}
-					}
+					});
+				}
+				
+				try {
 					Thread.sleep(100);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
-					continue;
 				}
 			}
 			

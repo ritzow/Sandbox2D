@@ -70,7 +70,7 @@ public final class InteractionController implements Controller, MouseButtonHandl
 					(world.getBackground().place(world, blockX, blockY, ((BlockItem)item).getBlock()) || 
 					world.getForeground().place(world, blockX, blockY, ((BlockItem)item).getBlock()))) {
 					lastPlacement = System.nanoTime();
-					player.removeSelectedItem();
+					//player.removeSelectedItem();  TEMP disasbled finite blocks
 				}
 			}
 		}

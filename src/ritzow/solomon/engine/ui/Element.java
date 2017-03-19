@@ -1,8 +1,6 @@
 package ritzow.solomon.engine.ui;
 
-import ritzow.solomon.engine.graphics.Renderable;
-
-public abstract class Element implements Renderable {
+public abstract class Element {
 	
 	protected float positionX;
 	protected float positionY;

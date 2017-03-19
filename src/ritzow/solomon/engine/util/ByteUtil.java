@@ -2,6 +2,7 @@ package ritzow.solomon.engine.util;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.InflaterOutputStream;
@@ -12,6 +13,14 @@ import java.util.zip.InflaterOutputStream;
  *
  */
 public final class ByteUtil {
+	
+	private static final Charset CHARSET = Charset.forName("UTF-8");
+	
+	public static Package getParentPackage(Package child) {
+		String thisPackage = child.getName();
+		return Package.getPackage(thisPackage.substring(0, thisPackage.lastIndexOf('.')));
+	}
+	
 	public static byte[] concatenate(byte[]... arrays) {
 		int length = 0;
 		for(int i = 0; i < arrays.length; i++) {
@@ -87,11 +96,15 @@ public final class ByteUtil {
 	}
 	
 	public static Object deserialize(byte[] array, int offset) throws ReflectiveOperationException {
+		return deserialize("", array, offset);
+	}
+	
+	public static Object deserialize(String assumedPackage, byte[] array, int offset) throws ReflectiveOperationException {
 		int nameLength = getInteger(array, offset);
 		if(nameLength == 0)
 			return null;
 		int objectPos = offset + 4 + nameLength + 4;
-		return Class.forName(new String(array, offset + 4, nameLength)).getConstructor(byte[].class)
+		return Class.forName(assumedPackage + new String(array, offset + 4, nameLength)).getConstructor(byte[].class)
 				.newInstance(Arrays.copyOfRange(array, objectPos, objectPos + getInteger(array, objectPos - 4)));
 	}
 	
@@ -165,16 +178,27 @@ public final class ByteUtil {
 		}
 	}
 	
+	public static byte[] serialize(Transportable object) {
+		return serialize("", object);
+	}
+	
 	/**
 	 * Serialized an object into a byte array. Format: [4 bytes : length of class name string] + [class name] + [4 bytes : object data length] + [object data]
 	 * @param object the Transportable object to serialize
 	 * @return a byte array representing a serialized version of {@code object}
 	 */
-	public static byte[] serialize(Transportable object) {
+	public static byte[] serialize(String assumedPackage, Transportable object) {
 		if(object == null)
 			return new byte[4]; //return a name length of 0, which is interpreted by deserialize as null
 		
-		byte[] nameBytes = object.getClass().getName().getBytes();
+		String className = object.getClass().getName();
+		int packageIndex = className.indexOf(assumedPackage);
+		
+		if(packageIndex == -1) {
+			throw new UnsupportedOperationException("Invalid parent package");
+		}
+		
+		byte[] nameBytes = className.substring(packageIndex + assumedPackage.length()).getBytes(CHARSET);
 		byte[] objectBytes = object.getBytes();
 
 		//class name length, class name, object data length, object data

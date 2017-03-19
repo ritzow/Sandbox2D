@@ -6,24 +6,23 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import ritzow.solomon.engine.audio.AudioSystem;
-import ritzow.solomon.engine.graphics.ModelRenderer;
-import ritzow.solomon.engine.graphics.Models;
 import ritzow.solomon.engine.util.ByteUtil;
+import ritzow.solomon.engine.world.block.Block;
 import ritzow.solomon.engine.world.entity.Entity;
 
 public final class DefaultWorld extends World {
 	
 	/** collection of entities in the world **/
-	private final List<Entity> entities;
+	protected final List<Entity> entities;
 	
 	/** blocks in the world that collide with entities and and are rendered **/
-	private final BlockGrid foreground, background;
+	protected final BlockGrid foreground, background;
 	
 	/** amount of downwards acceleration to apply to entities in the world **/
-	private volatile float gravity;
+	protected volatile float gravity;
 	
 	/** AudioSystem to allow entities to play sounds **/
-	private volatile AudioSystem audio;
+	protected volatile AudioSystem audio;
 	
 	public DefaultWorld(AudioSystem audio, int width, int height) {
 		this(audio, width, height, 0.016f);
@@ -202,19 +201,13 @@ public final class DefaultWorld extends World {
 					//check for entity vs. entity collisions
 					for(int j = i + 1; j < entities.size(); j++) {
 						Entity o = entities.get(j);
-						
-						if(o == null)
-							continue;
-						
-						if(o.doCollision()) {
+						if(o != null && o.doCollision()) {
 							boolean collision;
 							
 							if(e.doEntityCollisionResolution() && o.doEntityCollisionResolution()) {
 								//TODO improve collision priority/interaction (should both entities move in opposite directions?)
 								collision = (e.getMass() <= o.getMass() || e.getID() < o.getID()) ? resolveCollision(e, o, time) : resolveCollision(o, e, time);
-							} 
-							
-							else {
+							} else {
 								collision = checkCollision(e, o);
 							}
 							
@@ -234,61 +227,19 @@ public final class DefaultWorld extends World {
 						
 						for(int row = bottomBound; row < topBound; row++) {
 							for(int column = leftBound; column < rightBound; column++) {
-								if(foreground.isBlock(column, row) && foreground.get(column, row).isSolid()) {
+								Block block = foreground.get(column, row);
+								if(foreground.isBlock(column, row) && block.isSolid()) {
 									boolean blockUp = foreground.isBlock(column, row + 1);
 									boolean blockDown = foreground.isBlock(column, row - 1);
 									boolean blockLeft = foreground.isBlock(column - 1, row);
 									boolean blockRight = foreground.isBlock(column + 1, row);
 									if(!(blockUp && blockDown && blockLeft && blockRight)) {
-										resolveBlockCollision(e, column, row, foreground.get(column, row).getFriction(), time, blockUp, blockLeft, blockRight, blockDown);
+										resolveBlockCollision(this, e, block, column, row, time, blockUp, blockLeft, blockRight, blockDown);
 									}
 								}
 							}
 						}
 					}
-				}
-			}
-		}
-	}
-	
-	@Override
-	public void render(ModelRenderer renderer) {
-		renderer.loadViewMatrix(true);
-		
-		float worldLeft = renderer.getWorldViewportLeftBound();
-		float worldRight = renderer.getWorldViewportRightBound();
-		float worldTop = renderer.getWorldViewportTopBound();
-		float worldBottom = renderer.getWorldViewportBottomBound();
-		
-		int leftBound = 	Math.max(0, (int)Math.floor(worldLeft));
-		int rightBound = 	Math.min(foreground.getWidth(), (int)Math.ceil(worldRight));
-		int topBound = 		Math.min(foreground.getHeight(), (int)Math.ceil(worldTop));
-		int bottomBound = 	Math.max(0, (int)Math.floor(worldBottom));
-		
-		//render the blocks visible in the viewport
-		for(int row = bottomBound; row <= topBound; row++) {
-			for(int column = leftBound; column <= rightBound; column++) {
-				if(foreground.isBlock(column, row)) {
-					renderer.render(Models.forIndex(foreground.get(column, row).getModelIndex()), 1.0f, column, row, 1.0f, 1.0f, 0.0f);
-				} else if(background.isBlock(column, row)) {
-					renderer.render(Models.forIndex(background.get(column, row).getModelIndex()), 0.5f, column, row, 1.0f, 1.0f, 0.0f);
-				}
-			}
-		}
-		
-		//render the entities
-		for(int i = 0; i < entities.size(); i++) {
-			Entity e = entities.get(i);
-			
-			if(e != null) {
-				float posX = e.getPositionX();
-				float posY = e.getPositionY();
-				float halfWidth = e.getWidth()/2;
-				float halfHeight = e.getHeight()/2;
-				
-				//check if the entity is visible inside the viewport and render it
-				if(posX < worldRight + halfWidth && posX > worldLeft - halfWidth && posY < worldTop + halfHeight && posY > worldBottom - halfHeight) {
-					e.render(renderer);	
 				}
 			}
 		}
@@ -385,13 +336,13 @@ public final class DefaultWorld extends World {
 		return false;
 	}
 	
-	protected static boolean resolveBlockCollision(Entity e, float blockX, float blockY, float blockFriction, float time, 
+	protected static boolean resolveBlockCollision(World world, Entity e, Block block, float blockX, float blockY, float time, 
 			boolean blockUp, boolean blockLeft, boolean blockRight, boolean blockDown) {
 		float width = 0.5f * (e.getWidth() + 1);
 		float height = 0.5f * (e.getHeight() + 1);
 		float deltaX = blockX - e.getPositionX();
 		float deltaY = blockY - e.getPositionY();
-		if (Math.abs(deltaX) < width && Math.abs(deltaY) < height) { /* collision! replace < in intersection detection with <= for previous behavior */
+		if (Math.abs(deltaX) < width && Math.abs(deltaY) < height) { /* collision! */
 		    float wy = width * deltaY;
 		    float hx = height * deltaX;
 		    if (wy > hx) {
@@ -400,9 +351,9 @@ public final class DefaultWorld extends World {
 					if(e.getVelocityY() > 0) {
 						e.setVelocityY(0);
 					} if(e.getVelocityX() > 0) {
-		        		e.setVelocityX(Math.max(0, e.getVelocityX() - combineFriction(e.getFriction(), blockFriction) * time));
+		        		e.setVelocityX(Math.max(0, e.getVelocityX() - combineFriction(e.getFriction(), block.getFriction()) * time));
 		        	} else if(e.getVelocityX() < 0) {
-		        		e.setVelocityX(Math.min(0, e.getVelocityX() + combineFriction(e.getFriction(), blockFriction) * time));
+		        		e.setVelocityX(Math.min(0, e.getVelocityX() + combineFriction(e.getFriction(), block.getFriction()) * time));
 		        	}
 		        } else if(!blockRight) { /* collision on right of block */
 		        	e.setPositionX(blockX + width);
@@ -421,12 +372,13 @@ public final class DefaultWorld extends World {
 		        	if(e.getVelocityY() < 0) {
 		        		e.setVelocityY(0);
 		        	} if(e.getVelocityX() > 0) {
-		        		e.setVelocityX(Math.max(0, e.getVelocityX() - combineFriction(e.getFriction(), blockFriction) * time));
+		        		e.setVelocityX(Math.max(0, e.getVelocityX() - combineFriction(e.getFriction(), block.getFriction()) * time));
 		        	} else if(e.getVelocityX() < 0) {
-		        		e.setVelocityX(Math.min(0, e.getVelocityX() + combineFriction(e.getFriction(), blockFriction) * time));
+		        		e.setVelocityX(Math.min(0, e.getVelocityX() + combineFriction(e.getFriction(), block.getFriction()) * time));
 		        	}
 		        }
 		    }
+			e.onCollision(world, block, blockX, blockY, time);
 		    return true;
 		}
 		return false;

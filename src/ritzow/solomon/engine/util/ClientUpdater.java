@@ -25,12 +25,11 @@ public final class ClientUpdater implements Runnable, Exitable, WindowFocusHandl
 
 	@Override
 	public void run() {
-		
-		while(!exit) {
-			try {
+		try {
+			while(!exit) {
 				if(focused) {
-					for(int i = 0; i < updatables.size(); i++) {
-						updatables.get(i).update();
+					for(Updatable u : updatables) {
+						u.update();
 					}
 					Thread.sleep(1);
 				} else {
@@ -41,14 +40,14 @@ public final class ClientUpdater implements Runnable, Exitable, WindowFocusHandl
 						}
 					}
 				}
-			} catch(InterruptedException e) {
-				e.printStackTrace();
 			}
-		}
-		
-		synchronized(this) {
-			finished = true;
-			notifyAll();
+		} catch(InterruptedException e) {
+			e.printStackTrace();
+		} finally {
+			synchronized(this) {
+				finished = true;
+				notifyAll();
+			}
 		}
 	}
 	

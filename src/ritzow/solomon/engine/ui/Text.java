@@ -1,6 +1,6 @@
 package ritzow.solomon.engine.ui;
 
-import ritzow.solomon.engine.graphics.ModelRenderer;
+import ritzow.solomon.engine.world.base.ModelRenderProgram;
 
 public class Text extends Element {
 	protected String text;
@@ -15,8 +15,7 @@ public class Text extends Element {
 		this.spacing = spacing;
 	}
 	
-	@Override
-	public void render(ModelRenderer renderer) {
+	public void render(ModelRenderProgram renderer) { //TODO switch out for UIRenderProgram or something of the sort
 		renderer.loadOpacity(1.0f);
 		
 		int index = 0; //TODO optimize text rendering and make text position in center
