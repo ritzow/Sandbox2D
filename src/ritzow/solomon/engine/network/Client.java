@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.function.Supplier;
 import ritzow.solomon.engine.game.Lobby;
 import ritzow.solomon.engine.util.ByteUtil;
+import ritzow.solomon.engine.util.Service;
 import ritzow.solomon.engine.util.Transportable;
 import ritzow.solomon.engine.world.base.World;
 import ritzow.solomon.engine.world.entity.Entity;
@@ -38,6 +39,8 @@ public final class Client extends NetworkController {
 	
 	/** lock object for synchronizing server-initiated actions with the client **/
 	protected final Object worldLock, playerLock, lobbyLock;
+	
+	protected Service pinger;
 	
 	public Client() throws SocketException, UnknownHostException {
 		super(new InetSocketAddress(InetAddress.getLocalHost(), 0));
@@ -95,24 +98,26 @@ public final class Client extends NetworkController {
 	}
 	
 	public void sendPlayerAction(PlayerAction action, boolean enable) {
-		byte code = 0;
-		
-		switch(action) {
-			case MOVE_LEFT:
-				code = Protocol.PlayerAction.PLAYER_LEFT;
-				break;
-			case MOVE_RIGHT:
-				code = Protocol.PlayerAction.PLAYER_RIGHT;
-				break;
-			case MOVE_UP:
-				code = Protocol.PlayerAction.PLAYER_UP;
-				break;
-			case MOVE_DOWN:
-				code = Protocol.PlayerAction.PLAYER_DOWN;
-				break;
+		if(isConnected()) {
+			byte code = 0;
+			
+			switch(action) {
+				case MOVE_LEFT:
+					code = Protocol.PlayerAction.PLAYER_LEFT;
+					break;
+				case MOVE_RIGHT:
+					code = Protocol.PlayerAction.PLAYER_RIGHT;
+					break;
+				case MOVE_UP:
+					code = Protocol.PlayerAction.PLAYER_UP;
+					break;
+				case MOVE_DOWN:
+					code = Protocol.PlayerAction.PLAYER_DOWN;
+					break;
+			}
+			
+			send(Protocol.PlayerAction.buildPlayerMovementAction(code, enable));
 		}
-		
-		send(Protocol.PlayerAction.buildPlayerMovementAction(code, enable));
 	}
 	
 	public static enum PlayerAction {
@@ -196,6 +201,50 @@ public final class Client extends NetworkController {
 							e.printStackTrace();
 						}
 					}
+					
+					if(connected) {
+						pinger = new Service() {
+							private volatile boolean exit, finished;
+							
+							@Override
+							public boolean isSetupComplete() {
+								return true;
+							}
+
+							@Override
+							public synchronized void exit() {
+								exit = true;
+								notifyAll();
+							}
+
+							@Override
+							public boolean isFinished() {
+								return finished;
+							}
+
+							@Override
+							public void run() {
+								while(!exit) {
+									Client.this.send(Protocol.buildEmpty(Protocol.CLIENT_PING));
+									try {
+										synchronized(this) {
+											wait(2000);
+										}
+									} catch (InterruptedException e) {
+										e.printStackTrace();
+									}
+								}
+								
+								synchronized(this) {
+									finished = true;
+									notifyAll();
+								}
+							}
+						};
+						
+						new Thread(pinger, "Client to Server pinger").start();	
+					}
+					
 					return connected;
 				} catch(TimeoutException e) {
 					server = null;
@@ -225,6 +274,8 @@ public final class Client extends NetworkController {
 					send(packet);
 				}
 			} finally {
+				pinger.waitForExit(); //TODO is this adequate?
+				pinger = null;
 				server = null;
 				connected = false;
 				unreliableMessageID = 0;

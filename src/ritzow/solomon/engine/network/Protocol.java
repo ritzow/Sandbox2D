@@ -34,7 +34,8 @@ final class Protocol {
 		CLIENT_CONNECT_REQUEST = 1,
 		CLIENT_INFO = 3,
 		CLIENT_DISCONNECT = 6,
-		CLIENT_PLAYER_ACTION = 7;
+		CLIENT_PLAYER_ACTION = 7,
+		CLIENT_PING = 17;
 	
 	/** Shared protocol ID **/
 	public static final short
@@ -45,6 +46,7 @@ final class Protocol {
 		CLIENT_DISCONNECT,
 		CLIENT_PLAYER_ACTION,
 		CLIENT_INFO,
+		CLIENT_PING,
 		SERVER_CONNECT_ACKNOWLEDGMENT,
 		SERVER_WORLD_HEAD,
 		SERVER_WORLD_DATA,
@@ -73,6 +75,12 @@ final class Protocol {
 			}
 		}
 		return false;
+	}
+	
+	public static byte[] buildEmpty(short protocol) {
+		byte[] packet = new byte[2];
+		ByteUtil.putShort(packet, 0, protocol);
+		return packet;
 	}
 	
 	public static byte[] buildServerDisconnect() {
