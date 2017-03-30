@@ -43,6 +43,8 @@ public final class Server extends NetworkController {
 		final ClientState client = forAddress(sender);
 		
 		if(client != null) {
+			client.lastPing = System.nanoTime();
+			
 			switch(protocol) {
 				case Protocol.CLIENT_DISCONNECT:
 					remove(client);
@@ -51,9 +53,10 @@ public final class Server extends NetworkController {
 					processClientMessage(client, data);
 					break;
 				case Protocol.CLIENT_PLAYER_ACTION:
-					if(client.player != null) {
+					if(client.player != null)
 						Protocol.PlayerAction.processPlayerMovementAction(data, client.player);
-					}
+					break;
+				case Protocol.CLIENT_PING:
 					break;
 				default:
 					System.out.println("received unknown protocol " + protocol);
@@ -73,14 +76,18 @@ public final class Server extends NetworkController {
 	}
 	
 	public void broadcastMessage(String message) {
-		this.broadcast(Protocol.buildConsoleMessage(message));
+		broadcast(Protocol.buildConsoleMessage(message));
+	}
+	
+	public void broadcast(byte[] data) {
+		broadcast(data, true);
 	}
 	
 	/**
 	 * Broadcasts {@code data} to each client connected to this Server and returns immediately
 	 * @param data the packet of data to send
 	 */
-	public void broadcast(byte[] data) {
+	public void broadcast(byte[] data, boolean removeUnresponsive) {
 		boolean reliable = Protocol.isReliable(ByteUtil.getShort(data, 0));
 		synchronized(clients) {
 			clients.forEach(client -> {
@@ -90,7 +97,9 @@ public final class Server extends NetworkController {
 							try {
 								super.sendReliable(client.address, client.reliableMessageID++, data, 10, 100);
 							} catch(TimeoutException e) {
-								remove(client);
+								if(removeUnresponsive) {
+									remove(client); //TODO this could cause a concurrent modification because of clients.forEach using a foreach loop
+								}
 							}
 						});
 					} else {
@@ -102,12 +111,16 @@ public final class Server extends NetworkController {
 	}
 	
 	protected void send(byte[] data, ClientState client) {
+		this.send(data, client, true);
+	}
+	
+	protected void send(byte[] data, ClientState client, boolean removeUnresponsive) {
 		if(Protocol.isReliable(ByteUtil.getShort(data, 0))) {
 			try {
 				super.sendReliable(client.address, client.reliableMessageID++, data, 10, 100);
 			} catch(TimeoutException e) {
-				if(clients.contains(client)) {
-					remove(client);
+				if(removeUnresponsive && clients.contains(client)) {
+					remove(client); //TODO improve unresponsive client disconnecting
 				}
 			}
 		} else {
@@ -158,18 +171,17 @@ public final class Server extends NetworkController {
 			}
 		});
 		clients.clear();
-		System.out.println("Disconnected all clients");
 	}
 	
 	/** Disconnects a client after notifying it **/
 	protected void disconnect(ClientState client) {
-		send(Protocol.buildServerDisconnect(), client);
+		send(Protocol.buildServerDisconnect(), client, false);
 		remove(client);
 	}
 	
 	/** Disconnect all clients after notifying them **/
 	protected void disconnectAll() {
-		broadcast(Protocol.buildServerDisconnect());
+		broadcast(Protocol.buildServerDisconnect(), false);
 		removeAll();
 	}
 	
@@ -253,6 +265,8 @@ public final class Server extends NetworkController {
 				ByteUtil.putShort(playerPacket, 0, Protocol.SERVER_ADD_ENTITY_COMPRESSED);
 				broadcast(playerPacket);
 				world.add(player);
+				
+				newClient.lastPing = System.nanoTime();
 			}
 			
 			//add the newly connected client to the clients list
@@ -286,6 +300,7 @@ public final class Server extends NetworkController {
 		protected volatile String username;
 		protected volatile PlayerEntity player;
 		protected volatile int unreliableMessageID, reliableMessageID;
+		protected volatile long lastPing;
 		
 		public ClientState(int initReliable, SocketAddress address) {
 			this.reliableMessageID = initReliable;
@@ -352,6 +367,12 @@ public final class Server extends NetworkController {
 							broadcast(Protocol.buildGenericEntityUpdate(entity));
 						}
 					});
+				}
+				
+				for(ClientState client : clients) {
+					if(client != null && client.lastPing <= System.nanoTime() - 3000000000L) { //if lastPing was greater than 3 seconds ago
+						disconnect(client); //TODO will cause concurrent mod
+					}
 				}
 				
 				try {
