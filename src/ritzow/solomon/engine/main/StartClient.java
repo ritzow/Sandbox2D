@@ -11,8 +11,8 @@ import ritzow.solomon.engine.audio.ClientAudioSystem;
 import ritzow.solomon.engine.audio.Sounds;
 import ritzow.solomon.engine.graphics.Camera;
 import ritzow.solomon.engine.graphics.GraphicsUpdater;
-import ritzow.solomon.engine.graphics.ModelRenderer;
-import ritzow.solomon.engine.graphics.Models;
+import ritzow.solomon.engine.graphics.GraphicsUtility;
+import ritzow.solomon.engine.graphics.Shader;
 import ritzow.solomon.engine.input.Controls;
 import ritzow.solomon.engine.input.EventProcessor;
 import ritzow.solomon.engine.input.InputManager;
@@ -26,14 +26,12 @@ import ritzow.solomon.engine.util.ClientUpdater;
 import ritzow.solomon.engine.world.base.ClientWorldUpdater;
 import ritzow.solomon.engine.world.base.DefaultWorld;
 import ritzow.solomon.engine.world.base.DefaultWorldRenderer;
+import ritzow.solomon.engine.world.base.LightRenderProgram;
 import ritzow.solomon.engine.world.base.ModelRenderProgram;
 import ritzow.solomon.engine.world.entity.PlayerEntity;
 
 public final class StartClient {
 	public static void main(String... args) throws IOException {
-		//disables native pointer/function checks
-		//org.lwjgl.system.Configuration.DISABLE_CHECKS.set(true);
-		
 		final Client client = new Client();
 		new Thread(client, "Client Thread").start();
 		client.waitForSetup();
@@ -69,13 +67,14 @@ public final class StartClient {
 			
 			//initializes OpenAL
 			ClientAudioSystem audio = new ClientAudioSystem();
-			
+			//TODO make sound register system, something like AudioSystem::registerSound method to associate sounds with a system, rather than being global
 			try {
 				Sounds.loadAll(new File("resources/assets/audio"));
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
 			
+			//set the audio manager to a reasonable gain
 			audio.setVolume(3.0f);
 			
 			//wait for the client to receive the world and return it
@@ -90,21 +89,35 @@ public final class StartClient {
 			Camera camera = new Camera(0, 0, 1);
 			
 			//start the graphics manager, which will load all models into OpenGL and setup the OpenGL context.
-			GraphicsUpdater graphicsManager = new GraphicsUpdater(eventProcessor.getDisplay(), graphics -> {
+			GraphicsUpdater graphicsUpdater = new GraphicsUpdater(eventProcessor.getDisplay(), graphics -> {
 				try {
-					ModelRenderProgram program = new ModelRenderProgram(new FileInputStream("resources/shaders/vertexShader"), 
-							new FileInputStream("resources/shaders/fragmentShader"), camera);
-					graphics.getRenderers().add(new ModelRenderer(Models.forIndex(Models.CLOUDS_INDEX), program));
-					graphics.getRenderers().add(new DefaultWorldRenderer(program, camera, world));
+					ModelRenderProgram modelProgram = new ModelRenderProgram(
+							new Shader(new FileInputStream("resources/shaders/modelVertexShader"), org.lwjgl.opengl.GL20.GL_VERTEX_SHADER),
+							new Shader(new FileInputStream("resources/shaders/modelFragmentShader"), org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER), 
+							camera
+					);
+					
+					GraphicsUtility.checkErrors();
+					
+					//TODO this is causing an opengl error, probably because the shaders are not written correctly
+					LightRenderProgram lightProgram = new LightRenderProgram(
+							new Shader(new FileInputStream("resources/shaders/lightVertexShader"), org.lwjgl.opengl.GL20.GL_VERTEX_SHADER),
+							new Shader(new FileInputStream("resources/shaders/lightFragmentShader"), org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER)
+					);
+					
+					GraphicsUtility.checkErrors();
+					GraphicsUtility.printProgramCompilation(modelProgram, lightProgram);
+					
+					graphics.getRenderers().add(new DefaultWorldRenderer(modelProgram, lightProgram, world));
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
 			});
 			
-			new Thread(graphicsManager, "Graphics Manager").start();
+			new Thread(graphicsUpdater, "Graphics Manager").start();
 			
 			//wait for the graphics manager to finish setup.
-			graphicsManager.waitForSetup();
+			graphicsUpdater.waitForSetup();
 
 			//create the client update manager and link it with the window events
 			ClientUpdater clientUpdater = new ClientUpdater();
@@ -145,19 +158,17 @@ public final class StartClient {
 			}
 			
 			//start exiting threads
+			graphicsUpdater.waitForExit();
+			eventProcessor.waitForExit();
 			client.exit();
-			client.waitUntilFinished();
 			worldUpdater.exit();
 			clientUpdater.exit();
-			graphicsManager.exit();
-			graphicsManager.waitUntilFinished();
-			eventProcessor.exit();
-	 		eventProcessor.waitUntilFinished();
+			
+			client.waitUntilFinished();
 			worldUpdater.waitUntilFinished();
-			audio.shutdown();
+			clientUpdater.waitUntilFinished();
 
-			//make sure the client updater and event manager are closed before exiting the "game" thread
-	 		clientUpdater.waitUntilFinished();
+			audio.shutdown();
 		}
 		
 		/** can be called from any thread to exit the game **/

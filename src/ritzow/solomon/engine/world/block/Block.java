@@ -17,7 +17,7 @@ public abstract class Block implements Transportable {
 	public abstract Block createNew();
 	
 	public void onBreak(World world, float x, float y) {
-		ItemEntity drop = new ItemEntity(0, new BlockItem(this.createNew()), x, y); //TODO deal with entityID for entities created outside server directly
+		ItemEntity drop = new ItemEntity(0, new BlockItem(this.createNew()), x, y); //TODO deal with entityID for entities created outside server directly perhaps method like World::requestNewEntityID
 		drop.setVelocityX(-0.2f + ((float)Math.random() * (0.4f)));
 		drop.setVelocityY((float)Math.random() * (0.35f));
 		world.add(drop);

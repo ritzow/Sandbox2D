@@ -38,7 +38,7 @@ public final class BlockEntity extends Entity {
 
 	@Override
 	public float getFriction() {
-		return 0.2f; //TODO adjust friction value
+		return 0.2f;
 	}
 
 	@Override
