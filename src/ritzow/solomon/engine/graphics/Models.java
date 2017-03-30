@@ -6,7 +6,9 @@ import java.util.Map;
 
 public final class Models {
 	
-	private Models() {}
+	private Models() {
+		
+	}
 
 	public static final int
 		GRASS_INDEX = 0,
@@ -48,6 +50,6 @@ public final class Models {
 		models.put(CLOUDS_INDEX, new Model(6, RECTANGLE_INDICES_BUFFER.id, SQUARE_POSITIONS_BUFFER.id, FULL_TEXTURE_COORDINATES.id, Textures.CLOUDS.id));
 		models.put(RED_SQUARE_INDEX, new Model(6, RECTANGLE_INDICES_BUFFER.id, SQUARE_POSITIONS_BUFFER.id, FULL_TEXTURE_COORDINATES.id, Textures.RED_SQUARE.id));
 		
-		OpenGLException.checkErrors();
+		GraphicsUtility.checkErrors();
 	}
 }

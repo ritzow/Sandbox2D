@@ -36,6 +36,6 @@ public final class Model {
 		glVertexAttribPointer(RendererConstants.ATTRIBUTE_TEXTURE_COORDS, 2, GL_FLOAT, false, 0, 0);
 		glBindVertexArray(0);
 		
-		OpenGLException.checkErrors();
+		GraphicsUtility.checkErrors();
 	}
 }

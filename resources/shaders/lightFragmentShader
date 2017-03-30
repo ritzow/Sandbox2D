@@ -1,0 +1,13 @@
+#version 410 core
+
+out vec4 pixelColor;
+
+uniform vec3 lightColor;
+uniform float lightRadius;
+uniform float lightIntensity;
+uniform float lightPosX;
+uniform float lightPosY;
+
+void main() {
+	pixelColor = vec4(lightColor, 1.0); //need to actually calculate light per pixel, duh!
+}

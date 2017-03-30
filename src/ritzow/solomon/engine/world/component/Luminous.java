@@ -1,9 +1,9 @@
 package ritzow.solomon.engine.world.component;
 
 public interface Luminous {
-	public short getRed();
-	public short getGreen();
-	public short getBlue();
-	public int getRadius();
-	public int getBrightness();
+	public short getLightRed();
+	public short getLightGreen();
+	public short getLightBlue();
+	public float getLightRadius();
+	public float getLightIntensity();
 }

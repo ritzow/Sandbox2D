@@ -11,12 +11,11 @@ import static org.lwjgl.opengl.GL20.glBindAttribLocation;
 import static org.lwjgl.opengl.GL30.glBindVertexArray;
 
 import java.io.IOException;
-import java.io.InputStream;
 import ritzow.solomon.engine.graphics.Camera;
 import ritzow.solomon.engine.graphics.Graphics;
+import ritzow.solomon.engine.graphics.GraphicsUtility;
 import ritzow.solomon.engine.graphics.Model;
 import ritzow.solomon.engine.graphics.Models;
-import ritzow.solomon.engine.graphics.OpenGLException;
 import ritzow.solomon.engine.graphics.RendererConstants;
 import ritzow.solomon.engine.graphics.Shader;
 import ritzow.solomon.engine.graphics.ShaderProgram;
@@ -67,12 +66,9 @@ public final class ModelRenderProgram extends ShaderProgram {
 	
 	//TODO store models in ModelRenderProgram, rather than Models class?
 	
-	public ModelRenderProgram(InputStream vertexShader, InputStream fragmentShader, Camera camera) throws IOException {
-		super(
-			new Shader(vertexShader, org.lwjgl.opengl.GL20.GL_VERTEX_SHADER), 
-			new Shader(fragmentShader, org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER)
-		);
-		
+	public ModelRenderProgram(Shader vertexShader, Shader fragmentShader, Camera camera) throws IOException {
+		super(vertexShader, fragmentShader);
+
 		glBindAttribLocation(programID, RendererConstants.ATTRIBUTE_POSITIONS, "position");
 		glBindAttribLocation(programID, RendererConstants.ATTRIBUTE_TEXTURE_COORDS, "textureCoord");
 		
@@ -81,11 +77,11 @@ public final class ModelRenderProgram extends ShaderProgram {
 		this.uniform_opacity = getUniformID("opacity");
 		this.uniform_view = getUniformID("view");
 		
-		OpenGLException.checkErrors();
+		GraphicsUtility.checkErrors();
 	}
 	
 	public void loadOpacity(float opacity) {
-		loadFloat(uniform_opacity, opacity);
+		setFloat(uniform_opacity, opacity);
 	}
 	
 	@SuppressWarnings("static-method")
@@ -113,11 +109,11 @@ public final class ModelRenderProgram extends ShaderProgram {
 		transformationMatrix[4] = scaleX * (float) -Math.sin(rotation);
 		transformationMatrix[5] = scaleY * (float) Math.cos(rotation);
 		transformationMatrix[7] = posY;
-		loadMatrix(uniform_transform, transformationMatrix);
+		setMatrix(uniform_transform, transformationMatrix);
 	}
 	
 	public void loadViewMatrixIdentity() {
-		loadMatrix(uniform_view, identityMatrix);
+		setMatrix(uniform_view, identityMatrix);
 	}
 	
 	public void loadViewMatrix(boolean includeCamera) {
@@ -127,9 +123,9 @@ public final class ModelRenderProgram extends ShaderProgram {
 			loadCameraMatrix(cameraMatrix);
 			clearMatrix(viewMatrix);
 			multiply(aspectMatrix, cameraMatrix, viewMatrix);
-			loadMatrix(uniform_view, viewMatrix);
+			setMatrix(uniform_view, viewMatrix);
 		} else {
-			loadMatrix(uniform_view, aspectMatrix);
+			setMatrix(uniform_view, aspectMatrix);
 		}
 	}
 	
