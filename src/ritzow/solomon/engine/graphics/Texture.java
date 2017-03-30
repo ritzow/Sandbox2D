@@ -10,13 +10,31 @@ public final class Texture {
 	
 	public Texture(ByteBuffer pixels, int width, int height) {
 		this.id = glGenTextures();
-		glBindTexture(GL_TEXTURE_2D, id);
+		setup(id);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+		glBindTexture(GL_TEXTURE_2D, 0);
+	}
+	
+	public Texture(int width, int height) {
+		this.id = glGenTextures();
+		recreate(width, height);
+	}
+	
+	public void recreate(int width, int height) {
+		setup(id);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+	}
+	
+	private static final void setup(int texture) {
+		glBindTexture(GL_TEXTURE_2D, texture);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
-		glBindTexture(GL_TEXTURE_2D, 0);
+	}
+	
+	public void bind() {
+		glBindTexture(GL_TEXTURE_2D, id);
 	}
 	
 	public void delete() {
