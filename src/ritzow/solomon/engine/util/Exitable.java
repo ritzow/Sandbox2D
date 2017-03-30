@@ -15,10 +15,15 @@ public interface Exitable {
 			while(!isFinished()) {
 				try {
 					wait();
-				} catch (InterruptedException e){
+				} catch (InterruptedException e) {
 					continue;
 				}
 			}
 		}
+	}
+	
+	default public void waitForExit() {
+		exit();
+		waitUntilFinished();
 	}
 }
