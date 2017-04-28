@@ -1,8 +1,10 @@
 package ritzow.solomon.engine.world.base;
 
+import static org.lwjgl.opengl.GL20.glDrawBuffers;
 import static org.lwjgl.opengl.GL30.GL_COLOR_ATTACHMENT0;
 
-import org.lwjgl.opengl.GL20;
+import java.util.List;
+
 import ritzow.solomon.engine.graphics.Framebuffer;
 import ritzow.solomon.engine.graphics.GraphicsUtility;
 import ritzow.solomon.engine.graphics.Models;
@@ -15,9 +17,9 @@ public final class DefaultWorldRenderer implements Renderer {
 	private final DefaultWorld world;
 	private final ModelRenderProgram modelProgram;
 	private final LightRenderProgram lightProgram;
-	
-	private final Framebuffer framebuffer;
+	private final Framebuffer framebuffer, secondFramebuffer;
 	private final Texture diffuseTexture;
+	private final Texture shadowTexture;
 	private int previousWidth, previousHeight;
 	
 	public DefaultWorldRenderer(ModelRenderProgram modelProgram, LightRenderProgram lightProgram, DefaultWorld world) {
@@ -25,22 +27,31 @@ public final class DefaultWorldRenderer implements Renderer {
 		this.modelProgram = modelProgram;
 		this.lightProgram = lightProgram;
 		this.framebuffer = new Framebuffer();
+		this.secondFramebuffer = new Framebuffer();
 		this.diffuseTexture = new Texture(100, 100);
+		this.shadowTexture = new Texture(100, 100);
+		framebuffer.attachTexture(diffuseTexture, GL_COLOR_ATTACHMENT0);
+		secondFramebuffer.attachTexture(shadowTexture, GL_COLOR_ATTACHMENT0);
 		GraphicsUtility.checkErrors();
 	}
 	
 	@Override
 	public Framebuffer render(int framebufferWidth, int framebufferHeight) {
-		//set the current shader program
-		modelProgram.setCurrent();
+		
+		//ensure that model program is cached on stack
+		ModelRenderProgram modelProgram = this.modelProgram;
 		
 		//update framebuffer size
 		if(previousWidth != framebufferWidth || previousHeight != framebufferHeight) {
 			modelProgram.setResolution(framebufferWidth, framebufferHeight);
-			diffuseTexture.recreate(framebufferWidth, framebufferHeight);
+			diffuseTexture.setSize(framebufferWidth, framebufferHeight);
+			shadowTexture.setSize(framebufferWidth, framebufferHeight);
 			previousWidth = framebufferWidth;
 			previousHeight = framebufferHeight;
 		}
+		
+		//set the current shader program
+		modelProgram.setCurrent();
 		
 		//load the view transformation
 		modelProgram.loadViewMatrix(true);
@@ -51,33 +62,39 @@ public final class DefaultWorldRenderer implements Renderer {
 		float worldTop = modelProgram.getWorldViewportTopBound();
 		float worldBottom = modelProgram.getWorldViewportBottomBound();
 		
+		//cache foreground and background of world
+		BlockGrid foreground = world.foreground, background = world.background;
+		
 		//calculate block grid bounds
 		int leftBound = 	Math.max(0, (int)Math.floor(worldLeft));
-		int rightBound = 	Math.min(world.foreground.getWidth(), (int)Math.ceil(worldRight));
-		int topBound = 		Math.min(world.foreground.getHeight(), (int)Math.ceil(worldTop));
+		int rightBound = 	Math.min(foreground.getWidth(), (int)Math.ceil(worldRight));
+		int topBound = 		Math.min(foreground.getHeight(), (int)Math.ceil(worldTop));
 		int bottomBound = 	Math.max(0, (int)Math.floor(worldBottom));
 		
 		//prepare the diffuse texture for drawing
-		framebuffer.attachTexture(diffuseTexture, GL_COLOR_ATTACHMENT0);
 		framebuffer.clear(1.0f, 1.0f, 1.0f, 1.0f);
 		framebuffer.setDraw();
 		
-		GL20.glDrawBuffers(GL_COLOR_ATTACHMENT0);
+		//tell the framebuffer to draw the shader output to attachment 0
+		glDrawBuffers(GL_COLOR_ATTACHMENT0);
 		
 		//render the blocks visible in the viewport
 		for(int row = bottomBound; row <= topBound; row++) {
 			for(int column = leftBound; column <= rightBound; column++) {
-				if(world.foreground.isBlock(column, row)) {
-					modelProgram.render(Models.forIndex(world.foreground.get(column, row).getModelIndex()), 1.0f, column, row, 1.0f, 1.0f, 0.0f);
-				} else if(world.background.isBlock(column, row)) {
-					modelProgram.render(Models.forIndex(world.background.get(column, row).getModelIndex()), 0.5f, column, row, 1.0f, 1.0f, 0.0f);
+				if(foreground.isBlock(column, row)) {
+					modelProgram.render(Models.forIndex(foreground.get(column, row).getModelIndex()), 1.0f, column, row, 1.0f, 1.0f, 0.0f);
+				} else if(background.isBlock(column, row)) {
+					modelProgram.render(Models.forIndex(background.get(column, row).getModelIndex()), 0.5f, column, row, 1.0f, 1.0f, 0.0f);
 				}
 			}
 		}
 		
+		//cache entity list
+		List<Entity> entities = world.entities;
+		
 		//render the entities
-		for(int i = 0; i < world.entities.size(); i++) {
-			Entity e = world.entities.get(i);
+		for(int i = 0; i < entities.size(); i++) {
+			Entity e = entities.get(i);
 			
 			if(e != null) {
 				//pre-compute variables
@@ -93,28 +110,33 @@ public final class DefaultWorldRenderer implements Renderer {
 			}
 		}
 		
-		/*
-		 * TODO make shader program that does nothing in vertex shader but processes 
-		 * a single light in the fragment shader, call it with diffuse texture/fbo bound? 
-		 * run for each light in the scene. do lighting falloff in fragment shader.  
-		 * perhaps use occuluder/shadowmap texture sampling to check if a spot should be lit?
+		/* Need to "erase" blackness of shadowTexture where there is lighting.
+		 * render to shadow texture, sample from diffuse, blend diffuse and light value with shadow texture
+		 * of pixel to determine shadow texture pixel color, but remember that there can be more than 1 light 
+		 * and they need to blend well, no complete overwriting of values
+		 * http://www.soolstyle.com/2010/02/15/2d-deferred-lightning/
 		 */
 		
-		//switch to the light renderer, but continue using world drawing framebuffer
 		lightProgram.setCurrent();
-		
-		//setup shadow map texture for use by a sampler in the fragment shader to esnure that lights dont go through walls
-		//glActiveTexture(GL_TEXTURE0);
+		framebuffer.attachTexture(diffuseTexture, GL_COLOR_ATTACHMENT0);
+		framebuffer.setDraw();
 		
 		for(int i = 0; i < world.entities.size(); i++) {
 			Entity e = world.entities.get(i);
-			if(e instanceof Luminous) {
-				lightProgram.render((Luminous)e, e.getPositionX(), e.getPositionY());
+			if(e != null && e instanceof Luminous) {
+				//pre-compute variables
+				Luminous light = (Luminous)e;
+				float posX = e.getPositionX();
+				float posY = e.getPositionY();
+				float halfWidth = light.getLightRadius();
+				float halfHeight = halfWidth;
+				
+				//check if the entity is visible inside the viewport and render it
+				if(posX < worldRight + halfWidth && posX > worldLeft - halfWidth && posY < worldTop + halfHeight && posY > worldBottom - halfHeight) {
+					lightProgram.render(light, posX, posY, framebufferWidth, framebufferHeight);
+				}
 			}
 		}
-		
-		//TODO render luminous blocks
-		
 	    return framebuffer;
 	}
 }

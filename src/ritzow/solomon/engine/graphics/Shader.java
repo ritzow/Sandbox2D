@@ -27,7 +27,7 @@ public final class Shader {
 		glShaderSource(shaderID, new String(buffer.toByteArray()));
 		glCompileShader(shaderID);
 		
-		GraphicsUtility.checkErrors();
+		GraphicsUtility.checkShaderCompilation(this);
 	}
 	
 	public int getShaderID() {

@@ -2,9 +2,10 @@ package ritzow.solomon.engine.graphics;
 
 import static org.lwjgl.opengl.GL20.*;
 
+@SuppressWarnings("static-method")
 public class ShaderProgram {
 	protected final int programID;
-	protected final Shader[] shaders;
+	protected final Shader[] shaders; //stores the shaders for deletion
 	
 	public ShaderProgram(Shader... shaders) {
 		this.shaders = shaders;
@@ -18,50 +19,50 @@ public class ShaderProgram {
 		glLinkProgram(programID);
 		glValidateProgram(programID);
 		
-		GraphicsUtility.checkErrors();
+		GraphicsUtility.checkProgramCompilation(this);
 	}
 	
-	public void setCurrent() {
+	public final void setCurrent() {
 		glUseProgram(programID);
 	}
 	
-	public int getUniformID(String name) {
+	protected final int getUniformID(String name) {
 		return glGetUniformLocation(programID, name);
 	}
 	
-	public void setMatrix(int uniformID, float[] values) {
+	public final void setMatrix(int uniformID, float[] values) {
 		glUniformMatrix4fv(uniformID, true, values);
 	}
 	
-	public void setInteger(int uniformID, int value) {
+	public final void setInteger(int uniformID, int value) {
 		glUniform1i(uniformID, value);
 	}
 	
-	public void setFloat(int uniformID, float value) {
+	public final void setFloat(int uniformID, float value) {
 		glUniform1f(uniformID, value);
 	}
 	
-	public void setVector(int uniformID, float x, float y, float z) {
+	public final void setVector(int uniformID, float x, float y, float z) {
 		glUniform3f(uniformID, x, y, z);
 	}
 	
-	public void setVector(int uniformID, float x, float y, float z, float w) {
+	public final void setVector(int uniformID, float x, float y, float z, float w) {
 		glUniform4f(uniformID, x, y, z, w);
 	}
 	
-	public void setBoolean(int uniformID, boolean value) {
+	public final void setBoolean(int uniformID, boolean value) {
 		glUniform1i(uniformID, value ? 1 : 0);
 	}
 	
-	public int getInteger(int uniformID) {
+	public final int getInteger(int uniformID) {
 		return glGetUniformi(programID, uniformID);
 	}
 	
-	public float getFloat(int uniformID) {
+	public final float getFloat(int uniformID) {
 		return glGetUniformf(programID, uniformID);
 	}
 	
-	public boolean getBoolean(int uniformID) {
+	public final boolean getBoolean(int uniformID) {
 		return glGetUniformi(programID, uniformID) == 1;
 	}
 	
@@ -70,7 +71,7 @@ public class ShaderProgram {
 		deleteProgram();
 	}
 	
-	public void deleteProgram() {
+	public final void deleteProgram() {
 		glDeleteProgram(programID);
 	}
 	
