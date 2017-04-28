@@ -11,6 +11,7 @@ import static org.lwjgl.opengl.GL20.glBindAttribLocation;
 import static org.lwjgl.opengl.GL30.glBindVertexArray;
 
 import java.io.IOException;
+import java.util.Arrays;
 import ritzow.solomon.engine.graphics.Camera;
 import ritzow.solomon.engine.graphics.Graphics;
 import ritzow.solomon.engine.graphics.GraphicsUtility;
@@ -68,16 +69,13 @@ public final class ModelRenderProgram extends ShaderProgram {
 	
 	public ModelRenderProgram(Shader vertexShader, Shader fragmentShader, Camera camera) throws IOException {
 		super(vertexShader, fragmentShader);
-
+		GraphicsUtility.checkProgramCompilation(this);
 		glBindAttribLocation(programID, RendererConstants.ATTRIBUTE_POSITIONS, "position");
 		glBindAttribLocation(programID, RendererConstants.ATTRIBUTE_TEXTURE_COORDS, "textureCoord");
-		
-		this.camera = camera;
 		this.uniform_transform = getUniformID("transform");
 		this.uniform_opacity = getUniformID("opacity");
 		this.uniform_view = getUniformID("view");
-		
-		GraphicsUtility.checkErrors();
+		this.camera = camera;
 	}
 	
 	public void loadOpacity(float opacity) {
@@ -121,17 +119,11 @@ public final class ModelRenderProgram extends ShaderProgram {
 		
 		if(includeCamera) {
 			loadCameraMatrix(cameraMatrix);
-			clearMatrix(viewMatrix);
+			Arrays.fill(viewMatrix, 0);
 			multiply(aspectMatrix, cameraMatrix, viewMatrix);
 			setMatrix(uniform_view, viewMatrix);
 		} else {
 			setMatrix(uniform_view, aspectMatrix);
-		}
-	}
-	
-	private static void clearMatrix(float[] matrix) {
-		for(int i = 0; i < matrix.length; i++) {
-			matrix[i] = 0;
 		}
 	}
 	
@@ -143,14 +135,14 @@ public final class ModelRenderProgram extends ShaderProgram {
 	}
 	
 	public float getWorldViewportLeftBound() {
-		float worldX = -framebufferWidth/framebufferHeight; //far left of screen after accounting for aspect ratio
+		float worldX = -framebufferWidth/framebufferHeight; //far left of screen after accounting for aspect ratio, in world coordinates
 		worldX /= camera.getZoom();
 		worldX += camera.getPositionX();
 		return worldX;
 	}
 	
 	public float getWorldViewportRightBound() {
-		float worldX = framebufferWidth/framebufferHeight; //far right of screen, after accounting for aspect ratio
+		float worldX = framebufferWidth/framebufferHeight; //far right of screen, after accounting for aspect ratio, in world coordinates
 		worldX /= camera.getZoom();
 		worldX += camera.getPositionX();
 		return worldX;
@@ -170,18 +162,6 @@ public final class ModelRenderProgram extends ShaderProgram {
 		return worldY;
 	}
 
-	public Camera getCamera() {
-		return camera;
-	}
-	
-	public float getFramebufferWidth() {
-		return framebufferWidth;
-	}
-	
-	public float getFramebufferHeight() {
-		return framebufferHeight;
-	}
-	
 	public void setResolution(float framebufferWidth, float framebufferHeight) {
 		this.framebufferWidth = framebufferWidth;
 		this.framebufferHeight = framebufferHeight;
