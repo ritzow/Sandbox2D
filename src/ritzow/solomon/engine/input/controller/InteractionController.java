@@ -9,14 +9,13 @@ import ritzow.solomon.engine.input.handler.CursorPosHandler;
 import ritzow.solomon.engine.input.handler.FramebufferSizeHandler;
 import ritzow.solomon.engine.input.handler.KeyHandler;
 import ritzow.solomon.engine.input.handler.MouseButtonHandler;
-import ritzow.solomon.engine.util.Updatable;
 import ritzow.solomon.engine.world.base.World;
 import ritzow.solomon.engine.world.entity.ItemEntity;
 import ritzow.solomon.engine.world.entity.PlayerEntity;
 import ritzow.solomon.engine.world.item.BlockItem;
 import ritzow.solomon.engine.world.item.Item;
 
-public final class InteractionController implements Controller, MouseButtonHandler, CursorPosHandler, FramebufferSizeHandler, KeyHandler, Updatable {
+public final class InteractionController implements Controller, MouseButtonHandler, CursorPosHandler, FramebufferSizeHandler, KeyHandler {
 	private boolean primaryAction, secondaryAction;
 	private final boolean instantBreak;
 	private float frameWidth, frameHeight;
