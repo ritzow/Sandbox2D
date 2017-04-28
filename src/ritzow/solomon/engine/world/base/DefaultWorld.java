@@ -2,15 +2,22 @@ package ritzow.solomon.engine.world.base;
 
 import static ritzow.solomon.engine.util.Utility.combineFriction;
 
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import ritzow.solomon.engine.audio.AudioSystem;
+import ritzow.solomon.engine.graphics.Camera;
+import ritzow.solomon.engine.graphics.GraphicsUtility;
+import ritzow.solomon.engine.graphics.OpenGLException;
+import ritzow.solomon.engine.graphics.Renderer;
+import ritzow.solomon.engine.graphics.Shader;
 import ritzow.solomon.engine.util.ByteUtil;
 import ritzow.solomon.engine.world.block.Block;
 import ritzow.solomon.engine.world.entity.Entity;
 
-public final class DefaultWorld extends World {
+public final class DefaultWorld implements World {
 	
 	/** collection of entities in the world **/
 	protected final List<Entity> entities;
@@ -396,5 +403,29 @@ public final class DefaultWorld extends World {
 	
 	public void setAudioSystem(AudioSystem audio) {
 		this.audio = audio;
+	}
+
+	@Override
+	public Renderer getRenderer(Camera camera) {
+		ModelRenderProgram modelProgram;
+		try {
+			modelProgram = new ModelRenderProgram(
+					new Shader(new FileInputStream("resources/shaders/modelVertexShader"), org.lwjgl.opengl.GL20.GL_VERTEX_SHADER),
+					new Shader(new FileInputStream("resources/shaders/modelFragmentShader"), org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER), 
+					camera
+			);
+			
+			//TODO this is causing an opengl error, probably because the shaders are not written correctly
+			LightRenderProgram lightProgram = new LightRenderProgram(
+					new Shader(new FileInputStream("resources/shaders/lightVertexShader"), org.lwjgl.opengl.GL20.GL_VERTEX_SHADER),
+					new Shader(new FileInputStream("resources/shaders/lightFragmentShader"), org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER),
+					camera
+			);
+			GraphicsUtility.checkErrors();
+			return new DefaultWorldRenderer(modelProgram, lightProgram, this);
+		} catch (IOException | OpenGLException e) {
+			e.printStackTrace();
+			return null;
+		}
 	}
 }
