@@ -24,22 +24,18 @@ public final class ClientWorldUpdater implements Service {
 		
 		try {
 			long currentTime;
-			float updateTime;
 			long previousTime = System.nanoTime();
 			while(!exit) {
 			    currentTime = System.nanoTime();
-			    updateTime = (currentTime - previousTime) * 0.0000000625f; //convert from nanoseconds to sixteenth of a milliseconds
+			    world.update((currentTime - previousTime) * 0.0000000625f); //convert from nanoseconds to sixteenths of milliseconds
 			    previousTime = currentTime;
-			    world.update(updateTime);
-				Thread.sleep(16); //TODO change based on time it takes to update (computer speed)
+				Thread.sleep(16); //TODO change based on time it takes to update (computer speed, slower on older computers, faster on newer)
 			}
 		} catch (InterruptedException e) {
 			System.err.println("World update loop was interrupted");
 		} finally {
-			blockManagerForeground.exit();
-			blockManagerForeground.waitUntilFinished();
-			blockManagerBackground.exit();
-			blockManagerBackground.waitUntilFinished();
+			blockManagerForeground.waitForExit();
+			blockManagerBackground.waitForExit();
 			synchronized(this) {
 				finished = true;
 				notifyAll();

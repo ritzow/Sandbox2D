@@ -14,6 +14,7 @@ public abstract class Block implements Transportable {
 	public abstract int getHardness();
 	public abstract float getFriction();
 	public abstract boolean isSolid();
+	public void update(World world, float time) {};
 	public abstract Block createNew();
 	
 	public void onBreak(World world, float x, float y) {
