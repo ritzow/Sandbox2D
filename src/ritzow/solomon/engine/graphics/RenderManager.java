@@ -19,19 +19,19 @@ import ritzow.solomon.engine.input.handler.WindowFocusHandler;
 import ritzow.solomon.engine.util.Service;
 
 /** Initializes OpenGL and loads data to the GPU, then renders any Renderable objects added to the List returned by getUpdatables() **/
-public final class GraphicsUpdater implements Service, FramebufferSizeHandler, WindowFocusHandler {
+public final class RenderManager implements Service, FramebufferSizeHandler, WindowFocusHandler {
 	private volatile boolean setupComplete, exit, finished;
 	private volatile boolean updateViewport, focused;
 	private volatile int framebufferWidth, framebufferHeight;
 	private final Display display;
 	private final List<Renderer> renderers;
-	private final Consumer<GraphicsUpdater> onStartup;
+	private final Consumer<RenderManager> onStartup;
 	
-	public GraphicsUpdater(Display display) {
+	public RenderManager(Display display) {
 		this(display, a -> {});
 	}
 	
-	public GraphicsUpdater(Display display, Consumer<GraphicsUpdater> onStartup) {
+	public RenderManager(Display display, Consumer<RenderManager> onStartup) {
 		this.display = display;
 		this.link(display.getInputManager());
 		this.renderers = new ArrayList<Renderer>();
@@ -55,7 +55,12 @@ public final class GraphicsUpdater implements Service, FramebufferSizeHandler, W
 		}
 		
 		onStartup.accept(this);
-		GraphicsUtility.checkErrors();
+		
+		try {
+			GraphicsUtility.checkErrors();
+		} catch(OpenGLException e) {
+			e.printStackTrace();
+		}
 
 		synchronized(this) {
 			setupComplete = true;
@@ -70,6 +75,8 @@ public final class GraphicsUpdater implements Service, FramebufferSizeHandler, W
 						updateViewport = false;
 					}
 					
+					glClear(GL_COLOR_BUFFER_BIT );
+					
 					for(Renderer r : renderers) {
 						Framebuffer result = r.render(framebufferWidth, framebufferHeight);
 						glBindFramebuffer(GL_READ_FRAMEBUFFER, result.framebufferID);
@@ -77,7 +84,11 @@ public final class GraphicsUpdater implements Service, FramebufferSizeHandler, W
 						glBlitFramebuffer(0, 0, framebufferWidth, framebufferHeight, 0, 0, framebufferWidth, framebufferHeight, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 					}
 				    
-				    GraphicsUtility.checkErrors();
+					try {
+						GraphicsUtility.checkErrors();
+					} catch(OpenGLException e) {
+						e.printStackTrace();
+					}
 				    
 					display.refresh();
 					Thread.sleep(16);
