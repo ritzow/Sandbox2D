@@ -7,14 +7,13 @@ import ritzow.solomon.engine.world.base.ModelRenderProgram;
 import ritzow.solomon.engine.world.base.World;
 import ritzow.solomon.engine.world.component.Inventory;
 import ritzow.solomon.engine.world.component.Living;
-import ritzow.solomon.engine.world.component.Luminous;
 import ritzow.solomon.engine.world.item.Item;
 
 /**
  * Represents a player controlled by a human
  * @author Solomon Ritzow
  */
-public class PlayerEntity extends Entity implements Living, Luminous {
+public class PlayerEntity extends Entity implements Living {
 	protected final Inventory inventory;
 	protected volatile int selected;
 	protected volatile int health;
@@ -170,30 +169,5 @@ public class PlayerEntity extends Entity implements Living, Luminous {
 	@Override
 	public void setHealth(int health) {
 		this.health = Math.max(Math.min(health, getMaxHealth()), 0);
-	}
-
-	@Override
-	public short getLightRed() {
-		return 100;
-	}
-
-	@Override
-	public short getLightGreen() {
-		return 100;
-	}
-
-	@Override
-	public short getLightBlue() {
-		return 0;
-	}
-
-	@Override
-	public float getLightRadius() {
-		return 5;
-	}
-
-	@Override
-	public float getLightIntensity() {
-		return 0.5f;
 	}
 }

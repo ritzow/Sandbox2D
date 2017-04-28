@@ -2,9 +2,10 @@ package ritzow.solomon.engine.world.entity;
 
 import ritzow.solomon.engine.util.ByteUtil;
 import ritzow.solomon.engine.world.base.ModelRenderProgram;
+import ritzow.solomon.engine.world.component.Luminous;
 import ritzow.solomon.engine.world.item.Item;
 
-public final class ItemEntity extends Entity {
+public final class ItemEntity extends Entity implements Luminous { //TODO temp light
 	protected Item item;
 	protected float rotation;
 	protected float rotationSpeed;
@@ -99,5 +100,30 @@ public final class ItemEntity extends Entity {
 	@Override
 	public String toString() {
 		return super.toString() + ", item = (" + item.toString() + "), rotation = " + rotation + ", rotationSpeed = " + rotationSpeed;
+	}
+
+	@Override
+	public float getLightRed() {
+		return 1;
+	}
+
+	@Override
+	public float getLightGreen() {
+		return 1;
+	}
+
+	@Override
+	public float getLightBlue() {
+		return 1;
+	}
+
+	@Override
+	public float getLightRadius() {
+		return 10;
+	}
+
+	@Override
+	public float getLightIntensity() {
+		return 100f;
 	}
 }
