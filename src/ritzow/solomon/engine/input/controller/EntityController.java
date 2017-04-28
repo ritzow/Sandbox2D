@@ -7,12 +7,11 @@ import static ritzow.solomon.engine.util.Utility.intersection;
 import ritzow.solomon.engine.input.Controls;
 import ritzow.solomon.engine.input.InputManager;
 import ritzow.solomon.engine.input.handler.KeyHandler;
-import ritzow.solomon.engine.util.Updatable;
 import ritzow.solomon.engine.world.base.DefaultWorld;
 import ritzow.solomon.engine.world.base.World;
 import ritzow.solomon.engine.world.entity.Entity;
 
-public final class EntityController implements Controller, KeyHandler, Updatable {
+public final class EntityController implements Controller, KeyHandler {
 	private final World world;
 	private final Entity entity;
 	private final float movementSpeed;
