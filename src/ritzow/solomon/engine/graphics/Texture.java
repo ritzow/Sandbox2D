@@ -17,10 +17,10 @@ public final class Texture {
 	
 	public Texture(int width, int height) {
 		this.id = glGenTextures();
-		recreate(width, height);
+		setSize(width, height);
 	}
 	
-	public void recreate(int width, int height) {
+	public void setSize(int width, int height) {
 		setup(id);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 	}
