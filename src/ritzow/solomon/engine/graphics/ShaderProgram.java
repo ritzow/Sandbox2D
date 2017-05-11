@@ -1,6 +1,24 @@
 package ritzow.solomon.engine.graphics;
 
-import static org.lwjgl.opengl.GL20.*;
+import static org.lwjgl.opengl.GL11.GL_TEXTURE_2D;
+import static org.lwjgl.opengl.GL11.glBindTexture;
+import static org.lwjgl.opengl.GL13.GL_TEXTURE0;
+import static org.lwjgl.opengl.GL13.glActiveTexture;
+import static org.lwjgl.opengl.GL20.glAttachShader;
+import static org.lwjgl.opengl.GL20.glCreateProgram;
+import static org.lwjgl.opengl.GL20.glDeleteProgram;
+import static org.lwjgl.opengl.GL20.glDetachShader;
+import static org.lwjgl.opengl.GL20.glGetUniformLocation;
+import static org.lwjgl.opengl.GL20.glGetUniformf;
+import static org.lwjgl.opengl.GL20.glGetUniformi;
+import static org.lwjgl.opengl.GL20.glLinkProgram;
+import static org.lwjgl.opengl.GL20.glUniform1f;
+import static org.lwjgl.opengl.GL20.glUniform1i;
+import static org.lwjgl.opengl.GL20.glUniform3f;
+import static org.lwjgl.opengl.GL20.glUniform4f;
+import static org.lwjgl.opengl.GL20.glUniformMatrix4fv;
+import static org.lwjgl.opengl.GL20.glUseProgram;
+import static org.lwjgl.opengl.GL20.glValidateProgram;
 
 @SuppressWarnings("static-method")
 public class ShaderProgram {
@@ -28,6 +46,25 @@ public class ShaderProgram {
 	
 	protected final int getUniformID(String name) {
 		return glGetUniformLocation(programID, name);
+	}
+	
+	/**
+	 * Associate a texture unit with a sampler2D object in a fragment shader
+	 * @param samplerUniformID the texture sampler
+	 * @param samplerIndex the texture unit to associate the sampler with
+	 */
+	public final void setSamplerIndex(int samplerUniformID, int textureUnit) {
+		setInteger(samplerUniformID, textureUnit);
+	}
+	
+	/**
+	 * Put a texture in a texture unit
+	 * @param textureUnit the texture unit
+	 * @param textureID the texture
+	 */
+	public final void setTexture(int textureUnit, int textureID) {
+		glActiveTexture(GL_TEXTURE0 + textureUnit);
+		glBindTexture(GL_TEXTURE_2D, textureID);
 	}
 	
 	public final void setMatrix(int uniformID, float[] values) {

@@ -50,7 +50,7 @@ public final class ItemEntity extends Entity implements Luminous { //TODO temp l
 
 	@Override
 	public void render(ModelRenderProgram renderer) {
-		renderer.renderGraphics(item.getGraphics(), 1.0f, positionX, positionY, 0.5f, 0.5f, rotation);
+		renderer.render(item.getGraphics(), 1.0f, positionX, positionY, 0.5f, 0.5f, rotation);
 	}
 	
 	public Item getItem() {

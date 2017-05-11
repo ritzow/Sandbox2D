@@ -3,13 +3,13 @@ package ritzow.solomon.engine.ui;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public final class Fonts {
-	
-	public static Font DEFAULT_FONT;
-	
-	protected static List<Font> fonts = new ArrayList<Font>(1);
+	private static Font DEFAULT_FONT;
+	private static List<Font> fonts = new ArrayList<Font>(1);
+	private static List<Font> fontsImmutable = Collections.unmodifiableList(fonts);
 	
 	public static void loadAll(File directory) {
 		File[] files = directory.listFiles();
@@ -32,7 +32,11 @@ public final class Fonts {
 	}
 	
 	public static List<Font> getFonts() {
-		return fonts;
+		return fontsImmutable;
+	}
+	
+	public static Font getDefaultFont() {
+		return DEFAULT_FONT;
 	}
 	
 	public static void deleteAll() {

@@ -15,9 +15,9 @@ public interface World extends Transportable, Iterable<Entity> {
 	void remove(Entity e);
 	void remove(int entityID);
 	void update(float time);
-	BlockGrid getForeground();
-	BlockGrid getBackground();
 	void setAudioSystem(AudioSystem audio);
 	AudioSystem getAudioSystem();
+	BlockGrid getForeground();
+	BlockGrid getBackground();
 	Renderer getRenderer(Camera camera);
 }

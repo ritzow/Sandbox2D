@@ -63,7 +63,7 @@ public final class DefaultWorldRenderer implements Renderer {
 		float worldBottom = modelProgram.getWorldViewportBottomBound();
 		
 		//cache foreground and background of world
-		BlockGrid foreground = world.foreground, background = world.background;
+		final BlockGrid foreground = world.foreground, background = world.background;
 		
 		//calculate block grid bounds
 		int leftBound = 	Math.max(0, (int)Math.floor(worldLeft));
@@ -90,12 +90,11 @@ public final class DefaultWorldRenderer implements Renderer {
 		}
 		
 		//cache entity list
-		List<Entity> entities = world.entities;
+		final List<Entity> entities = world.entities;
 		
 		//render the entities
 		for(int i = 0; i < entities.size(); i++) {
 			Entity e = entities.get(i);
-			
 			if(e != null) {
 				//pre-compute variables
 				float posX = e.getPositionX();
