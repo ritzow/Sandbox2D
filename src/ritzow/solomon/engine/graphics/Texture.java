@@ -7,9 +7,11 @@ import java.nio.ByteBuffer;
 
 public final class Texture {
 	protected final int id;
+	protected final boolean fromImage;
 	
 	public Texture(ByteBuffer pixels, int width, int height) {
 		this.id = glGenTextures();
+		this.fromImage = true;
 		setup(id);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 		glBindTexture(GL_TEXTURE_2D, 0);
@@ -17,10 +19,13 @@ public final class Texture {
 	
 	public Texture(int width, int height) {
 		this.id = glGenTextures();
+		this.fromImage = false;
 		setSize(width, height);
 	}
 	
 	public void setSize(int width, int height) {
+		if(fromImage)
+			throw new RuntimeException("cannot resize an image created from a texture");
 		setup(id);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 	}

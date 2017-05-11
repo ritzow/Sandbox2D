@@ -15,14 +15,12 @@ public class Text extends Element {
 		this.spacing = spacing;
 	}
 	
-	public void render(ModelRenderProgram renderer) { //TODO switch out for UIRenderProgram or something of the sort
-		renderer.loadOpacity(1.0f);
-		
+	public void render(ModelRenderProgram renderer) { 
+		//TODO create UIRenderProgram or something of the sort for more efficient ui rendering
 		int index = 0; //TODO optimize text rendering and make text position in center
 		float charWidth = (size * 0.02f) + (size * 0.02f * spacing);
 		for(float pos = positionX; index < text.length(); pos += charWidth) {
-			renderer.loadTransformationMatrix(pos, positionY, size * 0.02f, size * 0.021f, 0);
-			renderer.render(font.getModel(text.charAt(index)));
+			renderer.render(font.getModel(text.charAt(index)), 1.0f, pos, positionY, size * 0.02f, size * 0.02f, 0.0f);
 			index++;
 		}
 	}
