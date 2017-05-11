@@ -72,7 +72,7 @@ public final class StartClient {
 			audio.setVolume(3.0f);
 			
 			//wait for the client to receive the world and return it
-			World world = client.getWorld(); //TODO bad design, what if the world isnt a DefaultWorld?
+			World world = client.getWorld();
 			world.setAudioSystem(audio);
 			
 			//wait for the Display, and thus InputManager, to be created, then link the game manager to the display so that the escape button and x button exit the game
@@ -131,6 +131,7 @@ public final class StartClient {
 			}
 			
 			//start exiting threads
+			System.out.print("Exiting client... ");
 			graphicsUpdater.waitForExit();
 			eventProcessor.waitForExit();
 			client.exit();
@@ -139,8 +140,8 @@ public final class StartClient {
 			client.waitUntilFinished();
 			worldUpdater.waitUntilFinished();
 			clientUpdater.waitUntilFinished();
-
 			audio.shutdown();
+			System.out.println("client exited");
 		}
 		
 		/** can be called from any thread to exit the game **/

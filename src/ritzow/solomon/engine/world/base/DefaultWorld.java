@@ -31,6 +31,9 @@ public final class DefaultWorld implements World {
 	/** AudioSystem to allow entities to play sounds **/
 	protected volatile AudioSystem audio;
 	
+	/** renderer **/
+	protected DefaultWorldRenderer renderer;
+	
 	public DefaultWorld(AudioSystem audio, int width, int height) {
 		this(audio, width, height, 0.016f);
 	}
@@ -51,6 +54,7 @@ public final class DefaultWorld implements World {
 	
 	public DefaultWorld(byte[] data) throws ReflectiveOperationException {
 		audio = null;
+		renderer = null;
 		gravity = ByteUtil.getFloat(data, 0);
 		int foregroundLength = ByteUtil.getSerializedLength(data, 4);
 		int backgroundLength = ByteUtil.getSerializedLength(data, 4 + foregroundLength);
@@ -407,25 +411,29 @@ public final class DefaultWorld implements World {
 
 	@Override
 	public Renderer getRenderer(Camera camera) {
-		ModelRenderProgram modelProgram;
-		try {
-			modelProgram = new ModelRenderProgram(
-					new Shader(new FileInputStream("resources/shaders/modelVertexShader"), org.lwjgl.opengl.GL20.GL_VERTEX_SHADER),
-					new Shader(new FileInputStream("resources/shaders/modelFragmentShader"), org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER), 
-					camera
-			);
-			
-			//TODO this is causing an opengl error, probably because the shaders are not written correctly
-			LightRenderProgram lightProgram = new LightRenderProgram(
-					new Shader(new FileInputStream("resources/shaders/lightVertexShader"), org.lwjgl.opengl.GL20.GL_VERTEX_SHADER),
-					new Shader(new FileInputStream("resources/shaders/lightFragmentShader"), org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER),
-					camera
-			);
-			GraphicsUtility.checkErrors();
-			return new DefaultWorldRenderer(modelProgram, lightProgram, this);
-		} catch (IOException | OpenGLException e) {
-			e.printStackTrace();
-			return null;
+		if(renderer == null) {
+			ModelRenderProgram modelProgram;
+			try {
+				modelProgram = new ModelRenderProgram(
+						new Shader(new FileInputStream("resources/shaders/modelVertexShader"), org.lwjgl.opengl.GL20.GL_VERTEX_SHADER),
+						new Shader(new FileInputStream("resources/shaders/modelFragmentShader"), org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER), 
+						camera
+				);
+				
+				//TODO this is causing an opengl error, probably because the shaders are not written correctly
+				LightRenderProgram lightProgram = new LightRenderProgram(
+						new Shader(new FileInputStream("resources/shaders/lightVertexShader"), org.lwjgl.opengl.GL20.GL_VERTEX_SHADER),
+						new Shader(new FileInputStream("resources/shaders/lightFragmentShader"), org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER),
+						camera
+				);
+				GraphicsUtility.checkErrors();
+				return renderer = new DefaultWorldRenderer(modelProgram, lightProgram, this);
+			} catch (IOException | OpenGLException e) {
+				e.printStackTrace();
+				return null;
+			}
+		} else {
+			return renderer;
 		}
 	}
 }

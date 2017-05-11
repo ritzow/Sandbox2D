@@ -20,7 +20,6 @@ import ritzow.solomon.engine.world.entity.PlayerEntity;
 public final class Server extends NetworkController {
 	private volatile int lastEntityID;
 	private volatile boolean canConnect;
-	
 	private Service logicProcessor;
 	private final ExecutorService broadcaster;
 	private ClientWorldUpdater worldUpdater;
@@ -44,10 +43,10 @@ public final class Server extends NetworkController {
 		
 		if(client != null) {
 			client.lastPing = System.nanoTime();
-			
 			switch(protocol) {
 				case Protocol.CLIENT_DISCONNECT:
-					remove(client);
+					//remove(client);
+					disconnect(client);
 					break;
 				case Protocol.CONSOLE_MESSAGE:
 					processClientMessage(client, data);
@@ -120,7 +119,7 @@ public final class Server extends NetworkController {
 				super.sendReliable(client.address, client.reliableMessageID++, data, 10, 100);
 			} catch(TimeoutException e) {
 				if(removeUnresponsive && clients.contains(client)) {
-					remove(client); //TODO improve unresponsive client disconnecting
+					disconnect(client); //TODO improve unresponsive client disconnecting
 				}
 			}
 		} else {
@@ -159,7 +158,7 @@ public final class Server extends NetworkController {
 			worldUpdater.getWorld().remove(client.player);
 		}
 		clients.remove(client);
-		System.out.println(client + " disconnected");
+		System.out.println(client + " disconnected (" + clientCount() + " players connected)");
 	}
 	
 	/** Disconnects all clients without telling any of them **/
@@ -265,7 +264,6 @@ public final class Server extends NetworkController {
 				ByteUtil.putShort(playerPacket, 0, Protocol.SERVER_ADD_ENTITY_COMPRESSED);
 				broadcast(playerPacket);
 				world.add(player);
-				
 				newClient.lastPing = System.nanoTime();
 			}
 			
@@ -328,7 +326,7 @@ public final class Server extends NetworkController {
 		}
 	}
 	
-	private final class WorldLogicProcessor implements Service {
+	private final class WorldLogicProcessor implements Service { //TODO build into world updating
 		private boolean setup, exit, finished;
 		private final World world;
 		
