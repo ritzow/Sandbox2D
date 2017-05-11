@@ -1,9 +1,7 @@
 package ritzow.solomon.engine.world.base;
 
-import static org.lwjgl.opengl.GL11.GL_TEXTURE_2D;
 import static org.lwjgl.opengl.GL11.GL_TRIANGLES;
 import static org.lwjgl.opengl.GL11.GL_UNSIGNED_INT;
-import static org.lwjgl.opengl.GL11.glBindTexture;
 import static org.lwjgl.opengl.GL11.glDrawElements;
 import static org.lwjgl.opengl.GL15.GL_ELEMENT_ARRAY_BUFFER;
 import static org.lwjgl.opengl.GL15.glBindBuffer;
@@ -23,12 +21,14 @@ import ritzow.solomon.engine.graphics.ShaderProgram;
 
 public final class ModelRenderProgram extends ShaderProgram {
 	private final Camera camera;
-	private final int uniform_transform;
-	private final int uniform_opacity;
-	private final int uniform_view;
 	
-	protected float framebufferWidth;
-	protected float framebufferHeight;
+	private final int 
+		uniform_transform, 
+		uniform_opacity, 
+		uniform_view, 
+		textureUnit;
+	
+	protected float framebufferWidth, framebufferHeight;
 	
 	private static final float[] identityMatrix = {
 			1, 0, 0, 0,
@@ -75,28 +75,49 @@ public final class ModelRenderProgram extends ShaderProgram {
 		this.uniform_transform = getUniformID("transform");
 		this.uniform_opacity = getUniformID("opacity");
 		this.uniform_view = getUniformID("view");
+		this.textureUnit = 0;
 		this.camera = camera;
+		setCurrent(); //needs this for setSamplerIndex which uses current program
+		setSamplerIndex(getUniformID("textureSampler"), textureUnit);
+		GraphicsUtility.checkErrors();
 	}
 	
+	/**
+	 * Sets the opacity that will be used when the program renders models
+	 * @param opacity
+	 */
 	public void loadOpacity(float opacity) {
 		setFloat(uniform_opacity, opacity);
 	}
 	
-	@SuppressWarnings("static-method")
+	/**
+	 * Renders a model using the current shader program properties
+	 * @param model the model to render
+	 */
 	public void render(Model model) {
 		glBindVertexArray(model.vao);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model.indices);
-		glBindTexture(GL_TEXTURE_2D, model.texture);
+		setTexture(textureUnit, model.texture);
 		glDrawElements(GL_TRIANGLES, model.vertexCount, GL_UNSIGNED_INT, 0);
 	}
 	
+	/**
+	 * Renders a model with the specified properties
+	 * @param model the model to render
+	 * @param opacity the opacity of the model
+	 * @param posX the horizontal position to render the model
+	 * @param posY the vertical position to render the model
+	 * @param scaleX the horizontal stretch scale of the model
+	 * @param scaleY the vertical stretch scale of the model
+	 * @param rotation the rotation, in radians, of the model
+	 */
 	public void render(Model model, float opacity, float posX, float posY, float scaleX, float scaleY, float rotation) {
 		loadOpacity(opacity);
 		loadTransformationMatrix(posX, posY, scaleX, scaleY, rotation);
 		render(model);
 	}
 	
-	public void renderGraphics(Graphics g, float opacity, float posX, float posY, float scaleX, float scaleY, float rotation) {
+	public void render(Graphics g, float opacity, float posX, float posY, float scaleX, float scaleY, float rotation) {
 		render(Models.forIndex(g.getModelIndex()), g.getOpacity() * opacity, posX, posY, g.getScaleX() * scaleX, g.getScaleY() * scaleY, g.getRotation() + rotation);
 	}
 	
@@ -116,7 +137,6 @@ public final class ModelRenderProgram extends ShaderProgram {
 	
 	public void loadViewMatrix(boolean includeCamera) {
 		aspectMatrix[0] = framebufferHeight/framebufferWidth;
-		
 		if(includeCamera) {
 			loadCameraMatrix(cameraMatrix);
 			Arrays.fill(viewMatrix, 0);
@@ -167,6 +187,7 @@ public final class ModelRenderProgram extends ShaderProgram {
 		this.framebufferHeight = framebufferHeight;
 	}
 	
+	//matrix operations on 1-dimensional arrays
 	private static void multiply(float[] a, float[] b, float[] destination) {
 		for(int i = 0; i < 4; i++){
 			for(int j = 0; j < 4; j++){
