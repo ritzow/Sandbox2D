@@ -1,48 +1,75 @@
 package ritzow.sandbox.client.graphics;
 
+import static org.lwjgl.opengl.GL11.GL_ONE_MINUS_SRC_ALPHA;
+import static org.lwjgl.opengl.GL11.GL_SRC_ALPHA;
+import static org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT;
+import static org.lwjgl.opengl.GL11.*;
+import static org.lwjgl.opengl.GL11.glBlendFunc;
 import static org.lwjgl.opengl.GL20.glDrawBuffers;
 import static org.lwjgl.opengl.GL30.GL_COLOR_ATTACHMENT0;
+import static org.lwjgl.opengl.GL30.GL_COLOR_ATTACHMENT1;
 
 import ritzow.sandbox.client.ClientWorld;
+import ritzow.sandbox.client.input.controller.CameraController;
 import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.component.Luminous;
 import ritzow.sandbox.world.entity.Entity;
 
 public final class ClientWorldRenderer implements Renderer {
+	private static final float MAX_TIMESTEP = 2;
+	
 	private final ClientWorld world;
+	private final CameraController cameraGrip;
 	private final ModelRenderProgram modelProgram;
 	private final LightRenderProgram lightProgram;
-	private final Framebuffer framebuffer, secondFramebuffer;
+	private final Framebuffer framebuffer;
 	private final Texture diffuseTexture;
-	private final Texture shadowTexture;
+	private final Texture finalTexture;
 	private int previousWidth, previousHeight;
+	private long previousTime;
 	
-	public ClientWorldRenderer(ModelRenderProgram modelProgram, LightRenderProgram lightProgram, ClientWorld world) {
+	public ClientWorldRenderer(CameraController cameraGrip, ModelRenderProgram modelProgram, LightRenderProgram lightProgram, ClientWorld world) {
 		this.world = world;
+		this.cameraGrip = cameraGrip;
 		this.modelProgram = modelProgram;
 		this.lightProgram = lightProgram;
 		this.framebuffer = new Framebuffer();
-		this.secondFramebuffer = new Framebuffer();
 		this.diffuseTexture = new Texture(100, 100);
-		this.shadowTexture = new Texture(100, 100);
+		this.finalTexture = new Texture(100, 100);
 		framebuffer.attachTexture(diffuseTexture, GL_COLOR_ATTACHMENT0);
-		secondFramebuffer.attachTexture(shadowTexture, GL_COLOR_ATTACHMENT0);
+		framebuffer.attachTexture(finalTexture, GL_COLOR_ATTACHMENT1);
 		GraphicsUtility.checkErrors();
+		this.previousTime = System.nanoTime();
 	}
 	
 	@Override
-	public Framebuffer render(int framebufferWidth, int framebufferHeight) {
+	public Framebuffer render(final int currentWidth, final int currentHeight) {
+		//update the world (this section might eventually be moved to its own "renderer" that runs before the clientworldrenderer)
+		//TODO this only really works for client side stuff doesnt it, if connected to a server it will act weird/be redundant
+		long current = System.nanoTime(); //get the current time
+		float totalUpdateTime = (current - previousTime) * 0.0000000625f; //get the amount of update time
+		previousTime = current; //update the previous time for the next frame
+		
+		//update the world with a timestep of at most 2 until the world is up to date.
+		for(float time; totalUpdateTime > 0; totalUpdateTime -= time) {
+			time = Math.min(totalUpdateTime, MAX_TIMESTEP);
+			world.update(time);
+			totalUpdateTime -= time;
+		}
+		
+		//update the camera
+		cameraGrip.update();
 		
 		//ensure that model program is cached on stack
 		ModelRenderProgram modelProgram = this.modelProgram;
 		
 		//update framebuffer size
-		if(previousWidth != framebufferWidth || previousHeight != framebufferHeight) {
-			modelProgram.setResolution(framebufferWidth, framebufferHeight);
-			diffuseTexture.setSize(framebufferWidth, framebufferHeight);
-			shadowTexture.setSize(framebufferWidth, framebufferHeight);
-			previousWidth = framebufferWidth;
-			previousHeight = framebufferHeight;
+		if(previousWidth != currentWidth || previousHeight != currentHeight) {
+			modelProgram.setResolution(currentWidth, currentHeight);
+			diffuseTexture.setSize(currentWidth, currentHeight);
+			finalTexture.setSize(currentWidth, currentHeight);
+			previousWidth = currentWidth;
+			previousHeight = currentHeight;
 		}
 		
 		//set the current shader program
@@ -52,10 +79,10 @@ public final class ClientWorldRenderer implements Renderer {
 		modelProgram.loadViewMatrix(true);
 		
 		//get visible world coordinates
-		float worldLeft = modelProgram.getWorldViewportLeftBound();
-		float worldRight = modelProgram.getWorldViewportRightBound();
-		float worldTop = modelProgram.getWorldViewportTopBound();
-		float worldBottom = modelProgram.getWorldViewportBottomBound();
+		final float worldLeft = modelProgram.getWorldViewportLeftBound(),
+					worldRight = modelProgram.getWorldViewportRightBound(),
+					worldTop = modelProgram.getWorldViewportTopBound(),
+					worldBottom = modelProgram.getWorldViewportBottomBound();
 		
 		//cache foreground and background of world
 		final BlockGrid foreground = world.getForeground(), background = world.getBackground();
@@ -73,13 +100,17 @@ public final class ClientWorldRenderer implements Renderer {
 		//tell the framebuffer to draw the shader output to attachment 0
 		glDrawBuffers(GL_COLOR_ATTACHMENT0);
 		
+		//set the blending mode to allow transparency
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		
 		//render the blocks visible in the viewport
 		for(int row = bottomBound; row <= topBound; row++) {
 			for(int column = leftBound; column <= rightBound; column++) {
 				if(foreground.isBlock(column, row)) {
 					modelProgram.render(Models.forIndex(foreground.get(column, row).getModelIndex()), 1.0f, column, row, 1.0f, 1.0f, 0.0f);
 				} else if(background.isBlock(column, row)) {
-					modelProgram.render(Models.forIndex(background.get(column, row).getModelIndex()), 0.5f, column, row, 1.0f, 1.0f, 0.0f);
+					modelProgram.render(Models.forIndex(background.get(column, row).getModelIndex()), 0.5f, column, row, 1.0f, 1.0f, 0.0f); 
+					//TODO when the player destroys a block (happens on a different thread), this can cause a null pointer
 				}
 			}
 		}
@@ -108,8 +139,10 @@ public final class ClientWorldRenderer implements Renderer {
 		 */
 		
 		lightProgram.setCurrent();
-		framebuffer.attachTexture(diffuseTexture, GL_COLOR_ATTACHMENT0);
-		framebuffer.setDraw();
+		glDrawBuffers(GL_COLOR_ATTACHMENT1);
+		framebuffer.clear(0, 0, 0, 1);
+		glClear(GL_COLOR_BUFFER_BIT);
+		glBlendFunc(GL_SRC_ALPHA, GL_ZERO);
 		
 		for(Entity e : world) {
 			if(e != null && e instanceof Luminous) {
@@ -122,10 +155,12 @@ public final class ClientWorldRenderer implements Renderer {
 				
 				//check if the entity is visible inside the viewport and render it
 				if(posX < worldRight + halfWidth && posX > worldLeft - halfWidth && posY < worldTop + halfHeight && posY > worldBottom - halfHeight) {
-					//lightProgram.render(light, posX, posY, framebufferWidth, framebufferHeight);
+					lightProgram.render(light, posX, posY, currentWidth, currentHeight);
 				}
 			}
 		}
+		
+		glDrawBuffers(GL_COLOR_ATTACHMENT0);
 	    return framebuffer;
 	}
 }

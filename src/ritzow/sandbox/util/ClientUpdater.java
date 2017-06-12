@@ -23,6 +23,15 @@ public final class ClientUpdater implements Runnable, Exitable, WindowFocusHandl
 	public Collection<Updatable> getUpdatables() {
 		return updatables;
 	}
+	
+	public void start() {
+		new Thread(this, "Client Updater").start();
+	}
+	
+	public synchronized void stop() {
+		exit = true;
+		notifyAll();
+	}
 
 	@Override
 	public void run() {

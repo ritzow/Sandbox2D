@@ -18,19 +18,37 @@ import ritzow.sandbox.util.ByteUtil;
 import ritzow.sandbox.util.Service;
 
 /** Provides common functionality of the client and server. Manages incoming and outgoing packets. **/
-public abstract class NetworkController implements Service { //TODO can I have this not implement runnable, it only complicates things.
+public final class NetworkController implements Service { //TODO can I have this not implement runnable, it only complicates things.
 	private volatile boolean started, setupComplete, exit, finished;
 	private final DatagramSocket socket;
 	private final List<MessageAddressPair> reliableQueue;
 	private final Map<SocketAddress, MutableInteger> lastReceived;
+	private MessageProcessor messageProcessor;
 	
-	protected NetworkController(SocketAddress bindAddress) throws SocketException {
+	public NetworkController(SocketAddress bindAddress) throws SocketException {
 		socket = new DatagramSocket(bindAddress);
 		reliableQueue = new LinkedList<MessageAddressPair>();
 		lastReceived = new HashMap<SocketAddress, MutableInteger>();
 	}
 	
-	protected final void sendUnreliable(SocketAddress recipient, int messageID, byte[] data) {
+	/**
+	 * implemented by a client/server to process any incoming packets. 
+	 * Packets are not guaranteed to be received in order, 
+	 * and message responses must be handled in this method.
+	 * @param messageID the unique ID of the message received
+	 * @param protocol the type of message received
+	 * @param sender the address the message was received from
+	 * @param data the body of the message received
+	 */	
+	public static interface MessageProcessor {
+		void process(SocketAddress sender, int messageID, byte[] data);
+	}
+	
+	public void setOnRecieveMessage(MessageProcessor processor) {
+		this.messageProcessor = processor;
+	}
+	
+	public final void sendUnreliable(SocketAddress recipient, int messageID, byte[] data) {
 		if(messageID < 0)
 			throw new RuntimeException("messageID must be greater than or equal to zero");
 		else if(data.length > Protocol.MAX_MESSAGE_LENGTH)
@@ -52,7 +70,7 @@ public abstract class NetworkController implements Service { //TODO can I have t
 	 * @param data the data to send to the recipient, including any protocol or other data
 	 * @throws TimeoutException if all send attempts have occurred but no message was received
 	 */
-	protected final void sendReliable(SocketAddress recipient, int messageID, byte[] data, int attempts, int resendInterval) throws TimeoutException {
+	public final void sendReliable(SocketAddress recipient, int messageID, byte[] data, int attempts, int resendInterval) throws TimeoutException {
 		if(messageID < 0)
 			throw new RuntimeException("messageID must be greater than or equal to zero");
 		else if(data.length > Protocol.MAX_MESSAGE_LENGTH)
@@ -104,28 +122,17 @@ public abstract class NetworkController implements Service { //TODO can I have t
 		}
 	}
 	
-	protected final void removeSender(SocketAddress address) {
+	public final void removeSender(SocketAddress address) {
 		synchronized(lastReceived) {
 			lastReceived.remove(address);
 		}
 	}
 	
-	protected final void removeSenders() {
+	public final void removeSenders() {
 		synchronized(lastReceived) {
 			lastReceived.clear();
 		}
 	}
-	
-	/**
-	 * implemented by a client/server to process any incoming packets. 
-	 * Packets are not guaranteed to be received in order, 
-	 * and message responses must be handled in this method.
-	 * @param messageID the unique ID of the message received
-	 * @param protocol the type of message received
-	 * @param sender the address the message was received from
-	 * @param data the body of the message received
-	 */
-	protected abstract void process(SocketAddress sender, int messageID, byte[] data);
 	
 	@Override
 	public final void run() {
@@ -254,7 +261,7 @@ public abstract class NetworkController implements Service { //TODO can I have t
 
 		@Override
 		public void run() {
-			process(address, messageID, data);
+			messageProcessor.process(address, messageID, data);
 		}
 	}
 	

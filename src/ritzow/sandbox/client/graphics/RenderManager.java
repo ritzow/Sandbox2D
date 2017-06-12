@@ -1,7 +1,14 @@
 package ritzow.sandbox.client.graphics;
 
 import static org.lwjgl.glfw.GLFW.glfwSwapInterval;
-import static org.lwjgl.opengl.GL11.*;
+import static org.lwjgl.opengl.GL11.GL_BLEND;
+import static org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT;
+import static org.lwjgl.opengl.GL11.GL_DEPTH_TEST;
+import static org.lwjgl.opengl.GL11.GL_LINEAR;
+import static org.lwjgl.opengl.GL11.glClear;
+import static org.lwjgl.opengl.GL11.glDisable;
+import static org.lwjgl.opengl.GL11.glEnable;
+import static org.lwjgl.opengl.GL11.glViewport;
 import static org.lwjgl.opengl.GL30.GL_DRAW_FRAMEBUFFER;
 import static org.lwjgl.opengl.GL30.GL_READ_FRAMEBUFFER;
 import static org.lwjgl.opengl.GL30.glBindFramebuffer;
@@ -10,9 +17,11 @@ import static org.lwjgl.opengl.GL30.glBlitFramebuffer;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 import java.util.function.Consumer;
-import org.lwjgl.opengl.GL;
+
 import ritzow.sandbox.client.input.InputManager;
 import ritzow.sandbox.client.input.handler.FramebufferSizeHandler;
 import ritzow.sandbox.client.input.handler.WindowFocusHandler;
@@ -25,7 +34,7 @@ public final class RenderManager implements Service, FramebufferSizeHandler, Win
 	private volatile int framebufferWidth, framebufferHeight;
 	private final Display display;
 	private final List<Renderer> renderers;
-	private Consumer<RenderManager> onStartup;
+	private final Queue<Consumer<RenderManager>> renderTasks;
 	
 	public RenderManager(Display display) {
 		this(display, a -> {});
@@ -35,7 +44,7 @@ public final class RenderManager implements Service, FramebufferSizeHandler, Win
 		this.display = display;
 		this.link(display.getInputManager());
 		this.renderers = new ArrayList<Renderer>();
-		this.onStartup = onStartup;
+		this.renderTasks = new LinkedList<Consumer<RenderManager>>();
 	}
 	
 	public void start() {
@@ -45,25 +54,17 @@ public final class RenderManager implements Service, FramebufferSizeHandler, Win
 	@Override
 	public void run() {
 		display.setContext();
-		GL.createCapabilities();
+		org.lwjgl.opengl.GL.createCapabilities();
 		glfwSwapInterval(0);
 		glDisable(GL_DEPTH_TEST);
 		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		
 		try {
 			Textures.loadAll(new File("resources/assets/textures"));
 			Models.loadAll();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		
-		onStartup.accept(this);
-		
-		try {
 			GraphicsUtility.checkErrors();
-		} catch(OpenGLException e) {
-			e.printStackTrace();
+		} catch(IOException | OpenGLException e) {
+			throw new RuntimeException(e);
 		}
 
 		synchronized(this) {
@@ -74,33 +75,33 @@ public final class RenderManager implements Service, FramebufferSizeHandler, Win
 		try {
 			while(!exit) {
 				if(focused) {
+					synchronized(renderTasks) {
+						Consumer<RenderManager> task = renderTasks.poll();
+						if(task != null) {
+							task.accept(this);
+						}
+					}
+					
 					if(updateViewport) {
 						glViewport(0, 0, framebufferWidth, framebufferHeight);
 						updateViewport = false;
 					}
 					
-					glClear(GL_COLOR_BUFFER_BIT );
+					glClear(GL_COLOR_BUFFER_BIT);
 					
 					for(Renderer r : renderers) {
-						Framebuffer result = r.render(framebufferWidth, framebufferHeight);
-						glBindFramebuffer(GL_READ_FRAMEBUFFER, result.framebufferID);
+						glBindFramebuffer(GL_READ_FRAMEBUFFER, r.render(framebufferWidth, framebufferHeight).framebufferID);
 						glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 						glBlitFramebuffer(0, 0, framebufferWidth, framebufferHeight, 0, 0, framebufferWidth, framebufferHeight, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 					}
-				    
-					try {
-						GraphicsUtility.checkErrors();
-					} catch(OpenGLException e) {
-						e.printStackTrace();
-					}
-				    
+					
+					GraphicsUtility.checkErrors();
 					display.refresh();
 					Thread.sleep(16);
 				} else {
 					synchronized(this) {
-						//pauses rendering when window is not active to reduce idle CPU usage
 						while(!(focused || exit)) {
-							wait();
+							wait(); //pauses rendering when window is not active to reduce idle CPU usage
 						}
 					}
 				}
@@ -111,7 +112,7 @@ public final class RenderManager implements Service, FramebufferSizeHandler, Win
 			GraphicsUtility.checkErrors();
 			renderers.clear();
 			display.closeContext();
-			GL.destroy();
+			org.lwjgl.opengl.GL.destroy();
 			
 			synchronized(this) {
 				finished = true;
@@ -120,10 +121,11 @@ public final class RenderManager implements Service, FramebufferSizeHandler, Win
 		}
 	}
 	
-	public void setOnStartup(Consumer<RenderManager> onStartup) {
-		if(setupComplete)
-			throw new UnsupportedOperationException("startup has already finished");
-		this.onStartup = onStartup;
+	/** Will add a render task to a queue to be executed at the beginning of the next frame **/
+	public void addRenderTask(Consumer<RenderManager> task) {
+		synchronized(renderTasks) {
+			renderTasks.add(task);
+		}
 	}
 	
 	public List<Renderer> getRenderers() {

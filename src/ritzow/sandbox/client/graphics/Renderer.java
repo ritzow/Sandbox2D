@@ -7,6 +7,7 @@ public interface Renderer {
 	 * @param framebufferWidth the width of the framebuffer to render
 	 * @param framebufferHeight the height of the framebuffer to render
 	 * @return A Framebuffer object the size of the screen that contains a Texture at color attachment 0 to be drawn
+	 * @throws OpenGLException if an OpenGL error occurred
 	 */
-	public Framebuffer render(int framebufferWidth, int framebufferHeight);
+	public Framebuffer render(int framebufferWidth, int framebufferHeight) throws OpenGLException;
 }

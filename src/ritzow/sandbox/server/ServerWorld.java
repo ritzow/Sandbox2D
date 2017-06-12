@@ -4,9 +4,12 @@ import static ritzow.sandbox.util.Utility.combineFriction;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
+
 import ritzow.sandbox.audio.AudioSystem;
-import ritzow.sandbox.client.graphics.ClientWorldRenderer;
+import ritzow.sandbox.protocol.Protocol;
 import ritzow.sandbox.util.ByteUtil;
 import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
@@ -18,6 +21,9 @@ public final class ServerWorld implements World {
 	/** collection of entities in the world **/
 	protected final List<Entity> entities;
 	
+	/** queues for entities to be added or removed from the world **/
+	protected final Queue<Entity> entityAddQueue, entityRemoveQueue;
+	
 	/** blocks in the world that collide with entities and and are rendered **/
 	protected final BlockGrid foreground, background;
 	
@@ -27,11 +33,11 @@ public final class ServerWorld implements World {
 	/** AudioSystem to allow entities to play sounds **/
 	protected volatile AudioSystem audio;
 	
-	/** renderer **/
-	protected ClientWorldRenderer renderer;
+	/** server **/
+	protected final Server server;
 	
-	public ServerWorld(AudioSystem audio, int width, int height) {
-		this(audio, width, height, 0.016f);
+	public ServerWorld(Server server, AudioSystem audio, int width, int height) {
+		this(server, audio, width, height, 0.016f);
 	}
 	
 	/**
@@ -40,9 +46,12 @@ public final class ServerWorld implements World {
 	 * @param height the height of the foreground and background
 	 * @param gravity the amount of gravity
 	 */
-	public ServerWorld(AudioSystem audio, int width, int height, float gravity) {
+	public ServerWorld(Server server, AudioSystem audio, int width, int height, float gravity) {
 		this.audio = audio;
+		this.server = server;
 		entities = new ArrayList<Entity>(100);
+		this.entityAddQueue = new LinkedList<Entity>();
+		this.entityRemoveQueue = new LinkedList<Entity>();
 		foreground = new BlockGrid(width, height);
 		background = new BlockGrid(width, height);
 		this.gravity = gravity;
@@ -50,7 +59,10 @@ public final class ServerWorld implements World {
 	
 	public ServerWorld(byte[] data) throws ReflectiveOperationException {
 		audio = null;
-		renderer = null;
+		server = null;
+		entityAddQueue = new LinkedList<Entity>();
+		entityRemoveQueue = new LinkedList<Entity>();
+		
 		gravity = ByteUtil.getFloat(data, 0);
 		int foregroundLength = ByteUtil.getSerializedLength(data, 4);
 		int backgroundLength = ByteUtil.getSerializedLength(data, 4 + foregroundLength);
@@ -71,7 +83,7 @@ public final class ServerWorld implements World {
 	}
 	
 	@Override
-	public synchronized byte[] getBytes() {
+	public byte[] getBytes() { //needed for saving world to file
 		//serialize foreground and background
 		byte[] foregroundBytes = ByteUtil.serialize(foreground);
 		byte[] backgroundBytes = ByteUtil.serialize(background);
@@ -127,13 +139,9 @@ public final class ServerWorld implements World {
 	
 	@Override
 	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append(foreground.toString());
-		builder.append(background.toString());
-		
+		StringBuilder builder = new StringBuilder().append(foreground.toString()).append(background.toString());
 		for(Entity e : entities) {
-			builder.append(e);
-			builder.append('\n');
+			builder.append(e).append('\n');
 		}
 		return builder.toString();
 	}
@@ -150,23 +158,24 @@ public final class ServerWorld implements World {
 	
 	@Override
 	public void add(Entity e) {
-		synchronized(entities) {
-			entities.add(e);
+		synchronized(entityAddQueue) {
+			entityAddQueue.add(e);
 		}
 	}
 	
 	@Override
 	public void remove(Entity e) {
-		synchronized(entities) {
-			entities.remove(e);
+		synchronized(entityRemoveQueue) {
+			entityRemoveQueue.add(e);
 		}
 	}
 	
 	@Override
-	public void remove(int entityID) {
-		synchronized(entities) {
-			entities.removeIf(e -> e.getID() == entityID);
-		}
+	public void remove(int entityID) { //TODO will cause mod exception
+		throw new UnsupportedOperationException("don't use this method");
+//		synchronized(entities) {
+//			entities.removeIf(e -> e.getID() == entityID);
+//		}
 	}
 	
 	public float getGravity() {
@@ -186,10 +195,18 @@ public final class ServerWorld implements World {
 	@Override
 	public void update(float time) {
 		synchronized(entities) {
+			synchronized(entityAddQueue) {
+				entities.addAll(entityAddQueue);
+				entityAddQueue.clear();	
+			} synchronized(entityRemoveQueue) {
+				entities.removeAll(entityRemoveQueue);
+				entityRemoveQueue.clear();
+			}
+			
 			for(int i = 0; i < entities.size(); i++) {
 				Entity e = entities.get(i);
 				
-				//remove entities that are below the world
+				//remove entities that are below the world or are flagged for deletion
 				if(e == null || e.getPositionY() < 0 || e.getShouldDelete()) {
 					entities.remove(i);
 					i = Math.max(0, i - 1);
@@ -205,7 +222,7 @@ public final class ServerWorld implements World {
 				//check if collision checking is enabled
 				if(e.doCollision()) {
 					
-					//check for entity vs. entity collisions
+					//check for entity vs. entity collisions with all entities that have not already been collision checked with (for first element, all entites, for last, no entities)
 					for(int j = i + 1; j < entities.size(); j++) {
 						Entity o = entities.get(j);
 						if(o != null && o.doCollision()) {
@@ -248,6 +265,8 @@ public final class ServerWorld implements World {
 						}
 					}
 				}
+				
+				server.broadcast(Protocol.buildGenericEntityUpdate(e)); //not working correctly as replacement for worldlogicprocessor?
 			}
 		}
 	}
