@@ -7,13 +7,13 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.Arrays;
+
 import ritzow.sandbox.client.Client;
 import ritzow.sandbox.client.ClientWorld;
 import ritzow.sandbox.client.audio.ClientAudioSystem;
 import ritzow.sandbox.client.audio.Sounds;
 import ritzow.sandbox.client.graphics.Camera;
 import ritzow.sandbox.client.graphics.ClientWorldRenderer;
-import ritzow.sandbox.client.graphics.GraphicsUtility;
 import ritzow.sandbox.client.graphics.LightRenderProgram;
 import ritzow.sandbox.client.graphics.ModelRenderProgram;
 import ritzow.sandbox.client.graphics.OpenGLException;
@@ -22,6 +22,7 @@ import ritzow.sandbox.client.graphics.Shader;
 import ritzow.sandbox.client.input.Controls;
 import ritzow.sandbox.client.input.EventProcessor;
 import ritzow.sandbox.client.input.InputManager;
+import ritzow.sandbox.client.input.controller.CameraController;
 import ritzow.sandbox.client.input.controller.InteractionController;
 import ritzow.sandbox.client.input.controller.PlayerController;
 import ritzow.sandbox.client.input.controller.TrackingCameraController;
@@ -29,14 +30,13 @@ import ritzow.sandbox.client.input.handler.KeyHandler;
 import ritzow.sandbox.client.input.handler.WindowCloseHandler;
 import ritzow.sandbox.util.ClientUpdater;
 import ritzow.sandbox.world.World;
-import ritzow.sandbox.world.WorldUpdater;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
 public final class StartClient {
 	public static void main(String... args) throws IOException {
 		final Client client = new Client();
-		new Thread(client, "Client Thread").start();
-		client.waitForSetup();
+		client.start();
+		client.waitUntilStarted();
 		
 		SocketAddress address = args.length == 2 ? new InetSocketAddress(args[0], Integer.parseInt(args[1])) : new InetSocketAddress(InetAddress.getLocalHost(), 50000);
 		System.out.println("Connecting to " + address);
@@ -45,21 +45,22 @@ public final class StartClient {
 		if(client.connectTo(address, 1000)) {
 			System.out.println("Client connected to " + address);
 			EventProcessor eventProcessor = new EventProcessor();
-			new Thread(new ClientManager(client, eventProcessor), "Client Manager").start();
+			new Thread(new ClientStarter(client, eventProcessor), "Client Manager").start();
+			
 			eventProcessor.run(); //run the event processor on this thread
 		} else {
 			System.out.println("Client failed to connect to " + address);
-			client.exit();
-			client.waitUntilFinished();
+			client.stop();
+			client.waitUntilStopped();
 		}
 	}
 	
-	private static final class ClientManager implements Runnable, WindowCloseHandler, KeyHandler {
+	private static final class ClientStarter implements Runnable, WindowCloseHandler, KeyHandler {
 		private final Client client;
 		private final EventProcessor eventProcessor;
 		private volatile boolean exit;
 		
-		public ClientManager(Client client, EventProcessor eventManager) {
+		public ClientStarter(Client client, EventProcessor eventManager) {
 			this.client = client;
 			this.eventProcessor = eventManager;
 		}
@@ -76,7 +77,7 @@ public final class StartClient {
 			}
 			
 			//set the audio manager to a reasonable gain
-			audio.setVolume(3.0f);
+			audio.setVolume(1.0f);
 			
 			//wait for the client to receive the world and return it
 			World world = client.getWorld();
@@ -89,11 +90,17 @@ public final class StartClient {
 			
 			Camera camera = new Camera(0, 0, 1);
 			
+			//get the client's player object, which has already been added to the world
+			PlayerEntity player = client.getPlayer();
+			CameraController cameraGrip = new TrackingCameraController(camera, audio, player, 0.005f, 0.05f, 0.6f);
+			cameraGrip.link(eventProcessor.getDisplay().getInputManager());
+			
 			//start the graphics manager, which will load all models into OpenGL and setup the OpenGL context.
 			RenderManager renderManager = eventProcessor.getDisplay().getRenderManager();
 			
-			renderManager.setOnStartup(graphics -> {
+			renderManager.addRenderTask(graphics -> {
 				try {
+					//load shader programs on renderer startup so that it is done in OpenGL thread, otherwise the program will crash
 					ModelRenderProgram modelProgram = new ModelRenderProgram(
 							new Shader(new FileInputStream("resources/shaders/modelVertexShader"), org.lwjgl.opengl.GL20.GL_VERTEX_SHADER),
 							new Shader(new FileInputStream("resources/shaders/modelFragmentShader"), org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER), 
@@ -106,10 +113,9 @@ public final class StartClient {
 							camera
 					);
 					
-					GraphicsUtility.checkErrors();
-					graphics.getRenderers().add(new ClientWorldRenderer(modelProgram, lightProgram, (ClientWorld)client.getWorld()));
+					graphics.getRenderers().add(new ClientWorldRenderer(cameraGrip, modelProgram, lightProgram, (ClientWorld)world));
 				} catch (IOException | OpenGLException e) {
-					e.printStackTrace();
+					throw new RuntimeException(e);
 				}
 			});
 			
@@ -120,25 +126,17 @@ public final class StartClient {
 			ClientUpdater clientUpdater = new ClientUpdater();
 			clientUpdater.link(eventProcessor.getDisplay().getInputManager());
 			
-			//get the client's player object, which has already been added to the world
-			PlayerEntity player = client.getPlayer();
-			
 			//create and link player controllers so the user can play the game
 			Arrays.asList(
 					new PlayerController(player, world, client),
-					new InteractionController(player, world, camera, 200, true),
-					new TrackingCameraController(camera, audio, player, 0.005f, 0.05f, 0.6f)
+					new InteractionController(player, world, camera, 200, 300, 5)
 			).forEach(controller -> {
 				controller.link(eventProcessor.getDisplay().getInputManager());
 				clientUpdater.getUpdatables().add(controller);
 			});
 			
-			//start the client updater
-			new Thread(clientUpdater, "Client Updater Thread").start(); //TODO can I make this simpler?
-			
-			//start updating the world
-			WorldUpdater worldUpdater = new WorldUpdater(world);
-			new Thread(worldUpdater, "World Updater Thread").start();
+			//start the updater
+			clientUpdater.start();
 			
 			//display the window now that everything is set up.
 			eventProcessor.setReadyToDisplay();
@@ -158,11 +156,9 @@ public final class StartClient {
 			System.out.print("Exiting client... ");
 			renderManager.waitForExit();
 			eventProcessor.waitForExit();
-			client.exit();
-			worldUpdater.exit();
-			clientUpdater.exit();
-			client.waitUntilFinished();
-			worldUpdater.waitUntilFinished();
+			client.stop();
+			clientUpdater.stop();
+			client.waitUntilStopped();
 			clientUpdater.waitUntilFinished();
 			audio.shutdown();
 			System.out.println("client exited");

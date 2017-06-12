@@ -60,7 +60,7 @@ public final class GraphicsUtility {
 		return id;
 	}
 	
-	public static void checkErrors() {
+	public static void checkErrors() throws OpenGLException {
 		int error = org.lwjgl.opengl.GL11.glGetError();
 		if(error != 0) {
 			StringBuilder errorMsg = new StringBuilder("Error Codes: ");

@@ -16,25 +16,25 @@ import ritzow.sandbox.world.item.BlockItem;
 import ritzow.sandbox.world.item.Item;
 
 public final class InteractionController implements Controller, MouseButtonHandler, CursorPosHandler, FramebufferSizeHandler, KeyHandler {
-	private boolean primaryAction, secondaryAction;
-	private final boolean instantBreak;
+	private volatile boolean primaryAction, secondaryAction;
 	private volatile int frameWidth, frameHeight;
 	private volatile int mouseX, mouseY;
 	
-	private long lastPlacement;
-	private long lastBreak;
-	private long cooldown;
+	private long cooldownPlace, cooldownBreak;
+	private long lastPlace, lastBreak;
+	private float range;
 	
-	private World world;
-	private PlayerEntity player;
-	private Camera camera;
+	private final World world;
+	private final PlayerEntity player;
+	private final Camera camera;
 	
-	public InteractionController(PlayerEntity player, World world, Camera camera, long cooldownMilliseconds, boolean instantBreak) {
+	public InteractionController(PlayerEntity player, World world, Camera camera, long breakCooldown, long placeCooldown, float range) {
 		this.world = world;
 		this.player = player;
 		this.camera = camera;
-		this.cooldown = cooldownMilliseconds;
-		this.instantBreak = instantBreak;
+		this.cooldownBreak = breakCooldown;
+		this.cooldownPlace = placeCooldown;
+		this.range = range;
 	}
 	
 	@Override
@@ -56,19 +56,19 @@ public final class InteractionController implements Controller, MouseButtonHandl
 		float playerY = player.getPositionY();
 		double distance = Math.sqrt((playerX - blockX) * (playerX - blockX) + (playerY - blockY) * (playerY - blockY));
 		
-		if(instantBreak || distance <= 4) {
-			if(primaryAction && (instantBreak || System.nanoTime() - lastBreak > cooldown * 1000000)) {
-				if(world.getForeground().isValid(blockX, blockY) && (world.getForeground().destroy(world, blockX, blockY) || world.getBackground().destroy(world, blockX, blockY))) {
+		if(distance <= range) {
+			if(primaryAction && System.nanoTime() - lastBreak > cooldownBreak * 1000000) {
+				if(world.getForeground().isValid(blockX, blockY) && (world.getForeground().destroy(world, blockX, blockY))) { //|| world.getBackground().destroy(world, blockX, blockY)
 					lastBreak = System.nanoTime();
 				}
 			}
 			
-			else if(secondaryAction && (System.nanoTime() - lastPlacement > cooldown * 1000000)) {
+			else if(secondaryAction && (System.nanoTime() - lastPlace > cooldownPlace * 1000000)) {
 				Item item = player.getSelectedItem();
 				if((item instanceof BlockItem) && world.getForeground().isValid(blockX, blockY) && 
 					(world.getBackground().place(world, blockX, blockY, ((BlockItem)item).getBlock()) || 
 					world.getForeground().place(world, blockX, blockY, ((BlockItem)item).getBlock()))) {
-					lastPlacement = System.nanoTime();
+					lastPlace = System.nanoTime();
 					player.removeSelectedItem();
 				}
 			}
@@ -76,10 +76,10 @@ public final class InteractionController implements Controller, MouseButtonHandl
 	}
 	
 	private static float mouseHorizontalToWorld(Camera camera, float mouseX, int frameWidth, int frameHeight) {
-		float worldX = (2f * mouseX) / frameWidth - 1f; 		//normalize the mouse coordinate
-		worldX /= frameHeight/(float)frameWidth; 							//apply aspect ratio
-		worldX /= camera.getZoom(); 								//apply zoom
-		worldX += camera.getPositionX(); 							//apply camera position
+		float worldX = (2f * mouseX) / frameWidth - 1f; //normalize the mouse coordinate
+		worldX /= frameHeight/(float)frameWidth; 		//apply aspect ratio
+		worldX /= camera.getZoom(); 					//apply zoom
+		worldX += camera.getPositionX(); 				//apply camera position
 		return worldX;
 	}
 	
@@ -108,21 +108,8 @@ public final class InteractionController implements Controller, MouseButtonHandl
 	
 	@Override
 	public void mouseButton(int button, int action, int mods) {
-		if(button == GLFW.GLFW_MOUSE_BUTTON_LEFT && action == GLFW.GLFW_PRESS) {
-			primaryAction = true;
-		}
-		
-		else if(button == GLFW.GLFW_MOUSE_BUTTON_LEFT && action == GLFW.GLFW_RELEASE) {
-			primaryAction = false;
-		}
-		
-		else if(button == GLFW.GLFW_MOUSE_BUTTON_RIGHT && action == GLFW.GLFW_PRESS) {
-			secondaryAction = true;
-		}
-		
-		else if(button == GLFW.GLFW_MOUSE_BUTTON_RIGHT && action == GLFW.GLFW_RELEASE) {
-			secondaryAction = false;
-		}
+		primaryAction = ((button == GLFW.GLFW_MOUSE_BUTTON_LEFT || primaryAction) && action == GLFW.GLFW_PRESS);
+		secondaryAction = ((button == GLFW.GLFW_MOUSE_BUTTON_RIGHT || secondaryAction) && action == GLFW.GLFW_PRESS);
 	}
 
 	@Override

@@ -5,9 +5,9 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -15,27 +15,59 @@ import ritzow.sandbox.protocol.NetworkController;
 import ritzow.sandbox.protocol.Protocol;
 import ritzow.sandbox.protocol.TimeoutException;
 import ritzow.sandbox.util.ByteUtil;
+import ritzow.sandbox.util.Runner;
 import ritzow.sandbox.util.Service;
-import ritzow.sandbox.world.WorldUpdater;
 import ritzow.sandbox.world.World;
+import ritzow.sandbox.world.WorldUpdater;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
-public final class Server extends NetworkController {
+public final class Server extends Runner {
 	private volatile int lastEntityID;
 	private volatile boolean canConnect;
+	private final NetworkController controller;
 	private Service logicProcessor;
 	private final ExecutorService broadcaster;
 	private WorldUpdater worldUpdater;
-	private final List<ClientState> clients;
+	private final Collection<ClientState> clients;
 	
 	public Server(int port) throws SocketException, UnknownHostException {
-		super(new InetSocketAddress(InetAddress.getLocalHost(), port));
+		this.controller = new NetworkController(new InetSocketAddress(InetAddress.getLocalHost(), port));
 		this.broadcaster = Executors.newCachedThreadPool();
 		this.clients = Collections.synchronizedList(new LinkedList<ClientState>());
 		this.canConnect = true;
+		controller.setOnRecieveMessage(this::process);
 	}
 	
 	@Override
+	protected void onStart() {
+		controller.start();
+	}
+
+	@Override
+	protected void onStop() {
+		try {
+			this.canConnect = false;
+			broadcaster.shutdown();
+			if(controller.isRunning()) {
+				broadcast(Protocol.buildServerDisconnect());
+				disconnectAll();
+				controller.waitForExit();
+			}
+			stopWorld();
+			broadcaster.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+			
+			if(!controller.isRunning()) {
+				synchronized(this) {
+					notifyAll();
+				}
+			}
+		} catch(ServerWorldException | InterruptedException e) {
+			e.printStackTrace(); //ignores "no world to stop" exception
+		} finally {
+			controller.exit();
+		}
+	}
+	
 	protected final void process(SocketAddress sender, int messageID, byte[] data) {
 		final short protocol = ByteUtil.getShort(data, 0);
 		final ClientState client = forAddress(sender);
@@ -92,7 +124,7 @@ public final class Server extends NetworkController {
 					if(reliable) {
 						broadcaster.execute(() -> {
 							try {
-								super.sendReliable(client.address, client.reliableMessageID++, data, 10, 100);
+								controller.sendReliable(client.address, client.reliableMessageID++, data, 10, 100);
 							} catch(TimeoutException e) {
 								if(removeUnresponsive) {
 									remove(client); //TODO this could cause a concurrent modification because of clients.forEach using a foreach loop
@@ -100,7 +132,7 @@ public final class Server extends NetworkController {
 							}
 						});
 					} else {
-						sendUnreliable(client.address, client.unreliableMessageID++, data);
+						controller.sendUnreliable(client.address, client.unreliableMessageID++, data);
 					}
 				}
 			});
@@ -114,21 +146,21 @@ public final class Server extends NetworkController {
 	protected void send(byte[] data, ClientState client, boolean removeUnresponsive) {
 		if(Protocol.isReliable(ByteUtil.getShort(data, 0))) {
 			try {
-				super.sendReliable(client.address, client.reliableMessageID++, data, 10, 100);
+				controller.sendReliable(client.address, client.reliableMessageID++, data, 10, 100);
 			} catch(TimeoutException e) {
 				if(removeUnresponsive && clients.contains(client)) {
 					disconnect(client); //TODO improve unresponsive client disconnecting
 				}
 			}
 		} else {
-			super.sendUnreliable(client.address, client.unreliableMessageID++, data);
+			controller.sendUnreliable(client.address, client.unreliableMessageID++, data);
 		}
 	}
 	
 	public void startWorld(World world) {
 		if(worldUpdater == null || worldUpdater.isFinished()) {
 			new Thread(worldUpdater = new WorldUpdater(world), "Server World Updater").start();
-			new Thread(logicProcessor = new WorldLogicProcessor(world), "World Logic Updater").start();
+			new Thread(logicProcessor = new IdleClientDisconnector(), "World Logic Updater").start();
 		} else {
 			throw new RuntimeException("A world is already running");
 		}
@@ -155,7 +187,7 @@ public final class Server extends NetworkController {
 	
 	/** Disconnects a client without telling the client **/
 	protected void remove(ClientState client) {
-		super.removeSender(client.address);
+		controller.removeSender(client.address);
 		if(client.player != null) {
 			worldUpdater.getWorld().remove(client.player);
 		}
@@ -165,7 +197,7 @@ public final class Server extends NetworkController {
 	
 	/** Disconnects all clients without telling any of them **/
 	protected void removeAll() {
-		super.removeSenders();
+		controller.removeSenders();
 		clients.forEach(client -> {
 			if(client.player != null) {
 				worldUpdater.getWorld().remove(client.player);
@@ -205,7 +237,7 @@ public final class Server extends NetworkController {
 	/**
 	 * @return the number of currently connected clients
 	 */
-	protected int clientCount() {
+	public int clientCount() {
 		int count = 0;
 		synchronized(clients) {
 			for(ClientState client : clients) {
@@ -223,7 +255,7 @@ public final class Server extends NetworkController {
 		byte[] response = new byte[3];
 		ByteUtil.putShort(response, 0, Protocol.SERVER_CONNECT_ACKNOWLEDGMENT);
 		ByteUtil.putBoolean(response, 2, canConnect);
-		super.sendReliable(client, 0, response, 10, 100);
+		controller.sendReliable(client, 0, response, 10, 100);
 		
 		if(canConnect) {
 			//create the client's ClientState object to track their information
@@ -274,32 +306,6 @@ public final class Server extends NetworkController {
 		}
 	}
 	
-	@Override
-	public void exit() { 
-		//TODO remove code from NetworkController/Server run method and replace with small amount of code that starts internal object
-		try {
-			this.canConnect = false;
-			broadcaster.shutdown();
-			if(isRunning()) {
-				broadcast(Protocol.buildServerDisconnect());
-				disconnectAll();
-			}
-			stopWorld();
-			broadcaster.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
-			
-			if(!isRunning()) {
-				synchronized(this) {
-					notifyAll();
-				}
-			}
-		} catch(ServerWorldException | InterruptedException e) {
-			//ignores "no world to stop" exception
-			e.printStackTrace();
-		} finally {
-			super.exit();
-		}
-	}
-	
 	/**
 	 * Holder of information about clients connected to the server
 	 */
@@ -336,14 +342,9 @@ public final class Server extends NetworkController {
 		}
 	}
 	
-	private final class WorldLogicProcessor implements Service { //TODO build into world updating
+	private final class IdleClientDisconnector implements Service { //TODO build into world updating
 		private boolean setup, exit, finished;
-		private final World world;
 		
-		public WorldLogicProcessor(World world) {
-			this.world = world;
-		}
-
 		@Override
 		public synchronized boolean isSetupComplete() {
 			return setup;
@@ -368,15 +369,6 @@ public final class Server extends NetworkController {
 			}
 			
 			while(!exit) {
-				synchronized(world) {
-					world.forEach(entity -> {
-						synchronized(entity) {
-							//TODO build this into some sort of ServerWorldUpdater, perhaps put all message sending in one thread?
-							broadcast(Protocol.buildGenericEntityUpdate(entity));
-						}
-					});
-				}
-				
 				for(ClientState client : clients) {
 					if(client != null && client.lastPing <= System.nanoTime() - 3000000000L) { //if lastPing was greater than 3 seconds ago
 						disconnect(client); //TODO will cause concurrent mod

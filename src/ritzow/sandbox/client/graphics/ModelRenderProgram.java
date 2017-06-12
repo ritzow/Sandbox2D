@@ -74,6 +74,10 @@ public final class ModelRenderProgram extends ShaderProgram {
 		GraphicsUtility.checkErrors();
 	}
 	
+	public Camera getCamera() {
+		return camera;
+	}
+	
 	/**
 	 * Sets the opacity that will be used when the program renders models
 	 * @param opacity

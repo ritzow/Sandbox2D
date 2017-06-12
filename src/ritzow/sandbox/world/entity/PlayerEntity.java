@@ -7,13 +7,14 @@ import ritzow.sandbox.util.ByteUtil;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.component.Inventory;
 import ritzow.sandbox.world.component.Living;
+import ritzow.sandbox.world.component.Luminous;
 import ritzow.sandbox.world.item.Item;
 
 /**
  * Represents a player controlled by a human
  * @author Solomon Ritzow
  */
-public class PlayerEntity extends Entity implements Living {
+public class PlayerEntity extends Entity implements Living, Luminous {
 	protected final Inventory inventory;
 	protected volatile int selected;
 	protected volatile int health;
@@ -82,12 +83,11 @@ public class PlayerEntity extends Entity implements Living {
 		renderer.render(Models.forIndex(Models.GREEN_FACE_INDEX), 1.0f, positionX, positionY + 0.5f, 1.0f, 1.0f, 0.0f);
 		renderer.render(Models.forIndex(Models.RED_SQUARE_INDEX), 1.0f, positionX, positionY - 0.5f, 1.0f, 1.0f, positionX);
 		
-		Item selectedItem = inventory.get(selected);
-		
-		if(selectedItem != null) {
-			renderer.render(Models.forIndex(selectedItem.getGraphics().getModelIndex()), 1.0f, positionX + velocityX * 2, positionY, 0.5f, 0.5f, 
-					velocityX != 0 ? (float)Math.PI/4 * (velocityX < 0 ? -1 : 1) : 0);
-		}
+//		Item selectedItem = inventory.get(selected);
+//		if(selectedItem != null) {
+//			renderer.render(Models.forIndex(selectedItem.getGraphics().getModelIndex()), 1.0f, positionX + velocityX * 2, positionY, 0.5f, 0.5f, 
+//					velocityX != 0 ? (float)Math.PI/4 * (velocityX < 0 ? -1 : 1) : 0);
+//		}
 	}
 
 	@Override
@@ -169,5 +169,30 @@ public class PlayerEntity extends Entity implements Living {
 	@Override
 	public void setHealth(int health) {
 		this.health = Math.max(Math.min(health, getMaxHealth()), 0);
+	}
+
+	@Override
+	public float getLightRed() {
+		return 1.0f;
+	}
+
+	@Override
+	public float getLightGreen() {
+		return 0.0f;
+	}
+
+	@Override
+	public float getLightBlue() {
+		return 1.0f;
+	}
+
+	@Override
+	public float getLightRadius() {
+		return 50;
+	}
+
+	@Override
+	public float getLightIntensity() {
+		return 100;
 	}
 }

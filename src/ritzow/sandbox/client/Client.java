@@ -14,16 +14,19 @@ import ritzow.sandbox.protocol.NetworkController;
 import ritzow.sandbox.protocol.Protocol;
 import ritzow.sandbox.protocol.TimeoutException;
 import ritzow.sandbox.util.ByteUtil;
+import ritzow.sandbox.util.Runner;
 import ritzow.sandbox.util.Service;
 import ritzow.sandbox.util.Transportable;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.Entity;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
-public final class Client extends NetworkController {
+public final class Client extends Runner {
 	
 	/** The server's address **/
 	protected volatile SocketAddress server;
+	
+	protected final NetworkController controller;
 	
 	/** if the server has been successfully connected to **/
 	protected volatile boolean connected;
@@ -47,14 +50,14 @@ public final class Client extends NetworkController {
 	protected Service pinger;
 	
 	public Client() throws SocketException, UnknownHostException {
-		super(new InetSocketAddress(InetAddress.getLocalHost(), 0));
+		controller = new NetworkController(new InetSocketAddress(InetAddress.getLocalHost(), 0));
 		worldLock = new Object();
 		playerLock = new Object();
 		lobbyLock = new Object();
+		controller.setOnRecieveMessage(this::process);
 	}
 	
-	@Override
-	protected void process(SocketAddress sender, int messageID, byte[] data) {
+	protected final void process(SocketAddress sender, int messageID, byte[] data) {
 		final short protocol = ByteUtil.getShort(data, 0);
 		
 		if(sender.equals(server)) {
@@ -135,9 +138,9 @@ public final class Client extends NetworkController {
 		if(isConnected()) {
 			try {
 				if(Protocol.isReliable(ByteUtil.getShort(data, 0))) {
-					super.sendReliable(server, reliableMessageID++, data, 10, 100);
+					controller.sendReliable(server, reliableMessageID++, data, 10, 100);
 				} else {
-					super.sendUnreliable(server, unreliableMessageID++, data);
+					controller.sendUnreliable(server, unreliableMessageID++, data);
 				}
 			} catch(TimeoutException e) {
 				disconnect(false);
@@ -191,13 +194,13 @@ public final class Client extends NetworkController {
 	}
 	
 	public boolean connectTo(SocketAddress address, int timeout) throws IOException {
-		if(isSetupComplete() && !isFinished()) {
+		if(controller.isSetupComplete() && !controller.isFinished()) {
 			if(!isConnected()) {
 				server = address;
 				byte[] packet = new byte[2];
 				ByteUtil.putShort(packet, 0, Protocol.CLIENT_CONNECT_REQUEST);
 				try {
-					super.sendReliable(address, reliableMessageID++, packet, Math.max(1, timeout/100), Math.min(timeout, 100));
+					controller.sendReliable(address, reliableMessageID++, packet, Math.max(1, timeout/100), Math.min(timeout, 100));
 					synchronized(server) {
 						try {
 							server.wait();
@@ -264,10 +267,33 @@ public final class Client extends NetworkController {
 	}
 	
 	@Override
-	public void exit() {
-		disconnect(true);
-		super.exit();
+	protected void onStart() {
+		controller.start();
+		controller.waitForSetup();
 	}
+
+	@Override
+	protected void onStop() {
+		disconnect(true);
+		controller.waitForExit();
+	}
+	
+//	public void start() {
+//		controller.start();
+//	}
+//	
+//	public void waitUntilRunning() {
+//		controller.waitForSetup();
+//	}
+//	
+//	public void stop() {
+//		disconnect(true);
+//		controller.exit();
+//	}
+	
+//	public void waitUntilStopped() {
+//		controller.waitUntilFinished();
+//	}
 	
 	public void disconnect(boolean notifyServer) {
 		if(isConnected()) {

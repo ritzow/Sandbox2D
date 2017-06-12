@@ -18,10 +18,8 @@ import ritzow.sandbox.world.block.RedBlock;
 public final class StartServer {
 	public static void main(String... args) {
 		try {
+			Thread.currentThread().setName("Server Setup");
 			Server server = new Server(50000);
-			new Thread(server, "Server Thread").start();
-			server.waitForSetup();
-			System.out.println("Setup complete");
 			AudioSystem audio = new ServerAudioSystem();
 			
 			//the save file to try to load the world from
@@ -33,6 +31,7 @@ public final class StartServer {
 					byte[] data = new byte[(int)saveFile.length()];
 					in.read(data);
 					World world = (World)ByteUtil.deserialize(ByteUtil.decompress(data));
+					server.start();
 					server.startWorld(world); //start the world on the server, which will send it to clients that connect
 				} catch(IOException | ReflectiveOperationException e) {
 					System.err.println("Couldn't load world from file: " + e.getLocalizedMessage() + ": " + e.getCause());
@@ -55,23 +54,26 @@ public final class StartServer {
 					world.getForeground().set(column, (int)height, new GrassBlock());
 					world.getBackground().set(column, (int)height, new DirtBlock());
 				}
+				server.start();
+				server.waitUntilStarted();
 				server.startWorld(world); //start the world on the server, which will send it to clients that connect
 			}
 			
-			System.out.println("World loaded");
+			System.out.println("Startup Complete.");
+			System.out.println("Type 'exit' to stop server or anything else to broadcast a message:");
 			
 			try(Scanner scanner = new Scanner(System.in)) {
 				String line;
 				while(!(line = scanner.nextLine()).equalsIgnoreCase("exit")) {
 					server.broadcastMessage(line);
-					System.out.println("Sent message \'" + line + "\' to all connected clients");
+					System.out.println("Sent message '" + line + "' to " + server.clientCount() + " connected client(s).");
 				}
 			}
 			
-			server.exit();
-			server.waitUntilFinished();
+			server.stop();
+			server.waitUntilStopped();
 			
-			System.out.println("Server closed");
+			System.out.println("Shutdown Complete.");
 			
 			if(!saveFile.exists()) {
 				saveFile.createNewFile();
@@ -82,7 +84,7 @@ public final class StartServer {
 				byte[] serialized = ByteUtil.compress(ByteUtil.serialize(server.getWorld()));
 				out.write(serialized);
 				out.getChannel().truncate(serialized.length);
-				System.out.println("world saved to " + serialized.length + " bytes");
+				System.out.println("world saved to " + serialized.length + " bytes.");
 			} catch (IOException e) {
 				e.printStackTrace();
 			}

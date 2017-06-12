@@ -8,6 +8,8 @@ uniform float lightIntensity;
 uniform float lightPosX;
 uniform float lightPosY;
 
+uniform sampler2D diffuse;
+
 void main() {
 	float length = length(vec2(lightPosX, lightPosY) - gl_FragCoord.xy);
 	//convert distance from light origin to outer radius to range 0.0 to 1.0 for alpha
