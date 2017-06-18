@@ -10,11 +10,10 @@ import static org.lwjgl.glfw.GLFW.glfwSetWindowFocusCallback;
 import static org.lwjgl.glfw.GLFW.glfwSetWindowIconifyCallback;
 import static org.lwjgl.glfw.GLFW.glfwSetWindowRefreshCallback;
 
+import java.util.Collection;
 import java.util.LinkedList;
-import java.util.List;
 import org.lwjgl.glfw.GLFWCursorPosCallback;
 import org.lwjgl.glfw.GLFWFramebufferSizeCallback;
-import org.lwjgl.glfw.GLFWKeyCallback;
 import org.lwjgl.glfw.GLFWMouseButtonCallback;
 import org.lwjgl.glfw.GLFWScrollCallback;
 import org.lwjgl.glfw.GLFWWindowCloseCallback;
@@ -33,26 +32,23 @@ import ritzow.sandbox.client.input.handler.WindowRefreshHandler;
 
 /** Dispatches GLFW events to handlers in an object oriented fashion **/
 public final class InputManager {
-	private List<CursorPosHandler> cursorPosHandlers = 				new LinkedList<CursorPosHandler>();
-	private List<FramebufferSizeHandler> framebufferSizeHandlers = 	new LinkedList<FramebufferSizeHandler>();
-	private List<KeyHandler> keyHandlers =							new LinkedList<KeyHandler>();
-	private List<MouseButtonHandler> mouseButtonHandlers = 			new LinkedList<MouseButtonHandler>();
-	private List<ScrollHandler> scrollHandlers = 					new LinkedList<ScrollHandler>();
-	private List<WindowRefreshHandler> windowRefreshHandlers = 		new LinkedList<WindowRefreshHandler>();
-	private List<WindowCloseHandler> windowCloseHandlers = 			new LinkedList<WindowCloseHandler>();
-	private List<WindowIconifyHandler> windowIconifyHandlers = 		new LinkedList<WindowIconifyHandler>();
-	private List<WindowFocusHandler> windowFocusHandlers = 			new LinkedList<WindowFocusHandler>();
+	private final Collection<CursorPosHandler> cursorPosHandlers = 				new LinkedList<CursorPosHandler>();
+	private final Collection<FramebufferSizeHandler> framebufferSizeHandlers = 	new LinkedList<FramebufferSizeHandler>();
+	private final Collection<KeyHandler> keyHandlers =							new LinkedList<KeyHandler>();
+	private final Collection<MouseButtonHandler> mouseButtonHandlers = 			new LinkedList<MouseButtonHandler>();
+	private final Collection<ScrollHandler> scrollHandlers = 					new LinkedList<ScrollHandler>();
+	private final Collection<WindowRefreshHandler> windowRefreshHandlers = 		new LinkedList<WindowRefreshHandler>();
+	private final Collection<WindowCloseHandler> windowCloseHandlers = 			new LinkedList<WindowCloseHandler>();
+	private final Collection<WindowIconifyHandler> windowIconifyHandlers = 		new LinkedList<WindowIconifyHandler>();
+	private final Collection<WindowFocusHandler> windowFocusHandlers = 			new LinkedList<WindowFocusHandler>();
 	
 	public InputManager(long window) {
 		//TODO use a thread pool executor service with lambda expressions to send events to other threads?
 		
-		glfwSetKeyCallback(window, new GLFWKeyCallback() {
-		    @Override
-			public void invoke (long window, int key, int scancode, int action, int mods) {
-				for(KeyHandler handler : keyHandlers) {
-					handler.keyboardButton(key, scancode, action, mods);
-				}
-		    }
+		glfwSetKeyCallback(window, (windowID, key, scancode, action, mods) -> {
+			for(KeyHandler handler : keyHandlers) {
+				handler.keyboardButton(key, scancode, action, mods);
+			}
 		});
 		
 		glfwSetScrollCallback(window, new GLFWScrollCallback() {
@@ -140,39 +136,39 @@ public final class InputManager {
 		windowFocusHandlers.clear();
 	}
 
-	public final List<CursorPosHandler> getCursorPosHandlers() {
+	public final Collection<CursorPosHandler> getCursorPosHandlers() {
 		return cursorPosHandlers;
 	}
 
-	public final List<FramebufferSizeHandler> getFramebufferSizeHandlers() {
+	public final Collection<FramebufferSizeHandler> getFramebufferSizeHandlers() {
 		return framebufferSizeHandlers;
 	}
 
-	public final List<KeyHandler> getKeyHandlers() {
+	public final Collection<KeyHandler> getKeyHandlers() {
 		return keyHandlers;
 	}
 
-	public final List<MouseButtonHandler> getMouseButtonHandlers() {
+	public final Collection<MouseButtonHandler> getMouseButtonHandlers() {
 		return mouseButtonHandlers;
 	}
 
-	public final List<ScrollHandler> getScrollHandlers() {
+	public final Collection<ScrollHandler> getScrollHandlers() {
 		return scrollHandlers;
 	}
 
-	public final List<WindowRefreshHandler> getWindowRefreshHandlers() {
+	public final Collection<WindowRefreshHandler> getWindowRefreshHandlers() {
 		return windowRefreshHandlers;
 	}
 
-	public final List<WindowCloseHandler> getWindowCloseHandlers() {
+	public final Collection<WindowCloseHandler> getWindowCloseHandlers() {
 		return windowCloseHandlers;
 	}
 
-	public final List<WindowIconifyHandler> getWindowIconifyHandlers() {
+	public final Collection<WindowIconifyHandler> getWindowIconifyHandlers() {
 		return windowIconifyHandlers;
 	}
 
-	public final List<WindowFocusHandler> getWindowFocusHandlers() {
+	public final Collection<WindowFocusHandler> getWindowFocusHandlers() {
 		return windowFocusHandlers;
 	}
 }

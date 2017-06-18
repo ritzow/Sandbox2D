@@ -1,44 +1,40 @@
-package ritzow.sandbox.client;
+package ritzow.sandbox.world;
 
 import static ritzow.sandbox.util.Utility.combineFriction;
+import static ritzow.sandbox.util.Utility.intersection;
 
 import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
-
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 import ritzow.sandbox.audio.AudioSystem;
-import ritzow.sandbox.client.graphics.ClientWorldRenderer;
 import ritzow.sandbox.util.ByteUtil;
-import ritzow.sandbox.world.BlockGrid;
-import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.block.Block;
 import ritzow.sandbox.world.entity.Entity;
 
-public final class ClientWorld implements World {
+public abstract class AbstractWorld implements World {
 	
 	/** collection of entities in the world **/
-	protected final List<Entity> entities;
+	private final List<Entity> entities;
 	
 	/** queues for entities to be added or removed from the world **/
-	protected final Queue<Entity> entityAddQueue, entityRemoveQueue;
+	private final Queue<Entity> entityAddQueue, entityRemoveQueue;
 	
 	/** blocks in the world that collide with entities and and are rendered **/
 	protected final BlockGrid foreground, background;
 	
-	/** amount of downwards acceleration to apply to entities in the world **/
-	protected volatile float gravity;
-	
 	/** AudioSystem to allow entities to play sounds **/
 	protected volatile AudioSystem audio;
 	
-	/** renderer **/
-	protected ClientWorldRenderer renderer;
+	/** amount of downwards acceleration to apply to entities in the world **/
+	private volatile float gravity;
 	
-	public ClientWorld(AudioSystem audio, int width, int height) {
-		this(audio, width, height, 0.016f);
-	}
+	/** Entity ID counter **/
+	private volatile int lastEntityID;
 	
 	/**
 	 * Initializes a new World object with a foreground, background, entity storage, and gravity.
@@ -46,7 +42,7 @@ public final class ClientWorld implements World {
 	 * @param height the height of the foreground and background
 	 * @param gravity the amount of gravity
 	 */
-	public ClientWorld(AudioSystem audio, int width, int height, float gravity) {
+	public AbstractWorld(AudioSystem audio, int width, int height, float gravity) {
 		this.audio = audio;
 		entities = new ArrayList<Entity>(100);
 		this.entityAddQueue = new LinkedList<Entity>();
@@ -56,8 +52,8 @@ public final class ClientWorld implements World {
 		this.gravity = gravity;
 	}
 	
-	public ClientWorld(byte[] data) throws ReflectiveOperationException {
-		audio = null; renderer = null;
+	public AbstractWorld(byte[] data) throws ReflectiveOperationException {
+		audio = null;
 		entityAddQueue = new LinkedList<Entity>();
 		entityRemoveQueue = new LinkedList<Entity>();
 		
@@ -78,61 +74,77 @@ public final class ClientWorld implements World {
 			}
 			index += ByteUtil.getSerializedLength(data, index);
 		}
+		
+		lastEntityID = ByteUtil.getInteger(data, index);
 	}
 	
-	@Override
-	public byte[] getBytes() { //needed for saving world to file
+	public final byte[] getBytes(Predicate<Entity> entityFilter) {
 		//serialize foreground and background
 		byte[] foregroundBytes = ByteUtil.serialize(foreground);
 		byte[] backgroundBytes = ByteUtil.serialize(background);
 		
-		//number of entities currently in the world
-		int numEntities = entities.size();
-		
-		//number of bytes of entity data
-		int totalEntityBytes = 0;
-		
-		//array of all of the serialized entities
-		byte[][] entityBytes = new byte[numEntities][];
+		synchronized(entities) {
+			int entityIDCounter = this.lastEntityID; //TODO this entire method is kinda unsafe
+			
+			//number of entities currently in the world
+			int numEntities = entities.size();
+			
+			//number of bytes of entity data
+			int totalEntityBytes = 0;
+			
+			//array of all of the serialized entities
+			byte[][] entityBytes = new byte[numEntities][];
 
-		int index = 0;
-		for(Entity e : entities) {
-			try {
-				byte[] bytes = ByteUtil.serialize(e);
-				entityBytes[index] = bytes;
-				totalEntityBytes += bytes.length;
-				index++;
-			} catch(Exception x) {
-				numEntities--;
-				System.err.println("couldn't serialize an entity: " + x.getLocalizedMessage());
+			int index = 0;
+			for(Entity e : entities) {
+				if(entityFilter.test(e) == true) {
+					try {
+						byte[] bytes = ByteUtil.serialize(e);
+						entityBytes[index] = bytes;
+						totalEntityBytes += bytes.length;
+						index++;
+					} catch(Exception x) {
+						numEntities--;
+						System.err.println("couldn't serialize an entity: " + x.getLocalizedMessage());
+					}
+				} else {
+					numEntities--;
+				}
 			}
-		}
-		
-		//gravity, foreground data, background data, number of entities, entity data (size)
-		byte[] bytes = new byte[4 + foregroundBytes.length + backgroundBytes.length + 4 + totalEntityBytes];
-		
-		//write gravity
-		ByteUtil.putFloat(bytes, 0, gravity);
-		
-		//write foreground data
-		ByteUtil.copy(foregroundBytes, bytes, 4);
-		
-		//write background data
-		ByteUtil.copy(backgroundBytes, bytes, 4 + foregroundBytes.length);
-		
-		//write number of entities
-		ByteUtil.putInteger(bytes, 4 + foregroundBytes.length + backgroundBytes.length, numEntities);
-		
-		//append entity data to the end of the serialized array
-		int offset = 4 + foregroundBytes.length + backgroundBytes.length + 4;
-		for(byte[] entity : entityBytes) {
-			if(entity != null) {
-				System.arraycopy(entity, 0, bytes, offset, entity.length);
-				offset += entity.length;
+			
+			//gravity, foreground data, background data, number of entities, entity data (size), lastEntityID
+			byte[] bytes = new byte[4 + foregroundBytes.length + backgroundBytes.length + 4 + totalEntityBytes + 4];
+			
+			//write gravity
+			ByteUtil.putFloat(bytes, 0, gravity);
+			
+			//write foreground data
+			ByteUtil.copy(foregroundBytes, bytes, 4);
+			
+			//write background data
+			ByteUtil.copy(backgroundBytes, bytes, 4 + foregroundBytes.length);
+			
+			//write number of entities
+			ByteUtil.putInteger(bytes, 4 + foregroundBytes.length + backgroundBytes.length, numEntities);
+			
+			//append entity data to the end of the serialized array
+			int offset = 4 + foregroundBytes.length + backgroundBytes.length + 4;
+			for(byte[] entity : entityBytes) {
+				if(entity != null) {
+					System.arraycopy(entity, 0, bytes, offset, entity.length);
+					offset += entity.length;
+				}
 			}
+			
+			ByteUtil.putInteger(bytes, offset, entityIDCounter);
+			
+			return bytes;
 		}
-		
-		return bytes;
+	}
+	
+	@Override
+	public final byte[] getBytes() { //needed for saving world to file as Transportable
+		return getBytes(e -> true);
 	}
 	
 	@Override
@@ -144,45 +156,114 @@ public final class ClientWorld implements World {
 		return builder.toString();
 	}
 	
+	public int nextEntityID() {
+		return ++lastEntityID;
+	}
+	
 	@Override
-	public BlockGrid getForeground() {
+	public final BlockGrid getForeground() {
 		return foreground;
 	}
 	
 	@Override
-	public BlockGrid getBackground() {
+	public final BlockGrid getBackground() {
 		return background;
 	}
 	
+	public void forEach(Consumer<Entity> consumer) {
+		synchronized(entities) {
+			entities.forEach(consumer);
+		}
+	}
+	
+	/**
+	 * Returns a collection of entities that are partially or fully within the given rectangle bounds
+	 * @param x the center x coordinate
+	 * @param y the center y coordinate
+	 * @param width the width of the rectangle
+	 * @param height the height of the rectangle
+	 * @return
+	 */
+	public Collection<Entity> getEntitiesInRectangle(float x, float y, float width, float height) {
+		Collection<Entity> col = null;
+		synchronized(entities) {
+			for(Entity e : entities) {
+				if(intersection(x, y, width, height, e.getPositionX(), e.getPositionY(), e.getWidth(), e.getHeight())) {
+					if(col == null) {
+						col = new ArrayList<Entity>();
+						col.add(e);
+					}
+				}
+			}
+		}
+		return col == null ? Collections.emptyList() : col;
+	}
+
 	@Override
-	public void add(Entity e) {
+	public final AudioSystem getAudioSystem() {
+		return audio;
+	}
+	
+	public final void setAudioSystem(AudioSystem audio) {
+		this.audio = audio;
+	}
+	
+	/**
+	 * Non-thread-safe version of queueAdd that will add the entity to the world immediately
+	 * @param e the entity to add
+	 */
+	public final void add(Entity e) {
+		synchronized(entities) {
+			entities.add(e);
+			onEntityAdd(e);
+		}
+	}
+	
+	/**
+	 * Non-thread-safe version of queueRemove that will remove the entity from the world immediately
+	 * @param e the entity to add
+	 */
+	public final void remove(Entity e) {
+		synchronized(entities) {
+			entities.remove(e);
+			onEntityRemove(e);
+		}
+	}
+	
+	public final void queueAdd(Entity e) {
 		synchronized(entityAddQueue) {
 			entityAddQueue.add(e);
 		}
 	}
 	
-	@Override
-	public void remove(Entity e) {
+	public final void queueRemove(Entity e) {
 		synchronized(entityRemoveQueue) {
 			entityRemoveQueue.add(e);
 		}
 	}
 	
-	@Override
-	public void remove(int entityID) { //TODO will cause mod exception
-		throw new UnsupportedOperationException("don't use this method");
-//		synchronized(entities) {
-//			entities.removeIf(e -> e.getID() == entityID);
-//		}
-	}
-	
-	public float getGravity() {
+	public final float getGravity() {
 		return gravity;
 	}
 
-	public void setGravity(float gravity) {
+	public final void setGravity(float gravity) {
 		this.gravity = gravity;
 	}
+	
+	public final Entity find(int entityID) { //TODO I dobut this is thread-safe or efficient
+		synchronized(entities) {
+			for(Entity e : entities) {
+				if(e.getID() == entityID) {
+					return e;
+				}
+			}
+		}
+		return null;
+	}
+	
+	protected void onEntityAdd(Entity e) {}
+	protected void onEntityRemove(Entity e) {}
+	protected void onEntityUpdate(Entity e) {}
 
 	/**
 	 * Updates the entities in the world, simulating the specified amount of time. Entities below the world or marked for deletion will be removed
@@ -191,13 +272,19 @@ public final class ClientWorld implements World {
 	 * @param time the amount of time to simulate.
 	 */
 	@Override
-	public void update(float time) {
+	public final void update(float time) {
 		synchronized(entities) {
 			synchronized(entityAddQueue) {
 				entities.addAll(entityAddQueue);
+				for(Entity e : entityAddQueue) {
+					onEntityAdd(e);
+				}
 				entityAddQueue.clear();	
 			} synchronized(entityRemoveQueue) {
 				entities.removeAll(entityRemoveQueue);
+				for(Entity e : entityRemoveQueue) {
+					onEntityRemove(e);
+				}
 				entityRemoveQueue.clear();
 			}
 			
@@ -206,7 +293,7 @@ public final class ClientWorld implements World {
 				
 				//remove entities that are below the world or are flagged for deletion
 				if(e == null || e.getPositionY() < 0 || e.getShouldDelete()) {
-					entities.remove(i);
+					onEntityRemove(entities.remove(i));
 					i = Math.max(0, i - 1);
 					continue;
 				}
@@ -263,6 +350,7 @@ public final class ClientWorld implements World {
 						}
 					}
 				}
+				onEntityUpdate(e);
 			}
 		}
 	}
@@ -404,19 +492,5 @@ public final class ClientWorld implements World {
 		    return true;
 		}
 		return false;
-	}
-
-	@Override
-	public Iterator<Entity> iterator() {
-		return entities.iterator();
-	}
-
-	@Override
-	public AudioSystem getAudioSystem() {
-		return audio;
-	}
-	
-	public void setAudioSystem(AudioSystem audio) {
-		this.audio = audio;
 	}
 }

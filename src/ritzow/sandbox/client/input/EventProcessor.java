@@ -47,7 +47,7 @@ public final class EventProcessor implements Runnable, Installable, Exitable {
 		display.setFullscreen(true);
 		
 		while(!exit) {
-			display.waitEvents();
+			display.waitEvents(); //TODO add a method to allow code to be run on this thread
 		}
 		
 		display.destroy();

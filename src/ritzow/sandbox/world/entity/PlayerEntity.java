@@ -94,7 +94,7 @@ public class PlayerEntity extends Entity implements Living, Luminous {
 	public void onCollision(World world, Entity e, float time) {
 		if(e instanceof ItemEntity) {
 			if(inventory.add(((ItemEntity)e).getItem())) {
-				world.remove(e);
+				world.queueRemove(e);
 				world.getAudioSystem().playSound(Sounds.ITEM_PICKUP, e.getPositionX(), e.getPositionY(), 0, 0.2f, 1, (float)Math.random() * 0.4f + 0.8f);
 			}
 		}

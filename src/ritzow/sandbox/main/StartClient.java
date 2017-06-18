@@ -6,10 +6,10 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.util.Arrays;
-
 import ritzow.sandbox.client.Client;
-import ritzow.sandbox.client.ClientWorld;
 import ritzow.sandbox.client.audio.ClientAudioSystem;
 import ritzow.sandbox.client.audio.Sounds;
 import ritzow.sandbox.client.graphics.Camera;
@@ -28,30 +28,28 @@ import ritzow.sandbox.client.input.controller.PlayerController;
 import ritzow.sandbox.client.input.controller.TrackingCameraController;
 import ritzow.sandbox.client.input.handler.KeyHandler;
 import ritzow.sandbox.client.input.handler.WindowCloseHandler;
-import ritzow.sandbox.util.ClientUpdater;
-import ritzow.sandbox.world.World;
+import ritzow.sandbox.client.world.ClientWorld;
+import ritzow.sandbox.util.RunnableRepeatExecutor;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
 public final class StartClient {
-	public static void main(String... args) throws IOException {
-		final Client client = new Client();
-		client.start();
-		client.waitUntilStarted();
+	public static void main(String... args) throws SocketException, UnknownHostException {
 		
-		SocketAddress address = args.length == 2 ? new InetSocketAddress(args[0], Integer.parseInt(args[1])) : new InetSocketAddress(InetAddress.getLocalHost(), 50000);
-		System.out.println("Connecting to " + address);
+		SocketAddress serverAddress = new InetSocketAddress(args.length > 0 ? args[0] : InetAddress.getLocalHost().getHostAddress(), 50000);
+		Client client = new Client(new InetSocketAddress(0)); //wildcard address, and any port
+		client.start();
+		
+		System.out.print("Connecting to " + serverAddress + "... ");
 		
 		//attempt to connect to the server for one second, if the client connects, run the game code and event processor
-		if(client.connectTo(address, 1000)) {
-			System.out.println("Client connected to " + address);
+		if(client.connectTo(serverAddress, 1000)) {
+			System.out.println("connected!");
 			EventProcessor eventProcessor = new EventProcessor();
 			new Thread(new ClientStarter(client, eventProcessor), "Client Manager").start();
-			
 			eventProcessor.run(); //run the event processor on this thread
 		} else {
-			System.out.println("Client failed to connect to " + address);
+			System.out.println("failed to connect.");
 			client.stop();
-			client.waitUntilStopped();
 		}
 	}
 	
@@ -80,7 +78,7 @@ public final class StartClient {
 			audio.setVolume(1.0f);
 			
 			//wait for the client to receive the world and return it
-			World world = client.getWorld();
+			ClientWorld world = client.getWorld();
 			world.setAudioSystem(audio);
 			
 			//wait for the Display, and thus InputManager, to be created, then link the game manager to the display so that the escape button and x button exit the game
@@ -88,12 +86,8 @@ public final class StartClient {
 			eventProcessor.getDisplay().getInputManager().getWindowCloseHandlers().add(this);
 			eventProcessor.getDisplay().getInputManager().getKeyHandlers().add(this);
 			
-			Camera camera = new Camera(0, 0, 1);
-			
-			//get the client's player object, which has already been added to the world
 			PlayerEntity player = client.getPlayer();
-			CameraController cameraGrip = new TrackingCameraController(camera, audio, player, 0.005f, 0.05f, 0.6f);
-			cameraGrip.link(eventProcessor.getDisplay().getInputManager());
+			CameraController cameraGrip = new TrackingCameraController(new Camera(0, 0, 1), audio, player, 0.005f, 0.05f, 0.6f);
 			
 			//start the graphics manager, which will load all models into OpenGL and setup the OpenGL context.
 			RenderManager renderManager = eventProcessor.getDisplay().getRenderManager();
@@ -104,16 +98,16 @@ public final class StartClient {
 					ModelRenderProgram modelProgram = new ModelRenderProgram(
 							new Shader(new FileInputStream("resources/shaders/modelVertexShader"), org.lwjgl.opengl.GL20.GL_VERTEX_SHADER),
 							new Shader(new FileInputStream("resources/shaders/modelFragmentShader"), org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER), 
-							camera
+							cameraGrip.getCamera()
 					);
 					
 					LightRenderProgram lightProgram = new LightRenderProgram(
 							new Shader(new FileInputStream("resources/shaders/lightVertexShader"), org.lwjgl.opengl.GL20.GL_VERTEX_SHADER),
 							new Shader(new FileInputStream("resources/shaders/lightFragmentShader"), org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER),
-							camera
+							cameraGrip.getCamera()
 					);
 					
-					graphics.getRenderers().add(new ClientWorldRenderer(cameraGrip, modelProgram, lightProgram, (ClientWorld)world));
+					graphics.getRenderers().add(new ClientWorldRenderer(modelProgram, lightProgram, world));
 				} catch (IOException | OpenGLException e) {
 					throw new RuntimeException(e);
 				}
@@ -123,16 +117,17 @@ public final class StartClient {
 			renderManager.waitForSetup();
 			
 			//create the client update manager and link it with the window events
-			ClientUpdater clientUpdater = new ClientUpdater();
+			RunnableRepeatExecutor clientUpdater = new RunnableRepeatExecutor();
 			clientUpdater.link(eventProcessor.getDisplay().getInputManager());
 			
 			//create and link player controllers so the user can play the game
 			Arrays.asList(
-					new PlayerController(player, world, client),
-					new InteractionController(player, world, camera, 200, 300, 5)
+					new PlayerController(client),
+					new InteractionController(client, cameraGrip.getCamera(), 200, 300, 5),
+					cameraGrip
 			).forEach(controller -> {
 				controller.link(eventProcessor.getDisplay().getInputManager());
-				clientUpdater.getUpdatables().add(controller);
+				clientUpdater.getRunnables().add(controller);
 			});
 			
 			//start the updater
@@ -152,16 +147,15 @@ public final class StartClient {
 				}
 			}
 			
-			//start exiting threads
-			System.out.print("Exiting client... ");
+			//start exiting threads TODO something is not happening in the correct order, getting a crash, likely client.stop causing problems
+			System.out.print("Exiting... ");
 			renderManager.waitForExit();
 			eventProcessor.waitForExit();
-			client.stop();
 			clientUpdater.stop();
-			client.waitUntilStopped();
 			clientUpdater.waitUntilFinished();
-			audio.shutdown();
-			System.out.println("client exited");
+			client.stop();
+			audio.exit();
+			System.out.println("done!");
 		}
 		
 		/** can be called from any thread to exit the game **/

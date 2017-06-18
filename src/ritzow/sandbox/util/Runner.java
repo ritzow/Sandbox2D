@@ -2,7 +2,6 @@ package ritzow.sandbox.util;
 
 public abstract class Runner {
 	private final Object lock = new Object();
-	private volatile Thread thread;
 	private volatile boolean started, stopped;
 	
 	protected abstract void onStart();
@@ -46,9 +45,5 @@ public abstract class Runner {
 				}
 			}
 		}
-	}
-	
-	public boolean isRunning() {
-		return thread.isAlive();
 	}
 }

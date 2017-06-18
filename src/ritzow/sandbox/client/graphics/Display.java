@@ -35,7 +35,7 @@ public final class Display {
 		glfwSetCursor(displayID, cursor);
 	}
 	
-	public void setContext() {
+	public void setGraphicsContextOnThread() {
 		glfwMakeContextCurrent(displayID);
 	}
 	
