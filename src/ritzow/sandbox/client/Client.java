@@ -1,6 +1,5 @@
 package ritzow.sandbox.client;
 
-import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -8,24 +7,24 @@ import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.function.Supplier;
+import ritzow.sandbox.client.world.ClientWorld;
 import ritzow.sandbox.game.Lobby;
 import ritzow.sandbox.protocol.ConnectionException;
 import ritzow.sandbox.protocol.NetworkController;
 import ritzow.sandbox.protocol.Protocol;
 import ritzow.sandbox.protocol.TimeoutException;
 import ritzow.sandbox.util.ByteUtil;
-import ritzow.sandbox.util.Runner;
-import ritzow.sandbox.util.Service;
 import ritzow.sandbox.util.Transportable;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.Entity;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
-public final class Client extends Runner {
+public final class Client {
 	
 	/** The server's address **/
 	protected volatile SocketAddress server;
 	
+	/** I/O logic **/
 	protected final NetworkController controller;
 	
 	/** if the server has been successfully connected to **/
@@ -35,26 +34,28 @@ public final class Client extends Runner {
 	protected volatile int unreliableMessageID, reliableMessageID;
 	
 	/** The World object sent by the server **/
-	protected volatile World world;
+	protected volatile ClientWorld world;
 	private byte[][] worldPackets;
 	
 	/** The Player object sent by the server for the client to control **/
-	protected PlayerEntity player;
+	protected volatile PlayerEntity player;
 	
 	/** The Lobby object sent by the server for the client to display **/
-	protected Lobby serverLobby;
+	protected Lobby lobby;
 	
 	/** lock object for synchronizing server-initiated actions with the client **/
 	protected final Object worldLock, playerLock, lobbyLock;
 	
-	protected Service pinger;
-	
-	public Client() throws SocketException, UnknownHostException {
-		controller = new NetworkController(new InetSocketAddress(InetAddress.getLocalHost(), 0));
+	public Client(SocketAddress bindAddress) throws SocketException {
+		controller = new NetworkController(bindAddress);
 		worldLock = new Object();
 		playerLock = new Object();
 		lobbyLock = new Object();
 		controller.setOnRecieveMessage(this::process);
+	}
+	
+	public Client() throws SocketException, UnknownHostException {
+		this(new InetSocketAddress(InetAddress.getLocalHost(), 0));
 	}
 	
 	protected final void process(SocketAddress sender, int messageID, byte[] data) {
@@ -63,17 +64,13 @@ public final class Client extends Runner {
 		if(sender.equals(server)) {
 			switch(protocol) {
 				case Protocol.SERVER_CONNECT_ACKNOWLEDGMENT:
-					connected = ByteUtil.getBoolean(data, 2);
-					synchronized(server) {server.notifyAll();}
+					processServerConnectAcknowledgement(data);
 					break;
 				case Protocol.SERVER_WORLD_HEAD:
 					worldPackets = new byte[ByteUtil.getInteger(data, 2)][];
 					break;
 				case Protocol.SERVER_WORLD_DATA:
 					processReceiveWorldData(data);
-					break;
-				case Protocol.SERVER_PLAYER_ENTITY_COMPRESSED:
-					processReceivePlayerEntity(data);
 					break;
 				case Protocol.CONSOLE_MESSAGE:
 					System.out.println("[Server] " + new String(data, 2, data.length - 2, Protocol.CHARSET));
@@ -88,20 +85,35 @@ public final class Client extends Runner {
 					processAddEntity(data, true);
 					break;
 				case Protocol.SERVER_REMOVE_ENTITY:
-					if(world != null) {
-						world.remove(ByteUtil.getInteger(data, 2));
-					}
+					processRemoveEntity(data);
 					break;
 				case Protocol.SERVER_CLIENT_DISCONNECT:
-					disconnect(false);
+					processServerDisconnect(data);
 					break;
 				case Protocol.SERVER_CREATE_LOBBY:
-					setupServerLobby(data);
+					break;
+				case Protocol.SERVER_PLAYER_ID:
+					processReceivePlayerEntityID(data);
+					break;
+				case Protocol.SERVER_REMOVE_BLOCK:
+					processServerRemoveBlock(data);
 					break;
 				default:
 					System.err.println("Client received message of unknown protocol " + protocol);
 			}
 		}
+	}
+	
+	private void processServerRemoveBlock(byte[] data) {
+		world.getForeground().set(ByteUtil.getInteger(data, 2), ByteUtil.getInteger(data, 6), null);
+	}
+
+	public void sendBlockBreak(int x, int y) {
+		byte[] packet = new byte[10];
+		ByteUtil.putShort(packet, 0, Protocol.CLIENT_BREAK_BLOCK);
+		ByteUtil.putInteger(packet, 2, x);
+		ByteUtil.putInteger(packet, 6, y);
+		send(packet);
 	}
 	
 	public void sendPlayerAction(PlayerAction action, boolean enable) {
@@ -123,8 +135,12 @@ public final class Client extends Runner {
 					break;
 			}
 			
-			send(Protocol.PlayerAction.buildPlayerMovementAction(code, enable));
+			send(Protocol.PlayerAction.buildPlayerAction(code, enable));
 		}
+	}
+	
+	private int nextReliableMessageID() {
+		return reliableMessageID++;
 	}
 	
 	public static enum PlayerAction {
@@ -182,118 +198,50 @@ public final class Client extends Runner {
 	}
 	
 	public Lobby getLobby() {
-		return receiveObject(lobbyLock, () -> serverLobby);
+		return lobby != null ? lobby : receiveObject(lobbyLock, () -> lobby);
 	}
 	
-	public World getWorld() {
-		return receiveObject(worldLock, () -> world);
+	public ClientWorld getWorld() {
+		return world != null ? world : receiveObject(worldLock, () -> world);
 	}
 	
 	public PlayerEntity getPlayer() {
-		return receiveObject(playerLock, () -> player);
+		return player != null ? player : receiveObject(playerLock, () -> player);
 	}
 	
-	public boolean connectTo(SocketAddress address, int timeout) throws IOException {
-		if(controller.isSetupComplete() && !controller.isFinished()) {
-			if(!isConnected()) {
-				server = address;
-				byte[] packet = new byte[2];
-				ByteUtil.putShort(packet, 0, Protocol.CLIENT_CONNECT_REQUEST);
-				try {
-					controller.sendReliable(address, reliableMessageID++, packet, Math.max(1, timeout/100), Math.min(timeout, 100));
-					synchronized(server) {
-						try {
-							server.wait();
-						} catch (InterruptedException e) {
-							e.printStackTrace();
-						}
-					}
-					
-					if(connected) {
-						pinger = new Service() {
-							private volatile boolean exit, finished;
-							
-							@Override
-							public boolean isSetupComplete() {
-								return true;
-							}
-
-							@Override
-							public synchronized void exit() {
-								exit = true;
-								notifyAll();
-							}
-
-							@Override
-							public boolean isFinished() {
-								return finished;
-							}
-
-							@Override
-							public void run() {
-								while(!exit) {
-									Client.this.send(Protocol.buildEmpty(Protocol.CLIENT_PING));
-									try {
-										synchronized(this) {
-											wait(2000);
-										}
-									} catch (InterruptedException e) {
-										e.printStackTrace();
-									}
-								}
-								
-								synchronized(this) {
-									finished = true;
-									notifyAll();
-								}
-							}
-						};
-						
-						new Thread(pinger, "Client to Server pinger").start();	
-					}
-					
-					return connected;
-				} catch(TimeoutException e) {
-					server = null;
-					return false;
+	public boolean connectTo(SocketAddress address, int timeout) {
+		if(!isConnected()) {
+			server = address;
+			byte[] packet = new byte[2];
+			ByteUtil.putShort(packet, 0, Protocol.CLIENT_CONNECT_REQUEST);
+			try {
+				controller.sendReliable(address, nextReliableMessageID(), packet, Math.max(1, timeout/100), Math.min(timeout, 100));
+				synchronized(server) {
+					server.wait();
 				}
-			} else {
-				disconnect(true);
-				return connectTo(address, timeout);
+				return connected;
+			} catch(TimeoutException e) {
+				server = null;
+				return false;
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+				return false;
 			}
 		} else {
-			throw new RuntimeException("client must be running to connect to a server");
+			disconnect(true);
+			return connectTo(address, timeout);
 		}
+	
 	}
 	
-	@Override
-	protected void onStart() {
+	public void start() {
 		controller.start();
-		controller.waitForSetup();
 	}
-
-	@Override
-	protected void onStop() {
+	
+	public void stop() {
 		disconnect(true);
-		controller.waitForExit();
+		controller.stop();
 	}
-	
-//	public void start() {
-//		controller.start();
-//	}
-//	
-//	public void waitUntilRunning() {
-//		controller.waitForSetup();
-//	}
-//	
-//	public void stop() {
-//		disconnect(true);
-//		controller.exit();
-//	}
-	
-//	public void waitUntilStopped() {
-//		controller.waitUntilFinished();
-//	}
 	
 	public void disconnect(boolean notifyServer) {
 		if(isConnected()) {
@@ -304,8 +252,6 @@ public final class Client extends Runner {
 					send(packet);
 				}
 			} finally {
-				pinger.waitForExit(); //TODO is this adequate?
-				pinger = null;
 				server = null;
 				connected = false;
 				unreliableMessageID = 0;
@@ -317,50 +263,59 @@ public final class Client extends Runner {
 		}
 	}
 	
-	private void setupServerLobby(byte[] data) {
-		
+	private void processServerDisconnect(byte[] data) {
+		disconnect(false);
+		System.out.println("Disconnected from server: " + new String(data, 6, ByteUtil.getInteger(data, 2), Protocol.CHARSET));
 	}
 	
-	private void processReceivePlayerEntity(byte[] data) {
-		try {
-			this.player = (PlayerEntity)ByteUtil.deserialize(ByteUtil.decompress(data, 2, data.length - 2));
-			getWorld().add(player);
-			synchronized(playerLock) {
-				playerLock.notifyAll();
-			}
-		} catch (ReflectiveOperationException e) {
-			e.printStackTrace();
+	private void processServerConnectAcknowledgement(byte[] data) {
+		connected = ByteUtil.getBoolean(data, 2);
+		synchronized(server) {
+			server.notifyAll();
 		}
 	}
 	
-	private void processAddEntity(byte[] data, boolean compressed) {
-		if(world != null) {
-			try {
-				world.add((Entity)ByteUtil.deserialize(compressed ? ByteUtil.decompress(Arrays.copyOfRange(data, 2, data.length)) : Arrays.copyOfRange(data, 2, data.length)));
-			} catch(ClassCastException | ReflectiveOperationException e) {
-				System.err.println("Error while deserializing received entity");
+	private void processReceivePlayerEntityID(byte[] data) {
+		int id = ByteUtil.getInteger(data, 2);
+		while(player == null) { //loop infinitely until there is an entity with the correct ID
+			Entity player = getWorld().find(id);
+			if(player != null) {
+				this.player = (PlayerEntity)player;
+				synchronized(playerLock) {
+					playerLock.notifyAll();
+				}
 			}
+		}
+	}
+	
+	private void processRemoveEntity(byte[] data) {
+		getWorld().queueRemove(getWorld().find(ByteUtil.getInteger(data, 2)));
+	}
+	
+	private void processAddEntity(byte[] data, boolean compressed) {
+		try {
+			//waits until world is received and decompresses/deserializes/adds entity
+			//will only be added to the world once the world is updated
+			getWorld().add((Entity)ByteUtil.deserialize(compressed ? ByteUtil.decompress(Arrays.copyOfRange(data, 2, data.length)) : Arrays.copyOfRange(data, 2, data.length)));
+		} catch(ClassCastException | ReflectiveOperationException e) {
+			System.err.println("Error while deserializing received entity");
 		}
 	}
 	
 	private void processGenericEntityUpdate(byte[] data) {
 		if(world != null) {
 			int entityID = ByteUtil.getInteger(data, 2);
-			for(Entity e : world) {
-				if(e.getID() == entityID) {
-					synchronized(e) {
-						e.setPositionX(ByteUtil.getFloat(data, 6));
-						e.setPositionY(ByteUtil.getFloat(data, 10));
-						e.setVelocityX(ByteUtil.getFloat(data, 14));
-						e.setVelocityY(ByteUtil.getFloat(data, 18));
-					}
-					break;
-				}
+			Entity e = world.find(entityID);
+			if(e != null) {
+				e.setPositionX(ByteUtil.getFloat(data, 6));
+				e.setPositionY(ByteUtil.getFloat(data, 10));
+				e.setVelocityX(ByteUtil.getFloat(data, 14));
+				e.setVelocityY(ByteUtil.getFloat(data, 18));
 			}
 		}
 	}
 	
-	private void processReceiveWorldData(byte[] data) {
+	private final void processReceiveWorldData(byte[] data) {
 		synchronized(worldPackets) {
 			for(int i = 0; i < worldPackets.length; i++) {
 				//find an empty slot to put the received data
@@ -369,7 +324,8 @@ public final class Client extends Runner {
 					
 					//received final packet? create the world.
 					if(i == worldPackets.length - 1) {
-						world = Protocol.reconstructWorld(worldPackets, ClientWorld.class);
+						world = (ClientWorld)Client.reconstructWorld(worldPackets, ClientWorld.class);
+						System.out.println("Received world data.");
 						synchronized(worldLock) {
 							worldLock.notifyAll(); //notify waitForWorldStart that the world has started
 						}
@@ -379,6 +335,32 @@ public final class Client extends Runner {
 					break;
 				}
 			}
+		}
+	}
+
+	public static <T extends World> World reconstructWorld(byte[][] data, Class<T> type) {
+		final int headerSize = 2; //WORLD_DATA protocol
+		//create a sum of the number of bytes so that a single byte array can be allocated
+		int bytes = 0;
+		for(byte[] a : data) {
+			bytes += (a.length - headerSize);
+		}
+		
+		//the size of the world data (sum of all arrays without 2 byte headers)
+		byte[] worldBytes = new byte[bytes];
+		
+		//copy the received packets into the final world data array
+		int index = 0;
+		for(byte[] array : data) {
+			System.arraycopy(array, headerSize, worldBytes, index, array.length - headerSize);
+			index += (array.length - headerSize);
+		}
+		
+		try {
+			return type.getConstructor(byte[].class).newInstance(ByteUtil.decompress(worldBytes));
+		} catch(ReflectiveOperationException e) {
+			e.printStackTrace();
+			return null;
 		}
 	}
 }

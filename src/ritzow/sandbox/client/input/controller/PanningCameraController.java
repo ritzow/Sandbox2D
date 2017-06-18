@@ -9,7 +9,6 @@ import ritzow.sandbox.client.graphics.Camera;
 import ritzow.sandbox.client.input.Controls;
 
 public final class PanningCameraController extends CameraController {
-	protected final Camera camera;
 	protected final ClientAudioSystem audio;
 	protected final float panSpeed;
 	protected final float zoomSpeed;
@@ -26,7 +25,7 @@ public final class PanningCameraController extends CameraController {
 	protected boolean right;
 	
 	public PanningCameraController(Camera camera, ClientAudioSystem audio, float panSpeed, float minZoom, float maxZoom) {
-		this.camera = camera;
+		super(camera);
 		this.audio = audio;
 		this.panSpeed = panSpeed;
 		this.minZoom = minZoom;

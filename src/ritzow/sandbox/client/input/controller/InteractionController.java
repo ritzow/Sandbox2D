@@ -1,6 +1,7 @@
 package ritzow.sandbox.client.input.controller;
 
 import org.lwjgl.glfw.GLFW;
+import ritzow.sandbox.client.Client;
 import ritzow.sandbox.client.audio.Sounds;
 import ritzow.sandbox.client.graphics.Camera;
 import ritzow.sandbox.client.input.Controls;
@@ -9,9 +10,7 @@ import ritzow.sandbox.client.input.handler.CursorPosHandler;
 import ritzow.sandbox.client.input.handler.FramebufferSizeHandler;
 import ritzow.sandbox.client.input.handler.KeyHandler;
 import ritzow.sandbox.client.input.handler.MouseButtonHandler;
-import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.ItemEntity;
-import ritzow.sandbox.world.entity.PlayerEntity;
 import ritzow.sandbox.world.item.BlockItem;
 import ritzow.sandbox.world.item.Item;
 
@@ -24,13 +23,11 @@ public final class InteractionController implements Controller, MouseButtonHandl
 	private long lastPlace, lastBreak;
 	private float range;
 	
-	private final World world;
-	private final PlayerEntity player;
 	private final Camera camera;
+	private final Client client;
 	
-	public InteractionController(PlayerEntity player, World world, Camera camera, long breakCooldown, long placeCooldown, float range) {
-		this.world = world;
-		this.player = player;
+	public InteractionController(Client client, Camera camera, long breakCooldown, long placeCooldown, float range) {
+		this.client = client;
 		this.camera = camera;
 		this.cooldownBreak = breakCooldown;
 		this.cooldownPlace = placeCooldown;
@@ -52,24 +49,26 @@ public final class InteractionController implements Controller, MouseButtonHandl
 		worldY += camera.getPositionY();
 		int blockX = Math.round(worldX);						//convert world coordinate to block grid coordinate
 		int blockY = Math.round(worldY);
-		float playerX = player.getPositionX();						//get player position
-		float playerY = player.getPositionY();
+		float playerX = client.getPlayer().getPositionX();						//get player position
+		float playerY = client.getPlayer().getPositionY();
 		double distance = Math.sqrt((playerX - blockX) * (playerX - blockX) + (playerY - blockY) * (playerY - blockY));
 		
 		if(distance <= range) {
 			if(primaryAction && System.nanoTime() - lastBreak > cooldownBreak * 1000000) {
-				if(world.getForeground().isValid(blockX, blockY) && (world.getForeground().destroy(world, blockX, blockY))) { //|| world.getBackground().destroy(world, blockX, blockY)
+				if(client.getWorld().getForeground().isValid(blockX, blockY)) {
+					client.sendBlockBreak(blockX, blockY);
 					lastBreak = System.nanoTime();
 				}
 			}
 			
+			//TODO implement this with client stuff
 			else if(secondaryAction && (System.nanoTime() - lastPlace > cooldownPlace * 1000000)) {
-				Item item = player.getSelectedItem();
-				if((item instanceof BlockItem) && world.getForeground().isValid(blockX, blockY) && 
-					(world.getBackground().place(world, blockX, blockY, ((BlockItem)item).getBlock()) || 
-					world.getForeground().place(world, blockX, blockY, ((BlockItem)item).getBlock()))) {
+				Item item = client.getPlayer().getSelectedItem();
+				if((item instanceof BlockItem) && client.getWorld().getForeground().isValid(blockX, blockY) && 
+					(client.getWorld().getBackground().place(client.getWorld(), blockX, blockY, ((BlockItem)item).getBlock()) || 
+					client.getWorld().getForeground().place(client.getWorld(), blockX, blockY, ((BlockItem)item).getBlock()))) {
 					lastPlace = System.nanoTime();
-					player.removeSelectedItem();
+					client.getPlayer().removeSelectedItem();
 				}
 			}
 		}
@@ -129,54 +128,54 @@ public final class InteractionController implements Controller, MouseButtonHandl
 		if(action == GLFW.GLFW_PRESS) {
 			switch(key) {
 				case Controls.KEYBIND_DOWN:
-					Item item = player.removeSelectedItem();
+					Item item = client.getPlayer().removeSelectedItem();
 					if(item != null) {
 						//TODO deal with entityID for entities created outside server directly
 						ItemEntity entity = new ItemEntity(0, item);
-						entity.setVelocityX(mouseHorizontalToWorld(camera, mouseX, frameWidth, frameHeight) - player.getPositionX());
-						entity.setVelocityY(mouseVerticalToWorld(camera, mouseY, frameHeight) - player.getPositionY());
+						entity.setVelocityX(mouseHorizontalToWorld(camera, mouseX, frameWidth, frameHeight) - client.getPlayer().getPositionX());
+						entity.setVelocityY(mouseVerticalToWorld(camera, mouseY, frameHeight) - client.getPlayer().getPositionY());
 						entity.setSpeed(0.5f);
-						entity.setPositionX(player.getPositionX() + 2 * player.getWidth() * entity.getVelocityX());
-						entity.setPositionY(player.getPositionY() + 2 * player.getHeight() * entity.getVelocityY());
-						world.getAudioSystem().playSound(Sounds.THROW, player.getPositionX(), player.getPositionY(), entity.getVelocityX(), entity.getVelocityY(), 1.0f, 1f);
-						world.add(entity);
+						entity.setPositionX(client.getPlayer().getPositionX() + 2 * client.getPlayer().getWidth() * entity.getVelocityX());
+						entity.setPositionY(client.getPlayer().getPositionY() + 2 * client.getPlayer().getHeight() * entity.getVelocityY());
+						client.getWorld().getAudioSystem().playSound(Sounds.THROW, client.getPlayer().getPositionX(), client.getPlayer().getPositionY(), entity.getVelocityX(), entity.getVelocityY(), 1.0f, 1f);
+						client.getWorld().queueAdd(entity);
 					}
 					break;
 				case GLFW.GLFW_KEY_KP_1:
 				case GLFW.GLFW_KEY_1:
-					player.setSlot(0);
+					client.getPlayer().setSlot(0);
 					break;
 				case GLFW.GLFW_KEY_KP_2:
 				case GLFW.GLFW_KEY_2:
-					player.setSlot(1);
+					client.getPlayer().setSlot(1);
 					break;
 				case GLFW.GLFW_KEY_KP_3:
 				case GLFW.GLFW_KEY_3:
-					player.setSlot(2);
+					client.getPlayer().setSlot(2);
 					break;
 				case GLFW.GLFW_KEY_KP_4:
 				case GLFW.GLFW_KEY_4:
-					player.setSlot(3);
+					client.getPlayer().setSlot(3);
 					break;
 				case GLFW.GLFW_KEY_KP_5:
 				case GLFW.GLFW_KEY_5:
-					player.setSlot(4);
+					client.getPlayer().setSlot(4);
 					break;
 			    case GLFW.GLFW_KEY_KP_6:
 				case GLFW.GLFW_KEY_6:
-					player.setSlot(5);
+					client.getPlayer().setSlot(5);
 					break;
 				case GLFW.GLFW_KEY_KP_7:
 				case GLFW.GLFW_KEY_7:
-					player.setSlot(6);
+					client.getPlayer().setSlot(6);
 					break;
 				case GLFW.GLFW_KEY_KP_8:
 				case GLFW.GLFW_KEY_8:
-					player.setSlot(7);
+					client.getPlayer().setSlot(7);
 					break;
 			    case GLFW.GLFW_KEY_KP_9:
 				case GLFW.GLFW_KEY_9:
-					player.setSlot(8);
+					client.getPlayer().setSlot(8);
 					break;
 			}	
 		}

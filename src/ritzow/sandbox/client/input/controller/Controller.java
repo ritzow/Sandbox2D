@@ -4,6 +4,8 @@ import ritzow.sandbox.client.input.handler.InputHandler;
 import ritzow.sandbox.util.Updatable;
 
 /** Represents a user input system such as player movement or mouse picking **/
-public interface Controller extends InputHandler, Updatable {
-	
+public interface Controller extends InputHandler, Runnable, Updatable {
+	public default void run() {
+		this.update();
+	}
 }

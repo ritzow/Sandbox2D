@@ -10,7 +10,6 @@ import ritzow.sandbox.client.input.Controls;
 import ritzow.sandbox.world.entity.Entity;
 
 public final class TrackingCameraController extends CameraController {
-	protected final Camera camera;
 	protected final Entity target;
 	protected final ClientAudioSystem audio;
 	protected float zoomSpeed;
@@ -18,9 +17,10 @@ public final class TrackingCameraController extends CameraController {
 	protected float velocityZ;
 	protected final float minZoom;
 	protected final float maxZoom;
+	protected long previousTime;
 	
 	public TrackingCameraController(Camera camera, ClientAudioSystem audio, Entity target, float zoomSpeed, float minZoom, float maxZoom) {
-		this.camera = camera;
+		super(camera);
 		this.zoomSpeed = zoomSpeed;
 		this.target = target;
 		this.minZoom = minZoom;
@@ -32,9 +32,13 @@ public final class TrackingCameraController extends CameraController {
 	
 	@Override
 	public void update() {
+		if(previousTime == 0)
+			previousTime = System.nanoTime();
 		camera.setPositionX(target.getPositionX());
 		camera.setPositionY(target.getPositionY());
-		camera.setZoom((Math.max(Math.min(maxZoom, camera.getZoom() + camera.getZoom() * velocityZ), minZoom)));
+		long time = System.nanoTime();
+		camera.setZoom((Math.max(Math.min(maxZoom, camera.getZoom() + camera.getZoom() * (time - previousTime)/1000000 * velocityZ), minZoom)));
+		previousTime = time;
 		audio.setPosition(camera.getPositionX(), camera.getPositionY());
 	}
 	
@@ -58,7 +62,7 @@ public final class TrackingCameraController extends CameraController {
 	public void keyboardButton(int key, int scancode, int action, int mods) {
 		if(key == Controls.KEYBIND_INCREASEZOOM) {
 			if(action == GLFW_PRESS) {
-				velocityZ += zoomSpeed;
+				velocityZ = zoomSpeed;
 			}
 			
 			else if(action == GLFW_RELEASE) {
@@ -68,7 +72,7 @@ public final class TrackingCameraController extends CameraController {
 		
 		else if(key == Controls.KEYBIND_DECREASEZOOM) {
 			if(action == GLFW_PRESS) {
-				velocityZ -= zoomSpeed;
+				velocityZ = -zoomSpeed;
 			}
 			
 			else if(action == GLFW_RELEASE) {

@@ -10,7 +10,7 @@ public interface Exitable {
 	public void exit();
 	public boolean isFinished();
 	
-	default public void waitUntilFinished() {
+	public default void waitUntilFinished() {
 		synchronized(this) {
 			while(!isFinished()) {
 				try {
@@ -22,7 +22,7 @@ public interface Exitable {
 		}
 	}
 	
-	default public void waitForExit() {
+	public default void waitForExit() {
 		exit();
 		waitUntilFinished();
 	}

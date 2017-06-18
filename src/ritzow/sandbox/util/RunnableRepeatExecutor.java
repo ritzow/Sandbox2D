@@ -2,7 +2,6 @@ package ritzow.sandbox.util;
 
 import java.util.Collection;
 import java.util.LinkedList;
-import java.util.List;
 import ritzow.sandbox.client.input.InputManager;
 import ritzow.sandbox.client.input.handler.WindowFocusHandler;
 
@@ -11,17 +10,18 @@ import ritzow.sandbox.client.input.handler.WindowFocusHandler;
  * @author Solomon Ritzow
  *
  */
-public final class ClientUpdater implements Runnable, Exitable, WindowFocusHandler {
+public final class RunnableRepeatExecutor implements Runnable, Exitable, WindowFocusHandler {
 	private volatile boolean focused, exit, finished;
+	private volatile long delay;
 	
-	private final List<Updatable> updatables;
+	private final Collection<Runnable> runnables;
 	
-	public ClientUpdater() {
-		updatables = new LinkedList<Updatable>();
+	public RunnableRepeatExecutor() {
+		runnables = new LinkedList<Runnable>();
 	}
 	
-	public Collection<Updatable> getUpdatables() {
-		return updatables;
+	public Collection<Runnable> getRunnables() {
+		return runnables;
 	}
 	
 	public void start() {
@@ -33,15 +33,19 @@ public final class ClientUpdater implements Runnable, Exitable, WindowFocusHandl
 		notifyAll();
 	}
 
+	public void setRepeatDelay(long millseconds) {
+		this.delay = Math.max(0, delay);
+	}
+	
 	@Override
 	public void run() {
 		try {
 			while(!exit) {
 				if(focused) {
-					for(Updatable u : updatables) {
-						u.update();
+					for(Runnable r : runnables) {
+						r.run();
 					}
-					Thread.sleep(1);
+					Thread.sleep(delay);
 				} else {
 					synchronized(this) {
 						//pauses updating when window is not active to reduce idle CPU usage

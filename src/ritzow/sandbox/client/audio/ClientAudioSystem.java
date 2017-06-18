@@ -17,41 +17,46 @@ import org.lwjgl.openal.ALCCapabilities;
 import ritzow.sandbox.audio.AudioSystem;
 
 public final class ClientAudioSystem implements AudioSystem {
+	private static final long alContext;
+	private static final long device;
 	
-	//ensures there's only one instance of ClientAudioSystem because there can only be one OpenAL context
-	private static volatile boolean initialized;
-	
-	private final int[] sources;
-	private final long context;
-	private final long device;
-	
-	public ClientAudioSystem() {
-		if(initialized) {
-			throw new UnsupportedOperationException("OpenAL already initialized");
-		} else {
-			initialized = true;
-			device = alcOpenDevice((ByteBuffer)null);
-			context = alcCreateContext(device, (IntBuffer)null);
-			ALCCapabilities alcCaps = ALC.createCapabilities(device);
-			alcMakeContextCurrent(context);
-			
-			if(!AL.createCapabilities(alcCaps).OpenAL11) {
-				System.err.println("OpenAL 1.1 not supported");
-				shutdown();
-			}
-			
-			sources = new int[alcGetInteger(device, ALC_MONO_SOURCES)];
-			alGenSources(sources);
+	static {
+		device = alcOpenDevice((ByteBuffer)null);
+		alContext = alcCreateContext(device, (IntBuffer)null);
+		ALCCapabilities alcCaps = ALC.createCapabilities(device);
+		alcMakeContextCurrent(alContext);
+		
+		if(!AL.createCapabilities(alcCaps).OpenAL11) {
+			System.err.println("OpenAL 1.1 not supported");
+			shutdown();
 		}
+		
+		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+			shutdown();
+		}));
 	}
 	
-	public synchronized void shutdown() {
-		alDeleteSources(sources);
-		Sounds.deleteAll();
+	private static void shutdown() {
 		alcMakeContextCurrent(0);
-		alcDestroyContext(context);
+		alcDestroyContext(alContext);
 		alcCloseDevice(device);
 		ALC.destroy();
+	}
+	
+	private final int[] sources; //TODO this probably shouldn't be per-instance because it is a global pool of sources
+	
+	public ClientAudioSystem() {
+		sources = new int[alcGetInteger(device, ALC_MONO_SOURCES)];
+		alGenSources(sources);
+	}
+	
+	public synchronized void exit() {
+		alDeleteSources(sources);
+		Sounds.deleteAll();
+	}
+	
+	public synchronized void registerSound() { //TODO implement sound registering, perhaps return an integer or something that is associated with the registered sound
+		
 	}
 
 	@Override

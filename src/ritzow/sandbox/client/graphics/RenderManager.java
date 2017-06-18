@@ -53,7 +53,7 @@ public final class RenderManager implements Service, FramebufferSizeHandler, Win
 
 	@Override
 	public void run() {
-		display.setContext();
+		display.setGraphicsContextOnThread();
 		org.lwjgl.opengl.GL.createCapabilities();
 		glfwSwapInterval(0);
 		glDisable(GL_DEPTH_TEST);

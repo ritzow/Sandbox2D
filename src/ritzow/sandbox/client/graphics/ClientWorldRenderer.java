@@ -1,25 +1,23 @@
 package ritzow.sandbox.client.graphics;
 
+import static org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT;
 import static org.lwjgl.opengl.GL11.GL_ONE_MINUS_SRC_ALPHA;
 import static org.lwjgl.opengl.GL11.GL_SRC_ALPHA;
-import static org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT;
-import static org.lwjgl.opengl.GL11.*;
+import static org.lwjgl.opengl.GL11.GL_ZERO;
 import static org.lwjgl.opengl.GL11.glBlendFunc;
+import static org.lwjgl.opengl.GL11.glClear;
 import static org.lwjgl.opengl.GL20.glDrawBuffers;
 import static org.lwjgl.opengl.GL30.GL_COLOR_ATTACHMENT0;
 import static org.lwjgl.opengl.GL30.GL_COLOR_ATTACHMENT1;
 
-import ritzow.sandbox.client.ClientWorld;
-import ritzow.sandbox.client.input.controller.CameraController;
+import ritzow.sandbox.client.world.ClientWorld;
 import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.component.Luminous;
-import ritzow.sandbox.world.entity.Entity;
 
 public final class ClientWorldRenderer implements Renderer {
 	private static final float MAX_TIMESTEP = 2;
 	
 	private final ClientWorld world;
-	private final CameraController cameraGrip;
 	private final ModelRenderProgram modelProgram;
 	private final LightRenderProgram lightProgram;
 	private final Framebuffer framebuffer;
@@ -28,9 +26,8 @@ public final class ClientWorldRenderer implements Renderer {
 	private int previousWidth, previousHeight;
 	private long previousTime;
 	
-	public ClientWorldRenderer(CameraController cameraGrip, ModelRenderProgram modelProgram, LightRenderProgram lightProgram, ClientWorld world) {
+	public ClientWorldRenderer(ModelRenderProgram modelProgram, LightRenderProgram lightProgram, ClientWorld world) {
 		this.world = world;
-		this.cameraGrip = cameraGrip;
 		this.modelProgram = modelProgram;
 		this.lightProgram = lightProgram;
 		this.framebuffer = new Framebuffer();
@@ -56,9 +53,6 @@ public final class ClientWorldRenderer implements Renderer {
 			world.update(time);
 			totalUpdateTime -= time;
 		}
-		
-		//update the camera
-		cameraGrip.update();
 		
 		//ensure that model program is cached on stack
 		ModelRenderProgram modelProgram = this.modelProgram;
@@ -116,7 +110,7 @@ public final class ClientWorldRenderer implements Renderer {
 		}
 		
 		//render the entities
-		for(Entity e : world) {
+		world.forEach(e -> {
 			if(e != null) {
 				//pre-compute variables
 				float posX = e.getPositionX();
@@ -129,7 +123,7 @@ public final class ClientWorldRenderer implements Renderer {
 					e.render(modelProgram); //TODO create special object to pass to render method that restricts direct program access but allows entities to customize their rendering
 				}
 			}
-		}
+		});
 		
 		/* Need to "erase" blackness of shadowTexture where there is lighting.
 		 * render to shadow texture, sample from diffuse, blend diffuse and light value with shadow texture
@@ -143,9 +137,8 @@ public final class ClientWorldRenderer implements Renderer {
 		framebuffer.clear(0, 0, 0, 1);
 		glClear(GL_COLOR_BUFFER_BIT);
 		glBlendFunc(GL_SRC_ALPHA, GL_ZERO);
-		
-		for(Entity e : world) {
-			if(e != null && e instanceof Luminous) {
+		world.forEach(e -> {
+			if(e instanceof Luminous) {
 				//pre-compute variables
 				Luminous light = (Luminous)e;
 				float posX = e.getPositionX();
@@ -158,7 +151,7 @@ public final class ClientWorldRenderer implements Renderer {
 					lightProgram.render(light, posX, posY, currentWidth, currentHeight);
 				}
 			}
-		}
+		});
 		
 		glDrawBuffers(GL_COLOR_ATTACHMENT0);
 	    return framebuffer;
