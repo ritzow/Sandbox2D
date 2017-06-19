@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 #Sandbox2D
 A 2D block building and destruction platformer game written in Java that uses OpenGL for graphics, OpenAL for audio, GLFW for cross-platform windowing and input, and LWJGL for bindings to the afformentioned libraries and APIs.
 =======
@@ -41,4 +40,3 @@ Provides bindings to GLFW, OpenGL, and OpenAL. The program currently uses versio
 ### TWL's PNGDecoder:
 http://twl.l33tlabs.org/dist/   
 Used for loading textures from files so they can be sent to OpenGL. Just add to the classpath.
->>>>>>> origin/master
