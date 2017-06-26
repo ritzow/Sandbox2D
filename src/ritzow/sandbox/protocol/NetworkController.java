@@ -49,7 +49,7 @@ public final class NetworkController {
 		this.messageProcessor = processor;
 	}
 	
-	public final void sendUnreliable(SocketAddress recipient, int messageID, byte[] data) {
+	public void sendUnreliable(SocketAddress recipient, int messageID, byte[] data) {
 		if(messageID < 0)
 			throw new RuntimeException("messageID must be greater than or equal to zero");
 		else if(data.length > Protocol.MAX_MESSAGE_LENGTH)
