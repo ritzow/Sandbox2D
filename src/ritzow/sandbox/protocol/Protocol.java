@@ -3,7 +3,6 @@ package ritzow.sandbox.protocol;
 import java.nio.charset.Charset;
 import java.util.Arrays;
 import ritzow.sandbox.util.ByteUtil;
-import ritzow.sandbox.world.entity.PlayerEntity;
 
 public final class Protocol {
 	
@@ -21,12 +20,12 @@ public final class Protocol {
 		SERVER_ENTITY_LOCATION = 4,
 		SERVER_ENTITY_UPDATE = 5,
 		SERVER_ADD_ENTITY = 6,
-		SERVER_ADD_ENTITY_COMPRESSED = 7,
 		SERVER_REMOVE_ENTITY = 8,
 		SERVER_CLIENT_DISCONNECT = 9,
 		SERVER_CREATE_LOBBY = 10,
 		SERVER_PLAYER_ID = 11,
-		SERVER_REMOVE_BLOCK = 12;
+		SERVER_REMOVE_BLOCK = 12,
+		SERVER_PING = 13;
 	
 	/** Client message protocol ID **/
 	public static final short
@@ -40,6 +39,14 @@ public final class Protocol {
 	/** Shared protocol ID **/
 	public static final short
 		CONSOLE_MESSAGE = 0;
+	
+	public static final class PlayerAction {
+		public static final byte
+			PLAYER_LEFT = 0,
+			PLAYER_RIGHT = 1,
+			PLAYER_UP = 2,
+			PLAYER_DOWN = 3;
+	}
 	
 	private static final short[] RELIABLE_PROTOCOLS = {
 		CLIENT_CONNECT_REQUEST,
@@ -61,22 +68,10 @@ public final class Protocol {
 	
 	static {
 		Arrays.sort(RELIABLE_PROTOCOLS);
-		short previous = RELIABLE_PROTOCOLS[0];
-		for(int i = 1; i < RELIABLE_PROTOCOLS.length; i++) {
-			if(RELIABLE_PROTOCOLS[i] == previous) {
-				System.err.println("Two or more protocols with the same ID");
-				System.exit(1);
-			}
-		}
 	}
 	
 	public static boolean isReliable(short protocol) {
-		for(short p : RELIABLE_PROTOCOLS) {
-			if(p == protocol) {
-				return true;
-			}
-		}
-		return false;
+		return Arrays.binarySearch(RELIABLE_PROTOCOLS, protocol) >= 0;
 	}
 	
 	public static byte[] buildEmpty(short protocol) {
@@ -91,40 +86,5 @@ public final class Protocol {
 		ByteUtil.putShort(packet, 0, Protocol.CONSOLE_MESSAGE);
 		ByteUtil.copy(msg, packet, 2);
 		return packet;
-	}
-	
-	public static class PlayerAction {
-		public static final byte
-			PLAYER_LEFT = 0,
-			PLAYER_RIGHT = 1,
-			PLAYER_UP = 2,
-			PLAYER_DOWN = 3;
-		
-		public static final byte[] buildPlayerAction(byte action, boolean enable) {
-			byte[] packet = new byte[4];
-			ByteUtil.putShort(packet, 0, CLIENT_PLAYER_ACTION);
-			packet[2] = action;
-			ByteUtil.putBoolean(packet, 3, enable);
-			return packet;
-		}
-		
-		public static final void processPlayerAction(byte[] data, PlayerEntity player) {
-			byte action = data[2];
-			boolean enable = ByteUtil.getBoolean(data, 3);
-			switch(action) {
-			case PLAYER_LEFT:
-				player.setLeft(enable);
-				break;
-			case PLAYER_RIGHT:
-				player.setRight(enable);
-				break;
-			case PLAYER_UP:
-				player.setUp(enable);
-				break;
-			case PLAYER_DOWN:
-				player.setDown(enable);
-				break;
-			}
-		}
 	}
 }

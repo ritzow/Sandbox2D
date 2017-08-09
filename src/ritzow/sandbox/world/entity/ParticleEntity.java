@@ -2,6 +2,7 @@ package ritzow.sandbox.world.entity;
 
 import ritzow.sandbox.client.graphics.ModelRenderProgram;
 import ritzow.sandbox.client.graphics.Models;
+import ritzow.sandbox.util.DataReader;
 
 public class ParticleEntity extends Entity {
 	protected final int model;
@@ -24,6 +25,11 @@ public class ParticleEntity extends Entity {
 		this.fade = fade;
 		this.lifetime = lifetime;
 		this.birthtime = System.currentTimeMillis();
+	}
+	
+	public ParticleEntity(DataReader input) {
+		super(-1);
+		throw new UnsupportedOperationException("not implemented");
 	}
 	
 	public ParticleEntity(byte[] data) {

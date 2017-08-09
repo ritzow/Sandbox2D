@@ -4,6 +4,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import ritzow.sandbox.util.ByteUtil;
+import ritzow.sandbox.util.DataReader;
 import ritzow.sandbox.util.Transportable;
 import ritzow.sandbox.world.block.Block;
 
@@ -12,6 +13,17 @@ public final class BlockGrid implements Transportable {
 	
 	public BlockGrid(int width, int height) {
 		blocks = new Block[height][width];
+	}
+	
+	public BlockGrid(DataReader data) {
+		int width = data.readInteger();
+		int height = data.readInteger();
+		blocks = new Block[height][width];
+		for(int row = 0; row < blocks.length; row++) {
+			for(int column = 0; column < blocks[row].length; column++) {
+				blocks[row][column] = data.readObject();
+			}
+		}
 	}
 	
 	public BlockGrid(byte[] data) {

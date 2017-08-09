@@ -122,7 +122,7 @@ public final class RenderManager implements Service, FramebufferSizeHandler, Win
 	}
 	
 	/** Will add a render task to a queue to be executed at the beginning of the next frame **/
-	public void addRenderTask(Consumer<RenderManager> task) {
+	public void submitRenderTask(Consumer<RenderManager> task) {
 		synchronized(renderTasks) {
 			renderTasks.add(task);
 		}

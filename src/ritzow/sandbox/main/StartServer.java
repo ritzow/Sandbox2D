@@ -10,12 +10,12 @@ import java.net.UnknownHostException;
 import java.util.Scanner;
 import ritzow.sandbox.audio.AudioSystem;
 import ritzow.sandbox.server.Server;
+import ritzow.sandbox.server.Server.ClientState;
 import ritzow.sandbox.server.ServerAudioSystem;
 import ritzow.sandbox.server.ServerWorld;
 import ritzow.sandbox.util.ByteUtil;
 import ritzow.sandbox.world.block.DirtBlock;
 import ritzow.sandbox.world.block.GrassBlock;
-import ritzow.sandbox.world.block.RedBlock;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
 public final class StartServer {
@@ -38,10 +38,25 @@ public final class StartServer {
 		System.out.println("Type 'exit' to stop server or anything else to broadcast a message:");
 		
 		try(Scanner scanner = new Scanner(System.in)) {
-			String line;
-			while(!(line = scanner.nextLine()).equalsIgnoreCase("exit")) {
-				server.broadcastMessage(line);
-				System.out.println("Sent message '" + line + "' to " + server.clientCount() + " connected client(s).");
+			boolean exit = false;
+			String next;
+			while(!exit) {
+				switch(next = scanner.nextLine()) {
+				case "exit":
+				case "quit":
+					exit = true;
+					break;
+				case "list":
+					System.out.println("Connected clients:");
+					for(ClientState client : server.listClients()) {
+						System.out.print("\t");
+						System.out.println(client);
+					}
+					break;
+				default:
+					server.broadcastMessage(next);
+					System.out.println("Sent message '" + next + "' to " + server.clientCount() + " connected client(s).");
+				}
 			}
 		}
 		
@@ -88,11 +103,7 @@ public final class StartServer {
 			double height = world.getForeground().getHeight()/2;
 			height += (Math.sin(column * 0.1f) + 1) * (world.getForeground().getHeight() - height) * 0.05f;
 			for(int row = 0; row < height; row++) {
-				if(Math.random() < 0.007) {
-					world.getForeground().set(column, row, new RedBlock());
-				} else {
-					world.getForeground().set(column, row, new DirtBlock());
-				}
+				world.getForeground().set(column, row, new DirtBlock());
 				world.getBackground().set(column, row, new DirtBlock());
 			}
 			world.getForeground().set(column, (int)height, new GrassBlock());

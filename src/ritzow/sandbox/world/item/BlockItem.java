@@ -3,11 +3,17 @@ package ritzow.sandbox.world.item;
 import ritzow.sandbox.client.graphics.Graphics;
 import ritzow.sandbox.client.graphics.ImmutableGraphics;
 import ritzow.sandbox.util.ByteUtil;
+import ritzow.sandbox.util.DataReader;
 import ritzow.sandbox.world.block.Block;
 
 public final class BlockItem extends Item {
 	protected final Block block;
 	protected final Graphics graphics;
+	
+	public BlockItem(DataReader input) {
+		block = input.readObject();
+		graphics = new ImmutableGraphics(block.getModelIndex(), 1.0f, 1.0f, 1.0f, 0.0f);
+	}
 	
 	public BlockItem(byte[] data) throws ReflectiveOperationException {
 		this.block = (Block)ByteUtil.deserialize(data);

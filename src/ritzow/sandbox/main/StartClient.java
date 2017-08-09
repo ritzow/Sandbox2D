@@ -34,6 +34,16 @@ import ritzow.sandbox.world.entity.PlayerEntity;
 
 public final class StartClient {
 	public static void main(String... args) throws SocketException, UnknownHostException {
+//		SerializerReaderWriter s = new SerializerReaderWriter();
+//		s.register((short)17, DirtBlock.class);
+//		s.register((short)3, GrassBlock.class);
+//		try {
+//			System.out.println(s.getReader(s.serialize(new GrassBlock())).readObject(DirtBlock.class).getClass());
+//		} catch (ReflectiveOperationException e) {
+//			e.printStackTrace();
+//		}
+//		
+//		System.exit(0);
 		
 		SocketAddress serverAddress = new InetSocketAddress(args.length > 0 ? args[0] : InetAddress.getLocalHost().getHostAddress(), 50000);
 		Client client = new Client(new InetSocketAddress(0)); //wildcard address, and any port
@@ -92,7 +102,7 @@ public final class StartClient {
 			//start the graphics manager, which will load all models into OpenGL and setup the OpenGL context.
 			RenderManager renderManager = eventProcessor.getDisplay().getRenderManager();
 			
-			renderManager.addRenderTask(graphics -> {
+			renderManager.submitRenderTask(graphics -> {
 				try {
 					//load shader programs on renderer startup so that it is done in OpenGL thread, otherwise the program will crash
 					ModelRenderProgram modelProgram = new ModelRenderProgram(
@@ -129,12 +139,14 @@ public final class StartClient {
 				controller.link(eventProcessor.getDisplay().getInputManager());
 				clientUpdater.getRunnables().add(controller);
 			});
-			
+
 			//start the updater
 			clientUpdater.start();
 			
 			//display the window now that everything is set up.
 			eventProcessor.setReadyToDisplay();
+			
+			System.out.println("Game started.");
 			
 			//wait until the game should exit
 			synchronized(this) {
@@ -147,7 +159,6 @@ public final class StartClient {
 				}
 			}
 			
-			//start exiting threads TODO something is not happening in the correct order, getting a crash, likely client.stop causing problems
 			System.out.print("Exiting... ");
 			renderManager.waitForExit();
 			eventProcessor.waitForExit();

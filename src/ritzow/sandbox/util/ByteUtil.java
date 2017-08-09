@@ -13,12 +13,15 @@ import java.util.zip.InflaterOutputStream;
  *
  */
 public final class ByteUtil {
-	
 	private static final Charset CHARSET = Charset.forName("UTF-8");
 	
 	public static Package getParentPackage(Package child) {
-		String thisPackage = child.getName();
-		return Package.getPackage(thisPackage.substring(0, thisPackage.lastIndexOf('.')));
+		for(Package p : Package.getPackages()) {
+			if(p.getName().equals(child.getName().substring(0, child.getName().lastIndexOf('.')))) {
+				return p;
+			}
+		}
+		return null;
 	}
 	
 	public static byte[] concatenate(byte[]... arrays) {
@@ -55,7 +58,7 @@ public final class ByteUtil {
 	/* Data composition from bytes */
 	
 	public static float getFloat(byte[] array, int index) {
-		return Float.intBitsToFloat(((array[index] & 255) << 24) | ((array[index + 1] & 255) << 16) | ((array[index + 2] & 255) << 8) | ((array[index + 3] & 255) << 0));
+		return Float.intBitsToFloat(getInteger(array, index));
 	}
 	
 	public static int getInteger(byte[] array, int index) {
@@ -63,7 +66,7 @@ public final class ByteUtil {
 	}
 	
 	public static short getShort(byte[] array, int index) {
-		return (short)((array[index] << 8) | (array[index + 1] & 0xff));
+		return (short)((array[index] << 8) | (array[index + 1] & 255));
 	}
 	
 	public static boolean getBoolean(byte[] array, int index) {

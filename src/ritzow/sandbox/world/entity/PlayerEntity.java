@@ -4,6 +4,7 @@ import ritzow.sandbox.client.audio.Sounds;
 import ritzow.sandbox.client.graphics.ModelRenderProgram;
 import ritzow.sandbox.client.graphics.Models;
 import ritzow.sandbox.util.ByteUtil;
+import ritzow.sandbox.util.DataReader;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.component.Inventory;
 import ritzow.sandbox.world.component.Living;
@@ -28,12 +29,18 @@ public class PlayerEntity extends Entity implements Living, Luminous {
 		this.inventory = new Inventory(9);
 	}
 	
+	public PlayerEntity(DataReader input) {
+		super(input);
+		inventory = input.readObject();
+		health = input.readInteger();
+		selected = input.readInteger();
+	}
+	
 	public PlayerEntity(byte[] data) throws ReflectiveOperationException {
 		super(data);
 		this.inventory = (Inventory)ByteUtil.deserialize(data, 20);
 		this.health = ByteUtil.getInteger(data, 20 + ByteUtil.getSerializedLength(data, 20));
 		this.selected = ByteUtil.getInteger(data, 20 + ByteUtil.getSerializedLength(data, 20) + 4);
-		selected = 0;
 	}
 	
 	@Override
@@ -55,7 +62,7 @@ public class PlayerEntity extends Entity implements Living, Luminous {
 		else if(right)
 			velocityX = getMass();
 		if(up) {
-			velocityY = getMass();
+			velocityY = getMass(); //TODO check for world collisions somewhere, probably not in this class
 			up = false;
 		}
 		positionX += velocityX * time;
@@ -83,11 +90,11 @@ public class PlayerEntity extends Entity implements Living, Luminous {
 		renderer.render(Models.forIndex(Models.GREEN_FACE_INDEX), 1.0f, positionX, positionY + 0.5f, 1.0f, 1.0f, 0.0f);
 		renderer.render(Models.forIndex(Models.RED_SQUARE_INDEX), 1.0f, positionX, positionY - 0.5f, 1.0f, 1.0f, positionX);
 		
-//		Item selectedItem = inventory.get(selected);
-//		if(selectedItem != null) {
-//			renderer.render(Models.forIndex(selectedItem.getGraphics().getModelIndex()), 1.0f, positionX + velocityX * 2, positionY, 0.5f, 0.5f, 
-//					velocityX != 0 ? (float)Math.PI/4 * (velocityX < 0 ? -1 : 1) : 0);
-//		}
+		Item selectedItem = inventory.get(selected);
+		if(selectedItem != null) {
+			renderer.render(Models.forIndex(selectedItem.getGraphics().getModelIndex()), 1.0f, positionX, positionY, 0.5f, 0.5f, 0);
+					//velocityX != 0 ? (float)Math.PI/4 * (velocityX < 0 ? -1 : 1) : 0);
+		}
 	}
 
 	@Override

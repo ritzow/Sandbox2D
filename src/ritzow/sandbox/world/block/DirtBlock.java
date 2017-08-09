@@ -1,6 +1,7 @@
 package ritzow.sandbox.world.block;
 
 import ritzow.sandbox.client.graphics.Models;
+import ritzow.sandbox.util.DataReader;
 
 public class DirtBlock extends Block {
 	
@@ -9,6 +10,10 @@ public class DirtBlock extends Block {
 	}
 	
 	public DirtBlock(byte[] data) {
+		
+	}
+	
+	public DirtBlock(DataReader data) {
 		
 	}
 

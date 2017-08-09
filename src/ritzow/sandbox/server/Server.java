@@ -14,45 +14,64 @@ import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import ritzow.sandbox.client.world.ClientWorld;
 import ritzow.sandbox.protocol.NetworkController;
 import ritzow.sandbox.protocol.Protocol;
+import ritzow.sandbox.protocol.Protocol.PlayerAction;
 import ritzow.sandbox.protocol.TimeoutException;
+import ritzow.sandbox.protocol.WorldObjectIdentifiers;
 import ritzow.sandbox.util.ByteUtil;
 import ritzow.sandbox.util.Runner;
-import ritzow.sandbox.util.Service;
+import ritzow.sandbox.util.SerializerReaderWriter;
+import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
+import ritzow.sandbox.world.block.DirtBlock;
+import ritzow.sandbox.world.block.GrassBlock;
+import ritzow.sandbox.world.component.Inventory;
 import ritzow.sandbox.world.entity.Entity;
+import ritzow.sandbox.world.entity.ItemEntity;
+import ritzow.sandbox.world.entity.ParticleEntity;
 import ritzow.sandbox.world.entity.PlayerEntity;
+import ritzow.sandbox.world.item.BlockItem;
 
 public final class Server extends Runner {
-	private static final long IDLE_CLIENT_DISCONNECT_MILLISECONDS = 3000;
-	
 	private final NetworkController controller;
 	private final ExecutorService broadcaster;
 	private final Collection<ClientState> clients;
-	
 	private volatile boolean canConnect;
-	
-	private final IdleClientDisconnector idleRemover; //can only be started once since it extends Thread
 	private WorldUpdater<ServerWorld> worldUpdater;
+	private final SerializerReaderWriter serializer;
+	private final ServerGameUpdater updater;
 	
 	public Server(int port) throws SocketException, UnknownHostException {
 		this(new InetSocketAddress(InetAddress.getLocalHost(), port));
 	}
 	
 	public Server(SocketAddress bindAddress) throws SocketException, UnknownHostException {
-		this.controller = new NetworkController(bindAddress);
+		this.controller = new NetworkController(bindAddress, this::process);
 		this.broadcaster = Executors.newCachedThreadPool();
 		this.clients = Collections.synchronizedList(new LinkedList<ClientState>());
-		this.idleRemover = new IdleClientDisconnector();
-		controller.setOnRecieveMessage(this::process);
+		this.serializer = new SerializerReaderWriter();
+		this.updater = new ServerGameUpdater();
+		registerClasses(serializer);
+	}
+	
+	private static void registerClasses(SerializerReaderWriter s) {
+		s.register(WorldObjectIdentifiers.BLOCK_GRID, BlockGrid.class, BlockGrid::new);
+		s.register(WorldObjectIdentifiers.WORLD, ClientWorld.class, ClientWorld::new);
+		s.register(WorldObjectIdentifiers.BLOCK_ITEM, BlockItem.class, BlockItem::new);
+		s.register(WorldObjectIdentifiers.DIRT_BLOCK, DirtBlock.class, DirtBlock::new);
+		s.register(WorldObjectIdentifiers.GRASS_BLOCK, GrassBlock.class, GrassBlock::new);
+		s.register(WorldObjectIdentifiers.PLAYER_ENTITY, PlayerEntity.class, PlayerEntity::new);
+		s.register(WorldObjectIdentifiers.INVENTORY, Inventory.class, Inventory::new);
+		s.register(WorldObjectIdentifiers.ITEM_ENTITY, ItemEntity.class, ItemEntity::new);
+		s.register(WorldObjectIdentifiers.PARTICLE_ENTITY, ParticleEntity.class, ParticleEntity::new);
 	}
 	
 	@Override
 	protected void onStart() {
 		controller.start();
 		canConnect = true;
-		idleRemover.start();
 	}
 
 	@Override
@@ -62,8 +81,6 @@ public final class Server extends Runner {
 			disconnectMultiple(clients, "Server shutting down");
 			broadcaster.shutdown(); //stop the message broadcaster
 			stopWorld();
-			idleRemover.interrupt();
-			idleRemover.waitForExit();
 			controller.stop();
 			broadcaster.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
 		} catch(ServerWorldException | InterruptedException e) {
@@ -71,12 +88,16 @@ public final class Server extends Runner {
 		}
 	}
 	
-	private void process(SocketAddress sender, int messageID, byte[] data) {
+	public ClientState[] listClients() {
+		ClientState[] list = new ClientState[clients.size()];
+		return clients.toArray(list);
+	}
+	
+	private void process(SocketAddress sender, int messageID, byte[] data) { //TODO connect with ServerGameUpdater
 		final short protocol = ByteUtil.getShort(data, 0);
 		final ClientState client = forAddress(sender);
 		
 		if(client != null) {
-			client.lastPing = System.nanoTime();
 			switch(protocol) {
 				case Protocol.CLIENT_DISCONNECT:
 					disconnect(client, true);
@@ -85,11 +106,7 @@ public final class Server extends Runner {
 					processClientMessage(client, data);
 					break;
 				case Protocol.CLIENT_PLAYER_ACTION:
-					if(client.player != null)
-						Protocol.PlayerAction.processPlayerAction(data, client.player);
-					break;
-				case Protocol.CLIENT_PING:
-					client.lastPing = System.nanoTime();
+					processPlayerAction(client, data);
 					break;
 				case Protocol.CLIENT_BREAK_BLOCK:
 					processClientBreakBlock(client, data);
@@ -161,11 +178,12 @@ public final class Server extends Runner {
 					for(ClientState client : clients) {
 						broadcaster.execute(() -> {
 							try {
-								controller.sendReliable(client.address, client.reliableMessageID++, data, 10, 100);
+								controller.sendReliable(client.address, client.nextReliableID(), data, 10, 100);
 								barrier.await();
 							} catch(TimeoutException e) {
 								if(removeUnresponsive) {
 									try {
+										
 										disconnect(client, false); //TODO could cause a problem?
 										barrier.await();
 									} catch (InterruptedException | BrokenBarrierException e1) {
@@ -213,16 +231,31 @@ public final class Server extends Runner {
 	protected void send(byte[] data, ClientState client, boolean removeUnresponsive) {
 		if(Protocol.isReliable(ByteUtil.getShort(data, 0))) {
 			try {
-				controller.sendReliable(client.address, client.reliableMessageID++, data, 10, 100);
+				controller.sendReliable(client.address, client.nextReliableID(), data, 10, 100);
 			} catch(TimeoutException e) {
 				if(removeUnresponsive) {
 					disconnect(client, true);
 				}
 			}
 		} else {
-			controller.sendUnreliable(client.address, client.unreliableMessageID++, data);
+			controller.sendUnreliable(client.address, client.nextUnreliableID(), data);
 		}
 	}
+	
+	private static final byte[] PING_PACKET = new byte[2];
+	
+	static {
+		ByteUtil.putShort(PING_PACKET, 0, Protocol.SERVER_PING);
+	}
+	
+//	protected void pingClient(ClientState client, int unresponsiveMilliseconds) { //TODO should I get the actual ms ping each time I check to see if client is connected?
+//		try {
+//			//controller.sendUnreliable(client.address, client.nextUnreliableID(), PING_PACKET);
+//			controller.sendReliable(client.address, client.nextReliableID(), PING_PACKET, 10, unresponsiveMilliseconds/10);
+//		} catch(TimeoutException e) {
+//			disconnect(client, true);
+//		}
+//	}
 	
 	public void startWorld(ServerWorld world) {
 		if(worldUpdater == null || worldUpdater.isFinished()) {
@@ -248,6 +281,10 @@ public final class Server extends Runner {
 		return worldUpdater == null ? null : worldUpdater.getWorld();
 	}
 	
+	protected boolean isConnected(ClientState client) {
+		return clients.contains(client);
+	}
+	
 	/**
 	 * Disconnects a client from the server
 	 * @param client the client to disconnect
@@ -257,26 +294,37 @@ public final class Server extends Runner {
 		disconnect(client, notifyClient ? "" : null);
 	}
 	
+	protected void disconnectMultiple(Collection<ClientState> clients, String reason) {
+		synchronized(clients) {
+			clients.parallelStream().forEach(client -> {
+				if(reason != null)
+					send(buildServerDisconnect(reason), client, false);
+				controller.removeSender(client.address);
+				if(client.player != null) {
+					worldUpdater.getWorld().queueRemove(client.player);
+				}
+			});
+			clients.clear();
+		}
+	}
+	
 	/**
 	 * Disconnects a client from the server
 	 * @param client the client to disconnect
 	 * @param reason the reason for disconnecting the client, or null to not notify the client
 	 */
 	protected void disconnect(ClientState client, String reason) {
-		if(reason != null)
-			send(Server.buildServerDisconnect(reason), client, false); //TODO implement reason thing
-		controller.removeSender(client.address);
-		if(client.player != null) {
-			worldUpdater.getWorld().queueRemove(client.player);
+		if(clients.remove(client)) {
+			if(reason != null)
+				send(buildServerDisconnect(reason), client, false);
+			controller.removeSender(client.address);
+			if(client.player != null) {
+				worldUpdater.getWorld().queueRemove(client.player);
+			}
+			System.out.println(client + " disconnected (" + clientCount() + " players connected)");
+		} else {
+			System.out.println(client + " already disconnected");
 		}
-		clients.remove(client);
-		System.out.println(client + " disconnected (" + clientCount() + " players connected)");
-	}
-	
-	protected void disconnectMultiple(Collection<ClientState> clients, String reason) {
-		clients.parallelStream().forEach(client -> { //TODO causes concurrent modification exception
-			disconnect(client, reason);
-		});
 	}
 	
 	/**
@@ -310,24 +358,24 @@ public final class Server extends Runner {
 		return count;
 	}
 	
-	private static byte[] createClientConnectReply(boolean canConnect) {
+	private void sendClientConnectReply(SocketAddress client, int messageID, boolean connected) {
 		byte[] response = new byte[3];
 		ByteUtil.putShort(response, 0, Protocol.SERVER_CONNECT_ACKNOWLEDGMENT);
 		ByteUtil.putBoolean(response, 2, canConnect);
-		return response;
+		controller.sendReliable(client, messageID, response, 10, 100);
 	}
 	
 	private void connectClient(SocketAddress client) {
 		try {
 			//determine if client can connect, and send a response
 			boolean canConnect = this.canConnect;
-			controller.sendReliable(client, 0, createClientConnectReply(canConnect), 10, 100);
+			sendClientConnectReply(client, 0, canConnect);
 			
 			if(canConnect) {
 				//create the client's ClientState object to track their information
 				ClientState newClient = new ClientState(1, client);
 				System.out.println(newClient + " connected");
-				clients.add(newClient);
+				clients.add(newClient); //TODO this should probably come after client setup
 				
 				//if a world is currently running
 				if(worldUpdater != null && !worldUpdater.isFinished()) {
@@ -353,15 +401,37 @@ public final class Server extends Runner {
 					}
 					
 					//TODO could still be broken
+					//TODO keep not fully connected clients (client hasnt finished setting up world, hasn't told server it is done) in seperate list?
 					world.queueAdd(player);
 					newClient.player = player;
-					broadcast(buildSendEntity(player, true));
 					send(createPlayerIDMessage(player), newClient);
 				}
-				newClient.lastPing = System.nanoTime();
 			}
 		} catch(TimeoutException e) {
 			System.out.println(client + " attempted to connect, but timed out");
+		}
+	}
+
+	public static final void processPlayerAction(ClientState client, byte[] data) {
+		if(client.player == null)
+			throw new RuntimeException("client has no associated player to perform an action");
+		byte action = data[2];
+		boolean enable = ByteUtil.getBoolean(data, 3);
+		switch(action) {
+		case PlayerAction.PLAYER_LEFT:
+			client.player.setLeft(enable);
+			break;
+		case PlayerAction.PLAYER_RIGHT:
+			client.player.setRight(enable);
+			break;
+		case PlayerAction.PLAYER_UP:
+			client.player.setUp(enable);
+			break;
+		case PlayerAction.PLAYER_DOWN:
+			client.player.setDown(enable);
+			break;
+		default:
+			throw new RuntimeException("received unknown player action");
 		}
 	}
 
@@ -428,9 +498,10 @@ public final class Server extends Runner {
 
 	protected static byte[] buildSendEntity(Entity e, boolean compressed) {
 		byte[] serialized = compressed ? ByteUtil.compress(ByteUtil.serialize(e)) : ByteUtil.serialize(e);
-		byte[] packet = new byte[2 + serialized.length];
-		ByteUtil.putShort(packet, 0, compressed ? Protocol.SERVER_ADD_ENTITY_COMPRESSED : Protocol.SERVER_ADD_ENTITY);
-		ByteUtil.copy(serialized, packet, 2);
+		byte[] packet = new byte[3 + serialized.length];
+		ByteUtil.putShort(packet, 0, Protocol.SERVER_ADD_ENTITY);
+		ByteUtil.putBoolean(packet, 2, compressed);
+		ByteUtil.copy(serialized, packet, 3);
 		return packet;
 	}
 	
@@ -444,12 +515,11 @@ public final class Server extends Runner {
 	/**
 	 * Holder of information about clients connected to the server
 	 */
-	private static final class ClientState {
+	public static final class ClientState {
 		private volatile int unreliableMessageID, reliableMessageID;
 		protected final SocketAddress address;
 		protected volatile String username;
 		protected volatile PlayerEntity player;
-		protected volatile long lastPing;
 		
 		public ClientState(int initReliable, SocketAddress address) {
 			this.reliableMessageID = initReliable;
@@ -469,11 +539,10 @@ public final class Server extends Runner {
 		public boolean equals(Object o) {
 			if(o instanceof ClientState) {
 				ClientState c = (ClientState)o;
-				return 
-					username.equals(c.username) 
-					&& address.equals(c.address) 
-					&& unreliableMessageID == c.unreliableMessageID 
-					&& reliableMessageID == c.reliableMessageID;
+				return unreliableMessageID == c.unreliableMessageID 
+					&& reliableMessageID == c.reliableMessageID
+					&& username.equals(c.username) 
+					&& address.equals(c.address);
 			} else {
 				return false;
 			}
@@ -482,59 +551,6 @@ public final class Server extends Runner {
 		@Override
 		public String toString() {
 			return username + " " + address;
-		}
-	}
-	
-	private final class IdleClientDisconnector extends Thread implements Service {
-		private boolean setup, exit, finished;
-		
-		@Override
-		public synchronized boolean isSetupComplete() {
-			return setup;
-		}
-
-		@Override
-		public synchronized void exit() {
-			exit = true;
-			this.notifyAll();
-		}
-
-		@Override
-		public synchronized boolean isFinished() {
-			return finished;
-		}
-
-		@Override
-		public void run() {
-			synchronized(this) {
-				setup = true;
-				this.notifyAll();
-			}
-			
-			while(!exit) {
-				try {
-					synchronized(clients) {
-						for(ClientState client : clients) {
-							if(client != null && client.lastPing <= System.nanoTime()/1000000 - IDLE_CLIENT_DISCONNECT_MILLISECONDS) {
-								disconnect(client, false);
-							}
-						}
-					}
-					
-					Thread.sleep(IDLE_CLIENT_DISCONNECT_MILLISECONDS);
-				} catch (InterruptedException e) {
-					if(exit == true) {
-						break;
-					} else {
-						e.printStackTrace();
-					}
-				}
-			}
-			
-			synchronized(this) {
-				finished = true;
-				this.notifyAll();
-			}
 		}
 	}
 }

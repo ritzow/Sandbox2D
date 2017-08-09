@@ -1,8 +1,8 @@
 package ritzow.sandbox.world.entity;
 
-import java.nio.ByteBuffer;
 import ritzow.sandbox.client.graphics.ModelRenderProgram;
 import ritzow.sandbox.util.ByteUtil;
+import ritzow.sandbox.util.DataReader;
 import ritzow.sandbox.util.Transportable;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.block.Block;
@@ -25,12 +25,12 @@ public abstract class Entity implements Transportable {
 		this.entityID = entityID;
 	}
 	
-	public Entity(ByteBuffer data) {
-		entityID = data.getInt();
-		positionX = data.getFloat();
-		positionY = data.getFloat();
-		velocityX = data.getFloat();
-		velocityY = data.getFloat();
+	public Entity(DataReader reader) {
+		entityID = reader.readInteger();
+		positionX = reader.readFloat();
+		positionY = reader.readFloat();
+		velocityX = reader.readFloat();
+		velocityY = reader.readFloat();
 	}
 	
 	public Entity(byte[] data) {

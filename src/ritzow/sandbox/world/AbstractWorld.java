@@ -13,6 +13,7 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import ritzow.sandbox.audio.AudioSystem;
 import ritzow.sandbox.util.ByteUtil;
+import ritzow.sandbox.util.DataReader;
 import ritzow.sandbox.world.block.Block;
 import ritzow.sandbox.world.entity.Entity;
 
@@ -50,6 +51,21 @@ public abstract class AbstractWorld implements World {
 		foreground = new BlockGrid(width, height);
 		background = new BlockGrid(width, height);
 		this.gravity = gravity;
+	}
+	
+	public AbstractWorld(DataReader reader) {
+		audio = null;
+		entityAddQueue = new LinkedList<Entity>();
+		entityRemoveQueue = new LinkedList<Entity>();
+		gravity = reader.readFloat();
+		foreground = reader.readObject();
+		background = reader.readObject();
+		int entityCount = reader.readInteger();
+		entities = new ArrayList<Entity>(entityCount);
+		for(int i = 0; i < entityCount; i++) {
+			entities.add(reader.readObject());
+		}
+		lastEntityID = reader.readInteger();
 	}
 	
 	public AbstractWorld(byte[] data) throws ReflectiveOperationException {

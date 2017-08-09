@@ -5,7 +5,6 @@ import ritzow.sandbox.util.Transportable;
 
 /** Represents a game object that can be used by the player and stored in an inventory **/
 public abstract class Item implements Transportable {
-	
 	/**
 	 * @return The graphics object representing the item's appearance
 	 */

@@ -1,10 +1,15 @@
 package ritzow.sandbox.world.block;
 
 import ritzow.sandbox.client.graphics.Models;
+import ritzow.sandbox.util.DataReader;
 
 public class GrassBlock extends Block {
 	
 	public GrassBlock() {
+		
+	}
+	
+	public GrassBlock(DataReader input) {
 		
 	}
 	
