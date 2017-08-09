@@ -2,6 +2,7 @@ package ritzow.sandbox.world.entity;
 
 import ritzow.sandbox.client.graphics.ModelRenderProgram;
 import ritzow.sandbox.util.ByteUtil;
+import ritzow.sandbox.util.DataReader;
 import ritzow.sandbox.world.item.Item;
 
 public final class ItemEntity extends Entity {
@@ -21,6 +22,13 @@ public final class ItemEntity extends Entity {
 		this.positionX = x;
 		this.positionY = y;
 		this.rotationSpeed = (float) (Math.random() < 0.5f ? -(Math.random() * 0.02f + 0.02f) : (Math.random() * 0.02f + 0.02f));
+	}
+	
+	public ItemEntity(DataReader input) {
+		super(input);
+		item = input.readObject();
+		rotation = 0;
+		rotationSpeed = input.readFloat();
 	}
 	
 	public ItemEntity(byte[] data) throws ReflectiveOperationException {

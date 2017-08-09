@@ -13,11 +13,21 @@ import ritzow.sandbox.protocol.ConnectionException;
 import ritzow.sandbox.protocol.NetworkController;
 import ritzow.sandbox.protocol.Protocol;
 import ritzow.sandbox.protocol.TimeoutException;
+import ritzow.sandbox.protocol.WorldObjectIdentifiers;
 import ritzow.sandbox.util.ByteUtil;
+import ritzow.sandbox.util.SerializerReaderWriter;
 import ritzow.sandbox.util.Transportable;
+import ritzow.sandbox.util.Utility;
+import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
+import ritzow.sandbox.world.block.DirtBlock;
+import ritzow.sandbox.world.block.GrassBlock;
+import ritzow.sandbox.world.component.Inventory;
 import ritzow.sandbox.world.entity.Entity;
+import ritzow.sandbox.world.entity.ItemEntity;
+import ritzow.sandbox.world.entity.ParticleEntity;
 import ritzow.sandbox.world.entity.PlayerEntity;
+import ritzow.sandbox.world.item.BlockItem;
 
 public final class Client {
 	
@@ -46,20 +56,47 @@ public final class Client {
 	/** lock object for synchronizing server-initiated actions with the client **/
 	protected final Object worldLock, playerLock, lobbyLock;
 	
+	protected final SerializerReaderWriter serializer;
+	
 	public Client(SocketAddress bindAddress) throws SocketException {
 		controller = new NetworkController(bindAddress);
 		worldLock = new Object();
 		playerLock = new Object();
 		lobbyLock = new Object();
 		controller.setOnRecieveMessage(this::process);
+		serializer = new SerializerReaderWriter();
+		registerClasses(serializer);
+	}
+	
+	private static void registerClasses(SerializerReaderWriter s) { 
+		//TODO remove the things from here that don't need to have separate id's, such as inventory or block grid which are built into other objects
+		s.register(WorldObjectIdentifiers.BLOCK_GRID, BlockGrid.class, BlockGrid::new);
+		s.register(WorldObjectIdentifiers.WORLD, ClientWorld.class, ClientWorld::new);
+		s.register(WorldObjectIdentifiers.BLOCK_ITEM, BlockItem.class, BlockItem::new);
+		s.register(WorldObjectIdentifiers.DIRT_BLOCK, DirtBlock.class, DirtBlock::new);
+		s.register(WorldObjectIdentifiers.GRASS_BLOCK, GrassBlock.class, GrassBlock::new);
+		s.register(WorldObjectIdentifiers.PLAYER_ENTITY, PlayerEntity.class, PlayerEntity::new);
+		s.register(WorldObjectIdentifiers.INVENTORY, Inventory.class, Inventory::new);
+		s.register(WorldObjectIdentifiers.ITEM_ENTITY, ItemEntity.class, ItemEntity::new);
+		s.register(WorldObjectIdentifiers.PARTICLE_ENTITY, ParticleEntity.class, ParticleEntity::new);
 	}
 	
 	public Client() throws SocketException, UnknownHostException {
 		this(new InetSocketAddress(InetAddress.getLocalHost(), 0));
 	}
 	
+	protected volatile int lastReceivedUnreliableMessageID = -1;
+	
 	protected final void process(SocketAddress sender, int messageID, byte[] data) {
 		final short protocol = ByteUtil.getShort(data, 0);
+		
+		if(!Protocol.isReliable(protocol)) {
+			if(messageID > lastReceivedUnreliableMessageID) {
+				lastReceivedUnreliableMessageID = messageID;
+			} else {
+				return; //discard if not the latest unreliable message
+			}
+		}
 		
 		if(sender.equals(server)) {
 			switch(protocol) {
@@ -79,10 +116,7 @@ public final class Client {
 					processGenericEntityUpdate(data);
 					break;
 				case Protocol.SERVER_ADD_ENTITY:
-					processAddEntity(data, false);
-					break;
-				case Protocol.SERVER_ADD_ENTITY_COMPRESSED:
-					processAddEntity(data, true);
+					processAddEntity(data);
 					break;
 				case Protocol.SERVER_REMOVE_ENTITY:
 					processRemoveEntity(data);
@@ -90,14 +124,13 @@ public final class Client {
 				case Protocol.SERVER_CLIENT_DISCONNECT:
 					processServerDisconnect(data);
 					break;
-				case Protocol.SERVER_CREATE_LOBBY:
-					break;
 				case Protocol.SERVER_PLAYER_ID:
 					processReceivePlayerEntityID(data);
 					break;
 				case Protocol.SERVER_REMOVE_BLOCK:
 					processServerRemoveBlock(data);
 					break;
+				
 				default:
 					System.err.println("Client received message of unknown protocol " + protocol);
 			}
@@ -116,10 +149,16 @@ public final class Client {
 		send(packet);
 	}
 	
+	public static enum PlayerAction {
+		MOVE_LEFT,
+		MOVE_RIGHT,
+		MOVE_UP,
+		MOVE_DOWN
+	}
+	
 	public void sendPlayerAction(PlayerAction action, boolean enable) {
 		if(isConnected()) {
 			byte code = 0;
-			
 			switch(action) {
 				case MOVE_LEFT:
 					code = Protocol.PlayerAction.PLAYER_LEFT;
@@ -133,9 +172,13 @@ public final class Client {
 				case MOVE_DOWN:
 					code = Protocol.PlayerAction.PLAYER_DOWN;
 					break;
+				default:
+					throw new RuntimeException("unknown player action");
 			}
 			
-			send(Protocol.PlayerAction.buildPlayerAction(code, enable));
+			send(Client.buildPlayerAction(code, enable));
+		} else {
+			throw new RuntimeException("Client not connected to a server");
 		}
 	}
 	
@@ -143,20 +186,17 @@ public final class Client {
 		return reliableMessageID++;
 	}
 	
-	public static enum PlayerAction {
-		MOVE_LEFT,
-		MOVE_RIGHT,
-		MOVE_UP,
-		MOVE_DOWN
+	private int nextUnreliableMessageID() {
+		return unreliableMessageID++;
 	}
 	
 	public void send(byte[] data) {
 		if(isConnected()) {
 			try {
 				if(Protocol.isReliable(ByteUtil.getShort(data, 0))) {
-					controller.sendReliable(server, reliableMessageID++, data, 10, 100);
+					controller.sendReliable(server, nextReliableMessageID(), data, 10, 100);
 				} else {
-					controller.sendUnreliable(server, unreliableMessageID++, data);
+					controller.sendUnreliable(server, nextUnreliableMessageID(), data);
 				}
 			} catch(TimeoutException e) {
 				disconnect(false);
@@ -251,7 +291,7 @@ public final class Client {
 					ByteUtil.putShort(packet, 0, Protocol.CLIENT_DISCONNECT);
 					send(packet);
 				}
-			} finally {
+			} finally { //allow the client to be reused, reset all values TODO perhaps put all of this state in a seperate ConnectionState object?
 				server = null;
 				connected = false;
 				unreliableMessageID = 0;
@@ -292,11 +332,11 @@ public final class Client {
 		getWorld().queueRemove(getWorld().find(ByteUtil.getInteger(data, 2)));
 	}
 	
-	private void processAddEntity(byte[] data, boolean compressed) {
+	private void processAddEntity(byte[] data) {
 		try {
 			//waits until world is received and decompresses/deserializes/adds entity
 			//will only be added to the world once the world is updated
-			getWorld().add((Entity)ByteUtil.deserialize(compressed ? ByteUtil.decompress(Arrays.copyOfRange(data, 2, data.length)) : Arrays.copyOfRange(data, 2, data.length)));
+			getWorld().add((Entity)ByteUtil.deserialize(ByteUtil.getBoolean(data, 2) ? ByteUtil.decompress(Arrays.copyOfRange(data, 3, data.length)) : Arrays.copyOfRange(data, 3, data.length)));
 		} catch(ClassCastException | ReflectiveOperationException e) {
 			System.err.println("Error while deserializing received entity");
 		}
@@ -304,11 +344,16 @@ public final class Client {
 	
 	private void processGenericEntityUpdate(byte[] data) {
 		if(world != null) {
-			int entityID = ByteUtil.getInteger(data, 2);
-			Entity e = world.find(entityID);
+			Entity e = world.find(ByteUtil.getInteger(data, 2)); //find the entity with the received entity id
 			if(e != null) {
-				e.setPositionX(ByteUtil.getFloat(data, 6));
-				e.setPositionY(ByteUtil.getFloat(data, 10));
+				float posX = ByteUtil.getFloat(data, 6);
+				float posY = ByteUtil.getFloat(data, 10);
+				//TODO causes some slightly weird glitches
+				//dont update position on client if they are really similar
+				if(Utility.distance(e.getPositionX(), e.getPositionY(), posX, posY) > 0.5f) {
+					e.setPositionX(posX);
+					e.setPositionY(posY);
+				}
 				e.setVelocityX(ByteUtil.getFloat(data, 14));
 				e.setVelocityY(ByteUtil.getFloat(data, 18));
 			}
@@ -324,7 +369,7 @@ public final class Client {
 					
 					//received final packet? create the world.
 					if(i == worldPackets.length - 1) {
-						world = (ClientWorld)Client.reconstructWorld(worldPackets, ClientWorld.class);
+						world = (ClientWorld)reconstructWorld(worldPackets, ClientWorld.class, serializer);
 						System.out.println("Received world data.");
 						synchronized(worldLock) {
 							worldLock.notifyAll(); //notify waitForWorldStart that the world has started
@@ -338,7 +383,15 @@ public final class Client {
 		}
 	}
 
-	public static <T extends World> World reconstructWorld(byte[][] data, Class<T> type) {
+	public static final byte[] buildPlayerAction(byte action, boolean enable) {
+		byte[] packet = new byte[4];
+		ByteUtil.putShort(packet, 0, Protocol.CLIENT_PLAYER_ACTION);
+		packet[2] = action;
+		ByteUtil.putBoolean(packet, 3, enable);
+		return packet;
+	}
+
+	public static <T extends World> World reconstructWorld(byte[][] data, Class<T> type, SerializerReaderWriter deserializer) {
 		final int headerSize = 2; //WORLD_DATA protocol
 		//create a sum of the number of bytes so that a single byte array can be allocated
 		int bytes = 0;
@@ -357,7 +410,8 @@ public final class Client {
 		}
 		
 		try {
-			return type.getConstructor(byte[].class).newInstance(ByteUtil.decompress(worldBytes));
+			return deserializer.deserialize(ByteUtil.decompress(worldBytes)); //TODO stalling here
+			//return type.getConstructor(byte[].class).newInstance(ByteUtil.decompress(worldBytes));
 		} catch(ReflectiveOperationException e) {
 			e.printStackTrace();
 			return null;

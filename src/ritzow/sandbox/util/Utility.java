@@ -28,4 +28,8 @@ public final class Utility {
 	public static float combineFriction(float friction1, float friction2) {
 		return (friction1 + friction2)/2;
 	}
+	
+	public static double distance(double x1, double y1, double x2, double y2) {
+		return Math.sqrt(Math.pow((x1-x2), 2) + Math.pow((y1-y2), 2));
+	}
 }

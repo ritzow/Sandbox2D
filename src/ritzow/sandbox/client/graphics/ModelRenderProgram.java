@@ -74,6 +74,10 @@ public final class ModelRenderProgram extends ShaderProgram {
 		GraphicsUtility.checkErrors();
 	}
 	
+	public void register(Model model) {
+		
+	}
+	
 	public Camera getCamera() {
 		return camera;
 	}

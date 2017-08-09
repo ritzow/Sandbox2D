@@ -1,6 +1,7 @@
 package ritzow.sandbox.server;
 
 import ritzow.sandbox.audio.AudioSystem;
+import ritzow.sandbox.util.DataReader;
 import ritzow.sandbox.world.AbstractWorld;
 import ritzow.sandbox.world.entity.Entity;
 
@@ -12,6 +13,10 @@ public final class ServerWorld extends AbstractWorld {
 	public ServerWorld(AudioSystem audio, Server server, int width, int height, float gravity) {
 		super(audio, width, height, gravity);
 		this.server = server;
+	}
+	
+	public ServerWorld(DataReader reader) throws ReflectiveOperationException {
+		super(reader);
 	}
 
 	public ServerWorld(byte[] data) throws ReflectiveOperationException {

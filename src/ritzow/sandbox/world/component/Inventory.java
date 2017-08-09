@@ -3,6 +3,7 @@ package ritzow.sandbox.world.component;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import ritzow.sandbox.util.ByteUtil;
+import ritzow.sandbox.util.DataReader;
 import ritzow.sandbox.util.Transportable;
 import ritzow.sandbox.world.item.Item;
 
@@ -12,6 +13,13 @@ public class Inventory implements Transportable {
 	
 	public Inventory(int capacity) {
 		this.items = new Item[capacity];
+	}
+	
+	public Inventory(DataReader input) {
+		items = new Item[input.readInteger()];
+		for(int i = 0; i < items.length; i++) {
+			items[i] = input.readObject();
+		}
 	}
 	
 	public Inventory(byte[] data) throws ReflectiveOperationException {

@@ -24,10 +24,15 @@ public final class NetworkController {
 	private Thread receivingThread;
 	private volatile boolean exit;
 	
-	public NetworkController(SocketAddress bindAddress) throws SocketException {
+	public NetworkController(SocketAddress bindAddress, MessageProcessor processor) throws SocketException {
 		socket = new DatagramSocket(bindAddress);
 		reliableQueue = new LinkedList<MessageAddressPair>();
 		lastReceived = new HashMap<SocketAddress, MutableInteger>();
+		messageProcessor = processor;
+	}
+	
+	public NetworkController(SocketAddress bindAddress) throws SocketException {
+		this(bindAddress, null);
 	}
 	
 	/**
@@ -247,20 +252,6 @@ public final class NetworkController {
 							}
 						}
 					}
-					
-//					synchronized(reliableQueue) { //TODO I don't think I'll need to put this back, but I might if the networking starts having problems
-//						Iterator<MessageAddressPair> iterator = reliableQueue.iterator();
-//						while(iterator.hasNext()) {
-//							MessageAddressPair pair = iterator.next();
-//							if(pair.messageID == responseMessageID && pair.recipient.equals(sender)) {
-//								iterator.remove();
-//								synchronized(pair) {
-//									pair.received = true;
-//									pair.notifyAll();
-//								}
-//							}
-//						}
-//					}
 				} else if(ByteUtil.getBoolean(buffer.getData(), buffer.getOffset() + 4)) {  //message is reliable
 					//handle reliable messages by first checking if the received message is reliable
 					synchronized(lastReceived) {
