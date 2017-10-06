@@ -3,6 +3,7 @@ package ritzow.sandbox.world.entity;
 import ritzow.sandbox.client.graphics.ModelRenderProgram;
 import ritzow.sandbox.util.ByteUtil;
 import ritzow.sandbox.util.DataReader;
+import ritzow.sandbox.util.Serializer;
 import ritzow.sandbox.util.Transportable;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.block.Block;
@@ -42,7 +43,7 @@ public abstract class Entity implements Transportable {
 	}
 	
 	@Override
-	public byte[] getBytes() {
+	public byte[] getBytes(Serializer ser) {
 		byte[] data = new byte[20];
 		ByteUtil.putInteger(data, 0, entityID);
 		ByteUtil.putFloat(data, 4, positionX);

@@ -42,6 +42,7 @@ public final class TrackingCameraController extends CameraController {
 		audio.setPosition(camera.getPositionX(), camera.getPositionY());
 	}
 	
+	@Override
 	public Camera getCamera() {
 		return camera;
 	}

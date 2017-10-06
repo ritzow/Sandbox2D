@@ -2,6 +2,7 @@ package ritzow.sandbox.world.block;
 
 import ritzow.sandbox.client.graphics.Models;
 import ritzow.sandbox.util.DataReader;
+import ritzow.sandbox.util.Serializer;
 
 public class DirtBlock extends Block {
 	
@@ -48,7 +49,7 @@ public class DirtBlock extends Block {
 	}
 
 	@Override
-	public byte[] getBytes() {
+	public byte[] getBytes(Serializer ser) {
 		return new byte[0];
 	}
 

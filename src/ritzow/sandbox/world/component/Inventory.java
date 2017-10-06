@@ -4,6 +4,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import ritzow.sandbox.util.ByteUtil;
 import ritzow.sandbox.util.DataReader;
+import ritzow.sandbox.util.Serializer;
 import ritzow.sandbox.util.Transportable;
 import ritzow.sandbox.world.item.Item;
 
@@ -32,7 +33,7 @@ public class Inventory implements Transportable {
 	}
 	
 	@Override
-	public byte[] getBytes() {
+	public byte[] getBytes(Serializer ser) {
 		byte[] numItems = new byte[4];
 		ByteUtil.putInteger(numItems, 0, items.length);
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -40,7 +41,7 @@ public class Inventory implements Transportable {
 			out.write(numItems);
 			
 			for(Item i : items) {
-				out.write(ByteUtil.serialize(i));
+				out.write(ser.serialize(i));
 			}
 			
 		} catch (IOException e) {

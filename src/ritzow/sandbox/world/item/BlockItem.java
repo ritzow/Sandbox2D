@@ -4,6 +4,7 @@ import ritzow.sandbox.client.graphics.Graphics;
 import ritzow.sandbox.client.graphics.ImmutableGraphics;
 import ritzow.sandbox.util.ByteUtil;
 import ritzow.sandbox.util.DataReader;
+import ritzow.sandbox.util.Serializer;
 import ritzow.sandbox.world.block.Block;
 
 public final class BlockItem extends Item {
@@ -26,8 +27,9 @@ public final class BlockItem extends Item {
 	}
 	
 	@Override
-	public byte[] getBytes() {
-		return ByteUtil.serialize(block);
+	public byte[] getBytes(Serializer ser) {
+		//return ByteUtil.serialize(block);
+		return ser.serialize(block);
 	}
 	
 	public Block getBlock() {

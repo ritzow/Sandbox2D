@@ -8,15 +8,18 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Queue;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import ritzow.sandbox.audio.AudioSystem;
 import ritzow.sandbox.util.ByteUtil;
 import ritzow.sandbox.util.DataReader;
+import ritzow.sandbox.util.Serializer;
 import ritzow.sandbox.world.block.Block;
 import ritzow.sandbox.world.entity.Entity;
 
+//TODO remove all synchronization in this class
 public abstract class AbstractWorld implements World {
 	
 	/** collection of entities in the world **/
@@ -63,44 +66,14 @@ public abstract class AbstractWorld implements World {
 		int entityCount = reader.readInteger();
 		entities = new ArrayList<Entity>(entityCount);
 		for(int i = 0; i < entityCount; i++) {
-			entities.add(reader.readObject());
+			entities.add(Objects.requireNonNull(reader.readObject()));
 		}
 		lastEntityID = reader.readInteger();
 	}
 	
-	public AbstractWorld(byte[] data) throws ReflectiveOperationException {
-		audio = null;
-		entityAddQueue = new LinkedList<Entity>();
-		entityRemoveQueue = new LinkedList<Entity>();
-		
-		gravity = ByteUtil.getFloat(data, 0);
-		int foregroundLength = ByteUtil.getSerializedLength(data, 4);
-		int backgroundLength = ByteUtil.getSerializedLength(data, 4 + foregroundLength);
-		foreground = (BlockGrid)ByteUtil.deserialize(data, 4);
-		background = (BlockGrid)ByteUtil.deserialize(data, 4 + foregroundLength);
-		int numEntities = ByteUtil.getInteger(data, 4 + foregroundLength + backgroundLength);
-		entities = new ArrayList<Entity>(numEntities);
-		
-		int index = 4 + foregroundLength + backgroundLength + 4;
-		for(int i = 0; i < numEntities; i++) {
-			try {
-				entities.add((Entity)ByteUtil.deserialize(data, index));
-			} catch(Exception ex) {
-				ex.printStackTrace();
-			}
-			index += ByteUtil.getSerializedLength(data, index);
-		}
-		
-		lastEntityID = ByteUtil.getInteger(data, index);
-	}
-	
-	public final byte[] getBytes(Predicate<Entity> entityFilter) {
-		//serialize foreground and background
-		byte[] foregroundBytes = ByteUtil.serialize(foreground);
-		byte[] backgroundBytes = ByteUtil.serialize(background);
-		
+	public final byte[] getBytesFiltered(Predicate<Entity> entityFilter, Serializer ser) {
 		synchronized(entities) {
-			int entityIDCounter = this.lastEntityID; //TODO this entire method is kinda unsafe
+			int entityIDCounter = this.lastEntityID;
 			
 			//number of entities currently in the world
 			int numEntities = entities.size();
@@ -110,23 +83,27 @@ public abstract class AbstractWorld implements World {
 			
 			//array of all of the serialized entities
 			byte[][] entityBytes = new byte[numEntities][];
-
-			int index = 0;
-			for(Entity e : entities) {
-				if(entityFilter.test(e) == true) {
+			
+			for(int i = 0; i < numEntities; i++) {
+				Entity e = entities.get(i);
+				if(entityFilter.test(e)) {
 					try {
-						byte[] bytes = ByteUtil.serialize(e);
-						entityBytes[index] = bytes;
+						byte[] bytes = ser.serialize(e);
+						entityBytes[i] = bytes;
 						totalEntityBytes += bytes.length;
-						index++;
 					} catch(Exception x) {
 						numEntities--;
+						i--;
 						System.err.println("couldn't serialize an entity: " + x.getLocalizedMessage());
 					}
 				} else {
 					numEntities--;
 				}
 			}
+			
+			//serialize foreground and background
+			byte[] foregroundBytes = ser.serialize(foreground);
+			byte[] backgroundBytes = ser.serialize(background);
 			
 			//gravity, foreground data, background data, number of entities, entity data (size), lastEntityID
 			byte[] bytes = new byte[4 + foregroundBytes.length + backgroundBytes.length + 4 + totalEntityBytes + 4];
@@ -159,8 +136,8 @@ public abstract class AbstractWorld implements World {
 	}
 	
 	@Override
-	public final byte[] getBytes() { //needed for saving world to file as Transportable
-		return getBytes(e -> true);
+	public final byte[] getBytes(Serializer ser) { //needed for saving world to file as Transportable
+		return getBytesFiltered(e -> true, ser);
 	}
 	
 	@Override
@@ -172,6 +149,7 @@ public abstract class AbstractWorld implements World {
 		return builder.toString();
 	}
 	
+	@Override
 	public int nextEntityID() {
 		return ++lastEntityID;
 	}
@@ -186,6 +164,7 @@ public abstract class AbstractWorld implements World {
 		return background;
 	}
 	
+	@Override
 	public void forEach(Consumer<Entity> consumer) {
 		synchronized(entities) {
 			entities.forEach(consumer);
@@ -220,6 +199,7 @@ public abstract class AbstractWorld implements World {
 		return audio;
 	}
 	
+	@Override
 	public final void setAudioSystem(AudioSystem audio) {
 		this.audio = audio;
 	}
@@ -229,6 +209,7 @@ public abstract class AbstractWorld implements World {
 	 * @param e the entity to add
 	 */
 	public final void add(Entity e) {
+		Objects.requireNonNull(e);
 		synchronized(entities) {
 			entities.add(e);
 			onEntityAdd(e);
@@ -246,12 +227,17 @@ public abstract class AbstractWorld implements World {
 		}
 	}
 	
+	@Override
+	@Deprecated
 	public final void queueAdd(Entity e) {
+		Objects.requireNonNull(e);
 		synchronized(entityAddQueue) {
 			entityAddQueue.add(e);
 		}
 	}
 	
+	@Override
+	@Deprecated
 	public final void queueRemove(Entity e) {
 		synchronized(entityRemoveQueue) {
 			entityRemoveQueue.add(e);
@@ -266,6 +252,7 @@ public abstract class AbstractWorld implements World {
 		this.gravity = gravity;
 	}
 	
+	@Override
 	public final Entity find(int entityID) { //TODO I dobut this is thread-safe or efficient
 		synchronized(entities) {
 			for(Entity e : entities) {
@@ -308,7 +295,7 @@ public abstract class AbstractWorld implements World {
 				Entity e = entities.get(i);
 				
 				//remove entities that are below the world or are flagged for deletion
-				if(e == null || e.getPositionY() < 0 || e.getShouldDelete()) {
+				if(e.getPositionY() < 0 || e.getShouldDelete()) {
 					onEntityRemove(entities.remove(i));
 					i = Math.max(0, i - 1);
 					continue;

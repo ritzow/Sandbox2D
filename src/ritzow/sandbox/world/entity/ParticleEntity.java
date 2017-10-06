@@ -3,6 +3,7 @@ package ritzow.sandbox.world.entity;
 import ritzow.sandbox.client.graphics.ModelRenderProgram;
 import ritzow.sandbox.client.graphics.Models;
 import ritzow.sandbox.util.DataReader;
+import ritzow.sandbox.util.Serializer;
 
 public class ParticleEntity extends Entity {
 	protected final int model;
@@ -38,7 +39,7 @@ public class ParticleEntity extends Entity {
 	}
 	
 	@Override
-	public byte[] getBytes() {
+	public byte[] getBytes(Serializer ser) {
 		throw new UnsupportedOperationException("not implemented");
 	}
 	

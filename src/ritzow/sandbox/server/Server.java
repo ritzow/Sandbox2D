@@ -14,17 +14,15 @@ import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import ritzow.sandbox.client.world.ClientWorld;
 import ritzow.sandbox.protocol.NetworkController;
 import ritzow.sandbox.protocol.Protocol;
 import ritzow.sandbox.protocol.Protocol.PlayerAction;
 import ritzow.sandbox.protocol.TimeoutException;
 import ritzow.sandbox.protocol.WorldObjectIdentifiers;
 import ritzow.sandbox.util.ByteUtil;
-import ritzow.sandbox.util.Runner;
+import ritzow.sandbox.util.Serializer;
 import ritzow.sandbox.util.SerializerReaderWriter;
 import ritzow.sandbox.world.BlockGrid;
-import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.block.DirtBlock;
 import ritzow.sandbox.world.block.GrassBlock;
 import ritzow.sandbox.world.component.Inventory;
@@ -34,14 +32,13 @@ import ritzow.sandbox.world.entity.ParticleEntity;
 import ritzow.sandbox.world.entity.PlayerEntity;
 import ritzow.sandbox.world.item.BlockItem;
 
-public final class Server extends Runner {
+public final class Server {
 	private final NetworkController controller;
 	private final ExecutorService broadcaster;
 	private final Collection<ClientState> clients;
-	private volatile boolean canConnect;
-	private WorldUpdater<ServerWorld> worldUpdater;
-	private final SerializerReaderWriter serializer;
 	private final ServerGameUpdater updater;
+	private final SerializerReaderWriter serialRegistry;
+	private volatile boolean canConnect;
 	
 	public Server(int port) throws SocketException, UnknownHostException {
 		this(new InetSocketAddress(InetAddress.getLocalHost(), port));
@@ -51,14 +48,18 @@ public final class Server extends Runner {
 		this.controller = new NetworkController(bindAddress, this::process);
 		this.broadcaster = Executors.newCachedThreadPool();
 		this.clients = Collections.synchronizedList(new LinkedList<ClientState>());
-		this.serializer = new SerializerReaderWriter();
 		this.updater = new ServerGameUpdater();
-		registerClasses(serializer);
+		this.serialRegistry = new SerializerReaderWriter();
+		registerClasses(serialRegistry);
 	}
 	
-	private static void registerClasses(SerializerReaderWriter s) {
+	public Serializer getSerializer() {
+		return serialRegistry;
+	}
+	
+	private static void registerClasses(SerializerReaderWriter s) { 
 		s.register(WorldObjectIdentifiers.BLOCK_GRID, BlockGrid.class, BlockGrid::new);
-		s.register(WorldObjectIdentifiers.WORLD, ClientWorld.class, ClientWorld::new);
+		s.register(WorldObjectIdentifiers.WORLD, ServerWorld.class, ServerWorld::new);
 		s.register(WorldObjectIdentifiers.BLOCK_ITEM, BlockItem.class, BlockItem::new);
 		s.register(WorldObjectIdentifiers.DIRT_BLOCK, DirtBlock.class, DirtBlock::new);
 		s.register(WorldObjectIdentifiers.GRASS_BLOCK, GrassBlock.class, GrassBlock::new);
@@ -68,19 +69,23 @@ public final class Server extends Runner {
 		s.register(WorldObjectIdentifiers.PARTICLE_ENTITY, ParticleEntity.class, ParticleEntity::new);
 	}
 	
-	@Override
-	protected void onStart() {
+	public void start() {
+		updater.start();
 		controller.start();
 		canConnect = true;
 	}
-
-	@Override
-	protected void onStop() {
+	
+	//TODO really hacky, terrible temp method
+	public void setWorld(ServerWorld world) {
+		updater.world = world;
+	}
+	
+	public void stop() {
 		try {
 			canConnect = false;
+			updater.stop();
 			disconnectMultiple(clients, "Server shutting down");
 			broadcaster.shutdown(); //stop the message broadcaster
-			stopWorld();
 			controller.stop();
 			broadcaster.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
 		} catch(ServerWorldException | InterruptedException e) {
@@ -93,7 +98,7 @@ public final class Server extends Runner {
 		return clients.toArray(list);
 	}
 	
-	private void process(SocketAddress sender, int messageID, byte[] data) { //TODO connect with ServerGameUpdater
+	private void process(SocketAddress sender, int messageID, byte[] data) {
 		final short protocol = ByteUtil.getShort(data, 0);
 		final ClientState client = forAddress(sender);
 		
@@ -119,15 +124,24 @@ public final class Server extends Runner {
 		}
 	}
 	
-	private void processClientBreakBlock(ClientState client, byte[] data) {
-		WorldUpdater<ServerWorld> wu = this.worldUpdater;
-		if(wu != null && wu.isRunning()) {
-			Objects.requireNonNull(client); Objects.requireNonNull(data);
-			int x = ByteUtil.getInteger(data, 2);
-			int y = ByteUtil.getInteger(data, 6);
-			wu.getWorld().getForeground().destroy(wu.getWorld(), x, y); //TODO implement player distance checks
-			broadcast(buildRemoveBlock(x, y));
-		}
+	private void processClientBreakBlock(ClientState client, byte[] data) {	
+		int x = ByteUtil.getInteger(data, 2);
+		int y = ByteUtil.getInteger(data, 6);
+		checkBlockDestroyData(x, y);
+		
+		updater.submit(u -> {
+			if(u.world != null) {
+				u.world.getForeground().destroy(u.world, x, y);
+				broadcast(buildRemoveBlock(x, y));
+			}
+		});
+	}
+	
+	private void checkBlockDestroyData(int x, int y) {
+		int worldWidth = updater.world.getForeground().getWidth();
+		int worldHeight = updater.world.getForeground().getHeight();
+		if(updater.world == null || !(x < worldWidth && x >= 0 && y < worldHeight && y >= 0))
+			throw new ClientBadDataException("client sent bad x and y block coordinates");
 	}
 	
 	protected static byte[] buildRemoveBlock(int x, int y) {
@@ -183,7 +197,6 @@ public final class Server extends Runner {
 							} catch(TimeoutException e) {
 								if(removeUnresponsive) {
 									try {
-										
 										disconnect(client, false); //TODO could cause a problem?
 										barrier.await();
 									} catch (InterruptedException | BrokenBarrierException e1) {
@@ -257,29 +270,29 @@ public final class Server extends Runner {
 //		}
 //	}
 	
-	public void startWorld(ServerWorld world) {
-		if(worldUpdater == null || worldUpdater.isFinished()) {
-			world.setServer(this);
-			new Thread(worldUpdater = new WorldUpdater<ServerWorld>(world), "World Updater").start();
-		} else {
-			throw new RuntimeException("A world is already running");
-		}
-	}
-	
-	public World stopWorld() {
-		if(worldUpdater != null && worldUpdater.isRunning()) {
-			worldUpdater.waitForExit();
-			World world = worldUpdater.getWorld();
-			worldUpdater = null;
-			return world;
-		} else {
-			return null;
-		}
-	}
-	
-	public ServerWorld getWorld() {
-		return worldUpdater == null ? null : worldUpdater.getWorld();
-	}
+//	public void startWorld(ServerWorld world) {
+//		if(worldUpdater == null || worldUpdater.isFinished()) {
+//			world.setServer(this);
+//			new Thread(worldUpdater = new WorldUpdater<ServerWorld>(world), "World Updater").start();
+//		} else {
+//			throw new RuntimeException("A world is already running");
+//		}
+//	}
+//	
+//	public World stopWorld() {
+//		if(worldUpdater != null && worldUpdater.isRunning()) {
+//			worldUpdater.waitForExit();
+//			World world = worldUpdater.getWorld();
+//			worldUpdater = null;
+//			return world;
+//		} else {
+//			return null;
+//		}
+//	}
+//	
+//	public ServerWorld getWorld() {
+//		return worldUpdater == null ? null : worldUpdater.getWorld();
+//	}
 	
 	protected boolean isConnected(ClientState client) {
 		return clients.contains(client);
@@ -301,7 +314,7 @@ public final class Server extends Runner {
 					send(buildServerDisconnect(reason), client, false);
 				controller.removeSender(client.address);
 				if(client.player != null) {
-					worldUpdater.getWorld().queueRemove(client.player);
+					//worldUpdater.getWorld().queueRemove(client.player); TODO stuff
 				}
 			});
 			clients.clear();
@@ -319,7 +332,7 @@ public final class Server extends Runner {
 				send(buildServerDisconnect(reason), client, false);
 			controller.removeSender(client.address);
 			if(client.player != null) {
-				worldUpdater.getWorld().queueRemove(client.player);
+//				worldUpdater.getWorld().queueRemove(client.player); TODO
 			}
 			System.out.println(client + " disconnected (" + clientCount() + " players connected)");
 		} else {
@@ -375,14 +388,12 @@ public final class Server extends Runner {
 				//create the client's ClientState object to track their information
 				ClientState newClient = new ClientState(1, client);
 				System.out.println(newClient + " connected");
-				clients.add(newClient); //TODO this should probably come after client setup
 				
-				//if a world is currently running
-				if(worldUpdater != null && !worldUpdater.isFinished()) {
-					ServerWorld world = worldUpdater.getWorld();
+				updater.submit(u -> {
+					ServerWorld world = u.world;
 					
 					//send the world to the client
-					for(byte[] a : Server.buildWorldMessages(world)) {
+					for(byte[] a : Server.buildWorldPackets(world, serialRegistry)) { //this is going to stall the server
 						send(a, newClient);
 					}
 					
@@ -400,12 +411,11 @@ public final class Server extends Runner {
 						}
 					}
 					
-					//TODO could still be broken
-					//TODO keep not fully connected clients (client hasnt finished setting up world, hasn't told server it is done) in seperate list?
-					world.queueAdd(player);
+					clients.add(newClient); //not a good idea to use server field from ServerGameUpdater
+					world.add(player);
 					newClient.player = player;
 					send(createPlayerIDMessage(player), newClient);
-				}
+				});
 			}
 		} catch(TimeoutException e) {
 			System.out.println(client + " attempted to connect, but timed out");
@@ -435,12 +445,15 @@ public final class Server extends Runner {
 		}
 	}
 
-	public static byte[][] buildWorldMessages(ServerWorld world) {
+	public static byte[][] buildWorldPackets(ServerWorld world, Serializer ser) {
+		Objects.requireNonNull(world);
+		
 		int headerSize = 2;
 		int dataBytesPerPacket = Protocol.MAX_MESSAGE_LENGTH - headerSize;
 	
 		//serialize the world for transfer, no need to use ByteUtil.serialize because we know what we're serializing (standard world format)
-		byte[] worldBytes = ByteUtil.compress(world.getBytes()); //serialize everything including other player entities
+		byte[] worldBytes = ByteUtil.compress(ser.serialize(world));
+				//ByteUtil.compress(world.getBytes(ser)); //serialize everything including other player entities
 		
 		//split world data into evenly sized packets and one extra packet if not evenly divisible by max packet size
 		int packetCount = (worldBytes.length/dataBytesPerPacket) + (worldBytes.length % dataBytesPerPacket > 0 ? 1 : 0);
@@ -496,8 +509,9 @@ public final class Server extends Runner {
 		return packet;
 	}
 
-	protected static byte[] buildSendEntity(Entity e, boolean compressed) {
-		byte[] serialized = compressed ? ByteUtil.compress(ByteUtil.serialize(e)) : ByteUtil.serialize(e);
+	protected static byte[] buildSendEntity(Entity e, Serializer ser, boolean compressed) {
+		byte[] serialized = compressed ? ByteUtil.compress(ser.serialize(e)) : ser.serialize(e);
+				//compressed ? ByteUtil.compress(ByteUtil.serialize(e)) : ByteUtil.serialize(e);
 		byte[] packet = new byte[3 + serialized.length];
 		ByteUtil.putShort(packet, 0, Protocol.SERVER_ADD_ENTITY);
 		ByteUtil.putBoolean(packet, 2, compressed);

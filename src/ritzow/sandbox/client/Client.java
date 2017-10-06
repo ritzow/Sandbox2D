@@ -8,7 +8,6 @@ import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.function.Supplier;
 import ritzow.sandbox.client.world.ClientWorld;
-import ritzow.sandbox.game.Lobby;
 import ritzow.sandbox.protocol.ConnectionException;
 import ritzow.sandbox.protocol.NetworkController;
 import ritzow.sandbox.protocol.Protocol;
@@ -50,9 +49,6 @@ public final class Client {
 	/** The Player object sent by the server for the client to control **/
 	protected volatile PlayerEntity player;
 	
-	/** The Lobby object sent by the server for the client to display **/
-	protected Lobby lobby;
-	
 	/** lock object for synchronizing server-initiated actions with the client **/
 	protected final Object worldLock, playerLock, lobbyLock;
 	
@@ -69,7 +65,8 @@ public final class Client {
 	}
 	
 	private static void registerClasses(SerializerReaderWriter s) { 
-		//TODO remove the things from here that don't need to have separate id's, such as inventory or block grid which are built into other objects
+		//TODO remove the things from here that don't need to have separate id's,...
+		//such as inventory or block grid which are built into other objects
 		s.register(WorldObjectIdentifiers.BLOCK_GRID, BlockGrid.class, BlockGrid::new);
 		s.register(WorldObjectIdentifiers.WORLD, ClientWorld.class, ClientWorld::new);
 		s.register(WorldObjectIdentifiers.BLOCK_ITEM, BlockItem.class, BlockItem::new);
@@ -237,10 +234,6 @@ public final class Client {
 		}	
 	}
 	
-	public Lobby getLobby() {
-		return lobby != null ? lobby : receiveObject(lobbyLock, () -> lobby);
-	}
-	
 	public ClientWorld getWorld() {
 		return world != null ? world : receiveObject(worldLock, () -> world);
 	}
@@ -336,8 +329,8 @@ public final class Client {
 		try {
 			//waits until world is received and decompresses/deserializes/adds entity
 			//will only be added to the world once the world is updated
-			getWorld().add((Entity)ByteUtil.deserialize(ByteUtil.getBoolean(data, 2) ? ByteUtil.decompress(Arrays.copyOfRange(data, 3, data.length)) : Arrays.copyOfRange(data, 3, data.length)));
-		} catch(ClassCastException | ReflectiveOperationException e) {
+			getWorld().add(serializer.deserialize(ByteUtil.getBoolean(data, 2) ? ByteUtil.decompress(Arrays.copyOfRange(data, 3, data.length)) : Arrays.copyOfRange(data, 3, data.length)));
+		} catch(ClassCastException e) {
 			System.err.println("Error while deserializing received entity");
 		}
 	}
@@ -409,12 +402,6 @@ public final class Client {
 			index += (array.length - headerSize);
 		}
 		
-		try {
-			return deserializer.deserialize(ByteUtil.decompress(worldBytes)); //TODO stalling here
-			//return type.getConstructor(byte[].class).newInstance(ByteUtil.decompress(worldBytes));
-		} catch(ReflectiveOperationException e) {
-			e.printStackTrace();
-			return null;
-		}
+		return deserializer.deserialize(ByteUtil.decompress(worldBytes));
 	}
 }

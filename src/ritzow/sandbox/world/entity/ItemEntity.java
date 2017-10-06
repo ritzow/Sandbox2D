@@ -3,6 +3,7 @@ package ritzow.sandbox.world.entity;
 import ritzow.sandbox.client.graphics.ModelRenderProgram;
 import ritzow.sandbox.util.ByteUtil;
 import ritzow.sandbox.util.DataReader;
+import ritzow.sandbox.util.Serializer;
 import ritzow.sandbox.world.item.Item;
 
 public final class ItemEntity extends Entity {
@@ -39,9 +40,9 @@ public final class ItemEntity extends Entity {
 	}
 	
 	@Override
-	public byte[] getBytes() {
-		byte[] sb = super.getBytes();
-		byte[] itemBytes = ByteUtil.serialize(item);
+	public byte[] getBytes(Serializer ser) {
+		byte[] sb = super.getBytes(ser);
+		byte[] itemBytes = ser.serialize(item); //ByteUtil.serialize(item);
 		byte[] object = new byte[sb.length + itemBytes.length + 4];
 		System.arraycopy(sb, 0, object, 0, sb.length);
 		System.arraycopy(itemBytes, 0, object, sb.length, itemBytes.length);

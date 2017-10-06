@@ -18,6 +18,7 @@ public final class RunnableRepeatExecutor implements Runnable, Exitable, WindowF
 	
 	public RunnableRepeatExecutor() {
 		runnables = new LinkedList<Runnable>();
+		delay = 1;
 	}
 	
 	public Collection<Runnable> getRunnables() {

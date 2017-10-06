@@ -60,6 +60,7 @@ public final class Framebuffer {
 		glDeleteFramebuffers(framebufferID);
 	}
 	
+	@Override
 	protected void finalize() {
 		delete();
 	}
