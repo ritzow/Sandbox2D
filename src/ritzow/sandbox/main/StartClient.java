@@ -34,17 +34,6 @@ import ritzow.sandbox.world.entity.PlayerEntity;
 
 public final class StartClient {
 	public static void main(String... args) throws SocketException, UnknownHostException {
-//		SerializerReaderWriter s = new SerializerReaderWriter();
-//		s.register((short)17, DirtBlock.class);
-//		s.register((short)3, GrassBlock.class);
-//		try {
-//			System.out.println(s.getReader(s.serialize(new GrassBlock())).readObject(DirtBlock.class).getClass());
-//		} catch (ReflectiveOperationException e) {
-//			e.printStackTrace();
-//		}
-//		
-//		System.exit(0);
-		
 		SocketAddress serverAddress = new InetSocketAddress(args.length > 0 ? args[0] : InetAddress.getLocalHost().getHostAddress(), 50000);
 		Client client = new Client(new InetSocketAddress(0)); //wildcard address, and any port
 		client.start();
@@ -75,33 +64,35 @@ public final class StartClient {
 		
 		@Override
 		public void run() {
-			//initializes OpenAL
+			
+			//wait for the client to receive the world and return it
+			ClientWorld world = client.getWorld();
+			System.out.println("world received");
+			
 			ClientAudioSystem audio = new ClientAudioSystem();
-			//TODO make sound register system, something like AudioSystem::registerSound method to associate sounds with a system, rather than being global
+			
 			try {
+				//TODO make sound register system, something like AudioSystem::registerSound method 
+				//to associate sounds with a system, rather than being global
+
 				Sounds.loadAll(new File("resources/assets/audio"));
+				world.setAudioSystem(audio);
+				audio.setVolume(1.0f);
+				System.out.println("audio system initialized");
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
 			
-			//set the audio manager to a reasonable gain
-			audio.setVolume(1.0f);
-			
-			//wait for the client to receive the world and return it
-			ClientWorld world = client.getWorld();
-			world.setAudioSystem(audio);
-			
-			//wait for the Display, and thus InputManager, to be created, then link the game manager to the display so that the escape button and x button exit the game
-			eventProcessor.waitForSetup();
-			eventProcessor.getDisplay().getInputManager().getWindowCloseHandlers().add(this);
-			eventProcessor.getDisplay().getInputManager().getKeyHandlers().add(this);
-			
 			PlayerEntity player = client.getPlayer();
+			System.out.println("player received");
+			
 			CameraController cameraGrip = new TrackingCameraController(new Camera(0, 0, 1), audio, player, 0.005f, 0.05f, 0.6f);
 			
-			//start the graphics manager, which will load all models into OpenGL and setup the OpenGL context.
+			eventProcessor.waitForSetup();
+			
 			RenderManager renderManager = eventProcessor.getDisplay().getRenderManager();
 			
+			//perform graphics setup
 			renderManager.submitRenderTask(graphics -> {
 				try {
 					//load shader programs on renderer startup so that it is done in OpenGL thread, otherwise the program will crash
@@ -118,6 +109,8 @@ public final class StartClient {
 					);
 					
 					graphics.getRenderers().add(new ClientWorldRenderer(modelProgram, lightProgram, world));
+					
+					System.out.println("renderer shaders initialized");
 				} catch (IOException | OpenGLException e) {
 					throw new RuntimeException(e);
 				}
@@ -125,6 +118,8 @@ public final class StartClient {
 			
 			renderManager.start();
 			renderManager.waitForSetup();
+			
+			System.out.println("render manager setup complete");
 			
 			//create the client update manager and link it with the window events
 			RunnableRepeatExecutor clientUpdater = new RunnableRepeatExecutor();
@@ -139,14 +134,20 @@ public final class StartClient {
 				controller.link(eventProcessor.getDisplay().getInputManager());
 				clientUpdater.getRunnables().add(controller);
 			});
+			
+			System.out.println("game setup complete");
 
 			//start the updater
 			clientUpdater.start();
 			
+			//wait for the Display, and thus InputManager, to be created, then link the game manager to the display so that the escape button and x button exit the game
+			eventProcessor.getDisplay().getInputManager().getWindowCloseHandlers().add(this);
+			eventProcessor.getDisplay().getInputManager().getKeyHandlers().add(this);
+			
 			//display the window now that everything is set up.
 			eventProcessor.setReadyToDisplay();
 			
-			System.out.println("Game started.");
+			System.out.println("display ready");
 			
 			//wait until the game should exit
 			synchronized(this) {
@@ -159,12 +160,13 @@ public final class StartClient {
 				}
 			}
 			
-			System.out.print("Exiting... ");
-			renderManager.waitForExit();
-			eventProcessor.waitForExit();
+			//TODO need to fix ordering of these things
+			System.out.print("exiting... ");
+			client.stop();
 			clientUpdater.stop();
 			clientUpdater.waitUntilFinished();
-			client.stop();
+			renderManager.waitForExit();
+			eventProcessor.waitForExit();
 			audio.exit();
 			System.out.println("done!");
 		}

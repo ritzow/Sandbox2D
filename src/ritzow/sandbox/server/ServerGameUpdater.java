@@ -1,37 +1,56 @@
 package ritzow.sandbox.server;
 
+import java.util.Objects;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import ritzow.sandbox.game.Lobby;
-import ritzow.sandbox.server.GameTask.GameTaskType;
 
 final class ServerGameUpdater {	
 	private final Queue<GameTask> taskQueue;
-	private Thread runThread;
-	
-	private Lobby lobby;
-	private ServerWorld world;
-	private boolean inLobby;
+	Thread runThread;
 	
 	ServerGameUpdater() {
 		taskQueue = new ConcurrentLinkedQueue<>();
-		inLobby = true;
 	}
 	
-	private void handleTask(GameTask task) {
-		switch(task.getType()) {
-		case PLAYER_MOVEMENT:
-			break;
-		default:
+	//important game stuff
+	static final long MAX_TIMESTEP = 2;
+	
+	ServerWorld world;
+	long previousTime;
+	
+	private void updateGame() {
+		if(world != null) {
+			long current = System.nanoTime(); //get the current time
+			float totalUpdateTime = (current - previousTime) * 0.0000000625f; //get the amount of update time
+			previousTime = current; //update the previous time for the next frame
+			
+			//update the world with a timestep of at most 2 until the world is up to date.
+			for(float time; totalUpdateTime > 0; totalUpdateTime -= time) {
+				time = Math.min(totalUpdateTime, MAX_TIMESTEP);
+				world.update(time);
+				totalUpdateTime -= time;
+			}
+			
+			try {
+				Thread.sleep(1); //sleep so cpu isnt wasted
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
 		}
 	}
 	
-	private void updateGame() {
-		
+	private void cleanup() {
+		world = null;
 	}
 	
+	//control flow handling section
+	
+	private boolean exit;
+	
 	public void submit(GameTask task) {
-		taskQueue.add(task);
+		if(runThread == null)
+			throw new RuntimeException("Game updater has not started");
+		taskQueue.add(Objects.requireNonNull(task));
 	}
 	
 	public void start() {
@@ -42,13 +61,10 @@ final class ServerGameUpdater {
 	}
 	
 	public void stop() {
-		taskQueue.add(new GameTask() {
-			@Override
-			public GameTaskType getType() {
-				return GameTaskType.TERMINATE;
-			}
-		});
 		try {
+			submit(u -> {
+				u.exit = true;
+			});
 			runThread.join();
 			runThread = null;
 		} catch (InterruptedException e) {
@@ -58,20 +74,22 @@ final class ServerGameUpdater {
 
 	private void run() {
 		//run game loop
-		main_loop:
-		while(true) {
+		while(!exit) {
 			//apply all new game tasks
 			while(!taskQueue.isEmpty()) {
-				GameTask task = taskQueue.poll();
-				if(task.getType() == GameTaskType.TERMINATE) {
-					break main_loop;
-				} else {
-					handleTask(task);
-				}
+				taskQueue.poll().execute(this); //allow the task to execute itself using this updater instance
+				//if a task set exit to true, stop updating
+				if(exit)
+					break;
 			}
+			
+			if(exit) //TODO bad convention, rewrite entire loop somehow!?
+				break;
+			
 			//do rest of game loop
 			updateGame();
 		}
 		//shut down updater
+		cleanup();
 	}
 }

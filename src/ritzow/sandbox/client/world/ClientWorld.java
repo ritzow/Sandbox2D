@@ -13,8 +13,4 @@ public final class ClientWorld extends AbstractWorld {
 	public ClientWorld(DataReader reader) {
 		super(reader);
 	}
-
-	public ClientWorld(byte[] data) throws ReflectiveOperationException {
-		super(data);
-	}
 }

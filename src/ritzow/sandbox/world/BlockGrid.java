@@ -1,10 +1,8 @@
 package ritzow.sandbox.world;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
 import ritzow.sandbox.util.ByteUtil;
 import ritzow.sandbox.util.DataReader;
+import ritzow.sandbox.util.Serializer;
 import ritzow.sandbox.util.Transportable;
 import ritzow.sandbox.world.block.Block;
 
@@ -19,46 +17,41 @@ public final class BlockGrid implements Transportable {
 		int width = data.readInteger();
 		int height = data.readInteger();
 		blocks = new Block[height][width];
-		for(int row = 0; row < blocks.length; row++) {
-			for(int column = 0; column < blocks[row].length; column++) {
+		for(int row = 0; row < height; row++) {
+			for(int column = 0; column < width; column++) {
 				blocks[row][column] = data.readObject();
 			}
 		}
 	}
 	
-	public BlockGrid(byte[] data) {
-		blocks = new Block[ByteUtil.getInteger(data, 4)][ByteUtil.getInteger(data, 0)];
-		int index = 8;
-		for(int row = 0; row < blocks.length; row++) {
-			for(int column = 0; column < blocks[row].length; column++) {
-				try {
-					blocks[row][column] = (Block)ByteUtil.deserialize(data, index);
-					index += ByteUtil.getSerializedLength(data, index);
-				} catch (ReflectiveOperationException e) {
-					blocks[row][column] = null;
-					e.printStackTrace(); //for now?
-					continue;
-				}
-			}
-		}
-	}
-	
 	@Override
-	public byte[] getBytes() {
-		ByteArrayOutputStream out = new ByteArrayOutputStream();
-		DataOutputStream dout = new DataOutputStream(out);
-		try {
-			dout.writeInt(blocks[0].length); //write the width 
-			dout.writeInt(blocks.length); //write the height
-			for(int row = 0; row < blocks.length; row++) {
-				for(int column = 0; column < blocks[row].length; column++) {
-					dout.write(ByteUtil.serialize(blocks[row][column]));
-				}
+	public byte[] getBytes(Serializer ser) {	
+		int width = getWidth();
+		int height = getHeight();
+		
+		byte[][] blockData = new byte[width * height][];
+		int totalBytes = 0;
+		
+		for(int row = 0; row < height; row++) {
+			for(int column = 0; column < width; column++) {
+				byte[] serialized = ser.serialize(blocks[row][column]);
+				blockData[row * width + column] = serialized;
+				totalBytes += serialized.length;
 			}
-		} catch (IOException e) {
-			return null;
 		}
-		return out.toByteArray();
+		
+		//width, height, data
+		byte[] data = new byte[8 + totalBytes];
+		ByteUtil.putInteger(data, 0, width);
+		ByteUtil.putInteger(data, 4, height);
+		
+		int offset = 8;
+		for(byte[] b : blockData) {
+			ByteUtil.copy(b, data, offset);
+			offset += b.length;
+		}
+		
+		return data;
 	}
 	
 	@Override
@@ -150,20 +143,10 @@ public final class BlockGrid implements Transportable {
 	}
 	
 	public int getWidth() {
-		if(blocks.length > 0) {
-			return blocks[0].length;
-		}
-		
-		else {
-			return 0;
-		}
+		return blocks[0].length;
 	}
 	
 	public int getHeight() {
 		return blocks.length;
-	}
-	
-	public int getTotalBlocks() {
-		return getWidth() * getHeight();
 	}
 }

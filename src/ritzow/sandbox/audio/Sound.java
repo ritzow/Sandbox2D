@@ -1,5 +1,6 @@
 package ritzow.sandbox.audio;
 
+import ritzow.sandbox.util.Serializer;
 import ritzow.sandbox.util.Transportable;
 
 public class Sound implements Transportable {
@@ -27,7 +28,7 @@ public class Sound implements Transportable {
 	}
 
 	@Override
-	public byte[] getBytes() {
+	public byte[] getBytes(Serializer ser) {
 		throw new UnsupportedOperationException("not implemented");
 	}
 }

@@ -47,6 +47,7 @@ public final class RenderManager implements Service, FramebufferSizeHandler, Win
 		this.renderTasks = new LinkedList<Consumer<RenderManager>>();
 	}
 	
+	@Override
 	public void start() {
 		new Thread(this, "Render Manager").start();
 	}

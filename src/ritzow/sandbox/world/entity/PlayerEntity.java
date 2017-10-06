@@ -5,6 +5,7 @@ import ritzow.sandbox.client.graphics.ModelRenderProgram;
 import ritzow.sandbox.client.graphics.Models;
 import ritzow.sandbox.util.ByteUtil;
 import ritzow.sandbox.util.DataReader;
+import ritzow.sandbox.util.Serializer;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.component.Inventory;
 import ritzow.sandbox.world.component.Living;
@@ -44,9 +45,9 @@ public class PlayerEntity extends Entity implements Living, Luminous {
 	}
 	
 	@Override
-	public byte[] getBytes() {
-		byte[] superBytes = super.getBytes();
-		byte[] invBytes = ByteUtil.serialize(inventory);
+	public byte[] getBytes(Serializer ser) {
+		byte[] superBytes = super.getBytes(ser);
+		byte[] invBytes = ser.serialize(inventory); //ByteUtil.serialize(inventory);
 		byte[] bytes = new byte[superBytes.length + invBytes.length + 4 + 4];
 		ByteUtil.copy(superBytes, bytes, 0);
 		ByteUtil.copy(invBytes, bytes, superBytes.length);

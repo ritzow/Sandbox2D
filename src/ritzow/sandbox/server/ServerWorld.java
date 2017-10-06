@@ -15,26 +15,25 @@ public final class ServerWorld extends AbstractWorld {
 		this.server = server;
 	}
 	
-	public ServerWorld(DataReader reader) throws ReflectiveOperationException {
+	public ServerWorld(DataReader reader) {
 		super(reader);
-	}
-
-	public ServerWorld(byte[] data) throws ReflectiveOperationException {
-		super(data);
 	}
 	
 	public void setServer(Server server) {
 		this.server = server;
 	}
 	
+	@Override
 	protected void onEntityAdd(Entity e) {
-		server.broadcast(Server.buildSendEntity(e, true));
+		server.broadcast(Server.buildSendEntity(e, server.getSerializer(), true));
 	}
 	
+	@Override
 	protected void onEntityRemove(Entity e) {
 		server.broadcast(Server.buildRemoveEntity(e));
 	}
 	
+	@Override
 	protected void onEntityUpdate(Entity e) {
 		server.broadcast(Server.buildGenericEntityUpdate(e));
 	}
