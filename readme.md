@@ -22,7 +22,6 @@ Provides bindings to GLFW, OpenGL, and OpenAL. The program currently uses versio
   "hardcoded": false,
   "javadoc": true,
   "source": true,
-  "language": "groovy",
   "contents": [
     "lwjgl",
     "lwjgl-glfw",
