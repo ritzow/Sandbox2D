@@ -1,7 +1,7 @@
 package ritzow.sandbox.audio;
 
-import ritzow.sandbox.util.Serializer;
-import ritzow.sandbox.util.Transportable;
+import ritzow.sandbox.data.Serializer;
+import ritzow.sandbox.data.Transportable;
 
 public class Sound implements Transportable {
 	public final int sound;

@@ -8,25 +8,25 @@ import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.function.Supplier;
 import ritzow.sandbox.client.world.ClientWorld;
-import ritzow.sandbox.client.world.block.DirtBlock;
-import ritzow.sandbox.client.world.block.GrassBlock;
-import ritzow.sandbox.client.world.entity.ItemEntity;
+import ritzow.sandbox.client.world.block.ClientDirtBlock;
+import ritzow.sandbox.client.world.block.ClientGrassBlock;
+import ritzow.sandbox.client.world.entity.ClientItemEntity;
 import ritzow.sandbox.client.world.entity.ParticleEntity;
-import ritzow.sandbox.client.world.entity.PlayerEntity;
-import ritzow.sandbox.client.world.item.BlockItem;
-import ritzow.sandbox.protocol.ConnectionException;
-import ritzow.sandbox.protocol.NetworkController;
-import ritzow.sandbox.protocol.Protocol;
-import ritzow.sandbox.protocol.TimeoutException;
-import ritzow.sandbox.protocol.WorldObjectIdentifiers;
-import ritzow.sandbox.util.ByteUtil;
-import ritzow.sandbox.util.SerializerReaderWriter;
-import ritzow.sandbox.util.Transportable;
+import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
+import ritzow.sandbox.client.world.item.ClientBlockItem;
+import ritzow.sandbox.data.ByteUtil;
+import ritzow.sandbox.data.SerializerReaderWriter;
+import ritzow.sandbox.data.Transportable;
+import ritzow.sandbox.network.ConnectionException;
+import ritzow.sandbox.network.NetworkController;
+import ritzow.sandbox.network.Protocol;
+import ritzow.sandbox.network.TimeoutException;
+import ritzow.sandbox.network.WorldObjectIdentifiers;
 import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.BlockGrid;
-import ritzow.sandbox.world.Entity;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.component.Inventory;
+import ritzow.sandbox.world.entity.Entity;
 
 public final class Client {
 	
@@ -47,7 +47,7 @@ public final class Client {
 	private byte[][] worldPackets;
 	
 	/** The Player object sent by the server for the client to control **/
-	protected volatile PlayerEntity player;
+	protected volatile ClientPlayerEntity player;
 	
 	/** lock object for synchronizing server-initiated actions with the client **/
 	protected final Object worldLock, playerLock, lobbyLock;
@@ -69,12 +69,12 @@ public final class Client {
 		//such as inventory or block grid which are built into other objects
 		s.register(WorldObjectIdentifiers.BLOCK_GRID, BlockGrid.class, BlockGrid::new);
 		s.register(WorldObjectIdentifiers.WORLD, ClientWorld.class, ClientWorld::new);
-		s.register(WorldObjectIdentifiers.BLOCK_ITEM, BlockItem.class, BlockItem::new);
-		s.register(WorldObjectIdentifiers.DIRT_BLOCK, DirtBlock.class, DirtBlock::new);
-		s.register(WorldObjectIdentifiers.GRASS_BLOCK, GrassBlock.class, GrassBlock::new);
-		s.register(WorldObjectIdentifiers.PLAYER_ENTITY, PlayerEntity.class, PlayerEntity::new);
+		s.register(WorldObjectIdentifiers.BLOCK_ITEM, ClientBlockItem.class, ClientBlockItem::new);
+		s.register(WorldObjectIdentifiers.DIRT_BLOCK, ClientDirtBlock.class, ClientDirtBlock::new);
+		s.register(WorldObjectIdentifiers.GRASS_BLOCK, ClientGrassBlock.class, ClientGrassBlock::new);
+		s.register(WorldObjectIdentifiers.PLAYER_ENTITY, ClientPlayerEntity.class, ClientPlayerEntity::new);
 		s.register(WorldObjectIdentifiers.INVENTORY, Inventory.class, Inventory::new);
-		s.register(WorldObjectIdentifiers.ITEM_ENTITY, ItemEntity.class, ItemEntity::new);
+		s.register(WorldObjectIdentifiers.ITEM_ENTITY, ClientItemEntity.class, ClientItemEntity::new);
 		s.register(WorldObjectIdentifiers.PARTICLE_ENTITY, ParticleEntity.class, ParticleEntity::new);
 	}
 	
@@ -238,7 +238,7 @@ public final class Client {
 		return world != null ? world : receiveObject(worldLock, () -> world);
 	}
 	
-	public PlayerEntity getPlayer() {
+	public ClientPlayerEntity getPlayer() {
 		return player != null ? player : receiveObject(playerLock, () -> player);
 	}
 	
@@ -313,7 +313,7 @@ public final class Client {
 		while(player == null) { //loop infinitely until there is an entity with the correct ID
 			Entity player = getWorld().find(id);
 			if(player != null) {
-				this.player = (PlayerEntity)player;
+				this.player = (ClientPlayerEntity)player;
 				synchronized(playerLock) {
 					playerLock.notifyAll();
 				}

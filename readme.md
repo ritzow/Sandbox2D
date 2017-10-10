@@ -1,6 +1,9 @@
 # Sandbox2D
 A 2D block building and destruction platformer game written in Java that uses OpenGL for graphics, OpenAL for audio, GLFW for cross-platform windowing and input, and LWJGL for bindings to the afformentioned libraries and APIs.   
 
+# Repository Info
+There are three directories that contain the source code: shared (contains code shared by client and server), client (contains client side code), and server (contains server code). The .classpath and .project files contain metadata used by the Eclipse Java IDE. The 'client' folder also contains a directory called 'resources' which contains game assets as well as OpenGL shader code. The 'server' folder contains directory 'data' which stores persistent data like world saves.  
+
 ## Libraries
 ### LWJGL
 https://www.lwjgl.org/download   

@@ -3,34 +3,35 @@ package ritzow.sandbox.server;
 import java.util.Objects;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import ritzow.sandbox.server.world.ServerWorld;
+import ritzow.sandbox.world.World;
 
 interface GameTask {
 	public void execute(ServerGameUpdater program);
 }
 
+//TODO integrate this with Server, take packets directly from network controller instead of from thread pool from networkcontroller
 final class ServerGameUpdater {	
 	private final Queue<GameTask> taskQueue;
-	Thread runThread;
+	private boolean exit;
 	
-	ServerGameUpdater() {
-		taskQueue = new ConcurrentLinkedQueue<>();
-	}
-	
-	//important game stuff
 	static final long MAX_TIMESTEP = 2;
 	
-	ServerWorld world;
+	Thread runThread;
+	World world;
 	long previousTime;
+	
+	public ServerGameUpdater() {
+		taskQueue = new ConcurrentLinkedQueue<>();
+	}
 	
 	private void updateGame() {
 		if(world != null) {
 			long current = System.nanoTime(); //get the current time
 			float totalUpdateTime = (current - previousTime) * 0.0000000625f; //get the amount of update time
 			previousTime = current; //update the previous time for the next frame
-			
-			//update the world with a timestep of at most 2 until the world is up to date.
-			for(float time; totalUpdateTime > 0; totalUpdateTime -= time) {
+
+			//update the world with a timestep of at most MAX_TIMESTEP until the world is up to date.
+			for(float time; totalUpdateTime > 0 && !exit; totalUpdateTime -= time) {
 				time = Math.min(totalUpdateTime, MAX_TIMESTEP);
 				world.update(time);
 				totalUpdateTime -= time;
@@ -48,22 +49,48 @@ final class ServerGameUpdater {
 		world = null;
 	}
 	
-	//control flow handling section
-	
-	private boolean exit;
-	
 	public void submit(GameTask task) {
 		if(runThread == null)
 			throw new RuntimeException("Game updater has not started");
 		taskQueue.add(Objects.requireNonNull(task));
 	}
 	
-	public void start() {
-		if(runThread == null)
-			(runThread = new Thread(this::run, "Game Update Thread")).start();
-		else
-			throw new RuntimeException("Game updater already running");
+	private void run() {
+		while(!exit) {
+			if(!taskQueue.isEmpty()) {
+				taskQueue.poll().execute(this);
+			} else {
+				updateGame();
+			}
+		}
+		cleanup();
 	}
+	
+	public boolean isRunning() {
+		return runThread != null && runThread.isAlive() && !exit;
+	}
+	
+	public void start() {
+		if(runThread == null) {
+			exit = false;
+			previousTime = System.nanoTime();
+			(runThread = new Thread(this::run, "Game Update Thread")).start();
+		} else {
+			throw new RuntimeException("Game updater already running");
+		}
+	}
+	
+//	public void pause() {
+//		throw new UnsupportedOperationException("not implemented");
+//	}
+//	
+//	public void isPaused() {
+//		throw new UnsupportedOperationException("not implemented");
+//	}
+//	
+//	public void resume() {
+//		throw new UnsupportedOperationException("not implemented");
+//	}
 	
 	public void stop() {
 		try {
@@ -75,26 +102,5 @@ final class ServerGameUpdater {
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
-	}
-
-	private void run() {
-		//run game loop
-		while(!exit) {
-			//apply all new game tasks
-			while(!taskQueue.isEmpty()) {
-				taskQueue.poll().execute(this); //allow the task to execute itself using this updater instance
-				//if a task set exit to true, stop updating
-				if(exit)
-					break;
-			}
-			
-			if(exit) //TODO bad convention, rewrite entire loop somehow!?
-				break;
-			
-			//do rest of game loop
-			updateGame();
-		}
-		//shut down updater
-		cleanup();
 	}
 }

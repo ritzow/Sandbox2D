@@ -9,13 +9,16 @@ import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Scanner;
 import ritzow.sandbox.audio.AudioSystem;
+import ritzow.sandbox.data.ByteUtil;
+import ritzow.sandbox.data.Deserializer;
 import ritzow.sandbox.server.Server.ClientState;
-import ritzow.sandbox.server.world.ServerWorld;
-import ritzow.sandbox.server.world.block.DirtBlock;
-import ritzow.sandbox.server.world.block.GrassBlock;
-import ritzow.sandbox.server.world.entity.PlayerEntity;
-import ritzow.sandbox.util.ByteUtil;
-import ritzow.sandbox.util.Deserializer;
+import ritzow.sandbox.world.World;
+import ritzow.sandbox.world.item.Item;
+import ritzow.sandbox.world.block.DirtBlock;
+import ritzow.sandbox.world.block.GrassBlock;
+import ritzow.sandbox.world.entity.ItemEntity;
+import ritzow.sandbox.world.entity.PlayerEntity;
+import ritzow.sandbox.world.item.BlockItem;
 
 public final class StartServer {
 	public static void main(String... args) throws SocketException, UnknownHostException {
@@ -26,16 +29,14 @@ public final class StartServer {
 		final File saveFile = new File("data/worlds/testWorld.dat");
 		
 		ServerAudioSystem audio = new ServerAudioSystem();
-		ServerWorld world = saveFile.exists() ? 
-				loadWorld(saveFile, SerializationProvider.getProvider()) : generateWorld(100, 100, audio, server);
-		world.setAudioSystem(audio);
-		world.setServer(server);
-		server.setWorld(world);
-		
+		World world = saveFile.exists() ? 
+				loadWorld(saveFile, audio, SerializationProvider.getProvider()) : generateWorld(100, 100, audio, server);
+		world.add(new ItemEntity<Item>(world.nextEntityID(), new BlockItem(new DirtBlock()),50,120));
+				server.setWorld(world);
 		server.start();
 		
 		System.out.println("Startup Complete.");
-		System.out.println("Type 'exit' to stop server or anything else to broadcast a message:");
+		System.out.println("Type 'exit' to stop server or 'list' to list connected clients");
 		try(Scanner scanner = new Scanner(System.in)) {
 			boolean exit = false;
 			String next;
@@ -62,8 +63,6 @@ public final class StartServer {
 		
 		server.stop();
 		
-		System.out.println("Shutdown Complete.");
-		
 		try {
 			if(!saveFile.exists()) {
 				saveFile.createNewFile();
@@ -84,19 +83,21 @@ public final class StartServer {
 		}
 	}
 	
-	public static ServerWorld loadWorld(File file, Deserializer des) {
+	public static World loadWorld(File file, AudioSystem audio, Deserializer des) {
 		try(FileInputStream in = new FileInputStream(file)) {
 			byte[] data = new byte[(int)file.length()];
 			in.read(data);
-			return des.deserialize(ByteUtil.decompress(data));
+			World world = des.deserialize(ByteUtil.decompress(data));
+			world.setAudioSystem(audio);
+			return world;
 		} catch(IOException e) {
 			System.out.println("Error loading world from file " + e);
 			return null;
 		}
 	}
 	
-	public static ServerWorld generateWorld(int width, int height, AudioSystem audio, Server server) {
-		ServerWorld world = new ServerWorld(audio, server, width, height, 0.016f);
+	public static World generateWorld(int width, int height, AudioSystem audio, Server server) {
+		World world = new World(audio, width, height, 0.016f);
 		for(int column = 0; column < world.getForeground().getWidth(); column++) {
 			double halfheight = world.getForeground().getHeight()/2;
 			halfheight += (Math.sin(column * 0.1f) + 1) * (world.getForeground().getHeight() - halfheight) * 0.05f;
@@ -107,7 +108,6 @@ public final class StartServer {
 			world.getForeground().set(column, (int)halfheight, new GrassBlock());
 			world.getBackground().set(column, (int)halfheight, new DirtBlock());
 		}
-		world.setServer(server);
 		return world;
 	}
 }

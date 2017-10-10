@@ -1,9 +1,10 @@
 package ritzow.sandbox.world;
 
-import ritzow.sandbox.util.ByteUtil;
-import ritzow.sandbox.util.DataReader;
-import ritzow.sandbox.util.Serializer;
-import ritzow.sandbox.util.Transportable;
+import ritzow.sandbox.data.ByteUtil;
+import ritzow.sandbox.data.DataReader;
+import ritzow.sandbox.data.Serializer;
+import ritzow.sandbox.data.Transportable;
+import ritzow.sandbox.world.block.Block;
 
 public final class BlockGrid implements Transportable {
 	private final Block[][] blocks;
@@ -21,6 +22,8 @@ public final class BlockGrid implements Transportable {
 				blocks[row][column] = data.readObject();
 			}
 		}
+		data.readInteger(); //TODO figure out why this extra read is necessary?
+		data.readInteger(); //TODO figure out why this extra read is necessary?
 	}
 	
 	@Override
@@ -29,27 +32,16 @@ public final class BlockGrid implements Transportable {
 		int height = getHeight();
 		
 		byte[][] blockData = new byte[width * height][];
-		int totalBytes = 0;
 		
 		for(int row = 0; row < height; row++) {
 			for(int column = 0; column < width; column++) {
-				byte[] serialized = ser.serialize(blocks[row][column]);
-				blockData[row * width + column] = serialized;
-				totalBytes += serialized.length;
+				blockData[row * width + column] = ser.serialize(blocks[row][column]);
 			}
 		}
 		
-		//width, height, data
-		byte[] data = new byte[8 + totalBytes];
+		byte[] data = ByteUtil.concatenate(8, blockData);
 		ByteUtil.putInteger(data, 0, width);
 		ByteUtil.putInteger(data, 4, height);
-		
-		int offset = 8;
-		for(byte[] b : blockData) {
-			ByteUtil.copy(b, data, offset);
-			offset += b.length;
-		}
-		
 		return data;
 	}
 	
@@ -69,7 +61,7 @@ public final class BlockGrid implements Transportable {
 			for(int j = 1; j < blocks[i].length - 1; j++) {
 				Block block = blocks[i][j];
 				if(block != null) {
-					builder.append(blocks[i][j].toString().charAt(0));
+					builder.append(Character.toUpperCase(blocks[i][j].getName().charAt(0)));
 				} else {
 					builder.append(" ");
 				}

@@ -10,10 +10,11 @@ import static org.lwjgl.opengl.GL20.glDrawBuffers;
 import static org.lwjgl.opengl.GL30.GL_COLOR_ATTACHMENT0;
 import static org.lwjgl.opengl.GL30.GL_COLOR_ATTACHMENT1;
 
+import ritzow.sandbox.client.util.Renderable;
 import ritzow.sandbox.client.world.ClientWorld;
+import ritzow.sandbox.client.world.block.ClientBlock;
 import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.component.Luminous;
-import ritzow.sandbox.client.graphics.ModelRenderProgram;
 
 public final class ClientWorldRenderer implements Renderer {
 	private static final float MAX_TIMESTEP = 2;
@@ -102,9 +103,11 @@ public final class ClientWorldRenderer implements Renderer {
 		for(int row = bottomBound; row <= topBound; row++) {
 			for(int column = leftBound; column <= rightBound; column++) {
 				if(foreground.isBlock(column, row)) {
-					modelProgram.render(Models.forIndex(foreground.get(column, row).getModelIndex()), 1.0f, column, row, 1.0f, 1.0f, 0.0f);
-				} else if(background.isBlock(column, row)) {
-					modelProgram.render(Models.forIndex(background.get(column, row).getModelIndex()), 0.5f, column, row, 1.0f, 1.0f, 0.0f); 
+					ClientBlock block = (ClientBlock)foreground.get(column, row);
+					modelProgram.render(Models.forIndex(block.getModelIndex()), 1.0f, column, row, 1.0f, 1.0f, 0.0f);
+				} else if(background != null && background.isBlock(column, row)) { //TODO temp null check
+					ClientBlock block = (ClientBlock)background.get(column, row);
+					modelProgram.render(Models.forIndex(block.getModelIndex()), 0.5f, column, row, 1.0f, 1.0f, 0.0f); 
 					//TODO when the player destroys a block (happens on a different thread), this can cause a null pointer
 				}
 			}
@@ -112,17 +115,15 @@ public final class ClientWorldRenderer implements Renderer {
 		
 		//render the entities
 		world.forEach(e -> {
-			if(e != null) {
-				//pre-compute variables
-				float posX = e.getPositionX();
-				float posY = e.getPositionY();
-				float halfWidth = e.getWidth()/2;
-				float halfHeight = e.getHeight()/2;
-				
-				//check if the entity is visible inside the viewport and render it
-				if(posX < worldRight + halfWidth && posX > worldLeft - halfWidth && posY < worldTop + halfHeight && posY > worldBottom - halfHeight) {
-					e.render(modelProgram); //TODO create special object to pass to render method that restricts direct program access but allows entities to customize their rendering
-				}
+			//pre-compute variables
+			float posX = e.getPositionX();
+			float posY = e.getPositionY();
+			float halfWidth = e.getWidth()/2;
+			float halfHeight = e.getHeight()/2;
+			
+			//check if the entity is visible inside the viewport and render it
+			if(posX < worldRight + halfWidth && posX > worldLeft - halfWidth && posY < worldTop + halfHeight && posY > worldBottom - halfHeight) {
+				((Renderable)e).render(modelProgram);
 			}
 		});
 		

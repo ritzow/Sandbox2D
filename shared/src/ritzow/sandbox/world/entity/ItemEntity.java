@@ -1,0 +1,76 @@
+package ritzow.sandbox.world.entity;
+
+import ritzow.sandbox.data.ByteUtil;
+import ritzow.sandbox.data.DataReader;
+import ritzow.sandbox.data.Serializer;
+import ritzow.sandbox.world.item.Item;
+
+public class ItemEntity<I extends Item> extends Entity {
+	protected final I item;
+	
+	public ItemEntity(int entityID, I item) {
+		super(entityID);
+		this.item = item;
+	}
+	
+	public ItemEntity(int entityID, I item, float x, float y) {
+		super(entityID);
+		this.item = item;
+		this.positionX = x;
+		this.positionY = y;
+	}
+	
+	public ItemEntity(DataReader input) {
+		super(input);
+		item = input.readObject();
+	}
+	
+	@Override
+	public byte[] getBytes(Serializer ser) {
+		return ByteUtil.concatenate(super.getBytes(ser), ser.serialize(item));
+	}
+	
+	public I getItem() {
+		return item;
+	}
+
+	@Override
+	public boolean getShouldDelete() {
+		return false;
+	}
+
+	@Override
+	public boolean doCollision() {
+		return true;
+	}
+
+	@Override
+	public boolean doBlockCollisionResolution() {
+		return true;
+	}
+
+	@Override
+	public boolean doEntityCollisionResolution() {
+		return false;
+	}
+
+	@Override
+	public float getFriction() {
+		return 0.02f;
+	}
+
+	@Override
+	public float getWidth() {
+		return 0.5f;
+	}
+
+	@Override
+	public float getHeight() {
+		return 0.5f;
+	}
+
+	@Override
+	public float getMass() {
+		return 1f;
+	}
+}

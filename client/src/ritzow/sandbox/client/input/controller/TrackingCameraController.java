@@ -7,7 +7,7 @@ import static org.lwjgl.glfw.GLFW.GLFW_RELEASE;
 import ritzow.sandbox.client.audio.ClientAudioSystem;
 import ritzow.sandbox.client.graphics.Camera;
 import ritzow.sandbox.client.input.Controls;
-import ritzow.sandbox.world.Entity;
+import ritzow.sandbox.world.entity.Entity;
 
 public final class TrackingCameraController extends CameraController {
 	protected final Entity target;

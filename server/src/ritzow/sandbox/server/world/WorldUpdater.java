@@ -3,13 +3,13 @@ package ritzow.sandbox.server.world;
 import ritzow.sandbox.util.Service;
 import ritzow.sandbox.world.World;
 
-public final class WorldUpdater<W extends World> implements Service {
-	private final W world;
+public final class WorldUpdater implements Service {
+	private final World world;
 	private volatile boolean setup, exit, finished;
 	
 	private static final float MAX_TIMESTEP = 2;
 	
-	public WorldUpdater(W world) {
+	public WorldUpdater(World world) {
 		this.world = world;
 	}
 	
@@ -43,7 +43,7 @@ public final class WorldUpdater<W extends World> implements Service {
 		}
 	}
 	
-	public W getWorld() {
+	public World getWorld() {
 		return world;
 	}
 	
