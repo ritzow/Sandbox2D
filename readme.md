@@ -6,33 +6,28 @@ There are three directories that contain the source code: shared (contains code 
 
 ## Libraries
 ### LWJGL
-https://www.lwjgl.org/download   
-Provides bindings to GLFW, OpenGL, and OpenAL. The program currently uses version 3.1.2 build 29. Just add each jar file to the classpath and LWJGL will load the natives automatically.
+https://www.lwjgl.org/customize
+Provides bindings to GLFW, OpenGL, and OpenAL. The program currently uses version 3.1.4. Just add each jar file to the classpath and LWJGL will load the natives automatically.
 
 #### Configuration: 
 ```json
 {
-  "build": "release",
-  "mode": "zip",
-  "selectedAddons": [],
-  "platform": [
-    "windows",
-    "macos",
-    "linux"
-  ],
-  "descriptions": false,
-  "compact": false,
-  "hardcoded": false,
-  "javadoc": true,
-  "source": true,
-  "contents": [
-    "lwjgl",
-    "lwjgl-glfw",
-    "lwjgl-openal",
-    "lwjgl-opengl"
-  ],
-  "version": "3.1.2",
-  "versionLatest": "3.1.2"
+	"build": "stable",
+	"mode": "zip",
+	"selectedAddons": [],
+	"platform": [
+	"windows",
+	"macos",
+	"linux"
+	],
+	"javadoc": true,
+	"source": true,
+	"contents": [
+	"lwjgl",
+	"lwjgl-glfw",
+	"lwjgl-opengl",
+	"lwjgl-openal"
+	]
 }
 ```
 ### TWL's PNGDecoder:
