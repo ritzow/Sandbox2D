@@ -1,10 +1,10 @@
 package ritzow.sandbox.client.world;
 
 import ritzow.sandbox.audio.AudioSystem;
-import ritzow.sandbox.util.DataReader;
-import ritzow.sandbox.world.AbstractWorld;
+import ritzow.sandbox.data.DataReader;
+import ritzow.sandbox.world.World;
 
-public final class ClientWorld extends AbstractWorld {
+public final class ClientWorld extends World {
 
 	public ClientWorld(AudioSystem audio, int width, int height, float gravity) {
 		super(audio, width, height, gravity);

@@ -1,15 +1,13 @@
 package ritzow.sandbox.world.component;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import ritzow.sandbox.world.Item;
-import ritzow.sandbox.util.ByteUtil;
-import ritzow.sandbox.util.DataReader;
-import ritzow.sandbox.util.Serializer;
-import ritzow.sandbox.util.Transportable;
+import ritzow.sandbox.data.ByteUtil;
+import ritzow.sandbox.data.DataReader;
+import ritzow.sandbox.data.Serializer;
+import ritzow.sandbox.data.Transportable;
+import ritzow.sandbox.world.item.Item;
 
-public class Inventory implements Transportable {
-	
+@SuppressWarnings("unchecked")
+public class Inventory<T extends Item> implements Transportable {
 	protected final Item[] items;
 	
 	public Inventory(int capacity) {
@@ -23,31 +21,24 @@ public class Inventory implements Transportable {
 		}
 	}
 	
-//	public Inventory(byte[] data) throws ReflectiveOperationException {
-//		items = new Item[ByteUtil.getInteger(data, 0)];
-//		int index = 4;
-//		for(int i = 0; i < items.length; i++) {
-//			items[i] = (Item)ByteUtil.deserialize(data, index);
-//			index += ByteUtil.getSerializedLength(data, index);
-//		}
-//	}
-	
 	@Override
 	public byte[] getBytes(Serializer ser) {
-		byte[] numItems = new byte[4];
-		ByteUtil.putInteger(numItems, 0, items.length);
-		ByteArrayOutputStream out = new ByteArrayOutputStream();
-		try {
-			out.write(numItems);
-			
-			for(Item i : items) {
-				out.write(ser.serialize(i));
-			}
-			
-		} catch (IOException e) {
-			return null;
-		}
-		return out.toByteArray();
+		return ByteUtil.serializeArray(items, ser);
+		
+//		byte[] numItems = new byte[4];
+//		ByteUtil.putInteger(numItems, 0, items.length);
+//		ByteArrayOutputStream out = new ByteArrayOutputStream();
+//		try {
+//			out.write(numItems);
+//			
+//			for(Item i : items) {
+//				out.write(ser.serialize(i));
+//			}
+//			
+//		} catch (IOException e) {
+//			return null;
+//		}
+//		return out.toByteArray();
 	}
 	
 	@Override
@@ -74,15 +65,15 @@ public class Inventory implements Transportable {
 		return list.toString();
 	}
 	
-	public Item get(int slot) {
-		return items[slot];
+	public T get(int slot) {
+		return (T)items[slot];
 	}
 	
 	public int getSize() {
 		return items.length;
 	}
 	
-	public boolean add(Item item) {
+	public boolean add(T item) {
 		for(int i = 0; i < items.length; i++) {
 			if(items[i] == null) {
 				items[i] = item;
@@ -92,16 +83,16 @@ public class Inventory implements Transportable {
 		return false;
 	}
 	
-	public Item put(Item item, int slot) {
+	public T put(Item item, int slot) {
 		Item previous = items[slot];
 		items[slot] = item;
-		return previous;
+		return (T)previous;
 	}
 	
-	public Item remove(int slot) {
+	public T remove(int slot) {
 		Item item = items[slot];
 		items[slot] = null;
-		return item;
+		return (T)item;
 	}
 	
 	public void condense() {

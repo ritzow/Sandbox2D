@@ -10,10 +10,10 @@ import ritzow.sandbox.client.input.handler.CursorPosHandler;
 import ritzow.sandbox.client.input.handler.FramebufferSizeHandler;
 import ritzow.sandbox.client.input.handler.KeyHandler;
 import ritzow.sandbox.client.input.handler.MouseButtonHandler;
-import ritzow.sandbox.client.world.entity.ItemEntity;
-import ritzow.sandbox.client.world.item.BlockItem;
+import ritzow.sandbox.client.world.entity.ClientItemEntity;
+import ritzow.sandbox.client.world.item.ClientBlockItem;
 import ritzow.sandbox.client.world.item.ClientItem;
-import ritzow.sandbox.world.Item;
+import ritzow.sandbox.world.item.Item;
 
 public final class InteractionController implements Controller, MouseButtonHandler, CursorPosHandler, FramebufferSizeHandler, KeyHandler {
 	private volatile boolean primaryAction, secondaryAction;
@@ -65,9 +65,9 @@ public final class InteractionController implements Controller, MouseButtonHandl
 			//TODO implement this with client stuff
 			else if(secondaryAction && (System.nanoTime() - lastPlace > cooldownPlace * 1000000)) {
 				Item item = client.getPlayer().getSelectedItem();
-				if((item instanceof BlockItem) && client.getWorld().getForeground().isValid(blockX, blockY) && 
-					(client.getWorld().getBackground().place(client.getWorld(), blockX, blockY, ((BlockItem)item).getBlock()) || 
-					client.getWorld().getForeground().place(client.getWorld(), blockX, blockY, ((BlockItem)item).getBlock()))) {
+				if((item instanceof ClientBlockItem) && client.getWorld().getForeground().isValid(blockX, blockY) && 
+					(client.getWorld().getBackground().place(client.getWorld(), blockX, blockY, ((ClientBlockItem)item).getBlock()) || 
+					client.getWorld().getForeground().place(client.getWorld(), blockX, blockY, ((ClientBlockItem)item).getBlock()))) {
 					lastPlace = System.nanoTime();
 					client.getPlayer().removeSelectedItem();
 				}
@@ -129,10 +129,10 @@ public final class InteractionController implements Controller, MouseButtonHandl
 		if(action == GLFW.GLFW_PRESS) {
 			switch(key) {
 				case Controls.KEYBIND_DOWN:
-					ClientItem item = client.getPlayer().removeSelectedItem();
+					Item item = client.getPlayer().removeSelectedItem();
 					if(item != null) {
 						//TODO deal with entityID for entities created outside server directly
-						ItemEntity entity = new ItemEntity(0, item);
+						ClientItemEntity entity = new ClientItemEntity(0, (ClientItem)item);
 						entity.setVelocityX(mouseHorizontalToWorld(camera, mouseX, frameWidth, frameHeight) - client.getPlayer().getPositionX());
 						entity.setVelocityY(mouseVerticalToWorld(camera, mouseY, frameHeight) - client.getPlayer().getPositionY());
 						entity.setSpeed(0.5f);

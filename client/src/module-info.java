@@ -3,7 +3,7 @@
  *
  */
 module ritzow.sandbox.client {
-	requires transitive ritzow.sandbox.shared; //share with anything using Sandbox2DClient as a library
+	requires ritzow.sandbox.shared;
 	requires PNGDecoder;
 	requires org.lwjgl;
 	requires org.lwjgl.opengl;

@@ -14,17 +14,16 @@ import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import ritzow.sandbox.protocol.NetworkController;
-import ritzow.sandbox.protocol.Protocol;
-import ritzow.sandbox.protocol.Protocol.PlayerAction;
-import ritzow.sandbox.protocol.TimeoutException;
-import ritzow.sandbox.server.world.ServerWorld;
-import ritzow.sandbox.server.world.ServerWorldException;
-import ritzow.sandbox.server.world.entity.PlayerEntity;
-import ritzow.sandbox.util.ByteUtil;
-import ritzow.sandbox.util.Serializer;
-import ritzow.sandbox.util.SerializerReaderWriter;
-import ritzow.sandbox.world.Entity;
+import ritzow.sandbox.data.ByteUtil;
+import ritzow.sandbox.data.Serializer;
+import ritzow.sandbox.data.SerializerReaderWriter;
+import ritzow.sandbox.network.NetworkController;
+import ritzow.sandbox.network.Protocol;
+import ritzow.sandbox.network.TimeoutException;
+import ritzow.sandbox.network.Protocol.PlayerAction;
+import ritzow.sandbox.world.World;
+import ritzow.sandbox.world.entity.Entity;
+import ritzow.sandbox.world.entity.PlayerEntity;
 
 public final class Server {
 	private final NetworkController controller;
@@ -46,10 +45,6 @@ public final class Server {
 		this.serialRegistry = SerializationProvider.getProvider();
 	}
 	
-	public Serializer getSerializer() {
-		return serialRegistry;
-	}
-	
 	public void start() {
 		updater.start();
 		controller.start();
@@ -57,19 +52,19 @@ public final class Server {
 	}
 	
 	//TODO really hacky, terrible temp method
-	public void setWorld(ServerWorld world) {
+	public void setWorld(World world) {
 		updater.world = world;
 	}
 	
 	public void stop() {
+		canConnect = false;
+		updater.stop();
+		disconnectMultiple(clients, "Server shutting down");
+		broadcaster.shutdown();
+		controller.stop();
 		try {
-			canConnect = false;
-			updater.stop();
-			disconnectMultiple(clients, "Server shutting down");
-			broadcaster.shutdown(); //stop the message broadcaster
-			controller.stop();
 			broadcaster.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
-		} catch(ServerWorldException | InterruptedException e) {
+		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
 	}
@@ -317,7 +312,11 @@ public final class Server {
 					send(buildServerDisconnect(reason), client, false);
 				controller.removeSender(client.address);
 				if(client.player != null) {
-					//worldUpdater.getWorld().queueRemove(client.player); TODO stuff
+					if(updater.isRunning()) {
+						updater.submit(u -> {
+							u.world.remove(client.player);
+						});
+					}
 				}
 			});
 			clients.clear();
@@ -335,7 +334,9 @@ public final class Server {
 				send(buildServerDisconnect(reason), client, false);
 			controller.removeSender(client.address);
 			if(client.player != null) {
-//				worldUpdater.getWorld().queueRemove(client.player); TODO
+				updater.submit(u -> {
+					u.world.remove(client.player);
+				});
 			}
 			System.out.println(client + " disconnected (" + clientCount() + " players connected)");
 		} else {
@@ -393,15 +394,19 @@ public final class Server {
 				System.out.println(newClient + " connected");
 				
 				updater.submit(u -> {
-					ServerWorld world = u.world;
+					World world = u.world;
 					
 					//send the world to the client
-					for(byte[] a : Server.buildWorldPackets(world, serialRegistry)) { //this is going to stall the server
+					for(byte[] a : buildWorldPackets(world, serialRegistry)) {
 						send(a, newClient);
 					}
 					
+					System.out.println("Sent world to connecting client");
+					
 					//construct a new player for the client
+					
 					PlayerEntity player = new PlayerEntity(world.nextEntityID());
+					newClient.player = player;
 					
 					//set the player's position to directly above the ground in the center of the world
 					player.setPositionX(world.getForeground().getWidth()/2);
@@ -415,8 +420,9 @@ public final class Server {
 					}
 					
 					clients.add(newClient); //not a good idea to use server field from ServerGameUpdater
+					System.out.println("Added client to connected list");
 					world.add(player);
-					newClient.player = player;
+					send(getEntitySerialized(player), newClient);
 					send(createPlayerIDMessage(player), newClient);
 				});
 			}
@@ -448,7 +454,7 @@ public final class Server {
 		}
 	}
 
-	public static byte[][] buildWorldPackets(ServerWorld world, Serializer ser) {
+	public static byte[][] buildWorldPackets(World world, Serializer ser) {
 		Objects.requireNonNull(world);
 		
 		int headerSize = 2;

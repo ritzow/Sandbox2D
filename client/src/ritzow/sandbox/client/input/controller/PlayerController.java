@@ -8,7 +8,7 @@ import ritzow.sandbox.client.Client.PlayerAction;
 import ritzow.sandbox.client.input.Controls;
 import ritzow.sandbox.client.input.InputManager;
 import ritzow.sandbox.client.input.handler.KeyHandler;
-import ritzow.sandbox.world.Entity;
+import ritzow.sandbox.world.entity.Entity;
 
 public class PlayerController implements Controller, KeyHandler {
 	protected final Client client;

@@ -29,7 +29,7 @@ import ritzow.sandbox.client.input.handler.KeyHandler;
 import ritzow.sandbox.client.input.handler.WindowCloseHandler;
 import ritzow.sandbox.client.util.RunnableRepeatExecutor;
 import ritzow.sandbox.client.world.ClientWorld;
-import ritzow.sandbox.client.world.entity.PlayerEntity;
+import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
 
 public final class StartClient {
 	public static void main(String... args) throws SocketException, UnknownHostException {
@@ -82,7 +82,7 @@ public final class StartClient {
 				e.printStackTrace();
 			}
 			
-			PlayerEntity player = client.getPlayer();
+			ClientPlayerEntity player = client.getPlayer();
 			System.out.println("player received");
 			
 			CameraController cameraGrip = new TrackingCameraController(new Camera(0, 0, 1), audio, player, 0.005f, 0.05f, 0.6f);
@@ -161,11 +161,11 @@ public final class StartClient {
 			
 			//TODO need to fix ordering of these things
 			System.out.print("exiting... ");
-			client.stop();
 			clientUpdater.stop();
 			clientUpdater.waitUntilFinished();
 			renderManager.waitForExit();
 			eventProcessor.waitForExit();
+			client.stop();
 			audio.exit();
 			System.out.println("done!");
 		}

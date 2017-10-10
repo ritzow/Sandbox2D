@@ -2,10 +2,12 @@ package ritzow.sandbox.client.world.entity;
 
 import ritzow.sandbox.client.graphics.ModelRenderProgram;
 import ritzow.sandbox.client.graphics.Models;
-import ritzow.sandbox.util.DataReader;
-import ritzow.sandbox.util.Serializer;
+import ritzow.sandbox.client.util.Renderable;
+import ritzow.sandbox.data.DataReader;
+import ritzow.sandbox.data.Serializer;
+import ritzow.sandbox.world.entity.Entity;
 
-public class ParticleEntity extends ClientEntity {
+public class ParticleEntity extends Entity implements Renderable {
 	protected final int model;
 	protected final float scaleX;
 	protected final float scaleY;
