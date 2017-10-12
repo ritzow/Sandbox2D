@@ -9,6 +9,10 @@ public final class Utility {
 	
 	private Utility() {}
 	
+	public static float millisToTime(long millis) {
+		return millis * 0.0625f; //TODO not sure if this is correct
+	}
+	
 	public static float randomFloat(float min, float max) {
 		return (float)(Math.random() * (max - min) + min);
 	}

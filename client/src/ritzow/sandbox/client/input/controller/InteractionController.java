@@ -12,7 +12,6 @@ import ritzow.sandbox.client.input.handler.KeyHandler;
 import ritzow.sandbox.client.input.handler.MouseButtonHandler;
 import ritzow.sandbox.client.world.entity.ClientItemEntity;
 import ritzow.sandbox.client.world.item.ClientBlockItem;
-import ritzow.sandbox.client.world.item.ClientItem;
 import ritzow.sandbox.world.item.Item;
 
 public final class InteractionController implements Controller, MouseButtonHandler, CursorPosHandler, FramebufferSizeHandler, KeyHandler {
@@ -132,14 +131,14 @@ public final class InteractionController implements Controller, MouseButtonHandl
 					Item item = client.getPlayer().removeSelectedItem();
 					if(item != null) {
 						//TODO deal with entityID for entities created outside server directly
-						ClientItemEntity entity = new ClientItemEntity(0, (ClientItem)item);
+						ClientItemEntity<Item> entity = new ClientItemEntity<>(0, item);
 						entity.setVelocityX(mouseHorizontalToWorld(camera, mouseX, frameWidth, frameHeight) - client.getPlayer().getPositionX());
 						entity.setVelocityY(mouseVerticalToWorld(camera, mouseY, frameHeight) - client.getPlayer().getPositionY());
 						entity.setSpeed(0.5f);
 						entity.setPositionX(client.getPlayer().getPositionX() + 2 * client.getPlayer().getWidth() * entity.getVelocityX());
 						entity.setPositionY(client.getPlayer().getPositionY() + 2 * client.getPlayer().getHeight() * entity.getVelocityY());
 						client.getWorld().getAudioSystem().playSound(Sounds.THROW, client.getPlayer().getPositionX(), client.getPlayer().getPositionY(), entity.getVelocityX(), entity.getVelocityY(), 1.0f, 1f);
-						client.getWorld().queueAdd(entity);
+						client.getWorld().add(entity);
 					}
 					break;
 				case GLFW.GLFW_KEY_KP_1:

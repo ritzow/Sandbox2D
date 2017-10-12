@@ -19,11 +19,14 @@ import ritzow.sandbox.data.Serializer;
 import ritzow.sandbox.data.SerializerReaderWriter;
 import ritzow.sandbox.network.NetworkController;
 import ritzow.sandbox.network.Protocol;
-import ritzow.sandbox.network.TimeoutException;
 import ritzow.sandbox.network.Protocol.PlayerAction;
+import ritzow.sandbox.network.TimeoutException;
 import ritzow.sandbox.world.World;
+import ritzow.sandbox.world.block.Block;
 import ritzow.sandbox.world.entity.Entity;
+import ritzow.sandbox.world.entity.ItemEntity;
 import ritzow.sandbox.world.entity.PlayerEntity;
+import ritzow.sandbox.world.item.BlockItem;
 
 public final class Server {
 	private final NetworkController controller;
@@ -41,8 +44,8 @@ public final class Server {
 		this.controller = new NetworkController(bindAddress, this::process);
 		this.broadcaster = Executors.newCachedThreadPool();
 		this.clients = Collections.synchronizedList(new LinkedList<ClientState>());
-		this.updater = new ServerGameUpdater();
 		this.serialRegistry = SerializationProvider.getProvider();
+		this.updater = new ServerGameUpdater(this);
 	}
 	
 	public void start() {
@@ -77,26 +80,32 @@ public final class Server {
 	private void process(SocketAddress sender, int messageID, byte[] data) {
 		final short protocol = ByteUtil.getShort(data, 0);
 		final ClientState client = forAddress(sender);
-		
-		if(client != null) {
-			switch(protocol) {
-				case Protocol.CLIENT_DISCONNECT:
-					disconnect(client, true);
-					break;
-				case Protocol.CONSOLE_MESSAGE:
-					processClientMessage(client, data);
-					break;
-				case Protocol.CLIENT_PLAYER_ACTION:
-					processPlayerAction(client, data);
-					break;
-				case Protocol.CLIENT_BREAK_BLOCK:
-					processClientBreakBlock(client, data);
-					break;
-				default:
-					System.out.println("received unknown protocol " + protocol);
+		try {
+			if(client != null) {
+				switch(protocol) {
+					case Protocol.CLIENT_DISCONNECT:
+						disconnect(client, true);
+						break;
+					case Protocol.CONSOLE_MESSAGE:
+						processClientMessage(client, data);
+						break;
+					case Protocol.CLIENT_PLAYER_ACTION:
+						processPlayerAction(client, data);
+						break;
+					case Protocol.CLIENT_BREAK_BLOCK:
+						processClientBreakBlock(client, data);
+						break;
+					default:
+						System.out.println("received unknown protocol " + protocol);
+				}
+			} else if(protocol == Protocol.CLIENT_CONNECT_REQUEST) {
+				connectClient(sender);
 			}
-		} else if(protocol == Protocol.CLIENT_CONNECT_REQUEST) {
-			connectClient(sender);
+		} catch(ClientBadDataException e) {
+			//disconnect the client if it sends invalid data three times or more
+			if(client != null && client.strike() >= 3) {
+				disconnect(client, "server received bad data from client 3 times");
+			}
 		}
 	}
 	
@@ -107,23 +116,42 @@ public final class Server {
 		
 		updater.submit(u -> {
 			if(u.world != null) {
+				Block block = u.world.getForeground().get(x, y);
 				u.world.getForeground().destroy(u.world, x, y);
-				broadcast(buildRemoveBlock(x, y));
+				broadcast(buildRemoveBlock(block, x, y));
+				//TODO for now creates entity containing same block, but block data may need to be reset before dropping into world
+				if(block != null) {
+					ItemEntity<BlockItem> drop = 
+							new ItemEntity<BlockItem>(u.world.nextEntityID(), new BlockItem(block), x, y);
+					drop.setVelocityX(-0.2f + ((float) Math.random() * (0.4f)));
+					drop.setVelocityY((float) Math.random() * (0.35f));
+					u.world.add(drop);
+					sendEntity(drop);
+				}
 			}
 		});
 	}
 	
-	public byte[] getEntitySerialized(Entity e) {
+	protected void processClientMessage(ClientState client, byte[] data) {
+		byte[] decoration = ('<' + client.username + "> ").getBytes(Protocol.CHARSET);
+		byte[] broadcast = new byte[2 + decoration.length + data.length - 2];
+		ByteUtil.putShort(broadcast, 0, Protocol.CONSOLE_MESSAGE);
+		ByteUtil.copy(decoration, broadcast, 2);
+		System.arraycopy(data, 2, broadcast, 2 + decoration.length, data.length - 2);
+		broadcast(broadcast, true);
+	}
+	
+	public void sendEntity(Entity e) {
 		byte[] serialized = ByteUtil.compress(serialRegistry.serialize(e));
 		byte[] packet = new byte[3 + serialized.length];
 		ByteUtil.putShort(packet, 0, Protocol.SERVER_ADD_ENTITY);
 		ByteUtil.putBoolean(packet, 2, true); //always compressed
 		ByteUtil.copy(serialized, packet, 3);
-		return packet;
+		broadcast(packet);
 	}
 	
 	@SuppressWarnings("static-method")
-	public byte[] getEntityUpdateSerialized(Entity e) {
+	public void sendEntityUpdate(Entity e) {
 		//protocol, id, posX, posY, velX, velY
 		byte[] update = new byte[2 + 4 + 4 + 4 + 4 + 4];
 		ByteUtil.putShort(update, 0, Protocol.SERVER_ENTITY_UPDATE);
@@ -132,7 +160,15 @@ public final class Server {
 		ByteUtil.putFloat(update, 10, e.getPositionY());
 		ByteUtil.putFloat(update, 14, e.getVelocityX());
 		ByteUtil.putFloat(update, 18, e.getVelocityY());
-		return update;
+		broadcast(update);
+	}
+	
+	static byte[] buildRemoveBlock(Block block, int x, int y) {
+		byte[] packet = new byte[10];
+		ByteUtil.putShort(packet, 0, Protocol.SERVER_REMOVE_BLOCK);
+		ByteUtil.putInteger(packet, 2, x);
+		ByteUtil.putInteger(packet, 6, y);
+		return packet;
 	}
 	
 	private void checkBlockDestroyData(int x, int y) {
@@ -140,23 +176,6 @@ public final class Server {
 		int worldHeight = updater.world.getForeground().getHeight();
 		if(updater.world == null || !(x < worldWidth && x >= 0 && y < worldHeight && y >= 0))
 			throw new ClientBadDataException("client sent bad x and y block coordinates");
-	}
-	
-	protected static byte[] buildRemoveBlock(int x, int y) {
-		byte[] packet = new byte[10];
-		ByteUtil.putShort(packet, 0, Protocol.SERVER_REMOVE_BLOCK);
-		ByteUtil.putInteger(packet, 2, x);
-		ByteUtil.putInteger(packet, 6, y);
-		return packet;
-	}
-
-	protected void processClientMessage(ClientState client, byte[] data) {
-		byte[] decoration = ('<' + client.username + "> ").getBytes(Protocol.CHARSET);
-		byte[] broadcast = new byte[2 + decoration.length + data.length - 2];
-		ByteUtil.putShort(broadcast, 0, Protocol.CONSOLE_MESSAGE);
-		ByteUtil.copy(decoration, broadcast, 2);
-		System.arraycopy(data, 2, broadcast, 2 + decoration.length, data.length - 2);
-		broadcast(broadcast, true);
 	}
 	
 	public void broadcastMessage(String message) {
@@ -422,7 +441,7 @@ public final class Server {
 					clients.add(newClient); //not a good idea to use server field from ServerGameUpdater
 					System.out.println("Added client to connected list");
 					world.add(player);
-					send(getEntitySerialized(player), newClient);
+					sendEntity(player);
 					send(createPlayerIDMessage(player), newClient);
 				});
 			}
@@ -431,27 +450,15 @@ public final class Server {
 		}
 	}
 
-	public static final void processPlayerAction(ClientState client, byte[] data) {
+	public final void processPlayerAction(ClientState client, byte[] data) {
 		if(client.player == null)
-			throw new RuntimeException("client has no associated player to perform an action");
-		byte action = data[2];
-		boolean enable = ByteUtil.getBoolean(data, 3);
-		switch(action) {
-		case PlayerAction.PLAYER_LEFT:
-			client.player.setLeft(enable);
-			break;
-		case PlayerAction.PLAYER_RIGHT:
-			client.player.setRight(enable);
-			break;
-		case PlayerAction.PLAYER_UP:
-			client.player.setUp(enable);
-			break;
-		case PlayerAction.PLAYER_DOWN:
-			client.player.setDown(enable);
-			break;
-		default:
-			throw new RuntimeException("received unknown player action");
-		}
+			throw new ClientBadDataException("client has no associated player to perform an action");
+		updater.submit(u -> {
+			PlayerAction action = PlayerAction.forCode(data[2]);
+			boolean enable = ByteUtil.getBoolean(data, 3);
+			//TODO check if player can jump 
+			client.player.processAction(action, enable);
+		});
 	}
 
 	public static byte[][] buildWorldPackets(World world, Serializer ser) {
@@ -460,7 +467,7 @@ public final class Server {
 		int headerSize = 2;
 		int dataBytesPerPacket = Protocol.MAX_MESSAGE_LENGTH - headerSize;
 	
-		//serialize the world for transfer, no need to use ByteUtil.serialize because we know what we're serializing (standard world format)
+		//serialize the world for transfer
 		byte[] worldBytes = ByteUtil.compress(ser.serialize(world));
 				//ByteUtil.compress(world.getBytes(ser)); //serialize everything including other player entities
 		
@@ -543,6 +550,7 @@ public final class Server {
 		protected final SocketAddress address;
 		protected volatile String username;
 		protected volatile PlayerEntity player;
+		private volatile short disconnectStrikes;
 		
 		public ClientState(int initReliable, SocketAddress address) {
 			this.reliableMessageID = initReliable;
@@ -556,6 +564,10 @@ public final class Server {
 		
 		public int nextReliableID() {
 			return reliableMessageID++;
+		}
+		
+		public int strike() {
+			return ++disconnectStrikes;
 		}
 		
 		@Override

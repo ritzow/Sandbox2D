@@ -1,24 +1,27 @@
 package ritzow.sandbox.client.world.item;
 
+import ritzow.sandbox.client.graphics.Graphical;
 import ritzow.sandbox.client.graphics.Graphics;
 import ritzow.sandbox.client.graphics.ImmutableGraphics;
 import ritzow.sandbox.client.world.block.ClientBlock;
 import ritzow.sandbox.data.DataReader;
 import ritzow.sandbox.data.Serializer;
 import ritzow.sandbox.world.block.Block;
+import ritzow.sandbox.world.item.BlockItem;
 import ritzow.sandbox.world.item.Item;
 
-public final class ClientBlockItem extends ClientItem {
-	protected final ClientBlock block;
+public final class ClientBlockItem extends BlockItem implements Graphical {
+	//protected final ClientBlock block;
 	protected final Graphics graphics;
 	
 	public ClientBlockItem(DataReader input) {
-		block = input.readObject();
-		graphics = new ImmutableGraphics(block.getModelIndex(), 1.0f, 1.0f, 1.0f, 0.0f);
+		super(input);
+		graphics = new ImmutableGraphics(((ClientBlock)block).getModelIndex(), 1.0f, 1.0f, 1.0f, 0.0f);
 	}
 	
 	public ClientBlockItem(ClientBlock block) {
-		this.block = block;
+		super(block);
+		//this.block = block;
 		this.graphics = new ImmutableGraphics(block.getModelIndex(), 1.0f, 1.0f, 1.0f, 0.0f);
 	}
 	
@@ -31,11 +34,11 @@ public final class ClientBlockItem extends ClientItem {
 		return block;
 	}
 
-	@Override
 	public Graphics getGraphics() {
 		return graphics;
 	}
 
+	@Override
 	public String getName() {
 		return block.getName() + " block";
 	}

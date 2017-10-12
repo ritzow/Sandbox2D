@@ -13,6 +13,7 @@ import java.util.zip.InflaterOutputStream;
  *
  */
 public final class ByteUtil {
+	public static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
 	
 	public static <T extends Transportable> byte[] serializeCollection(Collection<T> elements, Serializer ser) {
 		byte[][] serialized = new byte[elements.size()][]; //store each serialized object's data
@@ -39,18 +40,24 @@ public final class ByteUtil {
 	 * WARNING: This method has very few safety checks
 	 * @param destination the array to copy data into
 	 * @param offset the starting index into the destination array
+	 * @param headerSize number of bytes at the beginning of each array to ignore
 	 * @param arrays the arrays to copy
 	 * @return the number of bytes written to the destination array
 	 */
-	public static int concatenate(byte[] destination, int offset, byte[]... arrays) {
+	public static int concatenate(byte[] destination, int offset, int headerSize, byte[]... arrays) {
 		if(offset < 0)
 			throw new IndexOutOfBoundsException("offset cannot be less than zero");
 		int index = offset;
 		for(byte[] array : arrays) {
-			copy(array, destination, index);
+			System.arraycopy(array, headerSize, destination, index, array.length - headerSize);
+			//copy(array, destination, index);
 			index += array.length;
 		}
 		return index - offset;
+	}
+	
+	public static int concatenate(byte[] destination, int offset, byte[]... arrays) {
+		return concatenate(destination, offset, 0, arrays);
 	}
 	
 	/**

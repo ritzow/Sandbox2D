@@ -7,10 +7,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Queue;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import ritzow.sandbox.audio.AudioSystem;
@@ -28,7 +26,7 @@ public class World implements Transportable {
 	private final List<Entity> entities;
 	
 	/** queues for entities to be added or removed from the world **/
-	private final Queue<Entity> entityAddQueue, entityRemoveQueue;
+	//private final Queue<Entity> entityAddQueue, entityRemoveQueue;
 	
 	/** blocks in the world that collide with entities and and are rendered **/
 	protected final BlockGrid foreground, background;
@@ -51,16 +49,16 @@ public class World implements Transportable {
 	public World(AudioSystem audio, int width, int height, float gravity) {
 		this.audio = audio;
 		entities = new ArrayList<Entity>(100);
-		this.entityAddQueue = new LinkedList<Entity>();
-		this.entityRemoveQueue = new LinkedList<Entity>();
+		//this.entityAddQueue = new LinkedList<Entity>();
+		//this.entityRemoveQueue = new LinkedList<Entity>();
 		foreground = new BlockGrid(width, height);
 		background = new BlockGrid(width, height);
 		this.gravity = gravity;
 	}
 	
 	public World(DataReader reader) {
-		entityAddQueue = new LinkedList<Entity>();
-		entityRemoveQueue = new LinkedList<Entity>();
+		//entityAddQueue = new LinkedList<Entity>();
+		//entityRemoveQueue = new LinkedList<Entity>();
 		gravity = reader.readFloat();
 		foreground = Objects.requireNonNull(reader.readObject());
 		background = Objects.requireNonNull(reader.readObject());
@@ -237,23 +235,6 @@ public class World implements Transportable {
 		}
 	}
 	
-	
-	@Deprecated
-	public final void queueAdd(Entity e) {
-		Objects.requireNonNull(e);
-		synchronized(entityAddQueue) {
-			entityAddQueue.add(e);
-		}
-	}
-	
-	
-	@Deprecated
-	public final void queueRemove(Entity e) {
-		synchronized(entityRemoveQueue) {
-			entityRemoveQueue.add(e);
-		}
-	}
-	
 	public final float getGravity() {
 		return gravity;
 	}
@@ -265,11 +246,9 @@ public class World implements Transportable {
 	
 	//TODO I doubt this is thread-safe or efficient
 	public final Entity find(int entityID) {
-		synchronized(entities) {
-			for(Entity e : entities) {
-				if(e.getID() == entityID) {
-					return e;
-				}
+		for(Entity e : entities) {
+			if(e.getID() == entityID) {
+				return e;
 			}
 		}
 		return null;
@@ -283,14 +262,14 @@ public class World implements Transportable {
 	 */
 	
 	public final void update(float time) {
-		synchronized(entities) {
-			synchronized(entityAddQueue) {
-				entities.addAll(entityAddQueue);
-				entityAddQueue.clear();	
-			} synchronized(entityRemoveQueue) {
-				entities.removeAll(entityRemoveQueue);
-				entityRemoveQueue.clear();
-			}
+		synchronized(entities) { //TODO remove all synchronization
+//			synchronized(entityAddQueue) {
+//				entities.addAll(entityAddQueue);
+//				entityAddQueue.clear();	
+//			} synchronized(entityRemoveQueue) {
+//				entities.removeAll(entityRemoveQueue);
+//				entityRemoveQueue.clear();
+//			}
 			
 			for(int i = 0; i < entities.size(); i++) {
 				Entity e = entities.get(i);

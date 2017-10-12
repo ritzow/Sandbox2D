@@ -1,35 +1,36 @@
 package ritzow.sandbox.client.graphics;
 
-import static org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT;
 import static org.lwjgl.opengl.GL11.GL_ONE_MINUS_SRC_ALPHA;
 import static org.lwjgl.opengl.GL11.GL_SRC_ALPHA;
-import static org.lwjgl.opengl.GL11.GL_ZERO;
 import static org.lwjgl.opengl.GL11.glBlendFunc;
-import static org.lwjgl.opengl.GL11.glClear;
 import static org.lwjgl.opengl.GL20.glDrawBuffers;
 import static org.lwjgl.opengl.GL30.GL_COLOR_ATTACHMENT0;
 import static org.lwjgl.opengl.GL30.GL_COLOR_ATTACHMENT1;
 
+import java.util.Collection;
+import ritzow.sandbox.client.input.controller.Controller;
 import ritzow.sandbox.client.util.Renderable;
-import ritzow.sandbox.client.world.ClientWorld;
 import ritzow.sandbox.client.world.block.ClientBlock;
 import ritzow.sandbox.world.BlockGrid;
-import ritzow.sandbox.world.component.Luminous;
+import ritzow.sandbox.world.World;
 
-public final class ClientWorldRenderer implements Renderer {
+public final class ClientGameRenderer implements Renderer {
 	private static final float MAX_TIMESTEP = 2;
 	
-	private final ClientWorld world;
 	private final ModelRenderProgram modelProgram;
 	private final LightRenderProgram lightProgram;
 	private final Framebuffer framebuffer;
 	private final Texture diffuseTexture;
 	private final Texture finalTexture;
 	private int previousWidth, previousHeight;
+	
+	private final World world;
+	private final Collection<Controller> controllers;
 	private long previousTime;
 	
-	public ClientWorldRenderer(ModelRenderProgram modelProgram, LightRenderProgram lightProgram, ClientWorld world) {
+	public ClientGameRenderer(Collection<Controller> controllers, ModelRenderProgram modelProgram, LightRenderProgram lightProgram, World world) {
 		this.world = world;
+		this.controllers = controllers;
 		this.modelProgram = modelProgram;
 		this.lightProgram = lightProgram;
 		this.framebuffer = new Framebuffer();
@@ -56,6 +57,11 @@ public final class ClientWorldRenderer implements Renderer {
 			totalUpdateTime -= time;
 		}
 		
+		//update controllers (camera, player, etc.)
+		controllers.forEach(c -> {
+			c.update();
+		});
+		
 		//ensure that model program is cached on stack
 		ModelRenderProgram modelProgram = this.modelProgram;
 		
@@ -64,8 +70,7 @@ public final class ClientWorldRenderer implements Renderer {
 			modelProgram.setResolution(currentWidth, currentHeight);
 			diffuseTexture.setSize(currentWidth, currentHeight);
 			finalTexture.setSize(currentWidth, currentHeight);
-			previousWidth = currentWidth;
-			previousHeight = currentHeight;
+			previousWidth = currentWidth; previousHeight = currentHeight;
 		}
 		
 		//set the current shader program
@@ -134,28 +139,28 @@ public final class ClientWorldRenderer implements Renderer {
 		 * http://www.soolstyle.com/2010/02/15/2d-deferred-lightning/
 		 */
 		
-		lightProgram.setCurrent();
-		glDrawBuffers(GL_COLOR_ATTACHMENT1);
-		framebuffer.clear(0, 0, 0, 1);
-		glClear(GL_COLOR_BUFFER_BIT);
-		glBlendFunc(GL_SRC_ALPHA, GL_ZERO);
-		world.forEach(e -> {
-			if(e instanceof Luminous) {
-				//pre-compute variables
-				Luminous light = (Luminous)e;
-				float posX = e.getPositionX();
-				float posY = e.getPositionY();
-				float halfWidth = light.getLightRadius();
-				float halfHeight = halfWidth;
-				
-				//check if the entity is visible inside the viewport and render it
-				if(posX < worldRight + halfWidth && posX > worldLeft - halfWidth && posY < worldTop + halfHeight && posY > worldBottom - halfHeight) {
-					lightProgram.render(light, posX, posY, currentWidth, currentHeight);
-				}
-			}
-		});
-		
-		glDrawBuffers(GL_COLOR_ATTACHMENT0);
+//		lightProgram.setCurrent();
+//		glDrawBuffers(GL_COLOR_ATTACHMENT1);
+//		framebuffer.clear(0, 0, 0, 1);
+//		glClear(GL_COLOR_BUFFER_BIT);
+//		glBlendFunc(GL_SRC_ALPHA, GL_ZERO);
+//		world.forEach(e -> {
+//			if(e instanceof Luminous) {
+//				//pre-compute variables
+//				Luminous light = (Luminous)e;
+//				float posX = e.getPositionX();
+//				float posY = e.getPositionY();
+//				float halfWidth = light.getLightRadius();
+//				float halfHeight = halfWidth;
+//				
+//				//check if the entity is visible inside the viewport and render it
+//				if(posX < worldRight + halfWidth && posX > worldLeft - halfWidth && posY < worldTop + halfHeight && posY > worldBottom - halfHeight) {
+//					lightProgram.render(light, posX, posY, currentWidth, currentHeight);
+//				}
+//			}
+//		});
+//		
+//		glDrawBuffers(GL_COLOR_ATTACHMENT0);
 	    return framebuffer;
 	}
 }

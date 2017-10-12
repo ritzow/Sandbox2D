@@ -1,9 +1,9 @@
 package ritzow.sandbox.client.world.block;
 
 import ritzow.sandbox.client.graphics.Models;
+import ritzow.sandbox.data.ByteUtil;
 import ritzow.sandbox.data.DataReader;
 import ritzow.sandbox.data.Serializer;
-import ritzow.sandbox.world.block.Block;
 
 public class ClientGrassBlock extends ClientBlock {
 	
@@ -12,10 +12,6 @@ public class ClientGrassBlock extends ClientBlock {
 	}
 	
 	public ClientGrassBlock(DataReader input) {
-		
-	}
-	
-	public ClientGrassBlock(byte[] data) {
 		
 	}
 
@@ -35,11 +31,6 @@ public class ClientGrassBlock extends ClientBlock {
 	}
 
 	@Override
-	public Block createNew() {
-		return new ClientGrassBlock();
-	}
-
-	@Override
 	public String getName() {
 		return "Grass";
 	}
@@ -51,6 +42,6 @@ public class ClientGrassBlock extends ClientBlock {
 
 	@Override
 	public byte[] getBytes(Serializer ser) {
-		return new byte[0];
+		return ByteUtil.EMPTY_BYTE_ARRAY;
 	}
 }

@@ -40,14 +40,6 @@ public final class Protocol {
 	public static final short
 		CONSOLE_MESSAGE = 0;
 	
-	public static final class PlayerAction {
-		public static final byte
-			PLAYER_LEFT = 0,
-			PLAYER_RIGHT = 1,
-			PLAYER_UP = 2,
-			PLAYER_DOWN = 3;
-	}
-	
 	private static final short[] RELIABLE_PROTOCOLS = {
 		CLIENT_CONNECT_REQUEST,
 		CLIENT_DISCONNECT,
@@ -68,6 +60,34 @@ public final class Protocol {
 	
 	static {
 		Arrays.sort(RELIABLE_PROTOCOLS);
+	}
+	
+	public static enum PlayerAction {
+		MOVE_LEFT(0),
+		MOVE_RIGHT(1),
+		MOVE_UP(2),
+		MOVE_DOWN(3);
+		
+		private static final PlayerAction[] actions = PlayerAction.values();
+		private final byte code;
+		
+		PlayerAction(int code) {
+			if(code > Byte.MAX_VALUE || code < Byte.MIN_VALUE)
+				throw new RuntimeException("invalid player action code");
+			this.code = (byte)code;
+		}
+		
+		public byte getCode() {
+			return code;
+		}
+		
+		public static PlayerAction forCode(byte code) {
+			for(PlayerAction a : actions) {
+				if(a.getCode() == code)
+					return a;
+			}
+			throw new RuntimeException("unknown player action");
+		}
 	}
 	
 	public static boolean isReliable(short protocol) {
