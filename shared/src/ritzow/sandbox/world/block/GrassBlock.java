@@ -1,5 +1,6 @@
 package ritzow.sandbox.world.block;
 
+import ritzow.sandbox.data.ByteUtil;
 import ritzow.sandbox.data.DataReader;
 import ritzow.sandbox.data.Serializer;
 
@@ -24,11 +25,6 @@ public class GrassBlock extends Block {
 	}
 
 	@Override
-	public Block createNew() {
-		return new GrassBlock();
-	}
-
-	@Override
 	public String getName() {
 		return "Grass";
 	}
@@ -40,6 +36,6 @@ public class GrassBlock extends Block {
 	
 	@Override
 	public byte[] getBytes(Serializer ser) {
-		return EMPTY_BYTE_ARRAY;
+		return ByteUtil.EMPTY_BYTE_ARRAY;
 	}
 }

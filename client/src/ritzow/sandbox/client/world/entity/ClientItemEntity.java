@@ -1,8 +1,8 @@
 package ritzow.sandbox.client.world.entity;
 
+import ritzow.sandbox.client.graphics.Graphical;
 import ritzow.sandbox.client.graphics.ModelRenderProgram;
 import ritzow.sandbox.client.util.Renderable;
-import ritzow.sandbox.client.world.item.ClientItem;
 import ritzow.sandbox.data.DataReader;
 import ritzow.sandbox.world.entity.ItemEntity;
 import ritzow.sandbox.world.item.Item;
@@ -11,10 +11,12 @@ public final class ClientItemEntity<I extends Item> extends ItemEntity<I> implem
 	protected float rotation;
 	protected float rotationSpeed;
 	
+	//TODO get rid of constructor repetition, and maybe remove rotationSpeed field?
 	public ClientItemEntity(DataReader data) {
 		super(data);
+		this.rotationSpeed = (float) (Math.random() < 0.5f ? -(Math.random() * 0.02f + 0.02f) : (Math.random() * 0.02f + 0.02f));
 	}
-	
+
 	public ClientItemEntity(int entityID, I item) {
 		super(entityID, item);
 		this.rotationSpeed = (float) (Math.random() < 0.5f ? -(Math.random() * 0.02f + 0.02f) : (Math.random() * 0.02f + 0.02f));
@@ -35,7 +37,7 @@ public final class ClientItemEntity<I extends Item> extends ItemEntity<I> implem
 
 	@Override
 	public void render(ModelRenderProgram renderer) {
-		renderer.render(((ClientItem)item).getGraphics(), 1.0f, positionX, positionY, 0.5f, 0.5f, rotation);
+		renderer.render(((Graphical)item).getGraphics(), 1.0f, positionX, positionY, 0.5f, 0.5f, rotation);
 	}
 	
 	@Override

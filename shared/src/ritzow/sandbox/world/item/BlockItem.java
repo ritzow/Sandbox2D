@@ -1,15 +1,15 @@
 package ritzow.sandbox.world.item;
 
+import java.util.Objects;
 import ritzow.sandbox.data.DataReader;
 import ritzow.sandbox.data.Serializer;
 import ritzow.sandbox.world.block.Block;
-import ritzow.sandbox.world.item.Item;
 
-public final class BlockItem extends Item {
+public class BlockItem extends Item {
 	protected final Block block;
 	
 	public BlockItem(DataReader input) {
-		block = input.readObject();
+		block = Objects.requireNonNull(input.readObject());
 	}
 	
 	public BlockItem(Block block) {

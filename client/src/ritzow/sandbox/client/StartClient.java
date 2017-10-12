@@ -9,10 +9,11 @@ import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Arrays;
+import java.util.Collection;
 import ritzow.sandbox.client.audio.ClientAudioSystem;
 import ritzow.sandbox.client.audio.Sounds;
 import ritzow.sandbox.client.graphics.Camera;
-import ritzow.sandbox.client.graphics.ClientWorldRenderer;
+import ritzow.sandbox.client.graphics.ClientGameRenderer;
 import ritzow.sandbox.client.graphics.LightRenderProgram;
 import ritzow.sandbox.client.graphics.ModelRenderProgram;
 import ritzow.sandbox.client.graphics.OpenGLException;
@@ -22,14 +23,14 @@ import ritzow.sandbox.client.input.Controls;
 import ritzow.sandbox.client.input.EventProcessor;
 import ritzow.sandbox.client.input.InputManager;
 import ritzow.sandbox.client.input.controller.CameraController;
+import ritzow.sandbox.client.input.controller.Controller;
 import ritzow.sandbox.client.input.controller.InteractionController;
 import ritzow.sandbox.client.input.controller.PlayerController;
 import ritzow.sandbox.client.input.controller.TrackingCameraController;
 import ritzow.sandbox.client.input.handler.KeyHandler;
 import ritzow.sandbox.client.input.handler.WindowCloseHandler;
-import ritzow.sandbox.client.util.RunnableRepeatExecutor;
-import ritzow.sandbox.client.world.ClientWorld;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
+import ritzow.sandbox.world.World;
 
 public final class StartClient {
 	public static void main(String... args) throws SocketException, UnknownHostException {
@@ -63,9 +64,10 @@ public final class StartClient {
 		
 		@Override
 		public void run() {
+			eventProcessor.waitForSetup();
 			
 			//wait for the client to receive the world and return it
-			ClientWorld world = client.getWorld();
+			World world = client.getWorld();
 			System.out.println("world received");
 			
 			ClientAudioSystem audio = new ClientAudioSystem();
@@ -87,7 +89,16 @@ public final class StartClient {
 			
 			CameraController cameraGrip = new TrackingCameraController(new Camera(0, 0, 1), audio, player, 0.005f, 0.05f, 0.6f);
 			
-			eventProcessor.waitForSetup();
+			//create and link player controllers so the user can play the game
+			Collection<Controller> controllers = Arrays.asList(
+					new PlayerController(client),
+					new InteractionController(client, cameraGrip.getCamera(), 200, 300, 5),
+					cameraGrip
+			);
+			
+			controllers.forEach(controller -> {
+				controller.link(eventProcessor.getDisplay().getInputManager());
+			});
 			
 			RenderManager renderManager = eventProcessor.getDisplay().getRenderManager();
 			
@@ -107,7 +118,7 @@ public final class StartClient {
 							cameraGrip.getCamera()
 					);
 					
-					graphics.getRenderers().add(new ClientWorldRenderer(modelProgram, lightProgram, world));
+					graphics.getRenderers().add(new ClientGameRenderer(controllers, modelProgram, lightProgram, world));
 					
 					System.out.println("renderer shaders initialized");
 				} catch (IOException | OpenGLException e) {
@@ -117,27 +128,7 @@ public final class StartClient {
 			
 			renderManager.start();
 			renderManager.waitForSetup();
-			
 			System.out.println("render manager setup complete");
-			
-			//create the client update manager and link it with the window events
-			RunnableRepeatExecutor clientUpdater = new RunnableRepeatExecutor();
-			clientUpdater.link(eventProcessor.getDisplay().getInputManager());
-			
-			//create and link player controllers so the user can play the game
-			Arrays.asList(
-					new PlayerController(client),
-					new InteractionController(client, cameraGrip.getCamera(), 200, 300, 5),
-					cameraGrip
-			).forEach(controller -> {
-				controller.link(eventProcessor.getDisplay().getInputManager());
-				clientUpdater.getRunnables().add(controller);
-			});
-			
-			System.out.println("game setup complete");
-
-			//start the updater
-			clientUpdater.start();
 			
 			//wait for the Display, and thus InputManager, to be created, then link the game manager to the display so that the escape button and x button exit the game
 			eventProcessor.getDisplay().getInputManager().getWindowCloseHandlers().add(this);
@@ -161,8 +152,8 @@ public final class StartClient {
 			
 			//TODO need to fix ordering of these things
 			System.out.print("exiting... ");
-			clientUpdater.stop();
-			clientUpdater.waitUntilFinished();
+			//clientUpdater.stop();
+			//clientUpdater.waitUntilFinished();
 			renderManager.waitForExit();
 			eventProcessor.waitForExit();
 			client.stop();

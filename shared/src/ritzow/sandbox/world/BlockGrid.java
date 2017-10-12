@@ -101,8 +101,9 @@ public final class BlockGrid implements Transportable {
 	
 	public boolean destroy(World world, int x, int y) {
 		if(isBlock(x, y)) {
-			get(x, y).onBreak(world, x, y);
+			Block block = get(x, y);
 			set(x, y, null);
+			block.onBreak(world, this, x, y);
 			return true;
 		} else {
 			return false;
@@ -112,7 +113,7 @@ public final class BlockGrid implements Transportable {
 	public boolean place(World world, int x, int y, Block block) {
 		if(!isBlock(x, y)) {
 			set(x, y, block);
-			block.onPlace(world, x, y);
+			block.onPlace(world, this, x, y);
 			return true;
 		} else {
 			return false;

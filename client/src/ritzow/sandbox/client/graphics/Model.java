@@ -17,7 +17,6 @@ public final class Model {
 	public final int texture;
 	
 	protected Model(int vertexCount, int indices, int positions, int textureCoordinates, int texture) {
-		super();
 		this.vao = glGenVertexArrays();
 		this.vertexCount = vertexCount;
 		this.indices = indices;

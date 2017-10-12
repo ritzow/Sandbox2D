@@ -36,11 +36,10 @@ public final class RenderManager implements Service, FramebufferSizeHandler, Win
 	private final List<Renderer> renderers;
 	private final Queue<Consumer<RenderManager>> renderTasks;
 	
-	public RenderManager(Display display) {
-		this(display, a -> {});
-	}
+	private static final long TARGET_FPS = 60;
+	private static final long TARGET_NANOSECONDS = 1_000_000_000/TARGET_FPS;
 	
-	public RenderManager(Display display, Consumer<RenderManager> onStartup) {
+	public RenderManager(Display display) {
 		this.display = display;
 		this.link(display.getInputManager());
 		this.renderers = new ArrayList<Renderer>();
@@ -76,10 +75,10 @@ public final class RenderManager implements Service, FramebufferSizeHandler, Win
 		try {
 			while(!exit) {
 				if(focused) {
+					long frameStart = System.nanoTime();
 					synchronized(renderTasks) {
-						Consumer<RenderManager> task = renderTasks.poll();
-						if(task != null) {
-							task.accept(this);
+						while(!renderTasks.isEmpty()) {
+							renderTasks.poll().accept(this);
 						}
 					}
 					
@@ -98,7 +97,8 @@ public final class RenderManager implements Service, FramebufferSizeHandler, Win
 					
 					GraphicsUtility.checkErrors();
 					display.refresh();
-					Thread.sleep(16);
+					long nanosToSleep = (Math.max(0, TARGET_NANOSECONDS - (System.nanoTime() - frameStart)));
+					Thread.sleep(nanosToSleep/1_000_000, (int)(nanosToSleep % 1_000_000));
 				} else {
 					synchronized(this) {
 						while(!(focused || exit)) {

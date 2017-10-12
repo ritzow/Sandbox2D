@@ -9,6 +9,6 @@ public abstract class ClientItem extends Item {
 	 * @return The graphics object representing the item's appearance
 	 */
 	public abstract Graphics getGraphics();
-	
+	@Override
 	public abstract String getName();
 }

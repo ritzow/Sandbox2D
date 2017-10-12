@@ -14,7 +14,6 @@ Provides bindings to GLFW, OpenGL, and OpenAL. The program currently uses versio
 {
 	"build": "stable",
 	"mode": "zip",
-	"selectedAddons": [],
 	"platform": [
 	"windows",
 	"macos",

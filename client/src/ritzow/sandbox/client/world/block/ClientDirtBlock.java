@@ -1,17 +1,13 @@
 package ritzow.sandbox.client.world.block;
 
 import ritzow.sandbox.client.graphics.Models;
+import ritzow.sandbox.data.ByteUtil;
 import ritzow.sandbox.data.DataReader;
 import ritzow.sandbox.data.Serializer;
-import ritzow.sandbox.world.block.Block;
 
 public class ClientDirtBlock extends ClientBlock {
 	
 	public ClientDirtBlock() {
-		
-	}
-	
-	public ClientDirtBlock(byte[] data) {
 		
 	}
 	
@@ -35,11 +31,6 @@ public class ClientDirtBlock extends ClientBlock {
 	}
 
 	@Override
-	public Block createNew() {
-		return new ClientDirtBlock();
-	}
-
-	@Override
 	public String getName() {
 		return "dirt";
 	}
@@ -51,7 +42,7 @@ public class ClientDirtBlock extends ClientBlock {
 
 	@Override
 	public byte[] getBytes(Serializer ser) {
-		return new byte[0];
+		return ByteUtil.EMPTY_BYTE_ARRAY;
 	}
 
 }

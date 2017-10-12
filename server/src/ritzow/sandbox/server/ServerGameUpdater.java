@@ -16,12 +16,14 @@ final class ServerGameUpdater {
 	
 	static final long MAX_TIMESTEP = 2;
 	
+	Server server;
 	Thread runThread;
 	World world;
 	long previousTime;
 	
-	public ServerGameUpdater() {
+	public ServerGameUpdater(Server server) {
 		taskQueue = new ConcurrentLinkedQueue<>();
+		this.server = server;
 	}
 	
 	private void updateGame() {
@@ -36,6 +38,10 @@ final class ServerGameUpdater {
 				world.update(time);
 				totalUpdateTime -= time;
 			}
+			
+			world.forEach(e -> {
+				server.sendEntityUpdate(e);
+			});
 			
 			try {
 				Thread.sleep(1); //sleep so cpu isnt wasted

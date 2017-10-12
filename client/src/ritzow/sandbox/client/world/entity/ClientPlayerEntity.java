@@ -1,10 +1,10 @@
 package ritzow.sandbox.client.world.entity;
 
 import ritzow.sandbox.client.audio.Sounds;
+import ritzow.sandbox.client.graphics.Graphical;
 import ritzow.sandbox.client.graphics.ModelRenderProgram;
 import ritzow.sandbox.client.graphics.Models;
 import ritzow.sandbox.client.util.Renderable;
-import ritzow.sandbox.client.world.item.ClientItem;
 import ritzow.sandbox.data.DataReader;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.component.Luminous;
@@ -27,11 +27,12 @@ public class ClientPlayerEntity extends PlayerEntity implements Luminous, Render
 		super(input);
 	}
 
+	@Override
 	public void render(ModelRenderProgram renderer) {
 		renderer.render(Models.forIndex(Models.GREEN_FACE_INDEX), 1.0f, positionX, positionY + 0.5f, 1.0f, 1.0f, 0.0f);
 		renderer.render(Models.forIndex(Models.RED_SQUARE_INDEX), 1.0f, positionX, positionY - 0.5f, 1.0f, 1.0f, positionX);
 		
-		ClientItem selectedItem = (ClientItem)inventory.get(selected);
+		Graphical selectedItem = (Graphical)inventory.get(selected);
 		if(selectedItem != null) {
 			renderer.render(Models.forIndex(selectedItem.getGraphics().getModelIndex()), 1.0f, positionX, positionY, 0.5f, 0.5f, 0);
 					//velocityX != 0 ? (float)Math.PI/4 * (velocityX < 0 ? -1 : 1) : 0);
@@ -43,7 +44,7 @@ public class ClientPlayerEntity extends PlayerEntity implements Luminous, Render
 		if(e instanceof ItemEntity) {
 			Item i = ((ItemEntity<?>)e).getItem();
 			if(inventory.add(i)) {
-				world.queueRemove(e);
+				world.remove(e);
 				world.getAudioSystem().playSound(Sounds.ITEM_PICKUP, e.getPositionX(), e.getPositionY(), 
 						0, 0.2f, 1, (float)Math.random() * 0.4f + 0.8f);
 			}

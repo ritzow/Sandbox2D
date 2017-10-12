@@ -44,6 +44,7 @@ public final class NetworkController {
 	 * @param sender the address the message was received from
 	 * @param data the body of the message received
 	 */	
+	@FunctionalInterface
 	public static interface MessageProcessor {
 		void process(SocketAddress sender, int messageID, byte[] data);
 	}
@@ -58,7 +59,8 @@ public final class NetworkController {
 		if(messageID < 0)
 			throw new RuntimeException("messageID must be greater than or equal to zero");
 		else if(data.length > Protocol.MAX_MESSAGE_LENGTH)
-			throw new RuntimeException("message length is greater than maximum allowed (" + Protocol.MAX_MESSAGE_LENGTH + " bytes)");
+			throw new RuntimeException("message length is greater than maximum allowed (" + 
+					Protocol.MAX_MESSAGE_LENGTH + " bytes)");
 		try {
 			byte[] packet = new byte[5 + data.length];
 			ByteUtil.putInteger(packet, 0, messageID);
@@ -71,17 +73,20 @@ public final class NetworkController {
 	}
 	
 	/**
-	 * Send a message reliably, blocking until the message is received or a specified number of attempts have been made to send the message.
+	 * Send a message reliably, blocking until the message is received or a specified number 
+	 * of attempts have been made to send the message.
 	 * @param recipient the SocketAddress to send data to
 	 * @param messageID the unique ID of the message, must be one greater than the last message sent to the specified recipient
 	 * @param data the data to send to the recipient, including any protocol or other data
 	 * @throws TimeoutException if all send attempts have occurred but no message was received
 	 */
-	public final void sendReliable(SocketAddress recipient, int messageID, byte[] data, int attempts, int resendInterval) throws TimeoutException {
+	public final void sendReliable(SocketAddress recipient, int messageID, byte[] data, int attempts, int resendInterval) 
+			throws TimeoutException {
 		if(messageID < 0)
 			throw new RuntimeException("messageID must be greater than or equal to zero");
 		else if(data.length > Protocol.MAX_MESSAGE_LENGTH)
-			throw new RuntimeException("message length is greater than maximum allowance of " + Protocol.MAX_MESSAGE_LENGTH + " bytes");
+			throw new RuntimeException("message length is greater than maximum allowance of " 
+					+ Protocol.MAX_MESSAGE_LENGTH + " bytes");
 		byte[] packet = new byte[5 + data.length];
 		ByteUtil.putInteger(packet, 0, messageID);
 		ByteUtil.putBoolean(packet, 4, true);
@@ -100,7 +105,9 @@ public final class NetworkController {
 				try {
 					socket.send(datagram);
 					attemptsRemaining--;
-					pair.wait(resendInterval); //release the lock this method's thread has on pair, and wait for it to be modified/notified by incoming packet thread
+					//release the lock this method's thread has on pair, 
+					//and wait for it to be modified/notified by incoming packet thread
+					pair.wait(resendInterval);
 				} catch (InterruptedException | IOException e) {
 					throw new RuntimeException(e);
 				}
@@ -210,10 +217,12 @@ public final class NetworkController {
 		@Override
 		public void run() {
 			//Create the thread dispatcher for processing received messages
-			ExecutorService dispatcher = Executors.newCachedThreadPool();
+			ExecutorService dispatcher = Executors.newSingleThreadExecutor(); //Executors.newCachedThreadPool();
 			
-			//Create the buffer DatagramPacket that is the maximum length a message can be plus the 5 header bytes (messageID and reliable flag)
-			DatagramPacket buffer = new DatagramPacket(new byte[Protocol.MAX_MESSAGE_LENGTH + 5], Protocol.MAX_MESSAGE_LENGTH + 5);
+			//Create the buffer DatagramPacket that is the maximum length a message can be 
+			//plus the 5 header bytes (messageID and reliable flag)
+			DatagramPacket buffer = 
+					new DatagramPacket(new byte[Protocol.MAX_MESSAGE_LENGTH + 5], Protocol.MAX_MESSAGE_LENGTH + 5);
 
 			while(!exit) {
 				//wait for a packet to be received
@@ -228,7 +237,6 @@ public final class NetworkController {
 					e.printStackTrace();
 					continue;
 				}
-
 				
 				//ignore received packets that are not large enough to contain the full header
 				if(buffer.getLength() < 5) {
@@ -237,8 +245,9 @@ public final class NetworkController {
 				
 				//parse the packet information
 				final SocketAddress sender = 	buffer.getSocketAddress();
-				final int messageID = 			ByteUtil.getInteger(buffer.getData(), buffer.getOffset());
-				final byte[] data = 			Arrays.copyOfRange(buffer.getData(), buffer.getOffset() + 5, buffer.getOffset() + buffer.getLength());
+				final int messageID = ByteUtil.getInteger(buffer.getData(), buffer.getOffset());
+				final byte[] data = 
+						Arrays.copyOfRange(buffer.getData(), buffer.getOffset() + 5, buffer.getOffset() + buffer.getLength());
 
 				//if message is a response, rather than data
 				if(messageID == -1) {
@@ -246,7 +255,9 @@ public final class NetworkController {
 					synchronized(reliableQueue) {
 						MessageAddressPair pair = reliableQueue.peek();
 						if(pair != null && pair.messageID == responseMessageID && pair.recipient.equals(sender)) {
-							reliableQueue.poll(); //if the response is for the next message in the queue awaiting confirmation of reception, it can be removed
+							//if the response is for the next message in the queue awaiting confirmation of reception, 
+							//it can be removed
+							reliableQueue.poll();
 							synchronized(pair) {
 								pair.received = true;
 								pair.notifyAll();
@@ -257,7 +268,8 @@ public final class NetworkController {
 					//handle reliable messages by first checking if the received message is reliable
 					synchronized(lastReceived) {
 						if(!lastReceived.containsKey(sender)) {
-							//if sender isn't registered yet, add it to hashmap, if the ack isn't received, it will be resent on next send
+							//if sender isn't registered yet, add it to hashmap, 
+							//if the ack isn't received, it will be resent on next send
 							lastReceived.put(sender, new MutableInteger(messageID));
 							dispatcher.execute(new PacketRunnable(sender, messageID, data));
 							sendResponse(sender, messageID);

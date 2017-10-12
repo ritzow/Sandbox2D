@@ -13,12 +13,9 @@ import ritzow.sandbox.data.ByteUtil;
 import ritzow.sandbox.data.Deserializer;
 import ritzow.sandbox.server.Server.ClientState;
 import ritzow.sandbox.world.World;
-import ritzow.sandbox.world.item.Item;
 import ritzow.sandbox.world.block.DirtBlock;
 import ritzow.sandbox.world.block.GrassBlock;
-import ritzow.sandbox.world.entity.ItemEntity;
 import ritzow.sandbox.world.entity.PlayerEntity;
-import ritzow.sandbox.world.item.BlockItem;
 
 public final class StartServer {
 	public static void main(String... args) throws SocketException, UnknownHostException {
@@ -31,7 +28,7 @@ public final class StartServer {
 		ServerAudioSystem audio = new ServerAudioSystem();
 		World world = saveFile.exists() ? 
 				loadWorld(saveFile, audio, SerializationProvider.getProvider()) : generateWorld(100, 100, audio, server);
-		world.add(new ItemEntity<Item>(world.nextEntityID(), new BlockItem(new DirtBlock()),50,120));
+		//world.add(new ItemEntity<Item>(world.nextEntityID(), new BlockItem(new DirtBlock()),50,120));
 				server.setWorld(world);
 		server.start();
 		

@@ -3,6 +3,7 @@ package ritzow.sandbox.world.entity;
 import ritzow.sandbox.data.ByteUtil;
 import ritzow.sandbox.data.DataReader;
 import ritzow.sandbox.data.Serializer;
+import ritzow.sandbox.network.Protocol.PlayerAction;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.component.Inventory;
 import ritzow.sandbox.world.component.Living;
@@ -52,27 +53,24 @@ public class PlayerEntity extends Entity implements Living {
 		else if(right)
 			velocityX = getMass();
 		if(up) {
-			velocityY = getMass(); //TODO check for world collisions somewhere, probably not in this class
+			velocityY = getMass();
 			up = false;
 		}
 		positionX += velocityX * time;
 		positionY += velocityY * time;
 	}
-
-	public void setLeft(boolean left) {
-		this.left = left;
-	}
-
-	public void setRight(boolean right) {
-		this.right = right;
-	}
-
-	public void setUp(boolean up) {
-		this.up = up;
-	}
-
-	public void setDown(boolean down) {
-		this.down = down;
+	
+	public void processAction(PlayerAction action, boolean enabled) {
+		switch(action) {
+		case MOVE_LEFT:
+			left = enabled; break;
+		case MOVE_RIGHT:
+			right = enabled; break;
+		case MOVE_UP:
+			up = enabled; break;
+		case MOVE_DOWN:
+			down = enabled; break;
+		}
 	}
 
 	@Override
@@ -80,7 +78,6 @@ public class PlayerEntity extends Entity implements Living {
 		if(e instanceof ItemEntity) {
 			Item i = ((ItemEntity<?>)e).getItem();
 			if(inventory.add(i)) {
-				//world.queueRemove(e);
 				world.remove(e);
 			}
 		}
