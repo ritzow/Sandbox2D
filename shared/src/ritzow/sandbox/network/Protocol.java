@@ -45,7 +45,6 @@ public final class Protocol {
 		CLIENT_DISCONNECT,
 		CLIENT_PLAYER_ACTION,
 		CLIENT_INFO,
-		CLIENT_PING,
 		SERVER_CONNECT_ACKNOWLEDGMENT,
 		SERVER_WORLD_HEAD,
 		SERVER_WORLD_DATA,
@@ -90,6 +89,7 @@ public final class Protocol {
 		}
 	}
 	
+	//TODO this isn't going to work if the client/server protocols overlap
 	public static boolean isReliable(short protocol) {
 		return Arrays.binarySearch(RELIABLE_PROTOCOLS, protocol) >= 0;
 	}

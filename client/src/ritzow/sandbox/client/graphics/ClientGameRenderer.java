@@ -18,7 +18,7 @@ public final class ClientGameRenderer implements Renderer {
 	private static final float MAX_TIMESTEP = 2;
 	
 	private final ModelRenderProgram modelProgram;
-	private final LightRenderProgram lightProgram;
+//	private final LightRenderProgram lightProgram;
 	private final Framebuffer framebuffer;
 	private final Texture diffuseTexture;
 	private final Texture finalTexture;
@@ -32,7 +32,7 @@ public final class ClientGameRenderer implements Renderer {
 		this.world = world;
 		this.controllers = controllers;
 		this.modelProgram = modelProgram;
-		this.lightProgram = lightProgram;
+//		this.lightProgram = lightProgram;
 		this.framebuffer = new Framebuffer();
 		this.diffuseTexture = new Texture(100, 100);
 		this.finalTexture = new Texture(100, 100);
