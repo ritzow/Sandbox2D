@@ -28,9 +28,7 @@ public final class StartServer {
 		ServerAudioSystem audio = new ServerAudioSystem();
 		World world = saveFile.exists() ? 
 				loadWorld(saveFile, audio, SerializationProvider.getProvider()) : generateWorld(100, 100, audio, server);
-		//world.add(new ItemEntity<Item>(world.nextEntityID(), new BlockItem(new DirtBlock()),50,120));
-				server.setWorld(world);
-		server.start();
+		server.start(world);
 		
 		System.out.println("Startup Complete.");
 		System.out.println("Type 'exit' to stop server or 'list' to list connected clients");

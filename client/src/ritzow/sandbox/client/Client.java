@@ -84,7 +84,7 @@ public final class Client {
 					processReceiveWorldData(data);
 					break;
 				case Protocol.CONSOLE_MESSAGE:
-					System.out.println("[Server] " + new String(data, 2, data.length - 2, Protocol.CHARSET));
+					System.out.println("[Server Message] " + new String(data, 2, data.length - 2, Protocol.CHARSET));
 					break;
 				case Protocol.SERVER_ENTITY_UPDATE:
 					processGenericEntityUpdate(data);
@@ -112,7 +112,6 @@ public final class Client {
 	
 	private void processServerRemoveBlock(byte[] data) {
 		world.getForeground().destroy(world, ByteUtil.getInteger(data, 2), ByteUtil.getInteger(data, 6));
-		//world.getForeground().set(ByteUtil.getInteger(data, 2), ByteUtil.getInteger(data, 6), null);
 	}
 
 	public void sendBlockBreak(int x, int y) {
@@ -125,7 +124,11 @@ public final class Client {
 	
 	public void sendPlayerAction(PlayerAction action, boolean enable) {
 		if(isConnected()) {
-			send(Client.buildPlayerAction(action.getCode(), enable));
+			byte[] packet = new byte[4];
+			ByteUtil.putShort(packet, 0, Protocol.CLIENT_PLAYER_ACTION);
+			packet[2] = action.getCode();
+			ByteUtil.putBoolean(packet, 3, enable);
+			send(packet);
 		} else {
 			throw new RuntimeException("Client not connected to a server");
 		}
@@ -275,9 +278,7 @@ public final class Client {
 	
 	private void processRemoveEntity(byte[] data) {
 		int id = ByteUtil.getInteger(data, 2);
-		getWorld().removeIf(e -> {
-			return e.getID() == id;
-		});
+		getWorld().removeIf(e -> e.getID() == id);
 	}
 	
 	private void processAddEntity(byte[] data) {
@@ -325,14 +326,6 @@ public final class Client {
 				}
 			}
 		}
-	}
-
-	public static final byte[] buildPlayerAction(byte action, boolean enable) {
-		byte[] packet = new byte[4];
-		ByteUtil.putShort(packet, 0, Protocol.CLIENT_PLAYER_ACTION);
-		packet[2] = action;
-		ByteUtil.putBoolean(packet, 3, enable);
-		return packet;
 	}
 
 	public static World reconstructWorld(byte[][] data, SerializerReaderWriter deserializer) {

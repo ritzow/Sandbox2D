@@ -25,9 +25,6 @@ public class World implements Transportable {
 	/** collection of entities in the world **/
 	private final List<Entity> entities;
 	
-	/** queues for entities to be added or removed from the world **/
-	//private final Queue<Entity> entityAddQueue, entityRemoveQueue;
-	
 	/** blocks in the world that collide with entities and and are rendered **/
 	protected final BlockGrid foreground, background;
 	
@@ -40,6 +37,9 @@ public class World implements Transportable {
 	/** Entity ID counter **/
 	private volatile int lastEntityID;
 	
+	/** called when an entity is removed from the world **/
+	private Consumer<Entity> onRemove;
+	
 	/**
 	 * Initializes a new World object with a foreground, background, entity storage, and gravity.
 	 * @param width the width of the foreground and background
@@ -49,16 +49,12 @@ public class World implements Transportable {
 	public World(AudioSystem audio, int width, int height, float gravity) {
 		this.audio = audio;
 		entities = new ArrayList<Entity>(100);
-		//this.entityAddQueue = new LinkedList<Entity>();
-		//this.entityRemoveQueue = new LinkedList<Entity>();
 		foreground = new BlockGrid(width, height);
 		background = new BlockGrid(width, height);
 		this.gravity = gravity;
 	}
 	
 	public World(DataReader reader) {
-		//entityAddQueue = new LinkedList<Entity>();
-		//entityRemoveQueue = new LinkedList<Entity>();
 		gravity = reader.readFloat();
 		foreground = Objects.requireNonNull(reader.readObject());
 		background = Objects.requireNonNull(reader.readObject());
@@ -142,12 +138,11 @@ public class World implements Transportable {
 	
 	
 	public String toString() {
-//		StringBuilder builder = new StringBuilder().append(foreground.toString()).append(background.toString());
-//		for(Entity e : entities) {
-//			builder.append(e).append('\n');
-//		}
-//		return builder.toString();
-		return "world toString";
+		StringBuilder builder = new StringBuilder().append(foreground.toString()).append(background.toString());
+		for(Entity e : entities) {
+			builder.append(e).append('\n');
+		}
+		return builder.toString();
 	}
 	
 	
@@ -165,6 +160,9 @@ public class World implements Transportable {
 		return background;
 	}
 	
+	public void setOnRemoveEntity(Consumer<Entity> action) {
+		onRemove = action;
+	}
 	
 	public void removeIf(Predicate<Entity> predicate) {
 		Iterator<Entity> it = entities.iterator();
@@ -173,7 +171,6 @@ public class World implements Transportable {
 				it.remove();
 		}
 	}
-	
 	
 	public void forEach(Consumer<Entity> consumer) {
 		synchronized(entities) {
@@ -191,13 +188,11 @@ public class World implements Transportable {
 	 */
 	public Collection<Entity> getEntitiesInRectangle(float x, float y, float width, float height) {
 		Collection<Entity> col = null;
-		synchronized(entities) {
-			for(Entity e : entities) {
-				if(intersection(x, y, width, height, e.getPositionX(), e.getPositionY(), e.getWidth(), e.getHeight())) {
-					if(col == null) {
-						col = new ArrayList<Entity>();
-						col.add(e);
-					}
+		for(Entity e : entities) {
+			if(intersection(x, y, width, height, e.getPositionX(), e.getPositionY(), e.getWidth(), e.getHeight())) {
+				if(col == null) {
+					col = new ArrayList<Entity>();
+					col.add(e);
 				}
 			}
 		}
@@ -262,72 +257,68 @@ public class World implements Transportable {
 	 */
 	
 	public final void update(float time) {
-		synchronized(entities) { //TODO remove all synchronization
-//			synchronized(entityAddQueue) {
-//				entities.addAll(entityAddQueue);
-//				entityAddQueue.clear();	
-//			} synchronized(entityRemoveQueue) {
-//				entities.removeAll(entityRemoveQueue);
-//				entityRemoveQueue.clear();
-//			}
+		for(int i = 0; i < entities.size(); i++) {
+			Entity e = entities.get(i);
 			
-			for(int i = 0; i < entities.size(); i++) {
-				Entity e = entities.get(i);
+			//remove entities that are below the world or are flagged for deletion
+			if(e.getPositionY() < 0 || e.getShouldDelete()) {
+				entities.remove(i);
+				if(onRemove != null)
+					onRemove.accept(e);
+				i = Math.max(0, i - 1);
+				continue;
+			}
+			
+			//update entity position and velocity, and anything else specific to an entity
+			e.update(time);
+			
+			//apply gravity
+			e.setVelocityY(e.getVelocityY() - gravity * time);
+			
+			//check if collision checking is enabled
+			if(e.doCollision()) {
 				
-				//remove entities that are below the world or are flagged for deletion
-				if(e.getPositionY() < 0 || e.getShouldDelete()) {
-					entities.remove(i);
-					i = Math.max(0, i - 1);
-					continue;
-				}
-				
-				//update entity position and velocity, and anything else specific to an entity
-				e.update(time);
-				
-				//apply gravity
-				e.setVelocityY(e.getVelocityY() - gravity * time);
-				
-				//check if collision checking is enabled
-				if(e.doCollision()) {
-					
-					//check for entity vs. entity collisions with all entities that have not already been collision checked with (for first element, all entites, for last, no entities)
-					for(int j = i + 1; j < entities.size(); j++) {
-						Entity o = entities.get(j);
-						if(o != null && o.doCollision()) {
-							boolean collision;
-							
-							if(e.doEntityCollisionResolution() && o.doEntityCollisionResolution()) {
-								//TODO improve collision priority/interaction (should both entities move in opposite directions?)
-								collision = (e.getMass() <= o.getMass() || e.getID() < o.getID()) ? resolveCollision(e, o, time) : resolveCollision(o, e, time);
-							} else {
-								collision = checkCollision(e, o);
-							}
-							
-							if(collision) {
-								e.onCollision(this, o, time);
-								o.onCollision(this, e, time);
-							}
+				//check for entity vs. entity collisions with all entities that have not already been collision checked with (for first element, all entites, for last, no entities)
+				for(int j = i + 1; j < entities.size(); j++) {
+					Entity o = entities.get(j);
+					if(o != null && o.doCollision()) {
+						boolean collision;
+						
+						if(e.doEntityCollisionResolution() && o.doEntityCollisionResolution()) {
+							if(e.getMass() < o.getMass())
+								collision = resolveCollision(e, o, time);
+							else if(e.getMass() > o.getMass())
+								collision = resolveCollision(o, e, time);
+							else
+								collision = false; //TODO what do I do when entities have same mass?
+						} else {
+							collision = checkCollision(e, o);
+						}
+						
+						if(collision) {
+							e.onCollision(this, o, time);
+							o.onCollision(this, e, time);
 						}
 					}
+				}
 
-					//Check for entity collisions with blocks
-					if(e.doBlockCollisionResolution()) {
-						int leftBound = Math.max(0, (int)Math.floor(e.getPositionX() - e.getWidth()));
-						int topBound = Math.min(foreground.getHeight(), (int)Math.ceil(e.getPositionY() + e.getHeight()));
-						int rightBound = Math.min(foreground.getWidth(), (int)Math.ceil(e.getPositionX() + e.getWidth()));
-						int bottomBound = Math.max(0, (int)Math.floor(e.getPositionY() - e.getHeight()));
-						
-						for(int row = bottomBound; row < topBound; row++) {
-							for(int column = leftBound; column < rightBound; column++) {
-								Block block = foreground.get(column, row);
-								if(foreground.isBlock(column, row) && block.isSolid()) {
-									boolean blockUp = foreground.isBlock(column, row + 1);
-									boolean blockDown = foreground.isBlock(column, row - 1);
-									boolean blockLeft = foreground.isBlock(column - 1, row);
-									boolean blockRight = foreground.isBlock(column + 1, row);
-									if(!(blockUp && blockDown && blockLeft && blockRight)) {
-										resolveBlockCollision(this, e, block, column, row, time, blockUp, blockLeft, blockRight, blockDown);
-									}
+				//Check for entity collisions with blocks
+				if(e.doBlockCollisionResolution()) {
+					int leftBound = Math.max(0, (int)Math.floor(e.getPositionX() - e.getWidth()));
+					int topBound = Math.min(foreground.getHeight(), (int)Math.ceil(e.getPositionY() + e.getHeight()));
+					int rightBound = Math.min(foreground.getWidth(), (int)Math.ceil(e.getPositionX() + e.getWidth()));
+					int bottomBound = Math.max(0, (int)Math.floor(e.getPositionY() - e.getHeight()));
+					
+					for(int row = bottomBound; row < topBound; row++) {
+						for(int column = leftBound; column < rightBound; column++) {
+							Block block = foreground.get(column, row);
+							if(foreground.isBlock(column, row) && block.isSolid()) {
+								boolean blockUp = foreground.isBlock(column, row + 1);
+								boolean blockDown = foreground.isBlock(column, row - 1);
+								boolean blockLeft = foreground.isBlock(column - 1, row);
+								boolean blockRight = foreground.isBlock(column + 1, row);
+								if(!(blockUp && blockDown && blockLeft && blockRight)) {
+									resolveBlockCollision(this, e, block, column, row, time, blockUp, blockLeft, blockRight, blockDown);
 								}
 							}
 						}

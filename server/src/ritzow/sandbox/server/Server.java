@@ -48,15 +48,14 @@ public final class Server {
 		this.updater = new ServerGameUpdater(this);
 	}
 	
-	public void start() {
+	public void start(World world) {
 		updater.start();
+		updater.world = world;
+		world.setOnRemoveEntity(e -> {
+			sendRemoveEntity(e);
+		});
 		controller.start();
 		canConnect = true;
-	}
-	
-	//TODO really hacky, terrible temp method
-	public void setWorld(World world) {
-		updater.world = world;
 	}
 	
 	public void stop() {
@@ -118,7 +117,7 @@ public final class Server {
 			if(u.world != null) {
 				Block block = u.world.getForeground().get(x, y);
 				u.world.getForeground().destroy(u.world, x, y);
-				broadcast(buildRemoveBlock(block, x, y));
+				sendRemoveBlock(block, x, y);
 				//TODO for now creates entity containing same block, but block data may need to be reset before dropping into world
 				if(block != null) {
 					ItemEntity<BlockItem> drop = 
@@ -150,7 +149,6 @@ public final class Server {
 		broadcast(packet);
 	}
 	
-	@SuppressWarnings("static-method")
 	public void sendEntityUpdate(Entity e) {
 		//protocol, id, posX, posY, velX, velY
 		byte[] update = new byte[2 + 4 + 4 + 4 + 4 + 4];
@@ -163,11 +161,34 @@ public final class Server {
 		broadcast(update);
 	}
 	
-	static byte[] buildRemoveBlock(Block block, int x, int y) {
+	public void sendRemoveBlock(Block block, int x, int y) {
 		byte[] packet = new byte[10];
 		ByteUtil.putShort(packet, 0, Protocol.SERVER_REMOVE_BLOCK);
 		ByteUtil.putInteger(packet, 2, x);
 		ByteUtil.putInteger(packet, 6, y);
+		broadcast(packet);
+	}
+	
+	private void sendPlayerIDMessage(PlayerEntity player, ClientState recipient) {
+		byte[] packet = new byte[6];
+		ByteUtil.putShort(packet, 0, Protocol.SERVER_PLAYER_ID);
+		ByteUtil.putInteger(packet, 2, player.getID());
+		send(packet, recipient);
+	}
+	
+	public void sendRemoveEntity(Entity e) {
+		byte[] packet = new byte[2 + 4];
+		ByteUtil.putShort(packet, 0, Protocol.SERVER_REMOVE_ENTITY);
+		ByteUtil.putInteger(packet, 2, e.getID());
+		broadcast(packet);
+	}
+	
+	public static byte[] buildServerDisconnect(String reason) {
+		byte[] message = reason.getBytes(Protocol.CHARSET);
+		byte[] packet = new byte[message.length + 6];
+		ByteUtil.putShort(packet, 0, Protocol.SERVER_CLIENT_DISCONNECT);
+		ByteUtil.putInteger(packet, 2, message.length);
+		ByteUtil.copy(message, packet, 6);
 		return packet;
 	}
 	
@@ -176,6 +197,42 @@ public final class Server {
 		int worldHeight = updater.world.getForeground().getHeight();
 		if(updater.world == null || !(x < worldWidth && x >= 0 && y < worldHeight && y >= 0))
 			throw new ClientBadDataException("client sent bad x and y block coordinates");
+	}
+	
+	public static byte[][] buildWorldPackets(World world, Serializer ser) {
+		Objects.requireNonNull(world);
+		
+		int headerSize = 2;
+		int dataBytesPerPacket = Protocol.MAX_MESSAGE_LENGTH - headerSize;
+	
+		//serialize the world for transfer
+		byte[] worldBytes = ByteUtil.compress(ser.serialize(world));
+				//ByteUtil.compress(world.getBytes(ser)); //serialize everything including other player entities
+		
+		//split world data into evenly sized packets and one extra packet if not evenly divisible by max packet size
+		int packetCount = (worldBytes.length/dataBytesPerPacket) + (worldBytes.length % dataBytesPerPacket > 0 ? 1 : 0);
+		
+		//create the array to store all the constructed packets to send, in order
+		byte[][] packets = new byte[1 + packetCount][];
+	
+		//create the first packet to send, which contains the number of subsequent packets
+		byte[] head = new byte[6];
+		ByteUtil.putShort(head, 0, Protocol.SERVER_WORLD_HEAD);
+		ByteUtil.putInteger(head, 2, packetCount);
+		packets[0] = head;
+		
+		//construct the packets containing the world data, which begin with a standard header and contain chunks of world bytes
+		for(int slot = 1, index = 0; slot < packets.length; slot++) {
+			int remaining = worldBytes.length - index;
+			int dataSize = Math.min(dataBytesPerPacket, remaining);
+			byte[] packet = new byte[headerSize + dataSize];
+			ByteUtil.putShort(packet, 0, Protocol.SERVER_WORLD_DATA);
+			System.arraycopy(worldBytes, index, packet, headerSize, dataSize);
+			packets[slot] = packet;
+			index += dataSize;
+		}
+		
+		return packets;
 	}
 	
 	public void broadcastMessage(String message) {
@@ -205,17 +262,19 @@ public final class Server {
 			int clientCount = clientCount();
 			if(clientCount > 1) {
 				CyclicBarrier barrier = new CyclicBarrier(clientCount + 1); //all clients and calling thread
-				synchronized(clients) {
+				synchronized(clients) { //for each loop needs to be manually synchronized
 					for(ClientState client : clients) {
+						//execute each reliable send on separate threads so they can run in parallel
 						broadcaster.execute(() -> {
 							try {
 								controller.sendReliable(client.address, client.nextReliableID(), data, 10, 100);
-								barrier.await();
+								barrier.await(); //notify cyclic barrier that thread is done
 							} catch(TimeoutException e) {
 								if(removeUnresponsive) {
 									try {
-										disconnect(client, false); //TODO could cause a problem?
+										//signal that the thread is finished so the disconnect can happen without blocking main
 										barrier.await();
+										disconnect(client, false);
 									} catch (InterruptedException | BrokenBarrierException e1) {
 										e1.printStackTrace();
 									}
@@ -233,12 +292,14 @@ public final class Server {
 				}
 			} else if(clientCount == 1) { 
 				//if there is only one client, there is no need to parallelify sending, reducing synchronization overhead
-				for(ClientState client : clients) {
-					try {
-						controller.sendReliable(client.address, client.nextReliableID(), data, 10, 100);
-					} catch(TimeoutException e) {
-						if(removeUnresponsive) {
-							disconnect(client, false); //TODO could cause a problem?
+				synchronized(clients) {
+					for(ClientState client : clients) {
+						try {
+							controller.sendReliable(client.address, client.nextReliableID(), data, 10, 100);
+						} catch(TimeoutException e) {
+							if(removeUnresponsive) {
+								disconnect(client, false);
+							}
 						}
 					}
 				}
@@ -355,6 +416,7 @@ public final class Server {
 			if(client.player != null) {
 				updater.submit(u -> {
 					u.world.remove(client.player);
+					sendRemoveEntity(client.player);
 				});
 			}
 			System.out.println(client + " disconnected (" + clientCount() + " players connected)");
@@ -420,10 +482,7 @@ public final class Server {
 						send(a, newClient);
 					}
 					
-					System.out.println("Sent world to connecting client");
-					
 					//construct a new player for the client
-					
 					PlayerEntity player = new PlayerEntity(world.nextEntityID());
 					newClient.player = player;
 					
@@ -438,11 +497,10 @@ public final class Server {
 						}
 					}
 					
-					clients.add(newClient); //not a good idea to use server field from ServerGameUpdater
-					System.out.println("Added client to connected list");
+					clients.add(newClient);
 					world.add(player);
 					sendEntity(player);
-					send(createPlayerIDMessage(player), newClient);
+					sendPlayerIDMessage(player, newClient);
 				});
 			}
 		} catch(TimeoutException e) {
@@ -460,96 +518,15 @@ public final class Server {
 			client.player.processAction(action, enable);
 		});
 	}
-
-	public static byte[][] buildWorldPackets(World world, Serializer ser) {
-		Objects.requireNonNull(world);
-		
-		int headerSize = 2;
-		int dataBytesPerPacket = Protocol.MAX_MESSAGE_LENGTH - headerSize;
-	
-		//serialize the world for transfer
-		byte[] worldBytes = ByteUtil.compress(ser.serialize(world));
-				//ByteUtil.compress(world.getBytes(ser)); //serialize everything including other player entities
-		
-		//split world data into evenly sized packets and one extra packet if not evenly divisible by max packet size
-		int packetCount = (worldBytes.length/dataBytesPerPacket) + (worldBytes.length % dataBytesPerPacket > 0 ? 1 : 0);
-		
-		//create the array to store all the constructed packets to send, in order
-		byte[][] packets = new byte[1 + packetCount][];
-	
-		//create the first packet to send, which contains the number of subsequent packets
-		byte[] head = new byte[6];
-		ByteUtil.putShort(head, 0, Protocol.SERVER_WORLD_HEAD);
-		ByteUtil.putInteger(head, 2, packetCount);
-		packets[0] = head;
-		
-		//construct the packets containing the world data, which begin with a standard header and contain chunks of world bytes
-		for(int slot = 1, index = 0; slot < packets.length; slot++) {
-			int remaining = worldBytes.length - index;
-			int dataSize = Math.min(dataBytesPerPacket, remaining);
-			byte[] packet = new byte[headerSize + dataSize];
-			ByteUtil.putShort(packet, 0, Protocol.SERVER_WORLD_DATA);
-			System.arraycopy(worldBytes, index, packet, headerSize, dataSize);
-			packets[slot] = packet;
-			index += dataSize;
-		}
-		
-		return packets;
-	}
-
-	public static byte[] buildServerDisconnect(String reason) {
-		byte[] message = reason.getBytes(Protocol.CHARSET);
-		byte[] packet = new byte[message.length + 6];
-		ByteUtil.putShort(packet, 0, Protocol.SERVER_CLIENT_DISCONNECT);
-		ByteUtil.putInteger(packet, 2, message.length);
-		ByteUtil.copy(message, packet, 6);
-		return packet;
-	}
-
-//	protected static byte[] buildGenericEntityUpdate(Entity e) {
-//		//protocol, id, posX, posY, velX, velY
-//		byte[] update = new byte[2 + 4 + 4 + 4 + 4 + 4];
-//		ByteUtil.putShort(update, 0, Protocol.SERVER_ENTITY_UPDATE);
-//		ByteUtil.putInteger(update, 2, e.getID());
-//		ByteUtil.putFloat(update, 6, e.getPositionX());
-//		ByteUtil.putFloat(update, 10, e.getPositionY());
-//		ByteUtil.putFloat(update, 14, e.getVelocityX());
-//		ByteUtil.putFloat(update, 18, e.getVelocityY());
-//		return update;
-//	}
-
-	public static byte[] buildRemoveEntity(Entity e) {
-		byte[] packet = new byte[2 + 4];
-		ByteUtil.putShort(packet, 0, Protocol.SERVER_REMOVE_ENTITY);
-		ByteUtil.putInteger(packet, 2, e.getID());
-		return packet;
-	}
-
-//	protected static byte[] buildSendEntity(Entity e, Serializer ser, boolean compressed) {
-//		byte[] serialized = compressed ? ByteUtil.compress(ser.serialize(e)) : ser.serialize(e);
-//				//compressed ? ByteUtil.compress(ByteUtil.serialize(e)) : ByteUtil.serialize(e);
-//		byte[] packet = new byte[3 + serialized.length];
-//		ByteUtil.putShort(packet, 0, Protocol.SERVER_ADD_ENTITY);
-//		ByteUtil.putBoolean(packet, 2, compressed);
-//		ByteUtil.copy(serialized, packet, 3);
-//		return packet;
-//	}
-	
-	private static byte[] createPlayerIDMessage(PlayerEntity player) {
-		byte[] packet = new byte[6];
-		ByteUtil.putShort(packet, 0, Protocol.SERVER_PLAYER_ID);
-		ByteUtil.putInteger(packet, 2, player.getID());
-		return packet;
-	}
 	
 	/**
 	 * Holder of information about clients connected to the server
 	 */
-	public static final class ClientState {
+	static final class ClientState {
+		private final SocketAddress address;
 		private volatile int unreliableMessageID, reliableMessageID;
-		protected final SocketAddress address;
-		protected volatile String username;
-		protected volatile PlayerEntity player;
+		private volatile String username;
+		private volatile PlayerEntity player;
 		private volatile short disconnectStrikes;
 		
 		public ClientState(int initReliable, SocketAddress address) {
