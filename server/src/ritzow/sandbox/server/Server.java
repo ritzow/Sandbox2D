@@ -51,7 +51,7 @@ public final class Server {
 	public void start(World world) {
 		updater.start();
 		updater.world = world;
-		world.setOnRemoveEntity(e -> {
+		world.setRemoveEntities(e -> {
 			sendRemoveEntity(e);
 		});
 		controller.start();
@@ -141,11 +141,13 @@ public final class Server {
 	}
 	
 	public void sendEntity(Entity e) {
-		byte[] serialized = ByteUtil.compress(serialRegistry.serialize(e));
-		byte[] packet = new byte[3 + serialized.length];
+		byte[] entity = serialRegistry.serialize(e);
+		boolean compress = entity.length > Protocol.MAX_MESSAGE_LENGTH - 3;
+		entity = compress ? ByteUtil.compress(entity) : entity;
+		byte[] packet = new byte[3 + entity.length];
 		ByteUtil.putShort(packet, 0, Protocol.SERVER_ADD_ENTITY);
-		ByteUtil.putBoolean(packet, 2, true); //always compressed
-		ByteUtil.copy(serialized, packet, 3);
+		ByteUtil.putBoolean(packet, 2, compress); //always compressed
+		ByteUtil.copy(entity, packet, 3);
 		broadcast(packet);
 	}
 	

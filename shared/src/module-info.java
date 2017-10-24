@@ -1,6 +1,7 @@
 /**
+ * Code shared between Sandbox2D client and server, contains Entity implementations, World, BlockGrid, and the
+ * serialization system in ritzow.sandbox.data. 
  * @author Solomon Ritzow
- *
  */
 module ritzow.sandbox.shared {
 	exports ritzow.sandbox.audio;
@@ -12,4 +13,5 @@ module ritzow.sandbox.shared {
 	exports ritzow.sandbox.world.entity;
 	exports ritzow.sandbox.world.block;
 	exports ritzow.sandbox.data;
+	requires java.base;
 }

@@ -1,10 +1,12 @@
 package ritzow.sandbox.network;
 
 import java.nio.charset.Charset;
-import java.util.Arrays;
+import java.util.Set;
 import ritzow.sandbox.data.ByteUtil;
 
 public final class Protocol {
+	
+	private Protocol() {}
 	
 	/** The Charset used by the client and server **/
 	public static final Charset CHARSET = Charset.forName("UTF-8");
@@ -40,25 +42,33 @@ public final class Protocol {
 	public static final short
 		CONSOLE_MESSAGE = 0;
 	
-	private static final short[] RELIABLE_PROTOCOLS = {
-		CLIENT_CONNECT_REQUEST,
-		CLIENT_DISCONNECT,
-		CLIENT_PLAYER_ACTION,
-		CLIENT_INFO,
-		SERVER_CONNECT_ACKNOWLEDGMENT,
-		SERVER_WORLD_HEAD,
-		SERVER_WORLD_DATA,
-		SERVER_ADD_ENTITY,
-		SERVER_REMOVE_ENTITY,
-		SERVER_CLIENT_DISCONNECT,
-		SERVER_PLAYER_ID,
-		CONSOLE_MESSAGE,
-		CLIENT_BREAK_BLOCK,
-		SERVER_REMOVE_BLOCK
-	};
+	public static final short
+		WORLD = 1,
+		BLOCK_GRID = 2,
+		ITEM_ENTITY = 3,
+		PARTICLE_ENTITY = 4,
+		PLAYER_ENTITY = 5,
+		BLOCK_ITEM = 6,
+		INVENTORY = 7,
+		DIRT_BLOCK = 8,
+		GRASS_BLOCK = 9,
+		RED_BLOCK = 10;
 	
-	static {
-		Arrays.sort(RELIABLE_PROTOCOLS);
+	private static final Set<Short> RELIABLE_PROTOCOLS = Set.of(
+			CLIENT_CONNECT_REQUEST, //also SERVER_CONNECT_ACKNOWLEDGMENT
+			CLIENT_DISCONNECT, //also SERVER_WORLD_DATA
+			CLIENT_PLAYER_ACTION,
+			CLIENT_INFO, //also SERVER_WORLD_HEAD
+			SERVER_REMOVE_ENTITY,
+			SERVER_CLIENT_DISCONNECT,
+			SERVER_PLAYER_ID,
+			CONSOLE_MESSAGE,
+			CLIENT_BREAK_BLOCK, //also SERVER_ADD_ENTITY
+			SERVER_REMOVE_BLOCK
+	);
+	
+	public static boolean isReliable(short protocol) {
+		return RELIABLE_PROTOCOLS.contains(protocol);
 	}
 	
 	public static enum PlayerAction {
@@ -87,17 +97,6 @@ public final class Protocol {
 			}
 			throw new RuntimeException("unknown player action");
 		}
-	}
-	
-	//TODO this isn't going to work if the client/server protocols overlap
-	public static boolean isReliable(short protocol) {
-		return Arrays.binarySearch(RELIABLE_PROTOCOLS, protocol) >= 0;
-	}
-	
-	public static byte[] buildEmpty(short protocol) {
-		byte[] packet = new byte[2];
-		ByteUtil.putShort(packet, 0, protocol);
-		return packet;
 	}
 	
 	public static byte[] buildConsoleMessage(String message) {

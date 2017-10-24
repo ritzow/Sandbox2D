@@ -17,6 +17,8 @@ public final class Textures {
 	public static Texture CLOUDS;
 	public static Texture DIRT;
 	
+	//TODO rewrite texture code, instead, build texture atlas of all textures
+	
 	public static void loadAll(File directory) throws IOException {
 		Textures.BLUE_SQUARE = 	loadTexture(new FileInputStream(new File(directory, "blueSquare.png")));
 		Textures.RED_SQUARE = 	loadTexture(new FileInputStream(new File(directory, "redSquare.png")));

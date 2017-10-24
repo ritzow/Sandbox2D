@@ -55,7 +55,7 @@ public final class NetworkController {
 		this.messageProcessor = processor;
 	}
 	
-	public void sendUnreliable(SocketAddress recipient, int messageID, byte[] data) {
+	public void sendUnreliable(SocketAddress recipient, int messageID, byte[] data) { //TODO build messageID into lastReceived
 		if(messageID < 0)
 			throw new RuntimeException("messageID must be greater than or equal to zero");
 		else if(data.length > Protocol.MAX_MESSAGE_LENGTH)

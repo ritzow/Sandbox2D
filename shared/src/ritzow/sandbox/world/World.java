@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Spliterator;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import ritzow.sandbox.audio.AudioSystem;
@@ -20,7 +21,7 @@ import ritzow.sandbox.world.block.Block;
 import ritzow.sandbox.world.entity.Entity;
 
 //TODO remove all synchronization in this class
-public class World implements Transportable {
+public class World implements Transportable, Iterable<Entity> {
 	
 	/** collection of entities in the world **/
 	private final List<Entity> entities;
@@ -39,6 +40,9 @@ public class World implements Transportable {
 	
 	/** called when an entity is removed from the world **/
 	private Consumer<Entity> onRemove;
+
+	/** remove entities outside the world or that are flagged for deletion **/
+	private boolean removeExtraneous;
 	
 	/**
 	 * Initializes a new World object with a foreground, background, entity storage, and gravity.
@@ -160,8 +164,21 @@ public class World implements Transportable {
 		return background;
 	}
 	
-	public void setOnRemoveEntity(Consumer<Entity> action) {
-		onRemove = action;
+	/**
+	 * Enables entity removal and provides an action to take when the world removes entities when updated
+	 * @param onRemove action to take when an entity is removed
+	 */
+	public void setRemoveEntities(Consumer<Entity> onRemove) {
+		removeExtraneous = true;
+		this.onRemove = onRemove;
+	}
+	
+	/**
+	 * Sets whether the world should remove entities outside its boundaries when updated
+	 * @param removeExtraneous if the world should remove entities
+	 */
+	public void setRemoveEntities(boolean removeExtraneous) {
+		this.removeExtraneous = removeExtraneous;
 	}
 	
 	public void removeIf(Predicate<Entity> predicate) {
@@ -172,12 +189,21 @@ public class World implements Transportable {
 		}
 	}
 	
-	public void forEach(Consumer<Entity> consumer) {
-		synchronized(entities) {
-			entities.forEach(consumer);
-		}
+	@Override
+	public Iterator<Entity> iterator() {
+		return entities.iterator();
 	}
 	
+	@Override
+	public Spliterator<Entity> spliterator() {
+		return entities.spliterator();
+	}
+
+	@Override
+	public void forEach(Consumer<? super Entity> consumer) {
+		entities.forEach(consumer);
+	}
+
 	/**
 	 * Returns a collection of entities that are partially or fully within the given rectangle bounds
 	 * @param x the center x coordinate
@@ -237,17 +263,6 @@ public class World implements Transportable {
 	public final void setGravity(float gravity) {
 		this.gravity = gravity;
 	}
-	
-	
-	//TODO I doubt this is thread-safe or efficient
-	public final Entity find(int entityID) {
-		for(Entity e : entities) {
-			if(e.getID() == entityID) {
-				return e;
-			}
-		}
-		return null;
-	}
 
 	/**
 	 * Updates the entities in the world, simulating the specified amount of time. Entities below the world or marked for deletion will be removed
@@ -261,12 +276,16 @@ public class World implements Transportable {
 			Entity e = entities.get(i);
 			
 			//remove entities that are below the world or are flagged for deletion
-			if(e.getPositionY() < 0 || e.getShouldDelete()) {
-				entities.remove(i);
-				if(onRemove != null)
-					onRemove.accept(e);
-				i = Math.max(0, i - 1);
-				continue;
+			if(removeExtraneous) {
+				if(e.getPositionY() < 0 || e.getShouldDelete()) {
+					if(onRemove != null) {
+						onRemove.accept(entities.remove(i));
+					} else {
+						entities.remove(i);
+					}
+					i = Math.max(0, i - 1);
+					continue;
+				}
 			}
 			
 			//update entity position and velocity, and anything else specific to an entity

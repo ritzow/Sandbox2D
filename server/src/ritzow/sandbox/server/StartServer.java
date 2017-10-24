@@ -23,7 +23,7 @@ public final class StartServer {
 		Server server = new Server(new InetSocketAddress(50000));
 		
 		//the save file to try to load the world from
-		final File saveFile = new File("data/worlds/testWorld.dat");
+		final File saveFile = new File(args.length > 0 ? args[0] : "data/worlds/world.dat");
 		
 		ServerAudioSystem audio = new ServerAudioSystem();
 		World world = saveFile.exists() ? 

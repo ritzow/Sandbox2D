@@ -9,7 +9,8 @@ interface GameTask {
 	public void execute(ServerGameUpdater program);
 }
 
-//TODO integrate this with Server, take packets directly from network controller instead of from thread pool from networkcontroller
+//TODO integrate this with Server, take packets directly from network controller instead 
+//of from thread pool from networkcontroller
 final class ServerGameUpdater {	
 	private final Queue<GameTask> taskQueue;
 	private boolean exit;
