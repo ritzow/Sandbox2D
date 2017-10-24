@@ -4,7 +4,6 @@ import ritzow.sandbox.data.ByteUtil;
 import ritzow.sandbox.data.DataReader;
 import ritzow.sandbox.data.Serializer;
 import ritzow.sandbox.network.Protocol.PlayerAction;
-import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.component.Inventory;
 import ritzow.sandbox.world.component.Living;
 import ritzow.sandbox.world.item.Item;
@@ -70,16 +69,6 @@ public class PlayerEntity extends Entity implements Living {
 			up = enabled; break;
 		case MOVE_DOWN:
 			down = enabled; break;
-		}
-	}
-
-	@Override
-	public void onCollision(World world, Entity e, float time) {
-		if(e instanceof ItemEntity) {
-			Item i = ((ItemEntity<?>)e).getItem();
-			if(inventory.add(i)) {
-				world.remove(e);
-			}
 		}
 	}
 	

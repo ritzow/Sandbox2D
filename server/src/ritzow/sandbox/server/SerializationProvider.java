@@ -1,7 +1,7 @@
 package ritzow.sandbox.server;
 
 import ritzow.sandbox.data.SerializerReaderWriter;
-import ritzow.sandbox.network.WorldObjectIdentifiers;
+import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.block.DirtBlock;
@@ -16,14 +16,14 @@ public class SerializationProvider {
 	
 	static {
 		provider = new SerializerReaderWriter();
-		provider.register(WorldObjectIdentifiers.BLOCK_GRID, BlockGrid.class, BlockGrid::new);
-		provider.register(WorldObjectIdentifiers.WORLD, World.class, World::new);
-		provider.register(WorldObjectIdentifiers.BLOCK_ITEM, BlockItem.class, BlockItem::new);
-		provider.register(WorldObjectIdentifiers.DIRT_BLOCK, DirtBlock.class, DirtBlock::new);
-		provider.register(WorldObjectIdentifiers.GRASS_BLOCK, GrassBlock.class, GrassBlock::new);
-		provider.register(WorldObjectIdentifiers.PLAYER_ENTITY, PlayerEntity.class, PlayerEntity::new);
-		provider.register(WorldObjectIdentifiers.INVENTORY, Inventory.class, Inventory::new);
-		provider.register(WorldObjectIdentifiers.ITEM_ENTITY, ItemEntity.class, ItemEntity::new);
+		provider.register(Protocol.BLOCK_GRID, BlockGrid.class, BlockGrid::new);
+		provider.register(Protocol.WORLD, World.class, World::new);
+		provider.register(Protocol.BLOCK_ITEM, BlockItem.class, BlockItem::new);
+		provider.register(Protocol.DIRT_BLOCK, DirtBlock.class, DirtBlock::new);
+		provider.register(Protocol.GRASS_BLOCK, GrassBlock.class, GrassBlock::new);
+		provider.register(Protocol.PLAYER_ENTITY, PlayerEntity.class, PlayerEntity::new);
+		provider.register(Protocol.INVENTORY, Inventory.class, Inventory::new);
+		provider.register(Protocol.ITEM_ENTITY, ItemEntity.class, ItemEntity::new);
 	}
 	
 	public static SerializerReaderWriter getProvider() {

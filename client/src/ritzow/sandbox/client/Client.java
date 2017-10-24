@@ -198,6 +198,7 @@ public final class Client {
 	}
 	
 	public boolean connectTo(SocketAddress address, int timeout) {
+		start();
 		if(!isConnected()) {
 			server = address;
 			byte[] packet = new byte[2];
@@ -233,21 +234,18 @@ public final class Client {
 	
 	public void disconnect(boolean notifyServer) {
 		if(isConnected()) {
-			try {
-				if(notifyServer) {
-					byte[] packet = new byte[2];
-					ByteUtil.putShort(packet, 0, Protocol.CLIENT_DISCONNECT);
-					send(packet);
-				}
-			} finally { //allow the client to be reused, reset all values TODO perhaps put all of this state in a seperate ConnectionState object?
-				server = null;
-				connected = false;
-				unreliableMessageID = 0;
-				reliableMessageID = 0;
-				worldPackets = null;
-				player = null;
-				world = null;
+			if(notifyServer) {
+				byte[] packet = new byte[2];
+				ByteUtil.putShort(packet, 0, Protocol.CLIENT_DISCONNECT);
+				send(packet);
 			}
+			server = null;
+			worldPackets = null;
+			player = null;
+			world = null;
+			connected = false;
+			unreliableMessageID = 0;
+			reliableMessageID = 0;
 		}
 	}
 	
@@ -266,13 +264,15 @@ public final class Client {
 	private void processReceivePlayerEntityID(byte[] data) {
 		int id = ByteUtil.getInteger(data, 2);
 		while(player == null) { //loop infinitely until there is an entity with the correct ID
-			Entity player = getWorld().find(id);
-			if(player != null) {
-				this.player = (ClientPlayerEntity)player;
-				synchronized(playerLock) {
-					playerLock.notifyAll();
+			getWorld().forEach(e -> {
+				if(e.getID() == id) {
+					this.player = (ClientPlayerEntity)e;
+					synchronized(playerLock) {
+						playerLock.notifyAll();
+					}
+					return;
 				}
-			}
+			});
 		}
 	}
 	
@@ -294,15 +294,16 @@ public final class Client {
 	
 	private void processGenericEntityUpdate(byte[] data) {
 		int id = ByteUtil.getInteger(data, 2);
-		Entity e = getWorld().find(id); //find the entity with the received entity id
-		if(e != null) {
-			e.setPositionX((e.getPositionX() + ByteUtil.getFloat(data, 6))/2);
-			e.setPositionY((e.getPositionY() + ByteUtil.getFloat(data, 10))/2);
-			e.setVelocityX(ByteUtil.getFloat(data, 14));
-			e.setVelocityY(ByteUtil.getFloat(data, 18));
-		} else {
-			System.err.println("no entity with id " + id + " found to update");
+		for (Entity e : world) {
+			if(e.getID() == id) {
+				e.setPositionX((e.getPositionX() + ByteUtil.getFloat(data, 6))/2);
+				e.setPositionY((e.getPositionY() + ByteUtil.getFloat(data, 10))/2);
+				e.setVelocityX(ByteUtil.getFloat(data, 14));
+				e.setVelocityY(ByteUtil.getFloat(data, 18));
+				return;
+			}
 		}
+		System.err.println("no entity with id " + id + " found to update");
 	}
 	
 	private final void processReceiveWorldData(byte[] data) {
@@ -315,11 +316,11 @@ public final class Client {
 					//received final packet? create the world.
 					if(i == worldPackets.length - 1) {
 						world = reconstructWorld(worldPackets, serializer);
+						world.setRemoveEntities(false);
 						System.out.println("Received world data.");
 						synchronized(worldLock) {
 							worldLock.notifyAll(); //notify waitForWorldStart that the world has started
 						}
-						
 						worldPackets = null;
 					}
 					break;

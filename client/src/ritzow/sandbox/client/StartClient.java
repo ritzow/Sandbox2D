@@ -36,10 +36,7 @@ public final class StartClient {
 	public static void main(String... args) throws SocketException, UnknownHostException {
 		SocketAddress serverAddress = new InetSocketAddress(args.length > 0 ? args[0] : InetAddress.getLocalHost().getHostAddress(), 50000);
 		Client client = new Client(new InetSocketAddress(0)); //wildcard address, and any port
-		client.start();
-		
 		System.out.print("Connecting to " + serverAddress + "... ");
-		
 		//attempt to connect to the server for one second, if the client connects, run the game code and event processor
 		if(client.connectTo(serverAddress, 1000)) {
 			System.out.println("connected!");
@@ -48,7 +45,6 @@ public final class StartClient {
 			eventProcessor.run(); //run the event processor on this thread
 		} else {
 			System.out.println("failed to connect.");
-			client.stop();
 		}
 	}
 	
