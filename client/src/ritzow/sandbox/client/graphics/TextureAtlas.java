@@ -12,10 +12,10 @@ public class TextureAtlas {
 		}
 		byte[] atlas = new byte[finalWidth * finalHeight];
 		
-		int startIndex;
+		//int startIndex;
 		for(TextureImage t : textures) {
 			int height = t.getBytesPerPixel()/t.getWidth();
-			int columnSize = t.getBytesPerPixel() * t.getWidth();
+			//int columnSize = t.getBytesPerPixel() * t.getWidth();
 			for(int row = 0; row < height; row++) {
 				for(int column = 0; column < t.getWidth(); column++) {
 					//System.arraycopy(t.getData(), row * t.getWidth() + column, atlas, destPos, t.get);
@@ -29,11 +29,11 @@ public class TextureAtlas {
 		return image;
 	}
 	
-	private static float get(float[] array, int row, int column) {
-		return array[(row * 4) + column];
-	}
+//	private static float get(float[] array, int row, int column) {
+//		return array[(row * 4) + column];
+//	}
 	
-	private static void set(float[] array, int row, int column, float value) {
-		array[(row * 4) + column] =  value;
-	}
+//	private static void set(float[] array, int row, int column, float value) {
+//		array[(row * 4) + column] =  value;
+//	}
 }

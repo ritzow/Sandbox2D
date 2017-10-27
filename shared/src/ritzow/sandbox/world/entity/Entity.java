@@ -49,7 +49,7 @@ public abstract class Entity implements Transportable {
 	}
 	
 	public void onCollision(World world, Entity e, float time) {/* optional implementation */}
-	public void onCollision(World world, Block block, float blockX, float blockY, float time) {/* optional implementation */};
+	public void onCollision(World world, Block block, float blockX, float blockY, float time) {/* optional implementation */}
 
 	/** @return true if the entity should be removed from the world **/
 	public abstract boolean getShouldDelete();

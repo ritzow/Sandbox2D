@@ -32,15 +32,15 @@ import ritzow.sandbox.client.input.handler.WindowRefreshHandler;
 
 /** Dispatches GLFW events to handlers in an object oriented fashion **/
 public final class InputManager {
-	private final Collection<CursorPosHandler> cursorPosHandlers = 				new LinkedList<CursorPosHandler>();
-	private final Collection<FramebufferSizeHandler> framebufferSizeHandlers = 	new LinkedList<FramebufferSizeHandler>();
-	private final Collection<KeyHandler> keyHandlers =							new LinkedList<KeyHandler>();
-	private final Collection<MouseButtonHandler> mouseButtonHandlers = 			new LinkedList<MouseButtonHandler>();
-	private final Collection<ScrollHandler> scrollHandlers = 					new LinkedList<ScrollHandler>();
-	private final Collection<WindowRefreshHandler> windowRefreshHandlers = 		new LinkedList<WindowRefreshHandler>();
-	private final Collection<WindowCloseHandler> windowCloseHandlers = 			new LinkedList<WindowCloseHandler>();
-	private final Collection<WindowIconifyHandler> windowIconifyHandlers = 		new LinkedList<WindowIconifyHandler>();
-	private final Collection<WindowFocusHandler> windowFocusHandlers = 			new LinkedList<WindowFocusHandler>();
+	private final Collection<CursorPosHandler> cursorPosHandlers = 				new LinkedList<>();
+	private final Collection<FramebufferSizeHandler> framebufferSizeHandlers = 	new LinkedList<>();
+	private final Collection<KeyHandler> keyHandlers =							new LinkedList<>();
+	private final Collection<MouseButtonHandler> mouseButtonHandlers = 			new LinkedList<>();
+	private final Collection<ScrollHandler> scrollHandlers = 					new LinkedList<>();
+	private final Collection<WindowRefreshHandler> windowRefreshHandlers = 		new LinkedList<>();
+	private final Collection<WindowCloseHandler> windowCloseHandlers = 			new LinkedList<>();
+	private final Collection<WindowIconifyHandler> windowIconifyHandlers = 		new LinkedList<>();
+	private final Collection<WindowFocusHandler> windowFocusHandlers = 			new LinkedList<>();
 	
 	public InputManager(long window) {
 		//TODO use a thread pool executor service with lambda expressions to send events to other threads?

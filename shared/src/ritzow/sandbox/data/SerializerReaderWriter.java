@@ -61,18 +61,18 @@ public class SerializerReaderWriter implements Serializer, Deserializer {
 		
 		if(length == 0) {
 			return null;	
-		} else {
-			//get type, associated with a method to deserialize the object
-			short type = ByteUtil.getShort(object, 4);
-			
-			//get the concrete class of the object
-			Function<DataReader, ? extends Transportable> func = deserializeLookup.get(type);
-			
-			//throw exception if not registered
-			if(func == null)
-				throw new ClassNotRegisteredException("Cannot deserialize unregistered class of type " + type);
-			return (T)func.apply(getReader(object));
 		}
+		
+		//get type, associated with a method to deserialize the object
+		short type = ByteUtil.getShort(object, 4);
+		
+		//get the concrete class of the object
+		Function<DataReader, ? extends Transportable> func = deserializeLookup.get(type);
+		
+		//throw exception if not registered
+		if(func == null)
+			throw new ClassNotRegisteredException("Cannot deserialize unregistered class of type " + type);
+		return (T)func.apply(getReader(object));
 	}
 	
 	private DataReader getReader(final byte[] bytes) { //for use by objects you want to deserialize.

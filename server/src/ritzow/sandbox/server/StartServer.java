@@ -6,7 +6,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
-import java.net.UnknownHostException;
 import java.util.Scanner;
 import ritzow.sandbox.audio.AudioSystem;
 import ritzow.sandbox.data.ByteUtil;
@@ -18,7 +17,7 @@ import ritzow.sandbox.world.block.GrassBlock;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
 public final class StartServer {
-	public static void main(String... args) throws SocketException, UnknownHostException {
+	public static void main(String... args) throws SocketException {
 		Thread.currentThread().setName("Server Setup");
 		Server server = new Server(new InetSocketAddress(50000));
 		
@@ -27,7 +26,7 @@ public final class StartServer {
 		
 		ServerAudioSystem audio = new ServerAudioSystem();
 		World world = saveFile.exists() ? 
-				loadWorld(saveFile, audio, SerializationProvider.getProvider()) : generateWorld(100, 100, audio, server);
+				loadWorld(saveFile, audio, SerializationProvider.getProvider()) : generateWorld(500, 500, audio, server);
 		server.start(world);
 		
 		System.out.println("Startup Complete.");

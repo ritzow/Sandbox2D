@@ -184,9 +184,8 @@ public final class Client {
 				}
 				return object.get();
 			}
-		} else {
-			throw new ConnectionException("client is not connected to a server");
-		}	
+		}
+		throw new ConnectionException("client is not connected to a server");	
 	}
 	
 	public World getWorld() {
@@ -216,11 +215,10 @@ public final class Client {
 				e.printStackTrace();
 				return false;
 			}
-		} else {
-			disconnect(true);
-			return connectTo(address, timeout);
 		}
-	
+		
+		disconnect(true);
+		return connectTo(address, timeout);
 	}
 	
 	public void start() {
