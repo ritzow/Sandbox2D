@@ -26,8 +26,8 @@ public final class NetworkController {
 	
 	public NetworkController(SocketAddress bindAddress, MessageProcessor processor) throws SocketException {
 		socket = new DatagramSocket(bindAddress);
-		reliableQueue = new LinkedList<MessageAddressPair>();
-		lastReceived = new HashMap<SocketAddress, MutableInteger>();
+		reliableQueue = new LinkedList<>();
+		lastReceived = new HashMap<>();
 		messageProcessor = processor;
 	}
 	

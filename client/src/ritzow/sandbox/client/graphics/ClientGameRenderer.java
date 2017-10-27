@@ -119,7 +119,7 @@ public final class ClientGameRenderer implements Renderer {
 		}
 		
 		//render the entities
-		world.forEach(e -> {
+		world.forEach(e -> { //TODO getting a concurrent mod here (started noticing after updating client audio system
 			//pre-compute variables
 			float posX = e.getPositionX();
 			float posY = e.getPositionY();

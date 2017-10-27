@@ -52,7 +52,7 @@ public class World implements Transportable, Iterable<Entity> {
 	 */
 	public World(AudioSystem audio, int width, int height, float gravity) {
 		this.audio = audio;
-		entities = new ArrayList<Entity>(100);
+		entities = new ArrayList<>(100);
 		foreground = new BlockGrid(width, height);
 		background = new BlockGrid(width, height);
 		this.gravity = gravity;
@@ -63,7 +63,7 @@ public class World implements Transportable, Iterable<Entity> {
 		foreground = Objects.requireNonNull(reader.readObject());
 		background = Objects.requireNonNull(reader.readObject());
 		int entityCount = reader.readInteger();
-		entities = new ArrayList<Entity>(entityCount);
+		entities = new ArrayList<>(entityCount);
 		for(int i = 0; i < entityCount; i++) {
 			entities.add(Objects.requireNonNull(reader.readObject()));
 		}
@@ -217,7 +217,7 @@ public class World implements Transportable, Iterable<Entity> {
 		for(Entity e : entities) {
 			if(intersection(x, y, width, height, e.getPositionX(), e.getPositionY(), e.getWidth(), e.getHeight())) {
 				if(col == null) {
-					col = new ArrayList<Entity>();
+					col = new ArrayList<>();
 					col.add(e);
 				}
 			}

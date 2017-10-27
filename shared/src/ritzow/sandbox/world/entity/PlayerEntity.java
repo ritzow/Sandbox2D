@@ -23,7 +23,7 @@ public class PlayerEntity extends Entity implements Living {
 	
 	public PlayerEntity(int entityID) {
 		super(entityID);
-		this.inventory = new Inventory<Item>(9);
+		this.inventory = new Inventory<>(9);
 	}
 	
 	public PlayerEntity(DataReader input) {

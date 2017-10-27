@@ -24,9 +24,9 @@ public final class Font {
 		glyphs = new Model[200];
 		
 		if(info.exists() && info.canRead()) {
-			Scanner reader = new Scanner(info);
-			this.name = reader.nextLine();
-			reader.close();
+			try(Scanner reader = new Scanner(info)) {
+				this.name = reader.nextLine();	
+			}
 		} else {
 			throw new IOException("Unable to access info.txt file in font");
 		}
@@ -57,10 +57,7 @@ public final class Font {
 		if(c < glyphs.length && glyphs[c] != null) {
 			return glyphs[c];
 		}
-		
-		else {
-			return null; //return an error model TODO make a custom unknown character model
-		}
+		return null; //TODO make a custom unknown character model and return it instead
 	}
 	
 	protected void loadCharacters() {

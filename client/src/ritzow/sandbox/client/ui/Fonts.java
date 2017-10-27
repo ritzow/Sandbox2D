@@ -8,7 +8,7 @@ import java.util.List;
 
 public final class Fonts {
 	private static Font DEFAULT_FONT;
-	private static List<Font> fonts = new ArrayList<Font>(1);
+	private static List<Font> fonts = new ArrayList<>(1);
 	private static List<Font> fontsImmutable = Collections.unmodifiableList(fonts);
 	
 	public static void loadAll(File directory) {

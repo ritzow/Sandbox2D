@@ -28,7 +28,7 @@ public final class GraphicsUtility {
 	private static final Map<Integer, String> errorMessages;
 	
 	static {
-		errorMessages = new HashMap<Integer, String>();
+		errorMessages = new HashMap<>();
 		errorMessages.put(0x500, "Invalid enum");
 		errorMessages.put(0x501, "Invalid value");
 		errorMessages.put(0x502, "Invalid operation");

@@ -40,7 +40,7 @@ public final class Server {
 		this(new InetSocketAddress(InetAddress.getLocalHost(), port));
 	}
 	
-	public Server(SocketAddress bindAddress) throws SocketException, UnknownHostException {
+	public Server(SocketAddress bindAddress) throws SocketException {
 		this.controller = new NetworkController(bindAddress, this::process);
 		this.broadcaster = Executors.newCachedThreadPool();
 		this.clients = Collections.synchronizedList(new LinkedList<ClientState>());
@@ -121,7 +121,7 @@ public final class Server {
 				//TODO for now creates entity containing same block, but block data may need to be reset before dropping into world
 				if(block != null) {
 					ItemEntity<BlockItem> drop = 
-							new ItemEntity<BlockItem>(u.world.nextEntityID(), new BlockItem(block), x, y);
+							new ItemEntity<>(u.world.nextEntityID(), new BlockItem(block), x, y);
 					drop.setVelocityX(-0.2f + ((float) Math.random() * (0.4f)));
 					drop.setVelocityY((float) Math.random() * (0.35f));
 					u.world.add(drop);
@@ -557,9 +557,8 @@ public final class Server {
 					&& reliableMessageID == c.reliableMessageID
 					&& username.equals(c.username) 
 					&& address.equals(c.address);
-			} else {
-				return false;
 			}
+			return false;
 		}
 		
 		@Override

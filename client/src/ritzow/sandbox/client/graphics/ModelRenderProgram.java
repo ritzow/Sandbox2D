@@ -8,7 +8,6 @@ import static org.lwjgl.opengl.GL15.glBindBuffer;
 import static org.lwjgl.opengl.GL20.glBindAttribLocation;
 import static org.lwjgl.opengl.GL30.glBindVertexArray;
 
-import java.io.IOException;
 import java.util.Arrays;
 
 public final class ModelRenderProgram extends ShaderProgram {
@@ -59,7 +58,7 @@ public final class ModelRenderProgram extends ShaderProgram {
 	
 	//TODO store models in ModelRenderProgram, rather than Models class?
 	
-	public ModelRenderProgram(Shader vertexShader, Shader fragmentShader, Camera camera) throws IOException {
+	public ModelRenderProgram(Shader vertexShader, Shader fragmentShader, Camera camera) {
 		super(vertexShader, fragmentShader);
 		GraphicsUtility.checkProgramCompilation(this);
 		glBindAttribLocation(programID, RendererConstants.ATTRIBUTE_POSITIONS, "position");

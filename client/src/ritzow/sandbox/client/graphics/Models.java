@@ -1,6 +1,5 @@
 package ritzow.sandbox.client.graphics;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -16,13 +15,13 @@ public final class Models {
 		BLUE_SQUARE_INDEX = 4,
 		RED_SQUARE_INDEX = 5;
 	
-	private static final Map<Integer, Model> models = new HashMap<Integer, Model>(6);
+	private static final Map<Integer, Model> models = new HashMap<>(6);
 	
 	public static Model forIndex(int modelIndex) {
 		return models.get(modelIndex);
 	}
 	
-	public static void loadAll() throws IOException {
+	public static void loadAll() {
 		int indices = GraphicsUtility.uploadIndexData(0, 1, 2, 0, 2, 3);
 		
 		int positions = GraphicsUtility.uploadVertexData(
