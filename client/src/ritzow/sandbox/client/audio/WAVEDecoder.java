@@ -6,7 +6,7 @@ import java.nio.ByteBuffer;
 import org.lwjgl.BufferUtils;
 
 /** Instances of WAVEDecoder will decode a .wav file from an InputStream **/
-public final class WAVEDecoder {
+public final class WAVEDecoder implements SoundData {
 	private final InputStream input;
 	private ByteBuffer data;
 	
@@ -106,8 +106,7 @@ public final class WAVEDecoder {
 			
 			if(input.available() == 0)
 				throw new IOException("Could not find '" + chunkID + "' chunk");
-			else
-				findChunk(chunkID);
+			findChunk(chunkID);
 		}
 	}
 	

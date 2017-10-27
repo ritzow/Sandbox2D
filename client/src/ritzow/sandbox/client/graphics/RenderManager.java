@@ -42,8 +42,8 @@ public final class RenderManager implements Service, FramebufferSizeHandler, Win
 	public RenderManager(Display display) {
 		this.display = display;
 		this.link(display.getInputManager());
-		this.renderers = new ArrayList<Renderer>();
-		this.renderTasks = new LinkedList<Consumer<RenderManager>>();
+		this.renderers = new ArrayList<>();
+		this.renderTasks = new LinkedList<>();
 	}
 	
 	@Override

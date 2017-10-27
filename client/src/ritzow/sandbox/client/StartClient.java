@@ -12,6 +12,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import ritzow.sandbox.client.audio.ClientAudioSystem;
 import ritzow.sandbox.client.audio.Sounds;
+import ritzow.sandbox.client.audio.WAVEDecoder;
 import ritzow.sandbox.client.graphics.Camera;
 import ritzow.sandbox.client.graphics.ClientGameRenderer;
 import ritzow.sandbox.client.graphics.LightRenderProgram;
@@ -19,6 +20,7 @@ import ritzow.sandbox.client.graphics.ModelRenderProgram;
 import ritzow.sandbox.client.graphics.OpenGLException;
 import ritzow.sandbox.client.graphics.RenderManager;
 import ritzow.sandbox.client.graphics.Shader;
+import ritzow.sandbox.client.graphics.Shader.ShaderType;
 import ritzow.sandbox.client.input.Controls;
 import ritzow.sandbox.client.input.EventProcessor;
 import ritzow.sandbox.client.input.InputManager;
@@ -34,7 +36,8 @@ import ritzow.sandbox.world.World;
 
 public final class StartClient {
 	public static void main(String... args) throws SocketException, UnknownHostException {
-		SocketAddress serverAddress = new InetSocketAddress(args.length > 0 ? args[0] : InetAddress.getLocalHost().getHostAddress(), 50000);
+		SocketAddress serverAddress = 
+				new InetSocketAddress(args.length > 0 ? args[0] : InetAddress.getLocalHost().getHostAddress(), 50000);
 		Client client = new Client(new InetSocketAddress(0)); //wildcard address, and any port
 		System.out.print("Connecting to " + serverAddress + "... ");
 		//attempt to connect to the server for one second, if the client connects, run the game code and event processor
@@ -67,23 +70,27 @@ public final class StartClient {
 			System.out.println("world received");
 			
 			ClientAudioSystem audio = new ClientAudioSystem();
-			
-			try {
-				//TODO make sound register system, something like AudioSystem::registerSound method 
-				//to associate sounds with a system, rather than being global
-
-				Sounds.loadAll(new File("resources/assets/audio"));
-				world.setAudioSystem(audio);
-				audio.setVolume(1.0f);
-				System.out.println("audio system initialized");
-			} catch (IOException e) {
-				e.printStackTrace();
+			for(File f : new File("resources/assets/audio").listFiles(f -> f.isFile())) {
+				try {
+					FileInputStream input = new FileInputStream(f);
+					WAVEDecoder decoder = new WAVEDecoder(input);
+					decoder.decode();
+					input.close();
+					audio.registerSound(Sounds.forFile(f.getName()), decoder);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 			}
+			
+			audio.setVolume(1.0f);
+			world.setAudioSystem(audio);
+			System.out.println("audio system initialized");
 			
 			ClientPlayerEntity player = client.getPlayer();
 			System.out.println("player received");
 			
-			CameraController cameraGrip = new TrackingCameraController(new Camera(0, 0, 1), audio, player, 0.005f, 0.05f, 0.6f);
+			CameraController cameraGrip = 
+					new TrackingCameraController(new Camera(0, 0, 1), audio, player, 0.005f, 0.05f, 0.6f);
 			
 			//create and link player controllers so the user can play the game
 			Collection<Controller> controllers = Arrays.asList(
@@ -97,20 +104,17 @@ public final class StartClient {
 			});
 			
 			RenderManager renderManager = eventProcessor.getDisplay().getRenderManager();
-			
-			//perform graphics setup
 			renderManager.submitRenderTask(graphics -> {
 				try {
-					//load shader programs on renderer startup so that it is done in OpenGL thread, otherwise the program will crash
 					ModelRenderProgram modelProgram = new ModelRenderProgram(
-							new Shader(new FileInputStream("resources/shaders/modelVertexShader"), org.lwjgl.opengl.GL20.GL_VERTEX_SHADER),
-							new Shader(new FileInputStream("resources/shaders/modelFragmentShader"), org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER), 
+							new Shader(new FileInputStream("resources/shaders/modelVertexShader"), ShaderType.VERTEX),
+							new Shader(new FileInputStream("resources/shaders/modelFragmentShader"), ShaderType.FRAGMENT), 
 							cameraGrip.getCamera()
 					);
 					
 					LightRenderProgram lightProgram = new LightRenderProgram(
-							new Shader(new FileInputStream("resources/shaders/lightVertexShader"), org.lwjgl.opengl.GL20.GL_VERTEX_SHADER),
-							new Shader(new FileInputStream("resources/shaders/lightFragmentShader"), org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER),
+							new Shader(new FileInputStream("resources/shaders/lightVertexShader"), ShaderType.VERTEX),
+							new Shader(new FileInputStream("resources/shaders/lightFragmentShader"), ShaderType.FRAGMENT),
 							cameraGrip.getCamera()
 					);
 					
@@ -126,7 +130,8 @@ public final class StartClient {
 			renderManager.waitForSetup();
 			System.out.println("render manager setup complete");
 			
-			//wait for the Display, and thus InputManager, to be created, then link the game manager to the display so that the escape button and x button exit the game
+			//wait for the Display, and thus InputManager, to be created, then link the game manager to 
+			//the display so that the escape button and x button exit the game
 			eventProcessor.getDisplay().getInputManager().getWindowCloseHandlers().add(this);
 			eventProcessor.getDisplay().getInputManager().getKeyHandlers().add(this);
 			
@@ -148,12 +153,11 @@ public final class StartClient {
 			
 			//TODO need to fix ordering of these things
 			System.out.print("exiting... ");
-			//clientUpdater.stop();
-			//clientUpdater.waitUntilFinished();
 			renderManager.waitForExit();
 			eventProcessor.waitForExit();
 			client.stop();
-			audio.exit();
+			audio.close();
+			ClientAudioSystem.shutdown();
 			System.out.println("done!");
 		}
 		
