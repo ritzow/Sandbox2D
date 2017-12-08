@@ -8,15 +8,11 @@ import static org.lwjgl.opengl.GL30.GL_COLOR_ATTACHMENT0;
 import static org.lwjgl.opengl.GL30.GL_COLOR_ATTACHMENT1;
 
 import java.util.Collection;
-import ritzow.sandbox.client.input.controller.Controller;
-import ritzow.sandbox.client.util.Renderable;
 import ritzow.sandbox.client.world.block.ClientBlock;
 import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
 
 public final class ClientGameRenderer implements Renderer {
-	private static final float MAX_TIMESTEP = 2;
-	
 	private final ModelRenderProgram modelProgram;
 //	private final LightRenderProgram lightProgram;
 	private final Framebuffer framebuffer;
@@ -25,10 +21,10 @@ public final class ClientGameRenderer implements Renderer {
 	private int previousWidth, previousHeight;
 	
 	private final World world;
-	private final Collection<Controller> controllers;
+	private final Collection<Runnable> controllers;
 	private long previousTime;
 	
-	public ClientGameRenderer(Collection<Controller> controllers, ModelRenderProgram modelProgram, LightRenderProgram lightProgram, World world) {
+	public ClientGameRenderer(Collection<Runnable> controllers, ModelRenderProgram modelProgram, LightRenderProgram lightProgram, World world) {
 		this.world = world;
 		this.controllers = controllers;
 		this.modelProgram = modelProgram;
@@ -39,27 +35,19 @@ public final class ClientGameRenderer implements Renderer {
 		framebuffer.attachTexture(diffuseTexture, GL_COLOR_ATTACHMENT0);
 		framebuffer.attachTexture(finalTexture, GL_COLOR_ATTACHMENT1);
 		GraphicsUtility.checkErrors();
-		this.previousTime = System.nanoTime();
+		this.previousTime = System.nanoTime(); //TODO this is a bad place to put this
 	}
 	
 	@Override
 	public Framebuffer render(final int currentWidth, final int currentHeight) {
-		//update the world (this section might eventually be moved to its own "renderer" that runs before the clientworldrenderer)
-		//TODO this only really works for client side stuff doesnt it, if connected to a server it will act weird/be redundant
 		long current = System.nanoTime(); //get the current time
 		float totalUpdateTime = (current - previousTime) * 0.0000000625f; //get the amount of update time
 		previousTime = current; //update the previous time for the next frame
-		
-		//update the world with a timestep of at most 2 until the world is up to date.
-		for(float time; totalUpdateTime > 0; totalUpdateTime -= time) {
-			time = Math.min(totalUpdateTime, MAX_TIMESTEP);
-			world.update(time);
-			totalUpdateTime -= time;
-		}
+		world.update(totalUpdateTime);
 		
 		//update controllers (camera, player, etc.)
 		controllers.forEach(c -> {
-			c.update();
+			c.run();
 		});
 		
 		//ensure that model program is cached on stack
@@ -88,7 +76,7 @@ public final class ClientGameRenderer implements Renderer {
 		//cache foreground and background of world
 		final BlockGrid foreground = world.getForeground(), background = world.getBackground();
 		
-		//calculate block grid bounds
+		//calculate block grid bounds TODO fix after adding chunk system, allow for negatives
 		int leftBound = 	Math.max(0, (int)Math.floor(worldLeft));
 		int rightBound = 	Math.min(foreground.getWidth(), (int)Math.ceil(worldRight));
 		int topBound = 		Math.min(foreground.getHeight(), (int)Math.ceil(worldTop));
@@ -110,7 +98,7 @@ public final class ClientGameRenderer implements Renderer {
 				if(foreground.isBlock(column, row)) {
 					ClientBlock block = (ClientBlock)foreground.get(column, row);
 					modelProgram.render(Models.forIndex(block.getModelIndex()), 1.0f, column, row, 1.0f, 1.0f, 0.0f);
-				} else if(background != null && background.isBlock(column, row)) { //TODO temp null check
+				} else if(background.isBlock(column, row)) {
 					ClientBlock block = (ClientBlock)background.get(column, row);
 					modelProgram.render(Models.forIndex(block.getModelIndex()), 0.5f, column, row, 1.0f, 1.0f, 0.0f); 
 					//TODO when the player destroys a block (happens on a different thread), this can cause a null pointer
@@ -121,14 +109,15 @@ public final class ClientGameRenderer implements Renderer {
 		//render the entities
 		world.forEach(e -> { //TODO getting a concurrent mod here (started noticing after updating client audio system
 			//pre-compute variables
+			Renderable graphics = (Renderable)e;
 			float posX = e.getPositionX();
 			float posY = e.getPositionY();
-			float halfWidth = e.getWidth()/2;
-			float halfHeight = e.getHeight()/2;
+			float halfWidth = graphics.getWidth()/2;
+			float halfHeight = graphics.getHeight()/2;
 			
 			//check if the entity is visible inside the viewport and render it
 			if(posX < worldRight + halfWidth && posX > worldLeft - halfWidth && posY < worldTop + halfHeight && posY > worldBottom - halfHeight) {
-				((Renderable)e).render(modelProgram);
+				graphics.render(modelProgram);
 			}
 		});
 		

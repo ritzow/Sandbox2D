@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Queue;
 import java.util.function.Consumer;
 
@@ -26,6 +27,7 @@ import ritzow.sandbox.client.input.InputManager;
 import ritzow.sandbox.client.input.handler.FramebufferSizeHandler;
 import ritzow.sandbox.client.input.handler.WindowFocusHandler;
 import ritzow.sandbox.util.Service;
+import ritzow.sandbox.util.Utility;
 
 /** Initializes OpenGL and loads data to the GPU, then renders any Renderable objects added to the List returned by getUpdatables() **/
 public final class RenderManager implements Service, FramebufferSizeHandler, WindowFocusHandler {
@@ -35,6 +37,7 @@ public final class RenderManager implements Service, FramebufferSizeHandler, Win
 	private final Display display;
 	private final List<Renderer> renderers;
 	private final Queue<Consumer<RenderManager>> renderTasks;
+	private final Object pausedLock;
 	
 	private static final long TARGET_FPS = 60;
 	private static final long TARGET_NANOSECONDS = 1_000_000_000/TARGET_FPS;
@@ -44,6 +47,7 @@ public final class RenderManager implements Service, FramebufferSizeHandler, Win
 		this.link(display.getInputManager());
 		this.renderers = new ArrayList<>();
 		this.renderTasks = new LinkedList<>();
+		this.pausedLock = new Object();
 	}
 	
 	@Override
@@ -100,11 +104,7 @@ public final class RenderManager implements Service, FramebufferSizeHandler, Win
 					long nanosToSleep = (Math.max(0, TARGET_NANOSECONDS - (System.nanoTime() - frameStart)));
 					Thread.sleep(nanosToSleep/1_000_000, (int)(nanosToSleep % 1_000_000));
 				} else {
-					synchronized(this) {
-						while(!(focused || exit)) {
-							wait(); //pauses rendering when window is not active to reduce idle CPU usage
-						}
-					}
+					Utility.waitOnCondition(pausedLock, () -> focused || exit);
 				}
 			}
 		} catch(InterruptedException e) {
@@ -125,7 +125,7 @@ public final class RenderManager implements Service, FramebufferSizeHandler, Win
 	/** Will add a render task to a queue to be executed at the beginning of the next frame **/
 	public void submitRenderTask(Consumer<RenderManager> task) {
 		synchronized(renderTasks) {
-			renderTasks.add(task);
+			renderTasks.add(Objects.requireNonNull(task));
 		}
 	}
 	
@@ -147,6 +147,9 @@ public final class RenderManager implements Service, FramebufferSizeHandler, Win
 	public synchronized void exit() {
 		exit = true;
 		notifyAll();
+		synchronized(pausedLock) {
+			pausedLock.notifyAll();
+		}
 	}
 
 	@Override
@@ -161,8 +164,8 @@ public final class RenderManager implements Service, FramebufferSizeHandler, Win
 		this.focused = focused;
 		
 		if(focused) {
-			synchronized(this) {
-				notifyAll();
+			synchronized(pausedLock) {
+				pausedLock.notifyAll();
 			}
 		}
 	}

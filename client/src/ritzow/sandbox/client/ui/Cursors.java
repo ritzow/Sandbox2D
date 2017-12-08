@@ -6,7 +6,6 @@ import de.matthiasmann.twl.utils.PNGDecoder;
 import de.matthiasmann.twl.utils.PNGDecoder.Format;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.lwjgl.BufferUtils;
@@ -16,7 +15,7 @@ public final class Cursors {
 	
 	public static long PICKAXE;
 	
-	public static void loadAll() throws FileNotFoundException, IOException {
+	public static void loadAll() throws IOException {
 		Cursors.PICKAXE = loadCursor(new File("resources/assets/textures/cursors/pickaxe32.png"), 0, 0.66f);
 	}
 	

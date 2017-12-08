@@ -1,5 +1,5 @@
 package ritzow.sandbox.client.input.handler;
 
-public interface WindowCloseHandler extends InputHandler {
+public interface WindowCloseHandler {
 	public void windowClose();
 }

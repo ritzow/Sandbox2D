@@ -2,37 +2,36 @@ package ritzow.sandbox.client.world.entity;
 
 import ritzow.sandbox.client.graphics.Graphical;
 import ritzow.sandbox.client.graphics.ModelRenderProgram;
-import ritzow.sandbox.client.util.Renderable;
+import ritzow.sandbox.client.graphics.Renderable;
 import ritzow.sandbox.data.DataReader;
 import ritzow.sandbox.world.entity.ItemEntity;
 import ritzow.sandbox.world.item.Item;
 
 public final class ClientItemEntity<I extends Item> extends ItemEntity<I> implements Renderable {
-	protected float rotation;
-	protected float rotationSpeed;
+	private float rotation;
 	
-	//TODO get rid of constructor repetition, and maybe remove rotationSpeed field?
-	public ClientItemEntity(DataReader data) {
-		super(data);
-		this.rotationSpeed = (float) (Math.random() < 0.5f ? -(Math.random() * 0.02f + 0.02f) : (Math.random() * 0.02f + 0.02f));
-	}
+	private static final float ROTATION_SPEED = 0.05f;
 
 	public ClientItemEntity(int entityID, I item) {
-		super(entityID, item);
-		this.rotationSpeed = (float) (Math.random() < 0.5f ? -(Math.random() * 0.02f + 0.02f) : (Math.random() * 0.02f + 0.02f));
+		this(entityID, item, (float) (Math.random() * Math.PI * 2), 0, 0);
 	}
 	
-	public ClientItemEntity(int entityID, I item, float x, float y) {
+	public ClientItemEntity(DataReader data) {
+		super(data);
+		this.rotation = (float) (Math.random() * Math.PI * 2);
+	}
+	
+	public ClientItemEntity(int entityID, I item, float rotation, float x, float y) {
 		super(entityID, item);
+		this.rotation = rotation;
 		this.positionX = x;
 		this.positionY = y;
-		this.rotationSpeed = (float) (Math.random() < 0.5f ? -(Math.random() * 0.02f + 0.02f) : (Math.random() * 0.02f + 0.02f));
 	}
 	
 	@Override
 	public void update(float time) {
 		super.update(time);
-		rotation = ((rotation + rotationSpeed > Math.PI * 2) ? (float)(rotation + rotationSpeed * time - Math.PI * 2) : rotation + rotationSpeed * time);
+		rotation = Math.abs(rotation + ROTATION_SPEED * time);
 	}
 
 	@Override
@@ -42,6 +41,6 @@ public final class ClientItemEntity<I extends Item> extends ItemEntity<I> implem
 	
 	@Override
 	public String toString() {
-		return super.toString() + ", item = (" + item.toString() + "), rotation = " + rotation + ", rotationSpeed = " + rotationSpeed;
+		return super.toString() + ", item = (" + item.toString() + "), rotation = " + rotation;
 	}
 }

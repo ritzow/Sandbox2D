@@ -8,11 +8,14 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Map;
 import ritzow.sandbox.client.audio.ClientAudioSystem;
 import ritzow.sandbox.client.audio.Sounds;
 import ritzow.sandbox.client.audio.WAVEDecoder;
+import ritzow.sandbox.client.core.ClientGameUpdater;
 import ritzow.sandbox.client.graphics.Camera;
 import ritzow.sandbox.client.graphics.ClientGameRenderer;
 import ritzow.sandbox.client.graphics.LightRenderProgram;
@@ -29,8 +32,7 @@ import ritzow.sandbox.client.input.controller.Controller;
 import ritzow.sandbox.client.input.controller.InteractionController;
 import ritzow.sandbox.client.input.controller.PlayerController;
 import ritzow.sandbox.client.input.controller.TrackingCameraController;
-import ritzow.sandbox.client.input.handler.KeyHandler;
-import ritzow.sandbox.client.input.handler.WindowCloseHandler;
+import ritzow.sandbox.client.util.RunnableGroup;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
 import ritzow.sandbox.world.World;
 
@@ -51,7 +53,7 @@ public final class StartClient {
 		}
 	}
 	
-	private static final class ClientStarter implements Runnable, WindowCloseHandler, KeyHandler {
+	private static final class ClientStarter implements Runnable {
 		private final Client client;
 		private final EventProcessor eventProcessor;
 		private volatile boolean exit;
@@ -70,13 +72,20 @@ public final class StartClient {
 			System.out.println("world received");
 			
 			ClientAudioSystem audio = new ClientAudioSystem();
+			
+			Map<String, Integer> soundFiles = Map.ofEntries(
+				Map.entry("dig.wav", Sounds.BLOCK_BREAK),
+				Map.entry("place.wav", Sounds.BLOCK_PLACE),
+				Map.entry("pop.wav", Sounds.POP),
+				Map.entry("throw.wav", Sounds.THROW),
+				Map.entry("snap.wav", Sounds.SNAP)
+			);
+			
 			for(File f : new File("resources/assets/audio").listFiles(f -> f.isFile())) {
-				try {
-					FileInputStream input = new FileInputStream(f);
+				try(FileInputStream input = new FileInputStream(f)) {
 					WAVEDecoder decoder = new WAVEDecoder(input);
 					decoder.decode();
-					input.close();
-					audio.registerSound(Sounds.forFile(f.getName()), decoder);
+					audio.registerSound(soundFiles.get(f.getName()), decoder);	
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
@@ -84,15 +93,26 @@ public final class StartClient {
 			
 			audio.setVolume(1.0f);
 			world.setAudioSystem(audio);
-			System.out.println("audio system initialized");
+			
+			//only play audio when the windows is active 
+			//TODO completely disable audio instead of just muting
+			eventProcessor.getDisplay().getInputManager().getWindowFocusHandlers().add(focused -> {
+				if(focused) {
+					audio.setVolume(1.0f);
+				} else {
+					audio.setVolume(0);
+				}
+			});
+			
+			System.out.println("Audio system setup complete");
 			
 			ClientPlayerEntity player = client.getPlayer();
-			System.out.println("player received");
+			System.out.println("Player downloaded");
 			
-			CameraController cameraGrip = 
+			CameraController cameraGrip =
 					new TrackingCameraController(new Camera(0, 0, 1), audio, player, 0.005f, 0.05f, 0.6f);
 			
-			//create and link player controllers so the user can play the game
+			//create and link player controllers so the user canControllergame
 			Collection<Controller> controllers = Arrays.asList(
 					new PlayerController(client),
 					new InteractionController(client, cameraGrip.getCamera(), 200, 300, 5),
@@ -102,6 +122,9 @@ public final class StartClient {
 			controllers.forEach(controller -> {
 				controller.link(eventProcessor.getDisplay().getInputManager());
 			});
+			
+			Collection<Runnable> runnables = new ArrayList<Runnable>();
+			runnables.addAll(controllers);
 			
 			RenderManager renderManager = eventProcessor.getDisplay().getRenderManager();
 			renderManager.submitRenderTask(graphics -> {
@@ -118,27 +141,48 @@ public final class StartClient {
 							cameraGrip.getCamera()
 					);
 					
-					graphics.getRenderers().add(new ClientGameRenderer(controllers, modelProgram, lightProgram, world));
+					graphics.getRenderers().add(new ClientGameRenderer(runnables, modelProgram, lightProgram, world));
 					
-					System.out.println("renderer shaders initialized");
+					System.out.println("Renderer started");
 				} catch (IOException | OpenGLException e) {
 					throw new RuntimeException(e);
 				}
 			});
 			
+			ClientGameUpdater gameUpdater = new ClientGameUpdater();
+			gameUpdater.start();
+			gameUpdater.addRepeatedTask(() -> { //add wait task so the updater doesn't increase CPU usage
+				try {
+					Thread.sleep(1);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			});
+			
+			gameUpdater.addRepeatedTask(new RunnableGroup(runnables));
+			
+			//TODO migrate rendering and world updating to Runnable subclasses and integrate with game updater
+			
 			renderManager.start();
 			renderManager.waitForSetup();
-			System.out.println("render manager setup complete");
+			System.out.println("Render manager setup complete");
 			
-			//wait for the Display, and thus InputManager, to be created, then link the game manager to 
-			//the display so that the escape button and x button exit the game
-			eventProcessor.getDisplay().getInputManager().getWindowCloseHandlers().add(this);
-			eventProcessor.getDisplay().getInputManager().getKeyHandlers().add(this);
+			InputManager input = eventProcessor.getDisplay().getInputManager();
+			input.getKeyHandlers().add((key, scancode, action, mods) -> {
+				if(key == Controls.KEYBIND_QUIT && action == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
+					exit();
+				} else if(key == Controls.KEYBIND_FULLSCREEN && action == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
+		            eventProcessor.getDisplay().toggleFullscreen();
+		        }
+			});
+			
+			input.getWindowCloseHandlers().add(() -> {
+				exit();
+			});
 			
 			//display the window now that everything is set up.
 			eventProcessor.setReadyToDisplay();
-			
-			System.out.println("display ready");
+			System.out.println("Window displayed");
 			
 			//wait until the game should exit
 			synchronized(this) {
@@ -152,10 +196,12 @@ public final class StartClient {
 			}
 			
 			//TODO need to fix ordering of these things
-			System.out.print("exiting... ");
+			System.out.print("Exiting... ");
+			eventProcessor.getDisplay().setVisible(false);
+			gameUpdater.stop();
 			renderManager.waitForExit();
 			eventProcessor.waitForExit();
-			client.stop();
+			client.disconnect(true);
 			audio.close();
 			ClientAudioSystem.shutdown();
 			System.out.println("done!");
@@ -165,30 +211,6 @@ public final class StartClient {
 		public synchronized void exit() {
 			exit = true;
 			notifyAll(); //notify that ClientManager should exit
-		}
-
-		@Override
-		public void windowClose() {
-			exit();
-		}
-
-		@Override
-		public void keyboardButton(int key, int scancode, int action, int mods) {
-			if(key == Controls.KEYBIND_QUIT && action == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
-				exit();
-			} else if(key == Controls.KEYBIND_FULLSCREEN && action == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
-	            eventProcessor.getDisplay().setFullscreen(!eventProcessor.getDisplay().getFullscreen());
-	        }
-		}
-
-		@Override
-		public void link(InputManager manager) {
-			manager.getKeyHandlers().add(this);
-		}
-
-		@Override
-		public void unlink(InputManager manager) {
-			manager.getKeyHandlers().remove(this);
 		}
 	}
 }

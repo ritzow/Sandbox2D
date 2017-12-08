@@ -6,51 +6,52 @@ import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Arrays;
-import java.util.function.Supplier;
 import ritzow.sandbox.client.util.SerializationProvider;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
 import ritzow.sandbox.data.ByteUtil;
 import ritzow.sandbox.data.SerializerReaderWriter;
-import ritzow.sandbox.data.Transportable;
-import ritzow.sandbox.network.ConnectionException;
 import ritzow.sandbox.network.NetworkController;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.network.Protocol.PlayerAction;
 import ritzow.sandbox.network.TimeoutException;
+import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.Entity;
 
+/**
+ * Represents a connection to a game server. Can only connect to a server once.
+ * @author Solomon Ritzow
+ *
+ */
 public final class Client {
 	
 	/** The server's address **/
-	protected volatile SocketAddress server;
+	private volatile SocketAddress server;
 	
 	/** I/O logic **/
-	protected final NetworkController controller;
+	private final NetworkController controller;
 	
 	/** if the server has been successfully connected to **/
-	protected volatile boolean connected;
+	private volatile boolean connected;
 	
 	/** messageID **/
-	protected volatile int unreliableMessageID, reliableMessageID;
+	private volatile int unreliableMessageID, reliableMessageID, lastReceivedUnreliableMessageID = -1;
 	
 	/** The World object sent by the server **/
-	protected volatile World world;
+	private volatile World world;
 	private byte[][] worldPackets;
 	
 	/** The Player object sent by the server for the client to control **/
-	protected volatile ClientPlayerEntity player;
+	private volatile ClientPlayerEntity player;
 	
 	/** lock object for synchronizing server-initiated actions with the client **/
-	protected final Object worldLock, playerLock, lobbyLock;
-	
-	protected final SerializerReaderWriter serializer;
+	private final Object worldLock, playerLock;
+	private final SerializerReaderWriter serializer;
 	
 	public Client(SocketAddress bindAddress) throws SocketException {
 		controller = new NetworkController(bindAddress);
 		worldLock = new Object();
 		playerLock = new Object();
-		lobbyLock = new Object();
 		controller.setOnRecieveMessage(this::process);
 		serializer = SerializationProvider.getProvider();
 	}
@@ -59,9 +60,44 @@ public final class Client {
 		this(new InetSocketAddress(InetAddress.getLocalHost(), 0));
 	}
 	
-	protected volatile int lastReceivedUnreliableMessageID = -1;
+	private void onReceive(final short protocol, int messageID, byte[] data) {
+		switch(protocol) {
+			case Protocol.SERVER_CONNECT_ACKNOWLEDGMENT:
+				processServerConnectAcknowledgement(data);
+				break;
+			case Protocol.SERVER_WORLD_HEAD:
+				worldPackets = new byte[ByteUtil.getInteger(data, 2)][];
+				break;
+			case Protocol.SERVER_WORLD_DATA:
+				processReceiveWorldData(data);
+				break;
+			case Protocol.CONSOLE_MESSAGE:
+				System.out.println("[Server Message] " + new String(data, 2, data.length - 2, Protocol.CHARSET));
+				break;
+			case Protocol.SERVER_ENTITY_UPDATE:
+				processGenericEntityUpdate(data);
+				break;
+			case Protocol.SERVER_ADD_ENTITY:
+				processAddEntity(data);
+				break;
+			case Protocol.SERVER_REMOVE_ENTITY:
+				processRemoveEntity(data);
+				break;
+			case Protocol.SERVER_CLIENT_DISCONNECT:
+				processServerDisconnect(data);
+				break;
+			case Protocol.SERVER_PLAYER_ID:
+				processReceivePlayerEntityID(data);
+				break;
+			case Protocol.SERVER_REMOVE_BLOCK:
+				processServerRemoveBlock(data);
+				break;
+			default:
+				throw new IllegalArgumentException("Client received message of unknown protocol " + protocol);
+		}
+	}
 	
-	private final void process(SocketAddress sender, int messageID, byte[] data) {
+	private void process(SocketAddress sender, int messageID, byte[] data) {
 		final short protocol = ByteUtil.getShort(data, 0);
 		
 		if(!Protocol.isReliable(protocol)) {
@@ -73,45 +109,48 @@ public final class Client {
 		}
 		
 		if(sender.equals(server)) {
-			switch(protocol) {
-				case Protocol.SERVER_CONNECT_ACKNOWLEDGMENT:
-					processServerConnectAcknowledgement(data);
-					break;
-				case Protocol.SERVER_WORLD_HEAD:
-					worldPackets = new byte[ByteUtil.getInteger(data, 2)][];
-					break;
-				case Protocol.SERVER_WORLD_DATA:
-					processReceiveWorldData(data);
-					break;
-				case Protocol.CONSOLE_MESSAGE:
-					System.out.println("[Server Message] " + new String(data, 2, data.length - 2, Protocol.CHARSET));
-					break;
-				case Protocol.SERVER_ENTITY_UPDATE:
-					processGenericEntityUpdate(data);
-					break;
-				case Protocol.SERVER_ADD_ENTITY:
-					processAddEntity(data);
-					break;
-				case Protocol.SERVER_REMOVE_ENTITY:
-					processRemoveEntity(data);
-					break;
-				case Protocol.SERVER_CLIENT_DISCONNECT:
-					processServerDisconnect(data);
-					break;
-				case Protocol.SERVER_PLAYER_ID:
-					processReceivePlayerEntityID(data);
-					break;
-				case Protocol.SERVER_REMOVE_BLOCK:
-					processServerRemoveBlock(data);
-					break;
-				default:
-					System.err.println("Client received message of unknown protocol " + protocol);
+			try {
+				onReceive(protocol, messageID, data);
+			} catch(IllegalArgumentException e) {
+				System.err.println(e.getMessage());
 			}
 		}
 	}
 	
 	private void processServerRemoveBlock(byte[] data) {
 		world.getForeground().destroy(world, ByteUtil.getInteger(data, 2), ByteUtil.getInteger(data, 6));
+	}
+	
+	public boolean connectTo(SocketAddress address, int timeout) {
+		if(!isConnected()) {
+			controller.start();
+			server = address;
+			try {
+				sendClientConnectRequest(address, timeout);
+				synchronized(server) {
+					server.wait();
+				}
+				if(!connected) {
+					controller.stop();
+					server = null;	
+				}
+				return connected;
+			} catch(TimeoutException e) {
+				controller.stop();
+				server = null;
+				return false;
+			} catch (InterruptedException e) {
+				throw new RuntimeException("client connect method should never be interrupted", e);
+			}
+		} else {
+			throw new IllegalStateException("client already connected to connect to a server");
+		}
+	}
+	
+	private void sendClientConnectRequest(SocketAddress server, int timeout) {
+		byte[] packet = new byte[2];
+		ByteUtil.putShort(packet, 0, Protocol.CLIENT_CONNECT_REQUEST);
+		controller.sendReliable(server, nextReliableMessageID(), packet, Math.max(1, timeout/100), Math.min(timeout, 100));
 	}
 
 	public void sendBlockBreak(int x, int y) {
@@ -130,7 +169,7 @@ public final class Client {
 			ByteUtil.putBoolean(packet, 3, enable);
 			send(packet);
 		} else {
-			throw new RuntimeException("Client not connected to a server");
+			throw new IllegalStateException("Client not connected to a server");
 		}
 	}
 	
@@ -154,7 +193,7 @@ public final class Client {
 				disconnect(false);
 			}
 		} else {
-			throw new ConnectionException("client is not connected to a server");
+			throw new IllegalStateException("client is not connected to a server");
 		}
 	}
 	
@@ -166,68 +205,14 @@ public final class Client {
 		return server;
 	}
 	
-	/**
-	 * Waits on {@code lock} and returns {@code object} as soon as it has a value
-	 * @param lock the object to wait to be notified by
-	 * @param object the value to wait to be non-null
-	 * @return the value of object
-	 */
-	protected <T extends Transportable> T receiveObject(Object lock, Supplier<T> object) {
-		if(isConnected()) {
-			synchronized(lock) {
-				while(object.get() == null) {
-					try {
-						lock.wait();
-					} catch(InterruptedException e) {
-						continue;
-					}
-				}
-				return object.get();
-			}
-		}
-		throw new ConnectionException("client is not connected to a server");	
-	}
-	
 	public World getWorld() {
-		return world != null ? world : receiveObject(worldLock, () -> world);
+		Utility.waitOnCondition(worldLock, () -> world != null);
+		return world;
 	}
 	
 	public ClientPlayerEntity getPlayer() {
-		return player != null ? player : receiveObject(playerLock, () -> player);
-	}
-	
-	public boolean connectTo(SocketAddress address, int timeout) {
-		start();
-		if(!isConnected()) {
-			server = address;
-			byte[] packet = new byte[2];
-			ByteUtil.putShort(packet, 0, Protocol.CLIENT_CONNECT_REQUEST);
-			try {
-				controller.sendReliable(address, nextReliableMessageID(), packet, Math.max(1, timeout/100), Math.min(timeout, 100));
-				synchronized(server) {
-					server.wait();
-				}
-				return connected;
-			} catch(TimeoutException e) {
-				server = null;
-				return false;
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-				return false;
-			}
-		}
-		
-		disconnect(true);
-		return connectTo(address, timeout);
-	}
-	
-	public void start() {
-		controller.start();
-	}
-	
-	public void stop() {
-		disconnect(true);
-		controller.stop();
+		Utility.waitOnCondition(playerLock, () -> player != null);
+		return player;
 	}
 	
 	public void disconnect(boolean notifyServer) {
@@ -237,13 +222,9 @@ public final class Client {
 				ByteUtil.putShort(packet, 0, Protocol.CLIENT_DISCONNECT);
 				send(packet);
 			}
-			server = null;
-			worldPackets = null;
-			player = null;
-			world = null;
-			connected = false;
-			unreliableMessageID = 0;
-			reliableMessageID = 0;
+			controller.stop();
+		} else {
+			throw new IllegalStateException("not connected to a server");
 		}
 	}
 	
@@ -284,6 +265,10 @@ public final class Client {
 			boolean compressed = ByteUtil.getBoolean(data, 2);
 			byte[] entity = Arrays.copyOfRange(data, 3, data.length);
 			Entity e = serializer.deserialize(compressed ? ByteUtil.decompress(entity) : entity);
+			world.forEach(o -> {
+				if(o.getID() == e.getID())
+					throw new IllegalStateException("cannot have two entities with the same ID");
+			});
 			getWorld().add(e);
 		} catch(ClassCastException e) {
 			System.err.println("Error while deserializing received entity");
@@ -304,7 +289,7 @@ public final class Client {
 		System.err.println("no entity with id " + id + " found to update");
 	}
 	
-	private final void processReceiveWorldData(byte[] data) {
+	private void processReceiveWorldData(byte[] data) {
 		synchronized(worldPackets) {
 			for(int i = 0; i < worldPackets.length; i++) {
 				//find an empty slot to put the received data
@@ -317,7 +302,7 @@ public final class Client {
 						world.setRemoveEntities(false);
 						System.out.println("Received world data.");
 						synchronized(worldLock) {
-							worldLock.notifyAll(); //notify waitForWorldStart that the world has started
+							worldLock.notifyAll();
 						}
 						worldPackets = null;
 					}
@@ -327,8 +312,8 @@ public final class Client {
 		}
 	}
 
-	public static World reconstructWorld(byte[][] data, SerializerReaderWriter deserializer) {
-		final int headerSize = 2; //WORLD_DATA protocol
+	private static World reconstructWorld(byte[][] data, SerializerReaderWriter deserializer) {
+		final int headerSize = 2; //for WORLD_DATA protocol id
 		//create a sum of the number of bytes so that a single byte array can be allocated
 		int bytes = 0;
 		for(byte[] a : data) {

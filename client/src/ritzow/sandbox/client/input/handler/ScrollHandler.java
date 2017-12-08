@@ -1,5 +1,5 @@
 package ritzow.sandbox.client.input.handler;
 
-public interface ScrollHandler extends InputHandler {
+public interface ScrollHandler {
 	public void mouseScroll(double xoffset, double yoffset);
 }

@@ -16,7 +16,6 @@ public class Text extends Element {
 	}
 	
 	public void render(ModelRenderProgram renderer) { 
-		//TODO create UIRenderProgram or something of the sort for more efficient ui rendering
 		int index = 0; //TODO optimize text rendering and make text position in center
 		float charWidth = (size * 0.02f) + (size * 0.02f * spacing);
 		for(float pos = positionX; index < text.length(); pos += charWidth) {

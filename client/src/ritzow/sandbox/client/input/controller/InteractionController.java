@@ -59,10 +59,7 @@ public final class InteractionController implements Controller, MouseButtonHandl
 					client.sendBlockBreak(blockX, blockY);
 					lastBreak = System.nanoTime();
 				}
-			}
-			
-			//TODO implement this with client stuff
-			else if(secondaryAction && (System.nanoTime() - lastPlace > cooldownPlace * 1000000)) {
+			} else if(secondaryAction && (System.nanoTime() - lastPlace > cooldownPlace * 1000000)) {
 				Item item = client.getPlayer().getSelectedItem();
 				if((item instanceof ClientBlockItem) && client.getWorld().getForeground().isValid(blockX, blockY) && 
 					(client.getWorld().getBackground().place(client.getWorld(), blockX, blockY, ((ClientBlockItem)item).getBlock()) || 

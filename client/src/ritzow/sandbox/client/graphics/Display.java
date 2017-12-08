@@ -86,6 +86,10 @@ public final class Display {
 	public void setResolution(int width, int height) {
 		glfwSetWindowSize(displayID, width, height);
 	}
+	
+	public void toggleFullscreen() {
+		setFullscreen(!getFullscreen());
+	}
 
 	public void setFullscreen(boolean fullscreen) {
 		if(fullscreen) {

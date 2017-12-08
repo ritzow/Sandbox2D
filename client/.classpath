@@ -40,17 +40,25 @@
 			<attribute name="module" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-opengl-natives-windows.jar"/>
-	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-glfw-natives-linux.jar"/>
-	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-glfw-natives-windows.jar"/>
-	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-glfw-natives-macos.jar"/>
-	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-natives-linux.jar"/>
-	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-natives-windows.jar"/>
-	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-natives-macos.jar"/>
-	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-openal-natives-linux.jar"/>
-	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-openal-natives-macos.jar"/>
-	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-openal-natives-windows.jar"/>
-	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-opengl-natives-linux.jar"/>
-	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-opengl-natives-macos.jar"/>
+	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-glfw-natives-windows.jar">
+		<attributes>
+			<attribute name="module" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-natives-windows.jar">
+		<attributes>
+			<attribute name="module" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-openal-natives-windows.jar">
+		<attributes>
+			<attribute name="module" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-opengl-natives-windows.jar">
+		<attributes>
+			<attribute name="module" value="true"/>
+		</attributes>
+	</classpathentry>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
