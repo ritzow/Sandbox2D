@@ -20,7 +20,7 @@ public final class StartServer {
 	public static void main(String... args) throws SocketException {
 		Thread.currentThread().setName("Server Setup");
 		Server server = new Server(new InetSocketAddress(50000));
-		
+
 		//the save file to try to load the world from
 		final File saveFile = new File(args.length > 0 ? args[0] : "data/worlds/world.dat");
 		

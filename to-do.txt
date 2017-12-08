@@ -1,0 +1,4 @@
+To-do list:
+Improve client data processing "pipeline"
+possibly rewrite RenderManager to be a generic updating/scheduling system for client tasks
+Add chunk loading and generation to BlockGrid and Client/Server

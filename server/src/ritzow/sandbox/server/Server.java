@@ -209,7 +209,6 @@ public final class Server {
 	
 		//serialize the world for transfer
 		byte[] worldBytes = ByteUtil.compress(ser.serialize(world));
-				//ByteUtil.compress(world.getBytes(ser)); //serialize everything including other player entities
 		
 		//split world data into evenly sized packets and one extra packet if not evenly divisible by max packet size
 		int packetCount = (worldBytes.length/dataBytesPerPacket) + (worldBytes.length % dataBytesPerPacket > 0 ? 1 : 0);
@@ -474,15 +473,10 @@ public final class Server {
 			if(canConnect) {
 				//create the client's ClientState object to track their information
 				ClientState newClient = new ClientState(1, client);
-				System.out.println(newClient + " connected");
+				System.out.println(newClient + " joining... ");
 				
 				updater.submit(u -> {
 					World world = u.world;
-					
-					//send the world to the client
-					for(byte[] a : buildWorldPackets(world, serialRegistry)) {
-						send(a, newClient);
-					}
 					
 					//construct a new player for the client
 					PlayerEntity player = new PlayerEntity(world.nextEntityID());
@@ -499,10 +493,17 @@ public final class Server {
 						}
 					}
 					
-					clients.add(newClient);
 					world.add(player);
 					sendEntity(player);
+					
+					//send the world to the client
+					for(byte[] a : buildWorldPackets(world, serialRegistry)) {
+						send(a, newClient);
+					}
+					
+					clients.add(newClient);
 					sendPlayerIDMessage(player, newClient);
+					System.out.println(newClient + " joined (" + clients.size() + " players connected)");
 				});
 			}
 		} catch(TimeoutException e) {

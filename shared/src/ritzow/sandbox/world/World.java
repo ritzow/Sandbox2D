@@ -20,23 +20,27 @@ import ritzow.sandbox.data.Transportable;
 import ritzow.sandbox.world.block.Block;
 import ritzow.sandbox.world.entity.Entity;
 
-//TODO remove all synchronization in this class
+/**
+ * A World instance manages a foreground and background BlockGrid, and a collection of entities.
+ * @author Solomon Ritzow
+ *
+ */
 public class World implements Transportable, Iterable<Entity> {
 	
 	/** collection of entities in the world **/
 	private final List<Entity> entities;
 	
 	/** blocks in the world that collide with entities and and are rendered **/
-	protected final BlockGrid foreground, background;
+	private final BlockGrid foreground, background; //TODO replace with ritzow.sandbox.util.Grid
 	
 	/** AudioSystem to allow entities to play sounds **/
-	protected volatile AudioSystem audio;
+	private AudioSystem audio;
 	
 	/** amount of downwards acceleration to apply to entities in the world **/
-	private volatile float gravity;
+	private float gravity;
 	
 	/** Entity ID counter **/
-	private volatile int lastEntityID;
+	private int lastEntityID;
 	
 	/** called when an entity is removed from the world **/
 	private Consumer<Entity> onRemove;
@@ -70,79 +74,77 @@ public class World implements Transportable, Iterable<Entity> {
 		lastEntityID = reader.readInteger();
 	}
 	
-	public final byte[] getBytesFiltered(Predicate<Entity> entityFilter, Serializer ser) {
-		synchronized(entities) {
-			//serialize foreground and background
-			byte[] foregroundBytes = ser.serialize(foreground);
-			byte[] backgroundBytes = ser.serialize(background);
-			
-			int entityIDCounter = this.lastEntityID;
-			
-			//number of entities currently in the world
-			int numEntities = entities.size();
-			
-			//number of bytes of entity data
-			int totalEntityBytes = 0;
-			
-			//array of all of the serialized entities
-			byte[][] entityBytes = new byte[numEntities][];
-			
-			for(int i = 0; i < numEntities; i++) {
-				Entity e = entities.get(i);
-				if(entityFilter.test(e)) {
-					try {
-						byte[] bytes = ser.serialize(e);
-						entityBytes[i] = bytes;
-						totalEntityBytes += bytes.length;
-					} catch(Exception x) {
-						numEntities--;
-						i--;
-						System.err.println("couldn't serialize an entity: " + x.getLocalizedMessage());
-					}
-				} else {
-					numEntities--;
-				}
-			}
-			
-			//gravity, foreground data, background data, number of entities, entity data (size), lastEntityID
-			byte[] bytes = new byte[4 + foregroundBytes.length + backgroundBytes.length + 4 + totalEntityBytes + 4];
-			int index = 0;
-			
-			//write gravity
-			ByteUtil.putFloat(bytes, index, gravity);
-			index += 4;
-			
-			//write foreground data
-			ByteUtil.copy(foregroundBytes, bytes, index);
-			index += foregroundBytes.length;
-			
-			//write background data
-			ByteUtil.copy(backgroundBytes, bytes, index);
-			index += backgroundBytes.length;
-			
-			//write number of entities
-			ByteUtil.putInteger(bytes, index, numEntities);
-			index += 4;
-			
-			//append entity data to the end of the serialized array
-			int entityByteData = ByteUtil.concatenate(bytes, index, entityBytes);
-			index += entityByteData;
-			
-			//write last entity id
-			ByteUtil.putInteger(bytes, index, entityIDCounter);
-			
-			return bytes;
-		}
-	}
-	
-	
 	public final byte[] getBytes(Serializer ser) { //needed for saving world to file as Transportable
 		return getBytesFiltered(e -> true, ser);
 	}
 	
+	public final byte[] getBytesFiltered(Predicate<Entity> entityFilter, Serializer ser) {
+		//serialize foreground and background
+		byte[] foregroundBytes = ser.serialize(foreground);
+		byte[] backgroundBytes = ser.serialize(background);
+		
+		int entityIDCounter = this.lastEntityID;
+		
+		//number of entities currently in the world
+		int numEntities = entities.size();
+		
+		//number of bytes of entity data
+		int totalEntityBytes = 0;
+		
+		//array of all of the serialized entities
+		byte[][] entityBytes = new byte[numEntities][];
+		
+		for(int i = 0; i < numEntities; i++) {
+			Entity e = entities.get(i);
+			if(entityFilter.test(e)) {
+				try {
+					byte[] bytes = ser.serialize(e);
+					entityBytes[i] = bytes;
+					totalEntityBytes += bytes.length;
+				} catch(Exception x) {
+					numEntities--;
+					i--;
+					System.err.println("couldn't serialize an entity: " + x.getLocalizedMessage());
+				}
+			} else {
+				numEntities--;
+			}
+		}
+		
+		//gravity, foreground data, background data, number of entities, entity data (size), lastEntityID
+		byte[] bytes = new byte[4 + foregroundBytes.length + backgroundBytes.length + 4 + totalEntityBytes + 4];
+		int index = 0;
+		
+		//write gravity
+		ByteUtil.putFloat(bytes, index, gravity);
+		index += 4;
+		
+		//write foreground data
+		ByteUtil.copy(foregroundBytes, bytes, index);
+		index += foregroundBytes.length;
+		
+		//write background data
+		ByteUtil.copy(backgroundBytes, bytes, index);
+		index += backgroundBytes.length;
+		
+		//write number of entities
+		ByteUtil.putInteger(bytes, index, numEntities);
+		index += 4;
+		
+		//append entity data to the end of the serialized array
+		int entityByteData = ByteUtil.concatenate(bytes, index, entityBytes);
+		index += entityByteData;
+		
+		//write last entity id
+		ByteUtil.putInteger(bytes, index, entityIDCounter);
+		
+		return bytes;
+	
+	}
 	
 	public String toString() {
-		StringBuilder builder = new StringBuilder().append(foreground.toString()).append(background.toString());
+		StringBuilder builder = 
+				new StringBuilder(foreground.toString()).append(background.toString());
 		for(Entity e : entities) {
 			builder.append(e).append('\n');
 		}
@@ -232,6 +234,7 @@ public class World implements Transportable, Iterable<Entity> {
 	
 	
 	public final void setAudioSystem(AudioSystem audio) {
+		Objects.requireNonNull(audio);
 		this.audio = audio;
 	}
 	
@@ -241,9 +244,7 @@ public class World implements Transportable, Iterable<Entity> {
 	 */
 	public final void add(Entity e) {
 		Objects.requireNonNull(e);
-		synchronized(entities) {
-			entities.add(e);
-		}
+		entities.add(e);
 	}
 	
 	/**
@@ -251,9 +252,7 @@ public class World implements Transportable, Iterable<Entity> {
 	 * @param e the entity to add
 	 */
 	public final void remove(Entity e) {
-		synchronized(entities) {
-			entities.remove(e);
-		}
+		entities.remove(e);
 	}
 	
 	public final float getGravity() {

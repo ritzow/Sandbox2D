@@ -2,7 +2,7 @@ package ritzow.sandbox.client.world.entity;
 
 import ritzow.sandbox.client.graphics.ModelRenderProgram;
 import ritzow.sandbox.client.graphics.Models;
-import ritzow.sandbox.client.util.Renderable;
+import ritzow.sandbox.client.graphics.Renderable;
 import ritzow.sandbox.data.DataReader;
 import ritzow.sandbox.data.Serializer;
 import ritzow.sandbox.world.entity.Entity;

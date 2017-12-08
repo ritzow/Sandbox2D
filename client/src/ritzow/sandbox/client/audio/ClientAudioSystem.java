@@ -21,6 +21,7 @@ import ritzow.sandbox.audio.AudioSystem;
 public final class ClientAudioSystem implements AudioSystem {
 	private static final long alContext;
 	private static final long device;
+	private static final int[] sources;
 	
 	static {
 		device = alcOpenDevice((ByteBuffer)null);
@@ -32,9 +33,13 @@ public final class ClientAudioSystem implements AudioSystem {
 			System.err.println("OpenAL 1.1 not supported");
 			shutdown();
 		}
+		
+		sources = new int[alcGetInteger(device, ALC_MONO_SOURCES)];
+		alGenSources(sources);
 	}
 	
 	public static void shutdown() {
+		alDeleteSources(sources);
 		alcMakeContextCurrent(0);
 		alcDestroyContext(alContext);
 		alcCloseDevice(device);
@@ -42,16 +47,12 @@ public final class ClientAudioSystem implements AudioSystem {
 	}
 	
 	private final Map<Integer, Integer> sounds;
-	private final int[] sources; //TODO this probably shouldn't be per-instance because it is a global pool of sources
 	
 	public ClientAudioSystem() {
 		sounds = new HashMap<>();
-		sources = new int[alcGetInteger(device, ALC_MONO_SOURCES)];
-		alGenSources(sources);
 	}
 	
 	public void close() {
-		alDeleteSources(sources);
 		for(int buffer : sounds.values()) {
 			alDeleteBuffers(buffer);
 		}
@@ -65,14 +66,18 @@ public final class ClientAudioSystem implements AudioSystem {
     			format = AL_FORMAT_MONO8;
     		} else if(data.getChannels() == 2) {
     			format = AL_FORMAT_STEREO8;
+    		} else {
+    			throw new UnsupportedOperationException("invalid channel count");
     		}
     	} else if(data.getBitsPerSample() == 16) {
     		if(data.getChannels() == 1) {
     			format = AL_FORMAT_MONO16;
     		} else if(data.getChannels() == 2) {
     			format = AL_FORMAT_STEREO16;
+    		} else {
+    			throw new UnsupportedOperationException("invalid channel count");
     		}
-    	}
+    	} 
     	
     	int buffer = alGenBuffers();
     	alBufferData(buffer, format, data.getData(), data.getSampleRate());
@@ -82,24 +87,24 @@ public final class ClientAudioSystem implements AudioSystem {
 	}
 
 	@Override
-	public void playSound(int sound, float x, float y, float velocityX, float velocityY, float gain, float pitch) {
+	public void playSound(int soundID, float x, float y, float velocityX, float velocityY, float gain, float pitch) {
 		for(int source : sources) {
 			int state = alGetSourcei(source, AL_SOURCE_STATE);
 			if(state == AL_STOPPED || state == AL_INITIAL) {
-				alSourcei(source, AL_BUFFER, sounds.get(sound));
+				alSourcei(source, AL_BUFFER, sounds.get(soundID));
 				alSource3f(source, AL_POSITION, x, y, 0);
 				alSource3f(source, AL_VELOCITY, velocityX, velocityY, 0);
 				alSourcef(source, AL_GAIN, gain);
 				alSourcef(source, AL_PITCH, pitch);
 				alSourcePlay(source);
-				break;
+				return;
 			}
 		}
 	}
 
 	@Override
 	public void playSoundGlobal(int sound, float gain, float pitch) {
-		System.out.println("client global sound playing not implemented");
+		throw new UnsupportedOperationException("global playback not supported");
 	}
 
 	@SuppressWarnings("static-method")

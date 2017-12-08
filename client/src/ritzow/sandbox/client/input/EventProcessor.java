@@ -22,11 +22,8 @@ public final class EventProcessor implements Runnable, Installable, Exitable {
 	
 	@Override
 	public void run() {
-		
-		if(!glfwInit()) {
+		if(!glfwInit())
 			throw new UnsupportedOperationException("GLFW failed to initialize");
-		}
-		
 		GLFWErrorCallback.createPrint(System.err).set();
 		
 		try {
@@ -47,7 +44,7 @@ public final class EventProcessor implements Runnable, Installable, Exitable {
 		display.setFullscreen(true);
 		
 		while(!exit) {
-			display.waitEvents(); //TODO add a method to allow code to be run on this thread
+			display.waitEvents();
 		}
 		
 		display.destroy();

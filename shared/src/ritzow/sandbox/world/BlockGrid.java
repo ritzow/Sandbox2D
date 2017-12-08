@@ -27,7 +27,7 @@ public final class BlockGrid implements Transportable {
 	}
 	
 	@Override
-	public byte[] getBytes(Serializer ser) {	
+	public byte[] getBytes(Serializer ser) {
 		int width = getWidth();
 		int height = getHeight();
 		
@@ -118,6 +118,7 @@ public final class BlockGrid implements Transportable {
 		return false;
 	}
 	
+	//TODO make every cell non-null (air blocks) and remove this method
 	/** 
 	 * @param x the horizontal block coordinate to check
 	 * @param y the vertical block coordinate to check

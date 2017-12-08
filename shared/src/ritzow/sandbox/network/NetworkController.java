@@ -55,7 +55,7 @@ public final class NetworkController {
 		this.messageProcessor = processor;
 	}
 	
-	public void sendUnreliable(SocketAddress recipient, int messageID, byte[] data) { //TODO build messageID into lastReceived
+	public void sendUnreliable(SocketAddress recipient, int messageID, byte[] data) {
 		if(messageID < 0)
 			throw new RuntimeException("messageID must be greater than or equal to zero");
 		else if(data.length > Protocol.MAX_MESSAGE_LENGTH)
@@ -151,6 +151,8 @@ public final class NetworkController {
 	}
 	
 	public void start() {
+		if(receivingThread != null)
+			throw new IllegalStateException("network controller already started");
 		receivingThread = new ReceiverThread();
 		receivingThread.start();
 	}

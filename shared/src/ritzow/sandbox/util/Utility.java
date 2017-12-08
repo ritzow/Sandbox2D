@@ -1,5 +1,7 @@
 package ritzow.sandbox.util;
 
+import java.util.function.BooleanSupplier;
+
 /**
  * Contains a number of static utility methods relating to various systems (matrix/random math, time, synchronization, hitboxes)
  * @author Solomon Ritzow
@@ -7,7 +9,28 @@ package ritzow.sandbox.util;
  */
 public final class Utility {
 	
-	private Utility() {}
+	private Utility() {
+		throw new UnsupportedOperationException("Utility class cannot be instantiated");
+	}
+	
+	/**
+	 * Waits on {@code lock} and returns once {@code condition} returns {@code true}.
+	 * @param lock the object to wait to be notified by.
+	 * @param object the condition to check.
+	 */
+	public static void waitOnCondition(Object lock, BooleanSupplier condition) {
+		if(!condition.getAsBoolean()) {
+			synchronized(lock) {
+				while(!condition.getAsBoolean()) {
+					try {
+						lock.wait();
+					} catch(InterruptedException e) {
+						throw new RuntimeException("waitOnCondition should not be interrupted", e);
+					}
+				}
+			}
+		}
+	}
 	
 	public static float millisToTime(long millis) {
 		return millis * 0.0625f; //TODO not sure if this is correct
