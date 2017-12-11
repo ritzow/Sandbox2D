@@ -26,7 +26,7 @@ public final class StartServer {
 		
 		ServerAudioSystem audio = new ServerAudioSystem();
 		World world = saveFile.exists() ? 
-				loadWorld(saveFile, audio, SerializationProvider.getProvider()) : generateWorld(500, 500, audio, server);
+				loadWorld(saveFile, audio, SerializationProvider.getProvider()) : generateWorld(200, 100, audio, server);
 		server.start(world);
 		
 		System.out.println("Startup Complete.");
