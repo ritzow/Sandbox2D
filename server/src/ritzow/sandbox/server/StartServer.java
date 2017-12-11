@@ -44,13 +44,14 @@ public final class StartServer {
 				case "list":
 					System.out.println("Connected clients:");
 					for(ClientState client : server.listClients()) {
-						System.out.print("\t");
+						System.out.print("\t - ");
 						System.out.println(client);
 					}
 					break;
 				default:
 					server.broadcastMessage(next);
-					System.out.println("Sent message '" + next + "' to " + server.clientCount() + " connected client(s).");
+					System.out.println("Sent message '" + next + "' to " + 
+					server.getConnectedClients() + " connected client(s).");
 				}
 			}
 		}
