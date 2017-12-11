@@ -8,6 +8,7 @@ import ritzow.sandbox.world.block.Block;
 
 public final class BlockGrid implements Transportable {
 	private final Block[][] blocks;
+	//private final Grid<Grid<Block>> chunks;
 	
 	public BlockGrid(int width, int height) {
 		blocks = new Block[height][width];

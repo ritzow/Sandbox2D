@@ -3,6 +3,7 @@ package ritzow.sandbox.network;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
 import java.util.Arrays;
@@ -19,19 +20,19 @@ import ritzow.sandbox.data.ByteUtil;
 public final class NetworkController {
 	private final DatagramSocket socket;
 	private final Queue<MessageAddressPair> reliableQueue;
-	private final Map<SocketAddress, MutableInteger> lastReceived;
+	private final Map<InetSocketAddress, MutableInteger> lastReceived;
 	private MessageProcessor messageProcessor;
 	private Thread receivingThread;
 	private volatile boolean exit;
 	
-	public NetworkController(SocketAddress bindAddress, MessageProcessor processor) throws SocketException {
+	public NetworkController(InetSocketAddress bindAddress, MessageProcessor processor) throws SocketException {
 		socket = new DatagramSocket(bindAddress);
 		reliableQueue = new LinkedList<>();
 		lastReceived = new HashMap<>();
 		messageProcessor = processor;
 	}
 	
-	public NetworkController(SocketAddress bindAddress) throws SocketException {
+	public NetworkController(InetSocketAddress bindAddress) throws SocketException {
 		this(bindAddress, null);
 	}
 	
@@ -46,7 +47,7 @@ public final class NetworkController {
 	 */	
 	@FunctionalInterface
 	public static interface MessageProcessor {
-		void process(SocketAddress sender, int messageID, byte[] data);
+		void process(InetSocketAddress sender, int messageID, byte[] data);
 	}
 	
 	public void setOnRecieveMessage(MessageProcessor processor) {
@@ -162,16 +163,16 @@ public final class NetworkController {
 		socket.close();
 	}
 	
-	public SocketAddress getSocketAddress() {
-		return socket.getLocalSocketAddress();
+	public InetSocketAddress getSocketAddress() {
+		return (InetSocketAddress)socket.getLocalSocketAddress();
 	}
 	
 	private final class PacketRunnable implements Runnable {
-		private final SocketAddress address;
+		private final InetSocketAddress address;
 		private final int messageID;
 		private final byte[] data;
 		
-		public PacketRunnable(SocketAddress address, int messageID, byte[] data) {
+		public PacketRunnable(InetSocketAddress address, int messageID, byte[] data) {
 			this.address = address;
 			this.messageID = messageID;
 			this.data = data;
@@ -246,10 +247,12 @@ public final class NetworkController {
 				}
 				
 				//parse the packet information
-				final SocketAddress sender = 	buffer.getSocketAddress();
+				final InetSocketAddress sender = (InetSocketAddress)buffer.getSocketAddress();
 				final int messageID = ByteUtil.getInteger(buffer.getData(), buffer.getOffset());
 				final byte[] data = 
-						Arrays.copyOfRange(buffer.getData(), buffer.getOffset() + 5, buffer.getOffset() + buffer.getLength());
+						Arrays.copyOfRange(buffer.getData(), 
+								buffer.getOffset() + 5, 
+								buffer.getOffset() + buffer.getLength());
 
 				//if message is a response, rather than data
 				if(messageID == -1) {

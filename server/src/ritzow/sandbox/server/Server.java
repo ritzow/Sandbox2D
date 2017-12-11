@@ -40,7 +40,7 @@ public final class Server {
 		this(new InetSocketAddress(InetAddress.getLocalHost(), port));
 	}
 	
-	public Server(SocketAddress bindAddress) throws SocketException {
+	public Server(InetSocketAddress bindAddress) throws SocketException {
 		this.controller = new NetworkController(bindAddress, this::process);
 		this.broadcaster = Executors.newCachedThreadPool();
 		this.clients = Collections.synchronizedList(new LinkedList<ClientState>());
@@ -76,14 +76,14 @@ public final class Server {
 		return clients.toArray(list);
 	}
 	
-	private void process(SocketAddress sender, int messageID, byte[] data) {
+	private void process(InetSocketAddress sender, int messageID, byte[] data) {
 		final short protocol = ByteUtil.getShort(data, 0);
 		final ClientState client = forAddress(sender);
 		try {
 			if(client != null) {
 				switch(protocol) {
 					case Protocol.CLIENT_DISCONNECT:
-						disconnect(client, true);
+						disconnect(client, false);
 						break;
 					case Protocol.CONSOLE_MESSAGE:
 						processClientMessage(client, data);
@@ -118,7 +118,7 @@ public final class Server {
 				Block block = u.world.getForeground().get(x, y);
 				u.world.getForeground().destroy(u.world, x, y);
 				sendRemoveBlock(block, x, y);
-				//TODO for now creates entity containing same block, but block data may need to be reset before dropping into world
+				//TODO block data needs to be reset on drop
 				if(block != null) {
 					ItemEntity<BlockItem> drop = 
 							new ItemEntity<>(u.world.nextEntityID(), new BlockItem(block), x, y);
@@ -131,7 +131,7 @@ public final class Server {
 		});
 	}
 	
-	protected void processClientMessage(ClientState client, byte[] data) {
+	private void processClientMessage(ClientState client, byte[] data) {
 		byte[] decoration = ('<' + client.username + "> ").getBytes(Protocol.CHARSET);
 		byte[] broadcast = new byte[2 + decoration.length + data.length - 2];
 		ByteUtil.putShort(broadcast, 0, Protocol.CONSOLE_MESSAGE);
@@ -259,49 +259,44 @@ public final class Server {
 	}
 	
 	private void broadcastReliable(byte[] data, boolean removeUnresponsive) {
-		synchronized(clients) {
-			int clientCount = clientCount();
-			if(clientCount > 1) {
-				CyclicBarrier barrier = new CyclicBarrier(clientCount + 1); //all clients and calling thread
-				synchronized(clients) { //for each loop needs to be manually synchronized
-					for(ClientState client : clients) {
-						//execute each reliable send on separate threads so they can run in parallel
-						broadcaster.execute(() -> {
-							try {
-								controller.sendReliable(client.address, client.nextReliableID(), data, 10, 100);
-								barrier.await(); //notify cyclic barrier that thread is done
-							} catch(TimeoutException e) {
-								if(removeUnresponsive) {
-									try {
-										//signal that the thread is finished so the disconnect can happen without blocking main
-										barrier.await();
-										disconnect(client, false);
-									} catch (InterruptedException | BrokenBarrierException e1) {
-										e1.printStackTrace();
-									}
+		synchronized(clients) { //synchronize entire method so clients cant connect mid-send
+			if(clients.size() > 1) {
+				CyclicBarrier barrier = new CyclicBarrier(clients.size() + 1); //all clients and calling thread
+				for(ClientState client : clients) {
+					//execute each reliable send on separate threads so they can run in parallel
+					broadcaster.execute(() -> {
+						try {
+							controller.sendReliable(client.address, client.nextReliableID(), data, 10, 100);
+							barrier.await(); //notify cyclic barrier that thread is done
+						} catch(TimeoutException e) {
+							if(removeUnresponsive) {
+								try {
+									//signal that the thread is finished so the disconnect can happen without blocking main
+									barrier.await();
+									disconnect(client, false);
+								} catch (InterruptedException | BrokenBarrierException e1) {
+									e1.printStackTrace();
 								}
-							} catch (InterruptedException | BrokenBarrierException e) {
-								e.printStackTrace();
 							}
-						});
-					}
+						} catch (InterruptedException | BrokenBarrierException e) {
+							e.printStackTrace();
+						}
+					});
 				}
+			
 				try {
 					barrier.await(); //wait until all clients have received the message
 				} catch (InterruptedException | BrokenBarrierException e) {
 					e.printStackTrace();
 				}
-			} else if(clientCount == 1) { 
-				//if there is only one client, there is no need to parallelify sending, reducing synchronization overhead
-				synchronized(clients) {
-					for(ClientState client : clients) {
-						try {
-							controller.sendReliable(client.address, client.nextReliableID(), data, 10, 100);
-						} catch(TimeoutException e) {
-							if(removeUnresponsive) {
-								disconnect(client, false);
-							}
-						}
+			} else if(clients.size() == 1) { 
+				//if there is only one client, skip synchronization
+				ClientState client = clients.iterator().next();
+				try {
+					controller.sendReliable(client.address, client.nextReliableID(), data, 10, 100);
+				} catch(TimeoutException e) {
+					if(removeUnresponsive) {
+						disconnect(client, false);
 					}
 				}
 			}
@@ -420,9 +415,9 @@ public final class Server {
 					sendRemoveEntity(client.player);
 				});
 			}
-			System.out.println(client + " disconnected (" + clientCount() + " players connected)");
+			System.out.println(client + " disconnected (" + clients.size() + " players connected)");
 		} else {
-			System.out.println(client + " already disconnected");
+			System.out.println(client + " is not connected to the server");
 		}
 	}
 	
@@ -442,21 +437,6 @@ public final class Server {
 		return null;
 	}
 	
-	/**
-	 * @return the number of currently connected clients
-	 */
-	public int clientCount() {
-		int count = 0;
-		synchronized(clients) {
-			for(ClientState client : clients) {
-				if(client != null) {
-					count++;
-				}
-			}
-		}
-		return count;
-	}
-	
 	private void sendClientConnectReply(SocketAddress client, int messageID, boolean connected) {
 		byte[] response = new byte[3];
 		ByteUtil.putShort(response, 0, Protocol.SERVER_CONNECT_ACKNOWLEDGMENT);
@@ -464,7 +444,7 @@ public final class Server {
 		controller.sendReliable(client, messageID, response, 10, 100);
 	}
 	
-	private void connectClient(SocketAddress client) {
+	private void connectClient(InetSocketAddress client) {
 		try {
 			//determine if client can connect, and send a response
 			boolean canConnect = this.canConnect;
@@ -473,8 +453,6 @@ public final class Server {
 			if(canConnect) {
 				//create the client's ClientState object to track their information
 				ClientState newClient = new ClientState(1, client);
-				System.out.println(newClient + " joining... ");
-				
 				updater.submit(u -> {
 					World world = u.world;
 					
@@ -522,31 +500,32 @@ public final class Server {
 		});
 	}
 	
-	/**
-	 * Holder of information about clients connected to the server
-	 */
-	static final class ClientState {
-		private final SocketAddress address;
+	public int getConnectedClients() {
+		return clients.size();
+	}
+	
+	public static final class ClientState {
+		private final InetSocketAddress address;
 		private volatile int unreliableMessageID, reliableMessageID;
 		private volatile String username;
 		private volatile PlayerEntity player;
 		private volatile short disconnectStrikes;
 		
-		public ClientState(int initReliable, SocketAddress address) {
+		public ClientState(int initReliable, InetSocketAddress address) {
 			this.reliableMessageID = initReliable;
 			this.address = address;
-			username = "";
+			username = "player_" + Integer.toString(Math.abs(address.hashCode()));
 		}
 		
-		public int nextUnreliableID() {
+		int nextUnreliableID() {
 			return unreliableMessageID++;
 		}
 		
-		public int nextReliableID() {
+		int nextReliableID() {
 			return reliableMessageID++;
 		}
 		
-		public int strike() {
+		int strike() {
 			return ++disconnectStrikes;
 		}
 		
@@ -564,7 +543,7 @@ public final class Server {
 		
 		@Override
 		public String toString() {
-			return username + " " + address;
+			return username + address.getAddress();
 		}
 	}
 }
