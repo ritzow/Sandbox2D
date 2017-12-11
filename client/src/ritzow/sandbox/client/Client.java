@@ -53,44 +53,39 @@ public final class Client {
 	}
 	
 	private void onReceive(final short protocol, int messageID, byte[] data) {
-		try {
-			switch(protocol) {
-				case Protocol.SERVER_CONNECT_ACKNOWLEDGMENT:
-					processServerConnectAcknowledgement(data);
-					break;
-				case Protocol.SERVER_WORLD_HEAD:
-					worldPackets = new byte[ByteUtil.getInteger(data, 2)][];
-					break;
-				case Protocol.SERVER_WORLD_DATA:
-					processReceiveWorldData(data);
-					break;
-				case Protocol.CONSOLE_MESSAGE:
-					System.out.println("[Server Message] " + new String(data, 2, data.length - 2, Protocol.CHARSET));
-					break;
-				case Protocol.SERVER_ENTITY_UPDATE:
-					processGenericEntityUpdate(data);
-					break;
-				case Protocol.SERVER_ADD_ENTITY:
-					processAddEntity(data);
-					break;
-				case Protocol.SERVER_REMOVE_ENTITY:
-					processRemoveEntity(data);
-					break;
-				case Protocol.SERVER_CLIENT_DISCONNECT:
-					processServerDisconnect(data);
-					break;
-				case Protocol.SERVER_PLAYER_ID:
-					processReceivePlayerEntityID(data);
-					break;
-				case Protocol.SERVER_REMOVE_BLOCK:
-					processServerRemoveBlock(data);
-					break;
-				default:
-					throw new IllegalArgumentException("Client received message of unknown protocol " + protocol);
-			}
-		} catch(RuntimeException e) {
-			e.printStackTrace();
-			disconnect(false);
+		switch(protocol) {
+			case Protocol.SERVER_CONNECT_ACKNOWLEDGMENT:
+				processServerConnectAcknowledgement(data);
+				break;
+			case Protocol.SERVER_WORLD_HEAD:
+				worldPackets = new byte[ByteUtil.getInteger(data, 2)][];
+				break;
+			case Protocol.SERVER_WORLD_DATA:
+				processReceiveWorldData(data);
+				break;
+			case Protocol.CONSOLE_MESSAGE:
+				System.out.println("[Server Message] " + new String(data, 2, data.length - 2, Protocol.CHARSET));
+				break;
+			case Protocol.SERVER_ENTITY_UPDATE:
+				processGenericEntityUpdate(data);
+				break;
+			case Protocol.SERVER_ADD_ENTITY: //TODO separate receiving entity and adding to world
+				processAddEntity(data);
+				break;
+			case Protocol.SERVER_REMOVE_ENTITY: //TODO separate removing entity from world and getting rid of entity
+				processRemoveEntity(data);
+				break;
+			case Protocol.SERVER_CLIENT_DISCONNECT:
+				processServerDisconnect(data);
+				break;
+			case Protocol.SERVER_PLAYER_ID:
+				processReceivePlayerEntityID(data);
+				break;
+			case Protocol.SERVER_REMOVE_BLOCK:
+				processServerRemoveBlock(data);
+				break;
+			default:
+				throw new IllegalArgumentException("Client received message of unknown protocol " + protocol);
 		}
 	}
 	
@@ -108,8 +103,9 @@ public final class Client {
 		if(sender.equals(server)) {
 			try {
 				onReceive(protocol, messageID, data);
-			} catch(IllegalArgumentException e) {
+			} catch(RuntimeException e) {
 				System.err.println(e.getMessage());
+				disconnect(false);
 			}
 		}
 	}
