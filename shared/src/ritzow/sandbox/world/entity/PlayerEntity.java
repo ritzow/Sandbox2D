@@ -4,6 +4,8 @@ import ritzow.sandbox.data.ByteUtil;
 import ritzow.sandbox.data.DataReader;
 import ritzow.sandbox.data.Serializer;
 import ritzow.sandbox.network.Protocol.PlayerAction;
+import ritzow.sandbox.world.BlockGrid;
+import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.component.Inventory;
 import ritzow.sandbox.world.component.Living;
 import ritzow.sandbox.world.item.Item;
@@ -14,12 +16,8 @@ import ritzow.sandbox.world.item.Item;
  */
 public class PlayerEntity extends Entity implements Living {
 	protected final Inventory<Item> inventory;
-	protected int selected;
-	protected int health;
-	protected boolean left;
-	protected boolean right;
-	protected boolean up;
-	protected boolean down;
+	protected int selected, health;
+	protected boolean left, right, up, down;
 	
 	public PlayerEntity(int entityID) {
 		super(entityID);
@@ -46,33 +44,47 @@ public class PlayerEntity extends Entity implements Living {
 	}
 	
 	@Override
-	public void update(float time) {
+	public void update(World world, float time) {
+		super.update(world, time);
 		if(left)
 			velocityX = -getMass();
 		else if(right)
 			velocityX = getMass();
-		if(up) {
+		if(up && blockBelow(world.getForeground()))
 			velocityY = getMass();
-			up = false;
+	}
+	
+	private boolean blockBelow(BlockGrid blocks) {
+		return blockInRectangle(blocks, 
+				positionX - getWidth()/2 + 0.1f, positionY - getHeight()/2 - 0.1f, 
+				positionX + getWidth()/2 - 0.1f, positionY - getHeight()/2);
+	}
+	
+	private static boolean blockInRectangle(BlockGrid blocks, float x1, float y1, float x2, float y2) {
+		int a1 = Math.round(x1), b1 = Math.round(y1), a2 = Math.round(x2), b2 = Math.round(y2);
+		for(int x = a1; x <= a2; x++) {
+			for(int y = b1; y <= b2; y++) {
+				if(blocks.isBlock(x, y))
+					return true;
+			}
 		}
-		positionX += velocityX * time;
-		positionY += velocityY * time;
+		return false;
 	}
 	
 	public void processAction(PlayerAction action, boolean enabled) {
 		switch(action) {
-		case MOVE_LEFT:
-			left = enabled; break;
-		case MOVE_RIGHT:
-			right = enabled; break;
-		case MOVE_UP:
-			up = enabled; break;
-		case MOVE_DOWN:
-			down = enabled; break;
+			case MOVE_LEFT:
+				left = enabled; break;
+			case MOVE_RIGHT:
+				right = enabled; break;
+			case MOVE_UP:
+				up = enabled; break;
+			case MOVE_DOWN:
+				down = enabled; break;
 		}
 	}
 	
-	public Inventory<? extends Item> getInventory() {
+	public Inventory<Item> getInventory() {
 		return inventory;
 	}
 	
@@ -140,6 +152,8 @@ public class PlayerEntity extends Entity implements Living {
 
 	@Override
 	public void setHealth(int health) {
-		this.health = Math.max(Math.min(health, getMaxHealth()), 0);
+		if(health > getMaxHealth() || health < 0)
+			throw new IllegalArgumentException("invalid health amount");
+		this.health = health;
 	}
 }

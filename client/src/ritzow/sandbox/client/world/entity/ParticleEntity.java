@@ -5,6 +5,7 @@ import ritzow.sandbox.client.graphics.Models;
 import ritzow.sandbox.client.graphics.Renderable;
 import ritzow.sandbox.data.DataReader;
 import ritzow.sandbox.data.Serializer;
+import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.Entity;
 
 public class ParticleEntity extends Entity implements Renderable {
@@ -41,7 +42,7 @@ public class ParticleEntity extends Entity implements Renderable {
 	}
 	
 	@Override
-	public void update(float time) {
+	public void update(World world, float time) {
 		float remaining = getLifetimeRemaining();
 		
 		if(remaining <= 0) {
@@ -49,7 +50,7 @@ public class ParticleEntity extends Entity implements Renderable {
 		}
 		
 		else {
-			super.update(time);
+			super.update(world, time);
 			rotation = rotation + rotationSpeed * time;
 			
 			if(fade) {

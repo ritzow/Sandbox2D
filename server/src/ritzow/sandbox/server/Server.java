@@ -60,8 +60,8 @@ public final class Server {
 	
 	public void stop() {
 		canConnect = false;
+		disconnectAll("server shutting down");
 		updater.stop();
-		disconnectMultiple(clients, "Server shutting down");
 		broadcaster.shutdown();
 		controller.stop();
 		try {
@@ -100,10 +100,10 @@ public final class Server {
 		ClientState client = clients.get(sender);
 		
 		try {
-			if(client != null && protocol != Protocol.CLIENT_CONNECT_REQUEST) {
-				onReceive(client, protocol, data);
-			} else if(protocol == Protocol.CLIENT_CONNECT_REQUEST) {
+			if(client == null && protocol == Protocol.CLIENT_CONNECT_REQUEST) {
 				connectClient(sender);
+			} else if(client != null && protocol != Protocol.CLIENT_CONNECT_REQUEST) {
+				onReceive(client, protocol, data);
 			}
 		} catch(ClientBadDataException e) {
 			//disconnect the client if it sends invalid data three times or more
@@ -186,7 +186,7 @@ public final class Server {
 		byte[] packet = new byte[6];
 		ByteUtil.putShort(packet, 0, Protocol.SERVER_PLAYER_ID);
 		ByteUtil.putInteger(packet, 2, player.getID());
-		send(packet, recipient);
+		send(packet, recipient, true);
 	}
 	
 	public void sendRemoveEntity(Entity e) {
@@ -310,11 +310,7 @@ public final class Server {
 		}
 	}
 	
-	protected void send(byte[] data, ClientState client) {
-		this.send(data, client, true);
-	}
-	
-	protected void send(byte[] data, ClientState client, boolean removeUnresponsive) {
+	private void send(byte[] data, ClientState client, boolean removeUnresponsive) {
 		if(Protocol.isReliable(ByteUtil.getShort(data, 0))) {
 			sendReliable(client, data, true);
 		} else {
@@ -335,23 +331,23 @@ public final class Server {
 		disconnect(client, notifyClient ? "" : null);
 	}
 	
-	protected void disconnectMultiple(Map<InetSocketAddress, ClientState> clients, String reason) {
-		synchronized(clients) {
-			clients.values().parallelStream().forEach(client -> {
-				if(reason != null)
-					send(buildServerDisconnect(reason), client, false);
-				controller.removeSender(client.address);
-				if(client.player != null) {
-					if(updater.isRunning()) {
-						updater.submit(u -> {
-							u.world.remove(client.player);
-						});
-					}
-				}
-			});
-			clients.clear();
-		}
-	}
+//	private void disconnectMultiple(Map<InetSocketAddress, ClientState> clients, String reason) {
+//		synchronized(clients) {
+//			clients.values().parallelStream().forEach(client -> {
+//				if(reason != null)
+//					send(buildServerDisconnect(reason), client, false);
+//				controller.removeSender(client.address);
+//				if(client.player != null) {
+//					if(updater.isRunning()) {
+//						updater.submit(u -> {
+//							u.world.remove(client.player);
+//						});
+//					}
+//				}
+//			});
+//			clients.clear();
+//		}
+//	}
 	
 	/**
 	 * Disconnects a client from the server
@@ -375,6 +371,23 @@ public final class Server {
 		}
 	}
 	
+	private void disconnectAll(String reason) {
+		synchronized(clients) {
+			for(ClientState client : clients.values()) {
+				if(reason != null)
+					send(buildServerDisconnect(reason), client, false);
+				controller.removeSender(client.address);
+				if(client.player != null) {
+					updater.submit(u -> {
+						u.world.remove(client.player);
+						sendRemoveEntity(client.player);
+					});
+				}
+			}
+			clients.clear();
+		}
+	}
+	
 	private void sendClientConnectReply(SocketAddress client, int messageID, boolean connected) {
 		byte[] response = new byte[3];
 		ByteUtil.putShort(response, 0, Protocol.SERVER_CONNECT_ACKNOWLEDGMENT);
@@ -382,15 +395,15 @@ public final class Server {
 		controller.sendReliable(client, messageID, response, 10, 100);
 	}
 	
-	private void connectClient(InetSocketAddress client) {
+	private void connectClient(InetSocketAddress address) {
 		try {
 			//determine if client can connect, and send a response
 			boolean canConnect = this.canConnect;
-			sendClientConnectReply(client, 0, canConnect);
+			sendClientConnectReply(address, 0, canConnect);
 			
 			if(canConnect) {
 				//create the client's ClientState object to track their information
-				ClientState newClient = new ClientState(1, client);
+				ClientState newClient = new ClientState(1, address);
 				updater.submit(u -> {
 					World world = u.world;
 					
@@ -414,17 +427,16 @@ public final class Server {
 					
 					//send the world to the client
 					for(byte[] a : buildWorldPackets(world, serialRegistry)) {
-						send(a, newClient);
+						send(a, newClient, true);
 					}
 					
-					//clients.add(newClient);
-					clients.put(client, newClient);
+					clients.put(address, newClient);
 					sendPlayerIDMessage(player, newClient);
 					System.out.println(newClient + " joined (" + clients.size() + " players connected)");
 				});
 			}
 		} catch(TimeoutException e) {
-			System.out.println(client + " attempted to connect, but timed out");
+			System.out.println(address + " attempted to connect, but timed out");
 		}
 	}
 

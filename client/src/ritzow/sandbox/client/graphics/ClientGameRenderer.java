@@ -7,7 +7,6 @@ import static org.lwjgl.opengl.GL20.glDrawBuffers;
 import static org.lwjgl.opengl.GL30.GL_COLOR_ATTACHMENT0;
 import static org.lwjgl.opengl.GL30.GL_COLOR_ATTACHMENT1;
 
-import java.util.Collection;
 import ritzow.sandbox.client.world.block.ClientBlock;
 import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
@@ -19,14 +18,10 @@ public final class ClientGameRenderer implements Renderer {
 	private final Texture diffuseTexture;
 	private final Texture finalTexture;
 	private int previousWidth, previousHeight;
-	
 	private final World world;
-	private final Collection<Runnable> controllers;
-	private long previousTime;
 	
-	public ClientGameRenderer(Collection<Runnable> controllers, ModelRenderProgram modelProgram, LightRenderProgram lightProgram, World world) {
+	public ClientGameRenderer(ModelRenderProgram modelProgram, LightRenderProgram lightProgram, World world) {
 		this.world = world;
-		this.controllers = controllers;
 		this.modelProgram = modelProgram;
 //		this.lightProgram = lightProgram;
 		this.framebuffer = new Framebuffer();
@@ -35,21 +30,10 @@ public final class ClientGameRenderer implements Renderer {
 		framebuffer.attachTexture(diffuseTexture, GL_COLOR_ATTACHMENT0);
 		framebuffer.attachTexture(finalTexture, GL_COLOR_ATTACHMENT1);
 		GraphicsUtility.checkErrors();
-		this.previousTime = System.nanoTime(); //TODO this is a bad place to put this
 	}
 	
 	@Override
 	public Framebuffer render(final int currentWidth, final int currentHeight) {
-		long current = System.nanoTime(); //get the current time
-		float totalUpdateTime = (current - previousTime) * 0.0000000625f; //get the amount of update time
-		previousTime = current; //update the previous time for the next frame
-		world.update(totalUpdateTime);
-		
-		//update controllers (camera, player, etc.)
-		controllers.forEach(c -> {
-			c.run();
-		});
-		
 		//ensure that model program is cached on stack
 		ModelRenderProgram modelProgram = this.modelProgram;
 		

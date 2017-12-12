@@ -3,10 +3,13 @@ package ritzow.sandbox.client;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
-import java.util.Arrays;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import ritzow.sandbox.client.util.SerializationProvider;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
+import ritzow.sandbox.data.ByteArrayDataReader;
 import ritzow.sandbox.data.ByteUtil;
+import ritzow.sandbox.data.DataReader;
 import ritzow.sandbox.data.SerializerReaderWriter;
 import ritzow.sandbox.network.NetworkController;
 import ritzow.sandbox.network.Protocol;
@@ -37,6 +40,7 @@ public final class Client {
 	/** lock object for synchronizing server-initiated actions with the client **/
 	private final Object worldLock, playerLock;
 	private final SerializerReaderWriter serializer;
+	private final Integrater integrater;
 	
 	/**
 	 * Creates a client bound to the provided address
@@ -44,27 +48,55 @@ public final class Client {
 	 * @throws SocketException
 	 */
 	public Client(InetSocketAddress bindAddress, InetSocketAddress serverAddress) throws SocketException {
-		controller = new NetworkController(bindAddress);
+		controller = new NetworkController(bindAddress, this::process);
 		server = serverAddress;
 		worldLock = new Object();
 		playerLock = new Object();
-		controller.setOnRecieveMessage(this::process);
 		serializer = SerializationProvider.getProvider();
+		integrater = new Integrater();
 	}
 	
-	private void onReceive(final short protocol, int messageID, byte[] data) {
+	private void process(InetSocketAddress sender, int messageID, byte[] data) {
+		if(!sender.equals(server))
+			return;
+		DataReader reader = new ByteArrayDataReader(data);
+		short protocol = reader.readShort();
+
+		if(!Protocol.isReliable(protocol)) {
+			if(messageID > lastReceivedUnreliableMessageID) {
+				lastReceivedUnreliableMessageID = messageID;
+			} else {
+				return; //discard if not the latest unreliable message
+			}
+		}
+		
+		try {
+			if(integrater.running) {
+				integrater.integrate(() -> onReceive(protocol, reader));
+			} else {
+				onReceive(protocol, reader);
+			}
+		} catch(RuntimeException e) {
+			e.printStackTrace();
+			disconnect(false);
+		}
+	}
+	
+	private void onReceive(short protocol, DataReader data) {
 		switch(protocol) {
+			case Protocol.CONSOLE_MESSAGE:
+				int length = data.remaining();
+				System.out.println("[Server Message] " + 
+						new String(data.readBytes(data.remaining()), 0, length, Protocol.CHARSET));
+				break;
 			case Protocol.SERVER_CONNECT_ACKNOWLEDGMENT:
 				processServerConnectAcknowledgement(data);
 				break;
 			case Protocol.SERVER_WORLD_HEAD:
-				worldPackets = new byte[ByteUtil.getInteger(data, 2)][];
+				worldPackets = new byte[data.readInteger()][];
 				break;
 			case Protocol.SERVER_WORLD_DATA:
 				processReceiveWorldData(data);
-				break;
-			case Protocol.CONSOLE_MESSAGE:
-				System.out.println("[Server Message] " + new String(data, 2, data.length - 2, Protocol.CHARSET));
 				break;
 			case Protocol.SERVER_ENTITY_UPDATE:
 				processGenericEntityUpdate(data);
@@ -89,29 +121,26 @@ public final class Client {
 		}
 	}
 	
-	private void process(SocketAddress sender, int messageID, byte[] data) {
-		final short protocol = ByteUtil.getShort(data, 0);
-		
-		if(!Protocol.isReliable(protocol)) {
-			if(messageID > lastReceivedUnreliableMessageID) {
-				lastReceivedUnreliableMessageID = messageID;
-			} else {
-				return; //discard if not the latest unreliable message
-			}
+	private static final class Integrater implements Runnable {
+		private final Queue<Runnable> queue = new ConcurrentLinkedQueue<Runnable>();
+		public boolean running;
+		public void run() {
+			running = true;
+			while(!queue.isEmpty())
+				queue.remove().run();
 		}
 		
-		if(sender.equals(server)) {
-			try {
-				onReceive(protocol, messageID, data);
-			} catch(RuntimeException e) {
-				System.err.println(e.getMessage());
-				disconnect(false);
-			}
+		public void integrate(Runnable run) {
+			queue.add(run);
 		}
 	}
 	
-	private void processServerRemoveBlock(byte[] data) {
-		world.getForeground().destroy(world, ByteUtil.getInteger(data, 2), ByteUtil.getInteger(data, 6));
+	public Runnable onReceiveMessageTask() {
+		return integrater;
+	}
+	
+	private void processServerRemoveBlock(DataReader data) {
+		world.getForeground().destroy(world, data.readInteger(), data.readInteger());
 	}
 	
 	public boolean connect(int timeout) {
@@ -216,23 +245,24 @@ public final class Client {
 		return player;
 	}
 	
-	private void processServerDisconnect(byte[] data) {
+	private void processServerDisconnect(DataReader data) {
 		disconnect(false);
+		int length = data.readInteger(); //unused length
 		System.out.println("Disconnected from server: " + 
-				new String(data, 6, ByteUtil.getInteger(data, 2), Protocol.CHARSET));
+				new String(data.readBytes(data.remaining()), 0, length, Protocol.CHARSET));
 	}
 	
-	private void processServerConnectAcknowledgement(byte[] data) {
-		connected = ByteUtil.getBoolean(data, 2);
+	private void processServerConnectAcknowledgement(DataReader data) {
+		connected = data.readBoolean();
 		synchronized(server) {
 			server.notifyAll();
 		}
 	}
 	
-	private void processReceivePlayerEntityID(byte[] data) {
-		int id = ByteUtil.getInteger(data, 2);
+	private void processReceivePlayerEntityID(DataReader data) {
+		int id = data.readInteger();
 		while(player == null) { //loop infinitely until there is an entity with the correct ID
-			getWorld().forEach(e -> {
+			for(Entity e : getWorld()) {
 				if(e.getID() == id) {
 					this.player = (ClientPlayerEntity)e;
 					synchronized(playerLock) {
@@ -240,19 +270,19 @@ public final class Client {
 					}
 					return;
 				}
-			});
+			}
 		}
 	}
 	
-	private void processRemoveEntity(byte[] data) {
-		int id = ByteUtil.getInteger(data, 2);
+	private void processRemoveEntity(DataReader data) {
+		int id = data.readInteger(); //ByteUtil.getInteger(data, 2);
 		getWorld().removeIf(e -> e.getID() == id);
 	}
 	
-	private void processAddEntity(byte[] data) {
+	private void processAddEntity(DataReader data) {
 		try {
-			boolean compressed = ByteUtil.getBoolean(data, 2);
-			byte[] entity = Arrays.copyOfRange(data, 3, data.length);
+			boolean compressed = data.readBoolean(); //ByteUtil.getBoolean(data, 2);
+			byte[] entity = data.readBytes(data.remaining()); //Arrays.copyOfRange(data, 3, data.length);
 			Entity e = serializer.deserialize(compressed ? ByteUtil.decompress(entity) : entity);
 			world.forEach(o -> {
 				if(o.getID() == e.getID())
@@ -264,26 +294,26 @@ public final class Client {
 		}
 	}
 	
-	private void processGenericEntityUpdate(byte[] data) {
-		int id = ByteUtil.getInteger(data, 2);
-		for (Entity e : world) {
+	private void processGenericEntityUpdate(DataReader data) {
+		int id = data.readInteger();
+		for (Entity e : getWorld()) {
 			if(e.getID() == id) {
-				e.setPositionX((e.getPositionX() + ByteUtil.getFloat(data, 6))/2);
-				e.setPositionY((e.getPositionY() + ByteUtil.getFloat(data, 10))/2);
-				e.setVelocityX(ByteUtil.getFloat(data, 14));
-				e.setVelocityY(ByteUtil.getFloat(data, 18));
+				e.setPositionX(data.readFloat());
+				e.setPositionY(data.readFloat());
+				e.setVelocityX(data.readFloat());
+				e.setVelocityY(data.readFloat());
 				return;
 			}
 		}
 		System.err.println("no entity with id " + id + " found to update");
 	}
 	
-	private void processReceiveWorldData(byte[] data) {
+	private void processReceiveWorldData(DataReader data) {
 		synchronized(worldPackets) {
 			for(int i = 0; i < worldPackets.length; i++) {
 				//find an empty slot to put the received data
 				if(worldPackets[i] == null) {
-					worldPackets[i] = data;
+					worldPackets[i] = data.readBytes(data.remaining());
 					
 					//deserialize the world after receiving the final packet
 					if(i == worldPackets.length - 1) {
@@ -303,7 +333,7 @@ public final class Client {
 
 	//TODO this should be generalized for anything spread accros packets
 	private static World reconstructWorld(byte[][] data, SerializerReaderWriter deserializer) {
-		final int headerSize = 2; //for WORLD_DATA protocol id
+		final int headerSize = 0; //for WORLD_DATA protocol id
 		//create a sum of the number of bytes so that a single byte array can be allocated
 		int bytes = 0;
 		for(byte[] a : data) {

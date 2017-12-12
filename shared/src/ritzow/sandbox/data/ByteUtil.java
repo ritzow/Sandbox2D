@@ -10,7 +10,6 @@ import java.util.zip.InflaterOutputStream;
 /**
  * Contains various utility methods for reading and writing primitive and non-primitive types from and to byte arrays.
  * @author Solomon Ritzow
- *
  */
 public final class ByteUtil {
 	public static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
@@ -172,86 +171,4 @@ public final class ByteUtil {
 	public static byte[] decompress(byte[] data) {
 		return decompress(data, 0, data.length);
 	}
-	
-//	public static Object deserialize(byte[] object) throws ReflectiveOperationException {
-//		return deserialize(object, 0);
-//	}
-	
-//	public static Object deserialize(byte[] array, int offset) throws ReflectiveOperationException {
-//		return deserialize("", array, offset);
-//	}
-	
-//	public static Object deserialize(String assumedPackage, byte[] array, int offset) throws ReflectiveOperationException {
-//		int nameLength = getInteger(array, offset);
-//		if(nameLength == 0)
-//			return null;
-//		int objectPos = offset + 4 + nameLength + 4;
-//		return Class.forName(assumedPackage + new String(array, offset + 4, nameLength)).getConstructor(byte[].class)
-//				.newInstance(Arrays.copyOfRange(array, objectPos, objectPos + getInteger(array, objectPos - 4)));
-//	}
-	
-//	/** Deserializes {@code count} entities from the array starting at position {@code offset} 
-//	 * @throws ReflectiveOperationException **/
-//	public static Transportable[] deserialize(byte[] array, int offset, int count) throws ReflectiveOperationException {
-//		Transportable[] objects = new Transportable[count];
-//		int index = offset;
-//		int num = 0;
-//		
-//		while(num < count) {
-//			deserialize(array, index);
-//			index += getSerializedLength(array, index);
-//			num++;
-//		}
-//		
-//		return objects;
-//	}
-	
-//	public static int getSerializedLength(byte[] array, int offset) {
-//		int classLength = getInteger(array, offset);
-//		if(classLength == 0)
-//			return 4;
-//		int objectLength = getInteger(array, offset + 4 + classLength);
-//		return 4 + classLength + 4 + objectLength;
-//	}
-	
-//	public static byte[] serialize(Transportable object) {
-//		return serialize("", object);
-//	}
-	
-//	/**
-//	 * Serialized an object into a byte array. Format: [4 bytes : length of class name string] + [class name] + [4 bytes : object data length] + [object data]
-//	 * @param object the Transportable object to serialize
-//	 * @return a byte array representing a serialized version of {@code object}
-//	 */
-//	public static byte[] serialize(String assumedPackage, Transportable object) {
-//		if(object == null)
-//			return new byte[4]; //return a name length of 0, which is interpreted by deserialize as null
-//		
-//		String className = object.getClass().getName();
-//		int packageIndex = className.indexOf(assumedPackage);
-//		
-//		if(packageIndex == -1) {
-//			throw new UnsupportedOperationException("Invalid parent package");
-//		}
-//		
-//		byte[] nameBytes = className.substring(packageIndex + assumedPackage.length()).getBytes(CHARSET);
-//		byte[] objectBytes = object.getBytes(null);
-//
-//		//class name length, class name, object data length, object data
-//		byte[] data = new byte[4 + nameBytes.length + 4 + objectBytes.length];
-//		
-//		//first four bytes are the length of the class name
-//		putInteger(data, 0, nameBytes.length);
-//		
-//		//put the class name in the following bytes
-//		copy(nameBytes, data, 4);
-//		
-//		//put the length of the object data in the next four bytes after class name
-//		putInteger(data, 4 + nameBytes.length, objectBytes.length);
-//		
-//		//put the object data into the final byte array
-//		copy(objectBytes, data, 4 + nameBytes.length + 4);
-//		
-//		return data;
-//	}
 }

@@ -1,6 +1,8 @@
 package ritzow.sandbox.data;
 
 public interface DataReader {
+	public int remaining();
+	public void skip(int bytes);
 	public double readDouble();
 	public float readFloat();
 	public long readLong();

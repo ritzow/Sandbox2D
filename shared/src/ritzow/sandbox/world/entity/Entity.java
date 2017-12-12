@@ -16,7 +16,7 @@ public abstract class Entity implements Transportable {
 		velocityX,
 		velocityY;
 	
-	public void update(float time) {
+	public void update(World world, float time) {
 		positionX += velocityX * time;
 		positionY += velocityY * time;
 	}
