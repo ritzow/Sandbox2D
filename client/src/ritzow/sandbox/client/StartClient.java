@@ -3,19 +3,33 @@ package ritzow.sandbox.client;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.net.*;
-import java.util.ArrayList;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
-import ritzow.sandbox.client.audio.*;
+import ritzow.sandbox.client.audio.ClientAudioSystem;
+import ritzow.sandbox.client.audio.Sounds;
+import ritzow.sandbox.client.audio.WAVEDecoder;
 import ritzow.sandbox.client.core.ClientGameUpdater;
 import ritzow.sandbox.client.graphics.Camera;
+import ritzow.sandbox.client.graphics.ClientGameRenderer;
+import ritzow.sandbox.client.graphics.LightRenderProgram;
+import ritzow.sandbox.client.graphics.ModelRenderProgram;
+import ritzow.sandbox.client.graphics.OpenGLException;
+import ritzow.sandbox.client.graphics.RenderManager;
+import ritzow.sandbox.client.graphics.Shader;
 import ritzow.sandbox.client.graphics.Shader.ShaderType;
-import ritzow.sandbox.client.graphics.*;
-import ritzow.sandbox.client.input.*;
-import ritzow.sandbox.client.input.controller.*;
-import ritzow.sandbox.client.util.RunnableGroup;
+import ritzow.sandbox.client.input.Controls;
+import ritzow.sandbox.client.input.EventProcessor;
+import ritzow.sandbox.client.input.InputManager;
+import ritzow.sandbox.client.input.controller.CameraController;
+import ritzow.sandbox.client.input.controller.Controller;
+import ritzow.sandbox.client.input.controller.InteractionController;
+import ritzow.sandbox.client.input.controller.PlayerController;
+import ritzow.sandbox.client.input.controller.TrackingCameraController;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
 import ritzow.sandbox.world.World;
 
@@ -97,49 +111,53 @@ public final class StartClient {
 						controller.link(eventProcessor.getDisplay().getInputManager());
 					});
 					
-					Collection<Runnable> runnables = new ArrayList<Runnable>();
-					runnables.addAll(controllers);
-					
 					RenderManager renderManager = eventProcessor.getDisplay().getRenderManager();
-					renderManager.submitRenderTask(graphics -> {
+					ClientGameUpdater gameUpdater = new ClientGameUpdater(() -> {
+						renderManager.initialize();
 						try {
 							ModelRenderProgram modelProgram = new ModelRenderProgram(
 									new Shader(new FileInputStream("resources/shaders/modelVertexShader"), ShaderType.VERTEX),
 									new Shader(new FileInputStream("resources/shaders/modelFragmentShader"), ShaderType.FRAGMENT), 
 									cameraGrip.getCamera()
-							);
-							
+									);
 							LightRenderProgram lightProgram = new LightRenderProgram(
 									new Shader(new FileInputStream("resources/shaders/lightVertexShader"), ShaderType.VERTEX),
 									new Shader(new FileInputStream("resources/shaders/lightFragmentShader"), ShaderType.FRAGMENT),
 									cameraGrip.getCamera()
-							);
-							
-							graphics.getRenderers().add(new ClientGameRenderer(runnables, modelProgram, lightProgram, world));
-							
+									);
+							renderManager.getRenderers().add(new ClientGameRenderer(modelProgram, lightProgram, world));
 							System.out.println("Renderer started");
 						} catch (IOException | OpenGLException e) {
 							throw new RuntimeException(e);
 						}
+					}, () -> {
+						renderManager.shutdown();
 					});
 					
-					ClientGameUpdater gameUpdater = new ClientGameUpdater();
-					gameUpdater.start();
-					gameUpdater.addRepeatedTask(() -> { //add wait task so the updater doesn't increase CPU usage
-						try {
-							Thread.sleep(1);
-						} catch (InterruptedException e) {
-							e.printStackTrace();
+					gameUpdater.addRepeatedTask(client.onReceiveMessageTask());
+					gameUpdater.addRepeatedTasks(controllers);
+					gameUpdater.addRepeatedTask(new Runnable() {
+						private long previousTime = System.nanoTime();
+						
+						public void run() {
+							long current = System.nanoTime(); //get the current time
+							float totalUpdateTime = (current - previousTime) / 16_000_000f; //get the amount of update time
+							//System.out.print("updating world ");
+							//System.out.println(totalUpdateTime);
+							previousTime = current; //update the previous time for the next frame
+							world.update(totalUpdateTime);
 						}
 					});
-					
-					gameUpdater.addRepeatedTask(new RunnableGroup(runnables));
-					
-					//TODO migrate rendering and world updating to Runnable subclasses and integrate with game updater
-					
-					renderManager.start();
-					renderManager.waitForSetup();
-					System.out.println("Render manager setup complete");
+					gameUpdater.addRepeatedTask(renderManager);
+					gameUpdater.addRepeatedTask(() -> {
+						try {
+							Thread.sleep(1);
+						} catch (InterruptedException e1) {
+							e1.printStackTrace();
+						}
+					});
+					gameUpdater.start();
+					gameUpdater.waitForSetup();
 					
 					InputManager input = eventProcessor.getDisplay().getInputManager();
 					input.getKeyHandlers().add((key, scancode, action, mods) -> {
@@ -150,9 +168,7 @@ public final class StartClient {
 				        }
 					});
 
-					input.getWindowCloseHandlers().add(() -> {
-						exit();
-					});
+					input.getWindowCloseHandlers().add(this::exit);
 					
 					//display the window now that everything is set up.
 					eventProcessor.setReadyToDisplay();
@@ -173,7 +189,6 @@ public final class StartClient {
 					System.out.print("Exiting... ");
 					eventProcessor.getDisplay().setVisible(false);
 					gameUpdater.stop();
-					renderManager.waitForExit();
 					eventProcessor.waitForExit();
 					client.disconnect(true);
 					audio.close();

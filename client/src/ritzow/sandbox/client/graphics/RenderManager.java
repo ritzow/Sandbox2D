@@ -22,25 +22,18 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Queue;
 import java.util.function.Consumer;
-
 import ritzow.sandbox.client.input.InputManager;
 import ritzow.sandbox.client.input.handler.FramebufferSizeHandler;
 import ritzow.sandbox.client.input.handler.WindowFocusHandler;
-import ritzow.sandbox.util.Service;
-import ritzow.sandbox.util.Utility;
 
 /** Initializes OpenGL and loads data to the GPU, then renders any Renderable objects added to the List returned by getUpdatables() **/
-public final class RenderManager implements Service, FramebufferSizeHandler, WindowFocusHandler {
-	private volatile boolean setupComplete, exit, finished;
+public final class RenderManager implements Runnable, FramebufferSizeHandler, WindowFocusHandler {
 	private volatile boolean updateViewport, focused;
 	private volatile int framebufferWidth, framebufferHeight;
 	private final Display display;
 	private final List<Renderer> renderers;
 	private final Queue<Consumer<RenderManager>> renderTasks;
 	private final Object pausedLock;
-	
-	private static final long TARGET_FPS = 60;
-	private static final long TARGET_NANOSECONDS = 1_000_000_000/TARGET_FPS;
 	
 	public RenderManager(Display display) {
 		this.display = display;
@@ -50,13 +43,7 @@ public final class RenderManager implements Service, FramebufferSizeHandler, Win
 		this.pausedLock = new Object();
 	}
 	
-	@Override
-	public void start() {
-		new Thread(this, "Render Manager").start();
-	}
-
-	@Override
-	public void run() {
+	public void initialize() {
 		display.setGraphicsContextOnThread();
 		org.lwjgl.opengl.GL.createCapabilities();
 		glfwSwapInterval(0);
@@ -70,55 +57,38 @@ public final class RenderManager implements Service, FramebufferSizeHandler, Win
 		} catch(IOException | OpenGLException e) {
 			throw new RuntimeException(e);
 		}
+	}
 
-		synchronized(this) {
-			setupComplete = true;
-			this.notifyAll();
-		}
-		
-		try {
-			while(!exit) {
-				if(focused) {
-					long frameStart = System.nanoTime();
-					synchronized(renderTasks) {
-						while(!renderTasks.isEmpty()) {
-							renderTasks.poll().accept(this);
-						}
-					}
-					
-					if(updateViewport) {
-						glViewport(0, 0, framebufferWidth, framebufferHeight);
-						updateViewport = false;
-					}
-					
-					glClear(GL_COLOR_BUFFER_BIT);
-					
-					for(Renderer r : renderers) {
-						glBindFramebuffer(GL_READ_FRAMEBUFFER, r.render(framebufferWidth, framebufferHeight).framebufferID);
-						glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-						glBlitFramebuffer(0, 0, framebufferWidth, framebufferHeight, 0, 0, framebufferWidth, framebufferHeight, GL_COLOR_BUFFER_BIT, GL_LINEAR);
-					}
-					
-					GraphicsUtility.checkErrors();
-					display.refresh();
-					long nanosToSleep = (Math.max(0, TARGET_NANOSECONDS - (System.nanoTime() - frameStart)));
-					Thread.sleep(nanosToSleep/1_000_000, (int)(nanosToSleep % 1_000_000));
-				} else {
-					Utility.waitOnCondition(pausedLock, () -> focused || exit);
+	public void shutdown() {
+		GraphicsUtility.checkErrors();
+		renderers.clear();
+		display.closeContext();
+		org.lwjgl.opengl.GL.destroy();
+	}
+	
+	public void run() {
+		if(focused) {
+			synchronized(renderTasks) {
+				while(!renderTasks.isEmpty()) {
+					renderTasks.poll().accept(this);
 				}
 			}
-		} catch(InterruptedException e) {
-			e.printStackTrace();
-		} finally {
-			GraphicsUtility.checkErrors();
-			renderers.clear();
-			display.closeContext();
-			org.lwjgl.opengl.GL.destroy();
-			
-			synchronized(this) {
-				finished = true;
-				notifyAll();
+
+			if(updateViewport) {
+				glViewport(0, 0, framebufferWidth, framebufferHeight);
+				updateViewport = false;
 			}
+
+			glClear(GL_COLOR_BUFFER_BIT);
+
+			for(Renderer r : renderers) {
+				glBindFramebuffer(GL_READ_FRAMEBUFFER, r.render(framebufferWidth, framebufferHeight).framebufferID);
+				glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+				glBlitFramebuffer(0, 0, framebufferWidth, framebufferHeight, 0, 0, framebufferWidth, framebufferHeight, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+			}
+
+			GraphicsUtility.checkErrors();
+			display.refresh();
 		}
 	}
 	
@@ -131,25 +101,6 @@ public final class RenderManager implements Service, FramebufferSizeHandler, Win
 	
 	public List<Renderer> getRenderers() {
 		return renderers;
-	}
-
-	@Override
-	public boolean isSetupComplete() {
-		return setupComplete;
-	}
-	
-	@Override
-	public boolean isFinished() {
-		return finished;
-	}
-	
-	@Override
-	public synchronized void exit() {
-		exit = true;
-		notifyAll();
-		synchronized(pausedLock) {
-			pausedLock.notifyAll();
-		}
 	}
 
 	@Override

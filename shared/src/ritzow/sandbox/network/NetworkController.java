@@ -21,7 +21,7 @@ public final class NetworkController {
 	private final DatagramSocket socket;
 	private final Queue<MessageAddressPair> reliableQueue;
 	private final Map<InetSocketAddress, MutableInteger> lastReceived;
-	private MessageProcessor messageProcessor;
+	private final MessageProcessor messageProcessor;
 	private Thread receivingThread;
 	private volatile boolean exit;
 	
@@ -30,10 +30,6 @@ public final class NetworkController {
 		reliableQueue = new LinkedList<>();
 		lastReceived = new HashMap<>();
 		messageProcessor = processor;
-	}
-	
-	public NetworkController(InetSocketAddress bindAddress) throws SocketException {
-		this(bindAddress, null);
 	}
 	
 	/**
@@ -48,12 +44,6 @@ public final class NetworkController {
 	@FunctionalInterface
 	public static interface MessageProcessor {
 		void process(InetSocketAddress sender, int messageID, byte[] data);
-	}
-	
-	public void setOnRecieveMessage(MessageProcessor processor) {
-		if(messageProcessor != null)
-			throw new UnsupportedOperationException("There is already a message processor");
-		this.messageProcessor = processor;
 	}
 	
 	public void sendUnreliable(SocketAddress recipient, int messageID, byte[] data) {
@@ -196,18 +186,10 @@ public final class NetworkController {
 	}
 	
 	private static final class MutableInteger {
-	    private int value;
+	    int value;
 	    
 	    public MutableInteger(int value) {
 	        this.value = value;
-	    }
-	    
-	    public void set(int value) {
-	        this.value = value;
-	    }
-	    
-	    public int intValue() {
-	        return value;
 	    }
 	}
 	
@@ -220,7 +202,7 @@ public final class NetworkController {
 		@Override
 		public void run() {
 			//Create the thread dispatcher for processing received messages
-			ExecutorService dispatcher = Executors.newSingleThreadExecutor(); //Executors.newCachedThreadPool();
+			ExecutorService dispatcher = Executors.newSingleThreadExecutor();
 			
 			//Create the buffer DatagramPacket that is the maximum length a message can be 
 			//plus the 5 header bytes (messageID and reliable flag)
@@ -241,7 +223,7 @@ public final class NetworkController {
 					continue;
 				}
 				
-				//ignore received packets that are not large enough to contain the full header
+				//ignore received packets that are not large enough to cont ain the full header
 				if(buffer.getLength() < 5) {
 					continue;
 				}
@@ -278,9 +260,9 @@ public final class NetworkController {
 							lastReceived.put(sender, new MutableInteger(messageID));
 							dispatcher.execute(new PacketRunnable(sender, messageID, data));
 							sendResponse(sender, messageID);
-						} else if(messageID == lastReceived.get(sender).intValue() + 1) {
+						} else if(messageID == lastReceived.get(sender).value + 1) {
 							//if the message is the next one, process it and update last message
-							lastReceived.get(sender).set(messageID);
+							lastReceived.get(sender).value = messageID;
 							dispatcher.execute(new PacketRunnable(sender, messageID, data));
 							sendResponse(sender, messageID);
 						} else { 

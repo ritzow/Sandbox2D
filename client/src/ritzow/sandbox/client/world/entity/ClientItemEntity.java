@@ -4,6 +4,7 @@ import ritzow.sandbox.client.graphics.Graphical;
 import ritzow.sandbox.client.graphics.ModelRenderProgram;
 import ritzow.sandbox.client.graphics.Renderable;
 import ritzow.sandbox.data.DataReader;
+import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.ItemEntity;
 import ritzow.sandbox.world.item.Item;
 
@@ -29,8 +30,8 @@ public final class ClientItemEntity<I extends Item> extends ItemEntity<I> implem
 	}
 	
 	@Override
-	public void update(float time) {
-		super.update(time);
+	public void update(World world, float time) {
+		super.update(world, time);
 		rotation = Math.abs(rotation + ROTATION_SPEED * time);
 	}
 

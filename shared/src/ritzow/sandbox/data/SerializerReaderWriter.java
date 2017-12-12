@@ -14,9 +14,11 @@ public class SerializerReaderWriter implements Serializer, Deserializer {
 		this.serializeLookup = new HashMap<>();
 	}
 
-	public <T extends Transportable> void register(short identifier, Class<T> returnType, Function<DataReader, T> deserializer) {
+	public <T extends Transportable> SerializerReaderWriter 
+		register(short identifier, Class<T> returnType, Function<DataReader, T> deserializer) {
 		deserializeLookup.put(identifier, deserializer);
 		serializeLookup.put(returnType, identifier);
+		return this;
 	}
 	
 	public void register(short identifier, Consumer<DataReader> deserializer) {
@@ -79,6 +81,19 @@ public class SerializerReaderWriter implements Serializer, Deserializer {
 		return new DataReader() {
 			private int index = 6; //skip past object size and type
 			
+			public int remaining() {
+				return ByteUtil.getInteger(bytes, index - 4) - index + 4; //TODO is this implemented correctly?
+			}
+			
+			public void skip(int bytes) {
+				checkIndex(index += bytes);
+			}
+			
+			private void checkIndex(int index) {
+				if(index >= bytes.length)
+					throw new IndexOutOfBoundsException("not enough data remaining");
+			}
+			
 			@Override
 			public double readDouble() {
 				return Double.longBitsToDouble(readLong());
@@ -130,7 +145,7 @@ public class SerializerReaderWriter implements Serializer, Deserializer {
 
 			@Override
 			public byte[] readBytes(int count) {
-				if(bytes.length < count || count < 0)
+				if(bytes.length < index + count || count < 0)
 					throw new IndexOutOfBoundsException("not enough data remaining");
 				byte[] data = new byte[count];
 				System.arraycopy(bytes, index, data, 0, data.length);
@@ -143,7 +158,7 @@ public class SerializerReaderWriter implements Serializer, Deserializer {
 				if(dest.length < bytes.length - index) {
 					System.arraycopy(bytes, index, dest, offset, dest.length - offset);
 				} else {
-					throw new ArrayIndexOutOfBoundsException("not enough data remaining");
+					throw new IndexOutOfBoundsException("not enough data remaining");
 				}
 			}
 

@@ -16,9 +16,13 @@ public final class ClientGameUpdater {
 	private final Object resumeLock;
 	private volatile boolean paused, exit;
 	private final List<Runnable> runnables;
+	private Runnable pre, post;
 	
-	public ClientGameUpdater() {
+	public ClientGameUpdater(Runnable onStart, Runnable onExit) {
 		this.runnables = Collections.synchronizedList(new LinkedList<Runnable>());
+		this.paused = true;
+		this.pre = onStart;
+		this.post = onExit;
 		resumeLock = new Object();
 	}
 	
@@ -52,6 +56,10 @@ public final class ClientGameUpdater {
 		}
 	}
 	
+	public void waitForSetup() {
+		Utility.waitOnCondition(resumeLock, () -> !paused);
+	}
+	
 	public void addRepeatedTaskBefore(Runnable task, Runnable taskAfter) {
 		runnables.add(runnables.indexOf(taskAfter), task);
 	}
@@ -60,7 +68,7 @@ public final class ClientGameUpdater {
 		runnables.add(task);
 	}
 	
-	public void addRepeatedTasks(Collection<Runnable> tasks) {
+	public void addRepeatedTasks(Collection<? extends Runnable> tasks) {
 		runnables.addAll(tasks);
 	}
 	
@@ -73,6 +81,12 @@ public final class ClientGameUpdater {
 	}
 	
 	private void run() {
+		pre.run();
+		paused = false;
+		synchronized(resumeLock) {
+			resumeLock.notifyAll();
+		}
+		
 		while(!exit) {
 			synchronized(runnables) {
 				for(Runnable r : runnables) {
@@ -81,5 +95,7 @@ public final class ClientGameUpdater {
 			}
 			Utility.waitOnCondition(resumeLock, () -> !paused);
 		}
+		
+		post.run();
 	}
 }

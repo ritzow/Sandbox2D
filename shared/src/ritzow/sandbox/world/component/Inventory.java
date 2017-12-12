@@ -6,9 +6,8 @@ import ritzow.sandbox.data.Serializer;
 import ritzow.sandbox.data.Transportable;
 import ritzow.sandbox.world.item.Item;
 
-@SuppressWarnings("unchecked")
-public class Inventory<T extends Item> implements Transportable {
-	protected final Item[] items;
+public class Inventory<T extends Transportable> implements Transportable {
+	protected final Transportable[] items;
 	
 	public Inventory(int capacity) {
 		this.items = new Item[capacity];
@@ -24,21 +23,6 @@ public class Inventory<T extends Item> implements Transportable {
 	@Override
 	public byte[] getBytes(Serializer ser) {
 		return ByteUtil.serializeArray(items, ser);
-		
-//		byte[] numItems = new byte[4];
-//		ByteUtil.putInteger(numItems, 0, items.length);
-//		ByteArrayOutputStream out = new ByteArrayOutputStream();
-//		try {
-//			out.write(numItems);
-//			
-//			for(Item i : items) {
-//				out.write(ser.serialize(i));
-//			}
-//			
-//		} catch (IOException e) {
-//			return null;
-//		}
-//		return out.toByteArray();
 	}
 	
 	@Override
@@ -46,7 +30,7 @@ public class Inventory<T extends Item> implements Transportable {
 		StringBuilder list = new StringBuilder("Size: " + items.length + " [");
 		for(int i = 0; i < items.length - 1; i++) {
 			if(items[i] != null) {
-				list.append(items[i].getName());
+				list.append(items[i].toString());
 			}
 			
 			else {
@@ -57,7 +41,7 @@ public class Inventory<T extends Item> implements Transportable {
 		}
 		
 		if(items[items.length - 1] != null)
-			list.append(items[items.length - 1].getName());
+			list.append(items[items.length - 1].toString());
 		else
 			list.append("null");
 		
@@ -65,6 +49,7 @@ public class Inventory<T extends Item> implements Transportable {
 		return list.toString();
 	}
 	
+	@SuppressWarnings("unchecked")
 	public T get(int slot) {
 		return (T)items[slot];
 	}
@@ -83,14 +68,16 @@ public class Inventory<T extends Item> implements Transportable {
 		return false;
 	}
 	
-	public T put(Item item, int slot) {
-		Item previous = items[slot];
+	@SuppressWarnings("unchecked")
+	public T put(T item, int slot) {
+		Object previous = items[slot];
 		items[slot] = item;
 		return (T)previous;
 	}
 	
+	@SuppressWarnings("unchecked")
 	public T remove(int slot) {
-		Item item = items[slot];
+		Object item = items[slot];
 		items[slot] = null;
 		return (T)item;
 	}

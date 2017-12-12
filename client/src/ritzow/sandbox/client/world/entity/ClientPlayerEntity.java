@@ -30,7 +30,6 @@ public class ClientPlayerEntity extends PlayerEntity implements Luminous, Render
 		Graphical selectedItem = (Graphical)inventory.get(selected);
 		if(selectedItem != null) {
 			renderer.render(Models.forIndex(selectedItem.getGraphics().getModelIndex()), 1.0f, positionX, positionY, 0.5f, 0.5f, 0);
-					//velocityX != 0 ? (float)Math.PI/4 * (velocityX < 0 ? -1 : 1) : 0);
 		}
 	}
 

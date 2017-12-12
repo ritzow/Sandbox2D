@@ -11,4 +11,5 @@ module ritzow.sandbox.client {
 	requires org.lwjgl.opengl;
 	requires org.lwjgl.openal;
 	requires org.lwjgl.glfw;
+	requires java.base;
 }

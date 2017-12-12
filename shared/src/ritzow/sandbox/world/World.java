@@ -28,10 +28,10 @@ import ritzow.sandbox.world.entity.Entity;
 public class World implements Transportable, Iterable<Entity> {
 	
 	/** collection of entities in the world **/
-	private final List<Entity> entities;
+	private final List<Entity> entities; //TODO switch to using a Map<Integer, Entity> to store entity IDs
 	
 	/** blocks in the world that collide with entities and and are rendered **/
-	private final BlockGrid foreground, background; //TODO replace with ritzow.sandbox.util.Grid
+	private final BlockGrid foreground, background;
 	
 	/** AudioSystem to allow entities to play sounds **/
 	private AudioSystem audio;
@@ -288,7 +288,7 @@ public class World implements Transportable, Iterable<Entity> {
 			}
 			
 			//update entity position and velocity, and anything else specific to an entity
-			e.update(time);
+			e.update(this, time);
 			
 			//apply gravity
 			e.setVelocityY(e.getVelocityY() - gravity * time);
