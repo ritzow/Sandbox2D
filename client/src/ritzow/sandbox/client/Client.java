@@ -167,15 +167,23 @@ public final class Client {
 		}
 	}
 	
+	/**
+	 * Sends data to the currently connected Server
+	 * @param data the data to send, where the first two bytes represent the protocol
+	 * @throws IllegalStateException if the client is not connected to a server
+	 */
 	public void send(byte[] data) {
 		if(!connected)
 			throw new IllegalStateException("client is not connected to a server");
 		if(Protocol.isReliable(ByteUtil.getShort(data, 0))) {
-			try{
-				controller.sendReliable(server, nextReliableMessageID(), data, 10, 100);
-			} catch(TimeoutException e) {
+			if(!controller.sendReliable(server, nextReliableMessageID(), data, 10, 100)) {
 				disconnect(false);
 			}
+//			try{
+//				
+//			} catch(TimeoutException e) {
+//				disconnect(false);
+//			}
 		} else {
 			controller.sendUnreliable(server, nextUnreliableMessageID(), data);
 		}
@@ -204,7 +212,10 @@ public final class Client {
 	private void sendClientConnectRequest(SocketAddress server, int timeout) {
 		byte[] packet = new byte[2];
 		ByteUtil.putShort(packet, 0, Protocol.CLIENT_CONNECT_REQUEST);
-		controller.sendReliable(server, nextReliableMessageID(), packet, Math.max(1, timeout/100), Math.min(timeout, 100));
+		if(!controller.sendReliable(server, nextReliableMessageID(), 
+				packet, Math.max(1, timeout/100), Math.min(timeout, 100))) {
+			throw new TimeoutException();
+		}
 	}
 
 	public void sendBlockBreak(int x, int y) {

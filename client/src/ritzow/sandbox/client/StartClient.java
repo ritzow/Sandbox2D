@@ -7,11 +7,11 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import ritzow.sandbox.client.audio.ClientAudioSystem;
-import ritzow.sandbox.client.audio.Sounds;
+import ritzow.sandbox.client.audio.Sound;
 import ritzow.sandbox.client.audio.WAVEDecoder;
 import ritzow.sandbox.client.core.ClientGameUpdater;
 import ritzow.sandbox.client.graphics.Camera;
@@ -31,6 +31,7 @@ import ritzow.sandbox.client.input.controller.InteractionController;
 import ritzow.sandbox.client.input.controller.PlayerController;
 import ritzow.sandbox.client.input.controller.TrackingCameraController;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
+import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.World;
 
 public final class StartClient {
@@ -52,6 +53,25 @@ public final class StartClient {
 					}
 				}
 				
+				private void initGraphics(RenderManager renderManager, World world, CameraController cameraGrip) {
+					try {
+						ModelRenderProgram modelProgram = new ModelRenderProgram(
+								new Shader(new FileInputStream("resources/shaders/modelVertexShader"), ShaderType.VERTEX),
+								new Shader(new FileInputStream("resources/shaders/modelFragmentShader"), ShaderType.FRAGMENT), 
+								cameraGrip.getCamera()
+								);
+						LightRenderProgram lightProgram = new LightRenderProgram(
+								new Shader(new FileInputStream("resources/shaders/lightVertexShader"), ShaderType.VERTEX),
+								new Shader(new FileInputStream("resources/shaders/lightFragmentShader"), ShaderType.FRAGMENT),
+								cameraGrip.getCamera()
+								);
+						renderManager.getRenderers().add(new ClientGameRenderer(modelProgram, lightProgram, world));
+						System.out.println("Renderer started");
+					} catch (IOException | OpenGLException e) {
+						throw new RuntimeException(e);
+					}
+				}
+				
 				public void run() {
 					eventProcessor.waitForSetup();
 					
@@ -61,91 +81,70 @@ public final class StartClient {
 					
 					ClientAudioSystem audio = new ClientAudioSystem();
 					
-					Map<String, Integer> soundFiles = Map.ofEntries(
-						Map.entry("dig.wav", Sounds.BLOCK_BREAK),
-						Map.entry("place.wav", Sounds.BLOCK_PLACE),
-						Map.entry("pop.wav", Sounds.POP),
-						Map.entry("throw.wav", Sounds.THROW),
-						Map.entry("snap.wav", Sounds.SNAP)
+					Map<String, Sound> soundFiles = Map.ofEntries(
+						Map.entry("dig.wav", Sound.BLOCK_BREAK),
+						Map.entry("place.wav", Sound.BLOCK_PLACE),
+						Map.entry("pop.wav", Sound.POP),
+						Map.entry("throw.wav", Sound.THROW),
+						Map.entry("snap.wav", Sound.SNAP)
 					);
 					
 					for(File f : new File("resources/assets/audio").listFiles(f -> f.isFile())) {
 						try(FileInputStream input = new FileInputStream(f)) {
-							WAVEDecoder decoder = new WAVEDecoder(input);
-							decoder.decode();
-							audio.registerSound(soundFiles.get(f.getName()), decoder);	
+							audio.registerSound(soundFiles.get(f.getName()).code(), WAVEDecoder.decode(input));	
 						} catch (IOException e) {
 							e.printStackTrace();
+							System.exit(1);
 						}
 					}
 					
 					audio.setVolume(1.0f);
 					world.setAudioSystem(audio);
 					
-					//only play audio when the windows is active 
-					//TODO completely disable audio instead of just muting
-					eventProcessor.getDisplay().getInputManager().getWindowFocusHandlers().add(focused -> {
-						if(focused) {
-							audio.setVolume(1.0f);
-						} else {
-							audio.setVolume(0);
-						}
-					});
+					//mute audio in background
+					eventProcessor.getDisplay().getInputManager().getWindowFocusHandlers()
+						.add(focused -> audio.setVolume(focused ? 1.0f : 0.0f));
 					
 					System.out.println("Audio system setup complete");
 					
 					ClientPlayerEntity player = client.getPlayer();
-					System.out.println("Player downloaded");
 					
 					CameraController cameraGrip =
 							new TrackingCameraController(new Camera(0, 0, 1), audio, player, 0.005f, 0.05f, 0.6f);
 					
 					//create and link player controllers so the user canControllergame
-					Collection<Controller> controllers = Arrays.asList(
+					Collection<Controller> controllers = List.of(
 							new PlayerController(client),
 							new InteractionController(client, cameraGrip.getCamera(), 200, 300, 5),
 							cameraGrip
 					);
 					
-					controllers.forEach(controller -> {
-						controller.link(eventProcessor.getDisplay().getInputManager());
-					});
+					controllers.forEach(eventProcessor.getDisplay().getInputManager()::add);
 					
 					RenderManager renderManager = eventProcessor.getDisplay().getRenderManager();
 					ClientGameUpdater gameUpdater = new ClientGameUpdater(() -> {
 						renderManager.initialize();
-						try {
-							ModelRenderProgram modelProgram = new ModelRenderProgram(
-									new Shader(new FileInputStream("resources/shaders/modelVertexShader"), ShaderType.VERTEX),
-									new Shader(new FileInputStream("resources/shaders/modelFragmentShader"), ShaderType.FRAGMENT), 
-									cameraGrip.getCamera()
-									);
-							LightRenderProgram lightProgram = new LightRenderProgram(
-									new Shader(new FileInputStream("resources/shaders/lightVertexShader"), ShaderType.VERTEX),
-									new Shader(new FileInputStream("resources/shaders/lightFragmentShader"), ShaderType.FRAGMENT),
-									cameraGrip.getCamera()
-									);
-							renderManager.getRenderers().add(new ClientGameRenderer(modelProgram, lightProgram, world));
-							System.out.println("Renderer started");
-						} catch (IOException | OpenGLException e) {
-							throw new RuntimeException(e);
-						}
-					}, () -> {
-						renderManager.shutdown();
-					});
+						initGraphics(renderManager, world, cameraGrip);
+					}, renderManager::shutdown);
 					
 					gameUpdater.addRepeatedTask(client.onReceiveMessageTask());
 					gameUpdater.addRepeatedTasks(controllers);
 					gameUpdater.addRepeatedTask(new Runnable() {
 						private long previousTime = System.nanoTime();
+						private static final long MAX_TIMESTEP = 2;
 						
 						public void run() {
 							long current = System.nanoTime(); //get the current time
-							float totalUpdateTime = (current - previousTime) / 16_000_000f; //get the amount of update time
-							//System.out.print("updating world ");
-							//System.out.println(totalUpdateTime);
+							float totalUpdateTime = (current - previousTime) / 16_000_000f;
 							previousTime = current; //update the previous time for the next frame
-							world.update(totalUpdateTime);
+							System.out.println(totalUpdateTime);
+							
+							//update the world with a timestep of at most MAX_TIMESTEP until the world is up to date.
+							for(float time = totalUpdateTime; totalUpdateTime > 0; totalUpdateTime -= time) {
+								time = Math.min(totalUpdateTime, MAX_TIMESTEP);
+								world.update(time);
+								totalUpdateTime -= time;
+							}
 						}
 					});
 					gameUpdater.addRepeatedTask(renderManager);
@@ -174,16 +173,8 @@ public final class StartClient {
 					eventProcessor.setReadyToDisplay();
 					System.out.println("Window displayed");
 					
-					//wait until the game should exit
-					synchronized(this) {
-						while(!exit) {
-							try {
-								this.wait();
-							} catch(InterruptedException e) {
-								e.printStackTrace(); //the game manager should never be interrupted
-							}
-						}
-					}
+					//wait until the window is closed or escape key is pressed
+					Utility.waitOnCondition(this, () -> exit);
 					
 					//TODO need to fix ordering of these things
 					System.out.print("Exiting... ");

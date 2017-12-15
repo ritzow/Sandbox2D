@@ -2,7 +2,7 @@ package ritzow.sandbox.client.input.controller;
 
 import org.lwjgl.glfw.GLFW;
 import ritzow.sandbox.client.Client;
-import ritzow.sandbox.client.audio.Sounds;
+import ritzow.sandbox.client.audio.Sound;
 import ritzow.sandbox.client.graphics.Camera;
 import ritzow.sandbox.client.input.Controls;
 import ritzow.sandbox.client.input.InputManager;
@@ -134,7 +134,7 @@ public final class InteractionController implements Controller, MouseButtonHandl
 						entity.setSpeed(0.5f);
 						entity.setPositionX(client.getPlayer().getPositionX() + 2 * client.getPlayer().getWidth() * entity.getVelocityX());
 						entity.setPositionY(client.getPlayer().getPositionY() + 2 * client.getPlayer().getHeight() * entity.getVelocityY());
-						client.getWorld().getAudioSystem().playSound(Sounds.THROW, client.getPlayer().getPositionX(), client.getPlayer().getPositionY(), entity.getVelocityX(), entity.getVelocityY(), 1.0f, 1f);
+						client.getWorld().getAudioSystem().playSound(Sound.THROW.code(), client.getPlayer().getPositionX(), client.getPlayer().getPositionY(), entity.getVelocityX(), entity.getVelocityY(), 1.0f, 1f);
 						client.getWorld().add(entity);
 					}
 					break;

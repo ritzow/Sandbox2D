@@ -466,7 +466,7 @@ public final class Server {
 		public ClientState(int initReliable, InetSocketAddress address) {
 			this.reliableMessageID = initReliable;
 			this.address = address;
-			username = "player_" + Integer.toString(Math.abs(address.hashCode()));
+			username = "player";
 		}
 		
 		int nextUnreliableID() {

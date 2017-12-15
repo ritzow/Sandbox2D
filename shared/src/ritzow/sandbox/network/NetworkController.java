@@ -71,7 +71,7 @@ public final class NetworkController {
 	 * @param data the data to send to the recipient, including any protocol or other data
 	 * @throws TimeoutException if all send attempts have occurred but no message was received
 	 */
-	public final void sendReliable(SocketAddress recipient, int messageID, byte[] data, int attempts, int resendInterval) 
+	public final boolean sendReliable(SocketAddress recipient, int messageID, byte[] data, int attempts, int resendInterval) 
 			throws TimeoutException {
 		if(messageID < 0)
 			throw new RuntimeException("messageID must be greater than or equal to zero");
@@ -110,6 +110,8 @@ public final class NetworkController {
 				}
 				
 				throw new TimeoutException();
+			} else {
+				return true;
 			}
 		}
 	}
