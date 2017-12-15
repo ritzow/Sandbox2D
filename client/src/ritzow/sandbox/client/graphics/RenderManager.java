@@ -17,11 +17,8 @@ import static org.lwjgl.opengl.GL30.glBlitFramebuffer;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.LinkedList;
+import java.util.Collection;
 import java.util.List;
-import java.util.Objects;
-import java.util.Queue;
-import java.util.function.Consumer;
 import ritzow.sandbox.client.input.InputManager;
 import ritzow.sandbox.client.input.handler.FramebufferSizeHandler;
 import ritzow.sandbox.client.input.handler.WindowFocusHandler;
@@ -32,15 +29,11 @@ public final class RenderManager implements Runnable, FramebufferSizeHandler, Wi
 	private volatile int framebufferWidth, framebufferHeight;
 	private final Display display;
 	private final List<Renderer> renderers;
-	private final Queue<Consumer<RenderManager>> renderTasks;
-	private final Object pausedLock;
 	
 	public RenderManager(Display display) {
 		this.display = display;
 		this.link(display.getInputManager());
 		this.renderers = new ArrayList<>();
-		this.renderTasks = new LinkedList<>();
-		this.pausedLock = new Object();
 	}
 	
 	public void initialize() {
@@ -68,23 +61,18 @@ public final class RenderManager implements Runnable, FramebufferSizeHandler, Wi
 	
 	public void run() {
 		if(focused) {
-			synchronized(renderTasks) {
-				while(!renderTasks.isEmpty()) {
-					renderTasks.poll().accept(this);
-				}
-			}
-
+			int width = framebufferWidth, height = framebufferHeight;
 			if(updateViewport) {
-				glViewport(0, 0, framebufferWidth, framebufferHeight);
+				glViewport(0, 0, width, height);
 				updateViewport = false;
 			}
 
 			glClear(GL_COLOR_BUFFER_BIT);
 
 			for(Renderer r : renderers) {
-				glBindFramebuffer(GL_READ_FRAMEBUFFER, r.render(framebufferWidth, framebufferHeight).framebufferID);
+				glBindFramebuffer(GL_READ_FRAMEBUFFER, r.render(width, height).framebufferID);
 				glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-				glBlitFramebuffer(0, 0, framebufferWidth, framebufferHeight, 0, 0, framebufferWidth, framebufferHeight, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+				glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 			}
 
 			GraphicsUtility.checkErrors();
@@ -92,14 +80,7 @@ public final class RenderManager implements Runnable, FramebufferSizeHandler, Wi
 		}
 	}
 	
-	/** Will add a render task to a queue to be executed at the beginning of the next frame **/
-	public void submitRenderTask(Consumer<RenderManager> task) {
-		synchronized(renderTasks) {
-			renderTasks.add(Objects.requireNonNull(task));
-		}
-	}
-	
-	public List<Renderer> getRenderers() {
+	public Collection<Renderer> getRenderers() {
 		return renderers;
 	}
 
@@ -113,12 +94,6 @@ public final class RenderManager implements Runnable, FramebufferSizeHandler, Wi
 	@Override
 	public void windowFocus(boolean focused) {
 		this.focused = focused;
-		
-		if(focused) {
-			synchronized(pausedLock) {
-				pausedLock.notifyAll();
-			}
-		}
 	}
 
 	@Override

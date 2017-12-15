@@ -20,15 +20,7 @@ import org.lwjgl.glfw.GLFWWindowCloseCallback;
 import org.lwjgl.glfw.GLFWWindowFocusCallback;
 import org.lwjgl.glfw.GLFWWindowIconifyCallback;
 import org.lwjgl.glfw.GLFWWindowRefreshCallback;
-import ritzow.sandbox.client.input.handler.CursorPosHandler;
-import ritzow.sandbox.client.input.handler.FramebufferSizeHandler;
-import ritzow.sandbox.client.input.handler.KeyHandler;
-import ritzow.sandbox.client.input.handler.MouseButtonHandler;
-import ritzow.sandbox.client.input.handler.ScrollHandler;
-import ritzow.sandbox.client.input.handler.WindowCloseHandler;
-import ritzow.sandbox.client.input.handler.WindowFocusHandler;
-import ritzow.sandbox.client.input.handler.WindowIconifyHandler;
-import ritzow.sandbox.client.input.handler.WindowRefreshHandler;
+import ritzow.sandbox.client.input.handler.*;
 
 /** Dispatches GLFW events to handlers in an object oriented fashion **/
 public final class InputManager {
@@ -122,6 +114,10 @@ public final class InputManager {
 				}
 			}
 		});
+	}
+	
+	public void add(InputHandler handler) {
+		handler.link(this);
 	}
 	
 	public final void unlinkAll() {

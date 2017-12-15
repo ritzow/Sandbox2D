@@ -6,24 +6,22 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.Entity;
 
+@FunctionalInterface
 interface GameTask {
 	public void execute(ServerGameUpdater program);
 }
 
-//TODO integrate this with Server, take packets directly from network controller instead 
-//of from thread pool from networkcontroller
 final class ServerGameUpdater {	
 	private final Queue<GameTask> taskQueue;
 	private boolean exit;
 	
 	static final long MAX_TIMESTEP = 2;
+	static final long NETWORK_SEND_INTERVAL_NANOSECONDS = 50_000_000;
 	
-	Server server;
+	final Server server;
 	Thread runThread;
 	World world;
 	long previousTime, lastUpdateSend;
-	
-	private static final long SEND_INTERVAL_NANOSECONDS = 50000000;
 	
 	public ServerGameUpdater(Server server) {
 		taskQueue = new ConcurrentLinkedQueue<>();
@@ -37,13 +35,13 @@ final class ServerGameUpdater {
 			previousTime = current; //update the previous time for the next frame
 
 			//update the world with a timestep of at most MAX_TIMESTEP until the world is up to date.
-			for(float time = Math.min(totalUpdateTime, MAX_TIMESTEP); totalUpdateTime > 0 && !exit; totalUpdateTime -= time) {
-				//time = Math.min(totalUpdateTime, MAX_TIMESTEP);
+			for(float time = totalUpdateTime; totalUpdateTime > 0 && !exit; totalUpdateTime -= time) {
+				time = Math.min(totalUpdateTime, MAX_TIMESTEP);
 				world.update(time);
 				totalUpdateTime -= time;
 			}
 			
-			if(System.nanoTime() - lastUpdateSend > SEND_INTERVAL_NANOSECONDS) {
+			if(System.nanoTime() - lastUpdateSend > NETWORK_SEND_INTERVAL_NANOSECONDS) {
 				for(Entity e : world) {
 					server.sendEntityUpdate(e);
 				}

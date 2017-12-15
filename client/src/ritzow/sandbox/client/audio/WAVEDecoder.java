@@ -17,7 +17,13 @@ public final class WAVEDecoder implements SoundData {
 	private short blockAlign; //numChannels * bitsPerSample/8
 	private short bitsPerSample; //8 bits = 8, 16 bits = 16, etc.
 	
-	public WAVEDecoder(InputStream input) {
+	public static SoundData decode(InputStream wavData) throws IOException {
+		WAVEDecoder dec = new WAVEDecoder(wavData);
+		dec.decode();
+		return dec;
+	}
+	
+	private WAVEDecoder(InputStream input) {
 		this.input = input;
 	}
 	
