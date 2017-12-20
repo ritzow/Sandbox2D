@@ -32,7 +32,7 @@ public final class Server {
 	private final NetworkController controller;
 	private final ExecutorService broadcaster;
 	private final Map<InetSocketAddress, ClientState> clients;
-	private final ServerGameUpdater updater;
+	private final ServerRepeatUpdater updater;
 	private final SerializerReaderWriter serialRegistry;
 	private volatile boolean canConnect;
 	
@@ -45,15 +45,13 @@ public final class Server {
 		this.broadcaster = Executors.newCachedThreadPool();
 		this.clients = Collections.synchronizedMap(new HashMap<InetSocketAddress, ClientState>());
 		this.serialRegistry = SerializationProvider.getProvider();
-		this.updater = new ServerGameUpdater(this);
+		this.updater = new ServerRepeatUpdater(this);
 	}
 	
 	public void start(World world) {
+		world.setRemoveEntities(this::sendRemoveEntity);
+		updater.startWorld(world);
 		updater.start();
-		updater.world = world;
-		world.setRemoveEntities(e -> {
-			sendRemoveEntity(e);
-		});
 		controller.start();
 		canConnect = true;
 	}
@@ -113,33 +111,28 @@ public final class Server {
 		}
 	}
 	
-	private void processClientBreakBlock(ClientState client, byte[] data) {	
+	private void processClientBreakBlock(ClientState client, byte[] data) {
 		int x = ByteUtil.getInteger(data, 2);
 		int y = ByteUtil.getInteger(data, 6);
-		checkBlockDestroyData(x, y);
-		updater.submit(u -> {
-			if(u.world != null) {
-				Block block = u.world.getForeground().get(x, y);
-				if(u.world.getForeground().destroy(u.world, x, y)) {
+		if(!updater.getWorld().getForeground().isValid(x, y))
+			throw new ClientBadDataException("client sent bad x and y block coordinates");
+		
+		updater.submitTask(() -> {
+			if(updater.getWorld() != null) {
+				Block block = updater.getWorld().getForeground().get(x, y);
+				if(updater.getWorld().getForeground().destroy(updater.getWorld(), x, y)) {
 					//TODO block data needs to be reset on drop
 					ItemEntity<BlockItem> drop = 
-							new ItemEntity<>(u.world.nextEntityID(), new BlockItem(block), x, y);
+							new ItemEntity<>(updater.getWorld().nextEntityID(), new BlockItem(block), x, y);
 					drop.setVelocityX(-0.2f + ((float) Math.random() * (0.4f)));
 					drop.setVelocityY((float) Math.random() * (0.35f));
-					u.world.add(drop);
+					updater.getWorld().add(drop);
 					
 					sendRemoveBlock(block, x, y);
 					sendEntity(drop);
 				}
 			}
 		});
-	}
-	
-	private void checkBlockDestroyData(int x, int y) {
-		int worldWidth = updater.world.getForeground().getWidth();
-		int worldHeight = updater.world.getForeground().getHeight();
-		if(updater.world == null || !(x < worldWidth && x >= 0 && y < worldHeight && y >= 0))
-			throw new ClientBadDataException("client sent bad x and y block coordinates");
 	}
 	
 	private void processClientMessage(ClientState client, byte[] data) {
@@ -157,7 +150,7 @@ public final class Server {
 		entity = compress ? ByteUtil.compress(entity) : entity;
 		byte[] packet = new byte[3 + entity.length];
 		ByteUtil.putShort(packet, 0, Protocol.SERVER_ADD_ENTITY);
-		ByteUtil.putBoolean(packet, 2, compress); //always compressed
+		ByteUtil.putBoolean(packet, 2, compress);
 		ByteUtil.copy(entity, packet, 3);
 		broadcast(packet);
 	}
@@ -331,24 +324,6 @@ public final class Server {
 		disconnect(client, notifyClient ? "" : null);
 	}
 	
-//	private void disconnectMultiple(Map<InetSocketAddress, ClientState> clients, String reason) {
-//		synchronized(clients) {
-//			clients.values().parallelStream().forEach(client -> {
-//				if(reason != null)
-//					send(buildServerDisconnect(reason), client, false);
-//				controller.removeSender(client.address);
-//				if(client.player != null) {
-//					if(updater.isRunning()) {
-//						updater.submit(u -> {
-//							u.world.remove(client.player);
-//						});
-//					}
-//				}
-//			});
-//			clients.clear();
-//		}
-//	}
-	
 	/**
 	 * Disconnects a client from the server
 	 * @param client the client to disconnect
@@ -360,15 +335,23 @@ public final class Server {
 				send(buildServerDisconnect(reason), client, false);
 			controller.removeSender(client.address);
 			if(client.player != null) {
-				updater.submit(u -> {
-					u.world.remove(client.player);
-					sendRemoveEntity(client.player);
+				updater.submitTask(() -> {
+					Entity player = client.player;
+					updater.getWorld().remove(player);
+					sendRemoveEntity(player);
 				});
 			}
 			System.out.println(client + " disconnected (" + clients.size() + " players connected)");
 		} else {
 			System.out.println(client + " is not connected to the server");
 		}
+	}
+	
+	private void removePlayer(Entity player) {
+		updater.submitTask(() -> {
+			updater.getWorld().remove(player);
+			sendRemoveEntity(player);
+		});
 	}
 	
 	private void disconnectAll(String reason) {
@@ -378,10 +361,7 @@ public final class Server {
 					send(buildServerDisconnect(reason), client, false);
 				controller.removeSender(client.address);
 				if(client.player != null) {
-					updater.submit(u -> {
-						u.world.remove(client.player);
-						sendRemoveEntity(client.player);
-					});
+					removePlayer(client.player);
 				}
 			}
 			clients.clear();
@@ -404,8 +384,8 @@ public final class Server {
 			if(canConnect) {
 				//create the client's ClientState object to track their information
 				ClientState newClient = new ClientState(1, address);
-				updater.submit(u -> {
-					World world = u.world;
+				updater.submitTask(() -> {
+					World world = updater.getWorld();
 					
 					//construct a new player for the client
 					PlayerEntity player = new PlayerEntity(world.nextEntityID());
@@ -443,7 +423,7 @@ public final class Server {
 	public final void processPlayerAction(ClientState client, byte[] data) {
 		if(client.player == null)
 			throw new ClientBadDataException("client has no associated player to perform an action");
-		updater.submit(u -> {
+		updater.submitTask(() -> {
 			PlayerAction action = PlayerAction.forCode(data[2]);
 			boolean enable = ByteUtil.getBoolean(data, 3);
 			//TODO check if player can jump 

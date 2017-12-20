@@ -3,6 +3,7 @@ bin/
 data/
 libraries/
 oldcode/
+build/
 
 #Eclipse
 .settings

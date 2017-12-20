@@ -13,7 +13,6 @@ import java.util.Map;
 import ritzow.sandbox.client.audio.ClientAudioSystem;
 import ritzow.sandbox.client.audio.Sound;
 import ritzow.sandbox.client.audio.WAVEDecoder;
-import ritzow.sandbox.client.core.ClientGameUpdater;
 import ritzow.sandbox.client.graphics.Camera;
 import ritzow.sandbox.client.graphics.ClientGameRenderer;
 import ritzow.sandbox.client.graphics.LightRenderProgram;
@@ -31,6 +30,8 @@ import ritzow.sandbox.client.input.controller.InteractionController;
 import ritzow.sandbox.client.input.controller.PlayerController;
 import ritzow.sandbox.client.input.controller.TrackingCameraController;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
+import ritzow.sandbox.util.RepeatUpdater;
+import ritzow.sandbox.util.SharedConstants;
 import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.World;
 
@@ -122,39 +123,29 @@ public final class StartClient {
 					controllers.forEach(eventProcessor.getDisplay().getInputManager()::add);
 					
 					RenderManager renderManager = eventProcessor.getDisplay().getRenderManager();
-					ClientGameUpdater gameUpdater = new ClientGameUpdater(() -> {
+					RepeatUpdater gameUpdater = new RepeatUpdater(() -> {
 						renderManager.initialize();
 						initGraphics(renderManager, world, cameraGrip);
 					}, renderManager::shutdown);
 					
-					gameUpdater.addRepeatedTask(client.onReceiveMessageTask());
-					gameUpdater.addRepeatedTasks(controllers);
-					gameUpdater.addRepeatedTask(new Runnable() {
-						private long previousTime = System.nanoTime();
-						private static final long MAX_TIMESTEP = 2;
-						
-						public void run() {
-							long current = System.nanoTime(); //get the current time
-							float totalUpdateTime = (current - previousTime) / 16_000_000f;
-							previousTime = current; //update the previous time for the next frame
-							System.out.println(totalUpdateTime);
+					gameUpdater
+						.addRepeatTask(client.onReceiveMessageTask())
+						.addRepeatTasks(controllers)
+						.addRepeatTask(new Runnable() {
+							private long previousTime = System.nanoTime();
 							
-							//update the world with a timestep of at most MAX_TIMESTEP until the world is up to date.
-							for(float time = totalUpdateTime; totalUpdateTime > 0; totalUpdateTime -= time) {
-								time = Math.min(totalUpdateTime, MAX_TIMESTEP);
-								world.update(time);
-								totalUpdateTime -= time;
+							public void run() {
+								previousTime = Utility.updateWorld(world, previousTime, SharedConstants.MAX_TIMESTEP, SharedConstants.TIME_SCALE_NANOSECONDS);
 							}
-						}
-					});
-					gameUpdater.addRepeatedTask(renderManager);
-					gameUpdater.addRepeatedTask(() -> {
-						try {
-							Thread.sleep(1);
-						} catch (InterruptedException e1) {
-							e1.printStackTrace();
-						}
-					});
+						})
+						.addRepeatTask(renderManager)
+						.addRepeatTask(() -> {
+							try {
+								Thread.sleep(1);
+							} catch (InterruptedException e1) {
+								e1.printStackTrace();
+							}
+						});
 					gameUpdater.start();
 					gameUpdater.waitForSetup();
 					

@@ -204,7 +204,7 @@ public final class NetworkController {
 		@Override
 		public void run() {
 			//Create the thread dispatcher for processing received messages
-			ExecutorService dispatcher = Executors.newSingleThreadExecutor();
+			ExecutorService dispatcher = Executors.newCachedThreadPool(); //Executors.newSingleThreadExecutor();
 			
 			//Create the buffer DatagramPacket that is the maximum length a message can be 
 			//plus the 5 header bytes (messageID and reliable flag)
