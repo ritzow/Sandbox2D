@@ -17,6 +17,8 @@ import ritzow.sandbox.world.block.GrassBlock;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
 public final class StartServer {
+	private static final boolean SAVE_WORLD = false;
+	
 	public static void main(String... args) throws SocketException {
 		Thread.currentThread().setName("Server Setup");
 		Server server = new Server(new InetSocketAddress(50000));
@@ -58,23 +60,25 @@ public final class StartServer {
 		
 		server.stop();
 		
-		try {
-			if(!saveFile.exists()) {
-				saveFile.createNewFile();
-			}
-			
-			try(FileOutputStream out = new FileOutputStream(saveFile)) {
-				System.out.print("Saving world... ");
-				world.removeIf(e -> e instanceof PlayerEntity); //remove players before saving to file
-				byte[] serialized = ByteUtil.compress(SerializationProvider.getProvider().serialize(world));
-				out.write(serialized);
-				out.getChannel().truncate(serialized.length);
-				System.out.println("world saved to " + serialized.length + " bytes.");
+		if(SAVE_WORLD) {
+			try {
+				if(!saveFile.exists()) {
+					saveFile.createNewFile();
+				}
+				
+				try(FileOutputStream out = new FileOutputStream(saveFile)) {
+					System.out.print("Saving world... ");
+					world.removeIf(e -> e instanceof PlayerEntity); //remove players before saving to file
+					byte[] serialized = ByteUtil.compress(SerializationProvider.getProvider().serialize(world));
+					out.write(serialized);
+					out.getChannel().truncate(serialized.length);
+					System.out.println("world saved to " + serialized.length + " bytes.");
+				} catch (IOException e) {
+					System.out.println("Error while saving world to file: " + e.getLocalizedMessage());
+				}
 			} catch (IOException e) {
-				System.out.println("Error while saving world to file: " + e.getLocalizedMessage());
+				System.out.println("Could not find or create file to save world: " + e.getLocalizedMessage());
 			}
-		} catch (IOException e) {
-			System.out.println("Could not find or create file to save world: " + e.getLocalizedMessage());
 		}
 	}
 	

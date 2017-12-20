@@ -55,7 +55,7 @@ public final class InteractionController implements Controller, MouseButtonHandl
 		
 		if(distance <= range) {
 			if(primaryAction && System.nanoTime() - lastBreak > cooldownBreak * 1000000) {
-				if(client.getWorld().getForeground().isValid(blockX, blockY)) {
+				if(client.getWorld().getForeground().isBlock(blockX, blockY)) {
 					client.sendBlockBreak(blockX, blockY);
 					lastBreak = System.nanoTime();
 				}

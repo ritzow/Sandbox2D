@@ -1,6 +1,7 @@
 package ritzow.sandbox.util;
 
 import java.util.function.BooleanSupplier;
+import ritzow.sandbox.world.World;
 
 /**
  * Contains a number of static utility methods relating to various systems (matrix/random math, time, synchronization, hitboxes)
@@ -8,9 +9,31 @@ import java.util.function.BooleanSupplier;
  *
  */
 public final class Utility {
-	
 	private Utility() {
 		throw new UnsupportedOperationException("Utility class cannot be instantiated");
+	}
+	
+	/**
+	 * Updates the world
+	 * @param world the world to update
+	 * @param previousTime the previous update start time
+	 * @param maxTimestep the maximum amount of game time to update the world at once
+	 * @param timeScale the time conversion (from nanoseconds to game time)
+	 * @return the start time for the world update (should replace the previous time)
+	 */
+	public static long updateWorld(World world, long previousTime, float maxTimestep, float timeScale) {
+		if(previousTime == 0)
+			throw new IllegalArgumentException("previousTime is 0");
+		long current = System.nanoTime(); //get the current time
+		float totalUpdateTime = (current - previousTime) / timeScale;
+		
+		//update the world with a timestep of at most maxTimestep until the world is up to date.
+		for(float time = totalUpdateTime; totalUpdateTime > 0; totalUpdateTime -= time) {
+			time = Math.min(totalUpdateTime, maxTimestep);
+			world.update(time);
+			totalUpdateTime -= time;
+		}
+		return current;
 	}
 	
 	/**

@@ -3,8 +3,6 @@ package ritzow.sandbox.client;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketException;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import ritzow.sandbox.client.util.SerializationProvider;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
 import ritzow.sandbox.data.ByteArrayDataReader;
@@ -15,6 +13,7 @@ import ritzow.sandbox.network.NetworkController;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.network.Protocol.PlayerAction;
 import ritzow.sandbox.network.TimeoutException;
+import ritzow.sandbox.util.TaskQueue;
 import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.Entity;
@@ -25,6 +24,14 @@ import ritzow.sandbox.world.entity.Entity;
  *
  */
 public final class Client {
+	private static final class Integrater extends TaskQueue {
+		public boolean running;
+		public void run() {
+			running = true;
+			super.run();
+		}
+	}
+	
 	private final InetSocketAddress server;
 	private final NetworkController controller;
 	private volatile boolean connected;
@@ -72,7 +79,7 @@ public final class Client {
 		
 		try {
 			if(integrater.running) {
-				integrater.integrate(() -> onReceive(protocol, reader));
+				integrater.add(() -> onReceive(protocol, reader));
 			} else {
 				onReceive(protocol, reader);
 			}
@@ -121,20 +128,6 @@ public final class Client {
 		}
 	}
 	
-	private static final class Integrater implements Runnable {
-		private final Queue<Runnable> queue = new ConcurrentLinkedQueue<Runnable>();
-		public boolean running;
-		public void run() {
-			running = true;
-			while(!queue.isEmpty())
-				queue.remove().run();
-		}
-		
-		public void integrate(Runnable run) {
-			queue.add(run);
-		}
-	}
-	
 	public Runnable onReceiveMessageTask() {
 		return integrater;
 	}
@@ -176,14 +169,11 @@ public final class Client {
 		if(!connected)
 			throw new IllegalStateException("client is not connected to a server");
 		if(Protocol.isReliable(ByteUtil.getShort(data, 0))) {
-			if(!controller.sendReliable(server, nextReliableMessageID(), data, 10, 100)) {
+			try{
+				controller.sendReliable(server, nextReliableMessageID(), data, 10, 100);
+			} catch(TimeoutException e) {
 				disconnect(false);
 			}
-//			try{
-//				
-//			} catch(TimeoutException e) {
-//				disconnect(false);
-//			}
 		} else {
 			controller.sendUnreliable(server, nextUnreliableMessageID(), data);
 		}
@@ -258,7 +248,7 @@ public final class Client {
 	
 	private void processServerDisconnect(DataReader data) {
 		disconnect(false);
-		int length = data.readInteger(); //unused length
+		int length = data.readInteger();
 		System.out.println("Disconnected from server: " + 
 				new String(data.readBytes(data.remaining()), 0, length, Protocol.CHARSET));
 	}
