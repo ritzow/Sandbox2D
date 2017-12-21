@@ -21,7 +21,7 @@ public class GrassBlock extends Block {
 
 	@Override
 	public float getFriction() {
-		return 0.04f;
+		return 0.07f;
 	}
 
 	@Override

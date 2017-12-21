@@ -4,6 +4,7 @@ import ritzow.sandbox.data.ByteUtil;
 import ritzow.sandbox.data.DataReader;
 import ritzow.sandbox.data.Serializer;
 import ritzow.sandbox.network.Protocol.PlayerAction;
+import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.component.Inventory;
@@ -50,8 +51,10 @@ public class PlayerEntity extends Entity implements Living {
 			velocityX = -getMass();
 		else if(right)
 			velocityX = getMass();
-		if(up && blockBelow(world.getForeground()))
+		if(up && blockBelow(world.getForeground())) {
 			velocityY = getMass();
+			velocityX = Utility.addMagnitude(velocityX, 0.075f);
+		}
 	}
 	
 	private boolean blockBelow(BlockGrid blocks) {
