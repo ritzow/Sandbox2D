@@ -10,6 +10,7 @@ import ritzow.sandbox.client.graphics.Display;
 import ritzow.sandbox.client.ui.Cursors;
 import ritzow.sandbox.util.Exitable;
 import ritzow.sandbox.util.Installable;
+import ritzow.sandbox.util.Utility;
 
 /** Initializes GLFW, loads mouse cursors, processes all GLFW events until exited **/
 public final class EventProcessor implements Runnable, Installable, Exitable {
@@ -40,7 +41,7 @@ public final class EventProcessor implements Runnable, Installable, Exitable {
 			notifyAll();
 		}
 		
-		waitUntilReady();
+		Utility.waitOnCondition(this, () -> shouldDisplay);
 		display.setFullscreen(true);
 		
 		while(!exit) {
@@ -63,16 +64,6 @@ public final class EventProcessor implements Runnable, Installable, Exitable {
 	public synchronized void setReadyToDisplay() {
 		shouldDisplay = true;
 		this.notifyAll();
-	}
-	
-	private synchronized void waitUntilReady() {
-		try {
-			while(!shouldDisplay) {
-				this.wait();
-			}
-		} catch(InterruptedException e) {
-			e.printStackTrace();
-		}
 	}
 	
 	@Override
