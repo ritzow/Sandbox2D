@@ -6,7 +6,7 @@ import static org.lwjgl.glfw.GLFW.GLFW_RELEASE;
 
 import ritzow.sandbox.client.audio.ClientAudioSystem;
 import ritzow.sandbox.client.graphics.Camera;
-import ritzow.sandbox.client.input.Controls;
+import ritzow.sandbox.client.input.ControlScheme;
 import ritzow.sandbox.world.entity.Entity;
 
 public final class TrackingCameraController extends CameraController {
@@ -61,7 +61,7 @@ public final class TrackingCameraController extends CameraController {
 
 	@Override
 	public void keyboardButton(int key, int scancode, int action, int mods) {
-		if(key == Controls.KEYBIND_INCREASEZOOM) {
+		if(key == ControlScheme.KEYBIND_INCREASEZOOM) {
 			if(action == GLFW_PRESS) {
 				velocityZ = zoomSpeed;
 			}
@@ -71,7 +71,7 @@ public final class TrackingCameraController extends CameraController {
 			}
 		}
 		
-		else if(key == Controls.KEYBIND_DECREASEZOOM) {
+		else if(key == ControlScheme.KEYBIND_DECREASEZOOM) {
 			if(action == GLFW_PRESS) {
 				velocityZ = -zoomSpeed;
 			}

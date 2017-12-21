@@ -21,7 +21,7 @@ import ritzow.sandbox.client.graphics.OpenGLException;
 import ritzow.sandbox.client.graphics.RenderManager;
 import ritzow.sandbox.client.graphics.Shader;
 import ritzow.sandbox.client.graphics.Shader.ShaderType;
-import ritzow.sandbox.client.input.Controls;
+import ritzow.sandbox.client.input.ControlScheme;
 import ritzow.sandbox.client.input.EventProcessor;
 import ritzow.sandbox.client.input.InputManager;
 import ritzow.sandbox.client.input.controller.CameraController;
@@ -151,9 +151,9 @@ public final class StartClient {
 					
 					InputManager input = eventProcessor.getDisplay().getInputManager();
 					input.getKeyHandlers().add((key, scancode, action, mods) -> {
-						if(key == Controls.KEYBIND_QUIT && action == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
+						if(key == ControlScheme.KEYBIND_QUIT && action == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
 							exit();
-						} else if(key == Controls.KEYBIND_FULLSCREEN && action == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
+						} else if(key == ControlScheme.KEYBIND_FULLSCREEN && action == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
 				            eventProcessor.getDisplay().toggleFullscreen();
 				        }
 					});
