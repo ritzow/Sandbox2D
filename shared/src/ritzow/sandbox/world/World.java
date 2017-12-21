@@ -1,6 +1,6 @@
 package ritzow.sandbox.world;
 
-import static ritzow.sandbox.util.Utility.combineFriction;
+import static ritzow.sandbox.util.Utility.average;
 import static ritzow.sandbox.util.Utility.intersection;
 
 import java.util.ArrayList;
@@ -405,9 +405,9 @@ public class World implements Transportable, Iterable<Entity> {
 					if(e.getVelocityY() > 0) {
 						e.setVelocityY(0);
 					} if(e.getVelocityX() > 0) {
-		        		e.setVelocityX(Math.max(0, e.getVelocityX() - combineFriction(e.getFriction(), otherFriction) * time));
+		        		e.setVelocityX(Math.max(0, e.getVelocityX() - average(e.getFriction(), otherFriction) * time));
 		        	} else if(e.getVelocityX() < 0) {
-		        		e.setVelocityX(Math.min(0, e.getVelocityX() + combineFriction(e.getFriction(), otherFriction) * time));
+		        		e.setVelocityX(Math.min(0, e.getVelocityX() + average(e.getFriction(), otherFriction) * time));
 		        	}
 		        } else { /* collision on the left of e */
 		        	e.setPositionX(otherX + width);
@@ -426,9 +426,9 @@ public class World implements Transportable, Iterable<Entity> {
 		        	if(e.getVelocityY() < 0) {
 		        		e.setVelocityY(0);
 		        	} if(e.getVelocityX() > 0) {
-		        		e.setVelocityX(Math.max(0, e.getVelocityX() - combineFriction(e.getFriction(), otherFriction) * time));
+		        		e.setVelocityX(Math.max(0, e.getVelocityX() - average(e.getFriction(), otherFriction) * time));
 		        	} else if(e.getVelocityX() < 0) {
-		        		e.setVelocityX(Math.min(0, e.getVelocityX() + combineFriction(e.getFriction(), otherFriction) * time));
+		        		e.setVelocityX(Math.min(0, e.getVelocityX() + average(e.getFriction(), otherFriction) * time));
 		        	}
 		        }
 		    }
@@ -452,9 +452,9 @@ public class World implements Transportable, Iterable<Entity> {
 					if(e.getVelocityY() > 0) {
 						e.setVelocityY(0);
 					} if(e.getVelocityX() > 0) {
-		        		e.setVelocityX(Math.max(0, e.getVelocityX() - combineFriction(e.getFriction(), block.getFriction()) * time));
+		        		e.setVelocityX(Math.max(0, e.getVelocityX() - average(e.getFriction(), block.getFriction()) * time));
 		        	} else if(e.getVelocityX() < 0) {
-		        		e.setVelocityX(Math.min(0, e.getVelocityX() + combineFriction(e.getFriction(), block.getFriction()) * time));
+		        		e.setVelocityX(Math.min(0, e.getVelocityX() + average(e.getFriction(), block.getFriction()) * time));
 		        	}
 		        } else if(!blockRight) { /* collision on right of block */
 		        	e.setPositionX(blockX + width);
@@ -473,9 +473,9 @@ public class World implements Transportable, Iterable<Entity> {
 		        	if(e.getVelocityY() < 0) {
 		        		e.setVelocityY(0);
 		        	} if(e.getVelocityX() > 0) {
-		        		e.setVelocityX(Math.max(0, e.getVelocityX() - combineFriction(e.getFriction(), block.getFriction()) * time));
+		        		e.setVelocityX(Math.max(0, e.getVelocityX() - average(e.getFriction(), block.getFriction()) * time));
 		        	} else if(e.getVelocityX() < 0) {
-		        		e.setVelocityX(Math.min(0, e.getVelocityX() + combineFriction(e.getFriction(), block.getFriction()) * time));
+		        		e.setVelocityX(Math.min(0, e.getVelocityX() + average(e.getFriction(), block.getFriction()) * time));
 		        	}
 		        }
 		    }

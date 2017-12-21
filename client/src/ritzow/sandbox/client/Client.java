@@ -111,7 +111,7 @@ public final class Client {
 			case Protocol.SERVER_ADD_ENTITY: //TODO separate receiving entity and adding to world
 				processAddEntity(data);
 				break;
-			case Protocol.SERVER_REMOVE_ENTITY: //TODO separate removing entity from world and getting rid of entity
+			case Protocol.SERVER_REMOVE_ENTITY: //TODO separate removing entity from world and deleting entity
 				processRemoveEntity(data);
 				break;
 			case Protocol.SERVER_CLIENT_DISCONNECT:

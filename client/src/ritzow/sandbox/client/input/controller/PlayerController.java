@@ -3,8 +3,9 @@ package ritzow.sandbox.client.input.controller;
 import static org.lwjgl.glfw.GLFW.GLFW_PRESS;
 import static org.lwjgl.glfw.GLFW.GLFW_REPEAT;
 
+import org.lwjgl.glfw.GLFW;
 import ritzow.sandbox.client.Client;
-import ritzow.sandbox.client.input.Controls;
+import ritzow.sandbox.client.input.ControlScheme;
 import ritzow.sandbox.client.input.InputManager;
 import ritzow.sandbox.client.input.handler.KeyHandler;
 import ritzow.sandbox.network.Protocol.PlayerAction;
@@ -41,13 +42,17 @@ public class PlayerController implements Controller, KeyHandler {
 		PlayerAction playerAction;
 		
 		switch(key) {
-		case Controls.KEYBIND_UP:
+		case GLFW.GLFW_KEY_W:
+		case ControlScheme.KEYBIND_UP:
 			playerAction = PlayerAction.MOVE_UP; break;
-		case Controls.KEYBIND_RIGHT:
+		case GLFW.GLFW_KEY_D:
+		case ControlScheme.KEYBIND_RIGHT:
 			playerAction = PlayerAction.MOVE_RIGHT; break;
-		case Controls.KEYBIND_LEFT:
+		case GLFW.GLFW_KEY_A:
+		case ControlScheme.KEYBIND_LEFT:
 			playerAction = PlayerAction.MOVE_LEFT; break;
-		case Controls.KEYBIND_DOWN:
+		case GLFW.GLFW_KEY_S:
+		case ControlScheme.KEYBIND_DOWN:
 			playerAction = PlayerAction.MOVE_DOWN; break;
 		default:
 			return;

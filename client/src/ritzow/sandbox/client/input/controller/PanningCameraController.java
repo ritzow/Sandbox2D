@@ -6,7 +6,7 @@ import static org.lwjgl.glfw.GLFW.GLFW_RELEASE;
 
 import ritzow.sandbox.client.audio.ClientAudioSystem;
 import ritzow.sandbox.client.graphics.Camera;
-import ritzow.sandbox.client.input.Controls;
+import ritzow.sandbox.client.input.ControlScheme;
 
 public final class PanningCameraController extends CameraController {
 	protected final ClientAudioSystem audio;
@@ -55,7 +55,7 @@ public final class PanningCameraController extends CameraController {
 
 	@Override
 	public void keyboardButton(int key, int scancode, int action, int mods) {
-		if(key == Controls.KEYBIND_INCREASEZOOM) {
+		if(key == ControlScheme.KEYBIND_INCREASEZOOM) {
 			if(action == GLFW_PRESS) {
 				velocityZ += zoomSpeed;
 			}
@@ -65,7 +65,7 @@ public final class PanningCameraController extends CameraController {
 			}
 		}
 		
-		else if(key == Controls.KEYBIND_DECREASEZOOM) {
+		else if(key == ControlScheme.KEYBIND_DECREASEZOOM) {
 			if(action == GLFW_PRESS) {
 				
 				velocityZ -= zoomSpeed;
@@ -76,7 +76,7 @@ public final class PanningCameraController extends CameraController {
 			}
 		}
 		
-		else if(key == Controls.KEYBIND_LEFT) {
+		else if(key == ControlScheme.KEYBIND_LEFT) {
 			if(action == GLFW_PRESS) {
 				left = true;
 				velocityX -= panSpeed;
@@ -88,7 +88,7 @@ public final class PanningCameraController extends CameraController {
 			}
 		}
 		
-		else if(key == Controls.KEYBIND_RIGHT) {
+		else if(key == ControlScheme.KEYBIND_RIGHT) {
 			if(action == GLFW_PRESS) {
 				right = true;
 				velocityX += panSpeed;
@@ -100,7 +100,7 @@ public final class PanningCameraController extends CameraController {
 			}
 		}
 		
-		else if(key == Controls.KEYBIND_UP) {
+		else if(key == ControlScheme.KEYBIND_UP) {
 			if(action == GLFW_PRESS) {
 				up = true;
 				velocityY += panSpeed;
@@ -112,7 +112,7 @@ public final class PanningCameraController extends CameraController {
 			}
 		}
 		
-		else if(key == Controls.KEYBIND_DOWN) {
+		else if(key == ControlScheme.KEYBIND_DOWN) {
 			if(action == GLFW_PRESS) {
 				down = true;
 				velocityY -= panSpeed;

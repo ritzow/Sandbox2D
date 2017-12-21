@@ -4,7 +4,7 @@ import org.lwjgl.glfw.GLFW;
 import ritzow.sandbox.client.Client;
 import ritzow.sandbox.client.audio.Sound;
 import ritzow.sandbox.client.graphics.Camera;
-import ritzow.sandbox.client.input.Controls;
+import ritzow.sandbox.client.input.ControlScheme;
 import ritzow.sandbox.client.input.InputManager;
 import ritzow.sandbox.client.input.handler.CursorPosHandler;
 import ritzow.sandbox.client.input.handler.FramebufferSizeHandler;
@@ -12,6 +12,7 @@ import ritzow.sandbox.client.input.handler.KeyHandler;
 import ritzow.sandbox.client.input.handler.MouseButtonHandler;
 import ritzow.sandbox.client.world.entity.ClientItemEntity;
 import ritzow.sandbox.client.world.item.ClientBlockItem;
+import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.item.Item;
 
 public final class InteractionController implements Controller, MouseButtonHandler, CursorPosHandler, FramebufferSizeHandler, KeyHandler {
@@ -51,9 +52,8 @@ public final class InteractionController implements Controller, MouseButtonHandl
 		int blockY = Math.round(worldY);
 		float playerX = client.getPlayer().getPositionX();						//get player position
 		float playerY = client.getPlayer().getPositionY();
-		double distance = Math.sqrt((playerX - blockX) * (playerX - blockX) + (playerY - blockY) * (playerY - blockY));
 		
-		if(distance <= range) {
+		if(Utility.withinDistance(playerX, playerY, blockX, blockY, range)) {
 			if(primaryAction && System.nanoTime() - lastBreak > cooldownBreak * 1000000) {
 				if(client.getWorld().getForeground().isBlock(blockX, blockY)) {
 					client.sendBlockBreak(blockX, blockY);
@@ -124,7 +124,7 @@ public final class InteractionController implements Controller, MouseButtonHandl
 	public void keyboardButton(int key, int scancode, int action, int mods) {
 		if(action == GLFW.GLFW_PRESS) {
 			switch(key) {
-				case Controls.KEYBIND_DOWN:
+				case ControlScheme.KEYBIND_DOWN:
 					Item item = client.getPlayer().removeSelectedItem();
 					if(item != null) {
 						//TODO deal with entityID for entities created outside server directly
