@@ -17,7 +17,7 @@ import ritzow.sandbox.world.block.GrassBlock;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
 public final class StartServer {
-	private static final boolean SAVE_WORLD = false;
+	private static final boolean SAVE_WORLD = true;
 	
 	public static void main(String... args) throws SocketException {
 		Thread.currentThread().setName("Server Setup");
@@ -79,6 +79,8 @@ public final class StartServer {
 			} catch (IOException e) {
 				System.out.println("Could not find or create file to save world: " + e.getLocalizedMessage());
 			}
+		} else {
+			System.out.println("Server stopped.");
 		}
 	}
 	
