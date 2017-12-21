@@ -21,7 +21,7 @@ public class DirtBlock extends Block {
 
 	@Override
 	public float getFriction() {
-		return 0.05f;
+		return 0.07f;
 	}
 
 	@Override
