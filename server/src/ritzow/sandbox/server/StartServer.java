@@ -51,7 +51,7 @@ public final class StartServer {
 					}
 					break;
 				default:
-					server.broadcastMessage(next);
+					server.broadcastConsoleMessage(next);
 					System.out.println("Sent message '" + next + "' to " + 
 					server.getConnectedClients() + " connected client(s).");
 				}

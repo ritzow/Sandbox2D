@@ -13,6 +13,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 import ritzow.sandbox.data.ByteUtil;
 import ritzow.sandbox.data.Serializer;
 import ritzow.sandbox.data.SerializerReaderWriter;
@@ -78,9 +79,6 @@ public final class Server {
 			case Protocol.CLIENT_DISCONNECT:
 				disconnect(client, false);
 				break;
-			case Protocol.CONSOLE_MESSAGE:
-				processClientMessage(client, data);
-				break;
 			case Protocol.CLIENT_PLAYER_ACTION:
 				processPlayerAction(client, data);
 				break;
@@ -88,7 +86,7 @@ public final class Server {
 				processClientBreakBlock(client, data);
 				break;
 			default:
-				System.out.println("received unknown protocol " + protocol);
+				throw new ClientBadDataException("received unknown protocol " + protocol);
 		}
 	}
 	
@@ -110,6 +108,18 @@ public final class Server {
 		}
 	}
 	
+
+	private final void processPlayerAction(ClientState client, byte[] data) {
+		if(client.player == null)
+			throw new ClientBadDataException("client has no associated player to perform an action");
+		updater.submitTask(() -> {
+			PlayerAction action = PlayerAction.forCode(data[2]);
+			boolean enable = ByteUtil.getBoolean(data, 3);
+			//TODO check if player can jump 
+			client.player.processAction(action, enable);
+		});
+	}
+	
 	private void processClientBreakBlock(ClientState client, byte[] data) {
 		int x = ByteUtil.getInteger(data, 2);
 		int y = ByteUtil.getInteger(data, 6);
@@ -128,22 +138,28 @@ public final class Server {
 					updater.getWorld().add(drop);
 					
 					sendRemoveBlock(block, x, y);
-					sendEntity(drop);
+					sendAddEntity(drop);
 				}
 			}
 		});
 	}
 	
-	private void processClientMessage(ClientState client, byte[] data) {
-		byte[] decoration = ('<' + client.username + "> ").getBytes(Protocol.CHARSET);
-		byte[] broadcast = new byte[2 + decoration.length + data.length - 2];
-		ByteUtil.putShort(broadcast, 0, Protocol.CONSOLE_MESSAGE);
-		ByteUtil.copy(decoration, broadcast, 2);
-		System.arraycopy(data, 2, broadcast, 2 + decoration.length, data.length - 2);
-		broadcastReliable(broadcast, true);
+	public void sendRemoveBlock(Block block, int x, int y) {
+		byte[] packet = new byte[10];
+		ByteUtil.putShort(packet, 0, Protocol.SERVER_REMOVE_BLOCK);
+		ByteUtil.putInteger(packet, 2, x);
+		ByteUtil.putInteger(packet, 6, y);
+		broadcastReliable(packet, true);
 	}
 	
-	public void sendEntity(Entity e) {
+	private void sendPlayerIDMessage(PlayerEntity player, ClientState recipient) {
+		byte[] packet = new byte[6];
+		ByteUtil.putShort(packet, 0, Protocol.SERVER_PLAYER_ID);
+		ByteUtil.putInteger(packet, 2, player.getID());
+		sendReliable(recipient, packet, true);
+	}
+	
+	public void sendAddEntity(Entity e) {
 		byte[] entity = serialRegistry.serialize(e);
 		boolean compress = entity.length > Protocol.MAX_MESSAGE_LENGTH - 3;
 		entity = compress ? ByteUtil.compress(entity) : entity;
@@ -166,21 +182,6 @@ public final class Server {
 		broadcastUnreliable(update);
 	}
 	
-	public void sendRemoveBlock(Block block, int x, int y) {
-		byte[] packet = new byte[10];
-		ByteUtil.putShort(packet, 0, Protocol.SERVER_REMOVE_BLOCK);
-		ByteUtil.putInteger(packet, 2, x);
-		ByteUtil.putInteger(packet, 6, y);
-		broadcastReliable(packet, true);
-	}
-	
-	private void sendPlayerIDMessage(PlayerEntity player, ClientState recipient) {
-		byte[] packet = new byte[6];
-		ByteUtil.putShort(packet, 0, Protocol.SERVER_PLAYER_ID);
-		ByteUtil.putInteger(packet, 2, player.getID());
-		sendReliable(recipient, packet, true);
-	}
-	
 	public void sendRemoveEntity(Entity e) {
 		byte[] packet = new byte[2 + 4];
 		ByteUtil.putShort(packet, 0, Protocol.SERVER_REMOVE_ENTITY);
@@ -188,7 +189,7 @@ public final class Server {
 		broadcastReliable(packet, true);
 	}
 	
-	public static byte[] buildServerDisconnect(String reason) {
+	private static byte[] buildServerDisconnect(String reason) {
 		byte[] message = reason.getBytes(Protocol.CHARSET);
 		byte[] packet = new byte[message.length + 6];
 		ByteUtil.putShort(packet, 0, Protocol.SERVER_CLIENT_DISCONNECT);
@@ -197,43 +198,12 @@ public final class Server {
 		return packet;
 	}
 	
-	public static byte[][] buildWorldPackets(World world, Serializer ser) {
-		Objects.requireNonNull(world);
-		
-		int headerSize = 2;
-		int dataBytesPerPacket = Protocol.MAX_MESSAGE_LENGTH - headerSize;
-	
-		//serialize the world for transfer
-		byte[] worldBytes = ByteUtil.compress(ser.serialize(world));
-		
-		//split world data into evenly sized packets and one extra packet if not evenly divisible by max packet size
-		int packetCount = (worldBytes.length/dataBytesPerPacket) + (worldBytes.length % dataBytesPerPacket > 0 ? 1 : 0);
-		
-		//create the array to store all the constructed packets to send, in order
-		byte[][] packets = new byte[1 + packetCount][];
-	
-		//create the first packet to send, which contains the number of subsequent packets
-		byte[] head = new byte[6];
-		ByteUtil.putShort(head, 0, Protocol.SERVER_WORLD_HEAD);
-		ByteUtil.putInteger(head, 2, packetCount);
-		packets[0] = head;
-		
-		//construct the packets containing the world data, which begin with a standard header and contain chunks of world bytes
-		for(int slot = 1, index = 0; slot < packets.length; slot++) {
-			int remaining = worldBytes.length - index;
-			int dataSize = Math.min(dataBytesPerPacket, remaining);
-			byte[] packet = new byte[headerSize + dataSize];
-			ByteUtil.putShort(packet, 0, Protocol.SERVER_WORLD_DATA);
-			System.arraycopy(worldBytes, index, packet, headerSize, dataSize);
-			packets[slot] = packet;
-			index += dataSize;
-		}
-		
-		return packets;
+	public void broadcastConsoleMessage(String message) {
+		broadcastReliable(Protocol.buildConsoleMessage(message), true);
 	}
 	
-	public void broadcastMessage(String message) {
-		broadcastReliable(Protocol.buildConsoleMessage(message), true);
+	private void broadcastReliable(byte[] data, boolean removeUnresponsive) {
+		broadcastReliable(data, removeUnresponsive, c -> true);
 	}
 	
 	/**
@@ -242,13 +212,14 @@ public final class Server {
 	 * @param data the packet of data to send.
 	 * @param removeUnresponsive whether or not to remove clients that do not respond from the server
 	 */
-	private void broadcastReliable(byte[] data, boolean removeUnresponsive) {
+	private void broadcastReliable(byte[] data, boolean removeUnresponsive, Predicate<ClientState> sendTest) {
 		synchronized(clients) { //synchronize entire method so clients cant connect mid-send
 			if(clients.size() > 1) {
-				CountDownLatch barrier = new CountDownLatch(clients.size()); //all clients and calling thread
+				CountDownLatch barrier = new CountDownLatch(clients.size());
 				clients.forEach((address, client) -> {
 					broadcaster.execute(() -> {
-						sendReliable(client, data, removeUnresponsive);
+						if(sendTest.test(client))
+							sendReliable(client, data, removeUnresponsive);
 						barrier.countDown();
 					});
 				});
@@ -258,22 +229,27 @@ public final class Server {
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
-			} else if(clients.size() == 1) {
-				//if there is only one client, skip synchronization
+			} else if(clients.size() == 1) { //if there is only one client, skip extra steps
 				ClientState client = clients.values().iterator().next();
-				sendReliable(client, data, removeUnresponsive);
+				if(sendTest.test(client))
+					sendReliable(client, data, removeUnresponsive);
 			}
 		}
+	}
+	
+	private void broadcastUnreliable(byte[] data) {
+		broadcastUnreliable(data, c -> true);
 	}
 	
 	/**
 	 * Broadcasts {@code data} to each client connected to this Server and returns
 	 * @param data the packet of data to send.
 	 */
-	private void broadcastUnreliable(byte[] data) {
+	private void broadcastUnreliable(byte[] data, Predicate<ClientState> sendTest) {
 		synchronized(clients) {
 			for(ClientState client : clients.values()) {
-				controller.sendUnreliable(client.address, client.nextUnreliableID(), data);
+				if(sendTest.test(client))
+					controller.sendUnreliable(client.address, client.nextUnreliableID(), data);
 			}
 		}
 	}
@@ -282,7 +258,7 @@ public final class Server {
 		try {
 			long time = System.nanoTime();
 			controller.sendReliable(client.address, client.nextReliableID(), data, 10, 100);
-			client.ping = (int)(System.nanoTime() - time)/1_000_000;
+			client.ping = (int)(System.nanoTime() - time)/1_000_000; //update client ping
 		} catch(TimeoutException e) {
 			if(removeUnresponsive) {
 				disconnect(client, false);
@@ -329,7 +305,7 @@ public final class Server {
 					sendRemoveEntity(player);
 				});
 			}
-			System.out.println(client + " disconnected (" + clients.size() + " players connected)");
+			System.out.println(client + " disconnected (reason: " + reason + ", " + clients.size() + " players connected)");
 		} else {
 			System.out.println(client + " is not connected to the server");
 		}
@@ -391,7 +367,7 @@ public final class Server {
 					}
 					
 					world.add(player);
-					sendEntity(player);
+					sendAddEntity(player);
 					
 					//send the world to the client
 					for(byte[] packet : buildWorldPackets(world, serialRegistry)) {
@@ -407,16 +383,40 @@ public final class Server {
 			System.out.println(address + " attempted to connect, but timed out");
 		}
 	}
-
-	public final void processPlayerAction(ClientState client, byte[] data) {
-		if(client.player == null)
-			throw new ClientBadDataException("client has no associated player to perform an action");
-		updater.submitTask(() -> {
-			PlayerAction action = PlayerAction.forCode(data[2]);
-			boolean enable = ByteUtil.getBoolean(data, 3);
-			//TODO check if player can jump 
-			client.player.processAction(action, enable);
-		});
+	
+	public static byte[][] buildWorldPackets(World world, Serializer ser) {
+		Objects.requireNonNull(world);
+		
+		int headerSize = 2;
+		int dataBytesPerPacket = Protocol.MAX_MESSAGE_LENGTH - headerSize;
+	
+		//serialize the world for transfer
+		byte[] worldBytes = ByteUtil.compress(ser.serialize(world));
+		
+		//split world data into evenly sized packets and one extra packet if not evenly divisible by max packet size
+		int packetCount = (worldBytes.length/dataBytesPerPacket) + (worldBytes.length % dataBytesPerPacket > 0 ? 1 : 0);
+		
+		//create the array to store all the constructed packets to send, in order
+		byte[][] packets = new byte[1 + packetCount][];
+	
+		//create the first packet to send, which contains the number of subsequent packets
+		byte[] head = new byte[6];
+		ByteUtil.putShort(head, 0, Protocol.SERVER_WORLD_HEAD);
+		ByteUtil.putInteger(head, 2, packetCount);
+		packets[0] = head;
+		
+		//construct the packets containing the world data, which begin with a standard header and contain chunks of world bytes
+		for(int slot = 1, index = 0; slot < packets.length; slot++) {
+			int remaining = worldBytes.length - index;
+			int dataSize = Math.min(dataBytesPerPacket, remaining);
+			byte[] packet = new byte[headerSize + dataSize];
+			ByteUtil.putShort(packet, 0, Protocol.SERVER_WORLD_DATA);
+			System.arraycopy(worldBytes, index, packet, headerSize, dataSize);
+			packets[slot] = packet;
+			index += dataSize;
+		}
+		
+		return packets;
 	}
 	
 	public int getConnectedClients() {

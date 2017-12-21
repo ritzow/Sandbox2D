@@ -14,34 +14,24 @@ public final class Protocol {
 	/** The maximum length a sent message can be in bytes **/
 	public static final short MAX_MESSAGE_LENGTH = 1000;
 	
-	/** Server message protocol ID **/
+	/** message protocol ID **/
 	public static final short
+		CONSOLE_MESSAGE = 0,
 		SERVER_CONNECT_ACKNOWLEDGMENT = 1,
 		SERVER_WORLD_HEAD = 2,
 		SERVER_WORLD_DATA = 3,
-		SERVER_ENTITY_LOCATION = 4,
-		SERVER_ENTITY_UPDATE = 5,
-		SERVER_ADD_ENTITY = 6,
-		SERVER_REMOVE_ENTITY = 8,
-		SERVER_CLIENT_DISCONNECT = 9,
-		SERVER_CREATE_LOBBY = 10,
-		SERVER_PLAYER_ID = 11,
-		SERVER_REMOVE_BLOCK = 12,
-		SERVER_PING = 13;
+		SERVER_ENTITY_UPDATE = 4,
+		SERVER_ADD_ENTITY = 5,
+		SERVER_REMOVE_ENTITY = 6,
+		SERVER_CLIENT_DISCONNECT = 7,
+		SERVER_PLAYER_ID = 8,
+		SERVER_REMOVE_BLOCK = 9,
+		CLIENT_CONNECT_REQUEST = 10,
+		CLIENT_DISCONNECT = 11,
+		CLIENT_PLAYER_ACTION = 12,
+		CLIENT_BREAK_BLOCK = 13;
 	
-	/** Client message protocol ID **/
-	public static final short
-		CLIENT_CONNECT_REQUEST = 1,
-		CLIENT_INFO = 2,
-		CLIENT_DISCONNECT = 3,
-		CLIENT_PLAYER_ACTION = 4,
-		CLIENT_PING = 5,
-		CLIENT_BREAK_BLOCK = 6;
-	
-	/** Shared protocol ID **/
-	public static final short
-		CONSOLE_MESSAGE = 0;
-	
+	/** serialization type ID **/
 	public static final short
 		WORLD = 1,
 		BLOCK_GRID = 2,
@@ -58,7 +48,7 @@ public final class Protocol {
 			CLIENT_CONNECT_REQUEST, //also SERVER_CONNECT_ACKNOWLEDGMENT
 			CLIENT_DISCONNECT, //also SERVER_WORLD_DATA
 			CLIENT_PLAYER_ACTION,
-			CLIENT_INFO, //also SERVER_WORLD_HEAD
+			SERVER_ADD_ENTITY,
 			SERVER_REMOVE_ENTITY,
 			SERVER_CLIENT_DISCONNECT,
 			SERVER_PLAYER_ID,
@@ -69,6 +59,14 @@ public final class Protocol {
 	
 	public static boolean isReliable(short protocol) {
 		return RELIABLE_PROTOCOLS.contains(protocol);
+	}
+	
+	public static byte[] buildConsoleMessage(String message) {
+		byte[] msg = message.getBytes(Protocol.CHARSET);
+		byte[] packet = new byte[2 + msg.length];
+		ByteUtil.putShort(packet, 0, Protocol.CONSOLE_MESSAGE);
+		ByteUtil.copy(msg, packet, 2);
+		return packet;
 	}
 	
 	public static enum PlayerAction {
@@ -97,13 +95,5 @@ public final class Protocol {
 			}
 			throw new RuntimeException("unknown player action");
 		}
-	}
-	
-	public static byte[] buildConsoleMessage(String message) {
-		byte[] msg = message.getBytes(Charset.forName("UTF-8"));
-		byte[] packet = new byte[2 + msg.length];
-		ByteUtil.putShort(packet, 0, Protocol.CONSOLE_MESSAGE);
-		ByteUtil.copy(msg, packet, 2);
-		return packet;
 	}
 }
