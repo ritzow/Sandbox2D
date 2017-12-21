@@ -12,14 +12,6 @@ import static org.lwjgl.glfw.GLFW.glfwSetWindowRefreshCallback;
 
 import java.util.Collection;
 import java.util.LinkedList;
-import org.lwjgl.glfw.GLFWCursorPosCallback;
-import org.lwjgl.glfw.GLFWFramebufferSizeCallback;
-import org.lwjgl.glfw.GLFWMouseButtonCallback;
-import org.lwjgl.glfw.GLFWScrollCallback;
-import org.lwjgl.glfw.GLFWWindowCloseCallback;
-import org.lwjgl.glfw.GLFWWindowFocusCallback;
-import org.lwjgl.glfw.GLFWWindowIconifyCallback;
-import org.lwjgl.glfw.GLFWWindowRefreshCallback;
 import ritzow.sandbox.client.input.handler.*;
 
 /** Dispatches GLFW events to handlers in an object oriented fashion **/
@@ -43,93 +35,57 @@ public final class InputManager {
 			}
 		});
 		
-		glfwSetScrollCallback(window, new GLFWScrollCallback() {
-			@Override
-			public void invoke(long window, double xoffset, double yoffset) {
-				for(ScrollHandler handler : scrollHandlers) {
-					handler.mouseScroll(xoffset, yoffset);
-				}
+		glfwSetScrollCallback(window, (windowID, xoffset, yoffset) -> {
+			for(ScrollHandler handler : scrollHandlers) {
+				handler.mouseScroll(xoffset, yoffset);
 			}
 		});
 		
-		glfwSetMouseButtonCallback(window, new GLFWMouseButtonCallback() {
-			@Override
-			public void invoke(long window, int button, int action, int mods) {
-				for(MouseButtonHandler handler : mouseButtonHandlers) {
-					handler.mouseButton(button, action, mods);
-				}
+		glfwSetMouseButtonCallback(window, (windowID, button, action, mods) -> {
+			for(MouseButtonHandler handler : mouseButtonHandlers) {
+				handler.mouseButton(button, action, mods);
 			}
 		});
 		
-		glfwSetCursorPosCallback(window, new GLFWCursorPosCallback() {
-			@Override
-			public void invoke(long window, double xpos, double ypos) {
-				for(CursorPosHandler handler : cursorPosHandlers) {
-					handler.cursorPos(xpos, ypos);
-				}
+		glfwSetCursorPosCallback(window, (windowID, xpos, ypos) -> {
+			for(CursorPosHandler handler : cursorPosHandlers) {
+				handler.cursorPos(xpos, ypos);
 			}
 		});
 		
-		glfwSetFramebufferSizeCallback(window, new GLFWFramebufferSizeCallback() {
-			@Override
-			public void invoke(long window, int width, int height) {
-				for(FramebufferSizeHandler handler : framebufferSizeHandlers) {
-					handler.framebufferSize(width, height);
-				}
+		glfwSetFramebufferSizeCallback(window, (windowID, width, height) -> {
+			for(FramebufferSizeHandler handler : framebufferSizeHandlers) {
+				handler.framebufferSize(width, height);
 			}
 		});
 		
-		glfwSetWindowRefreshCallback(window, new GLFWWindowRefreshCallback() {
-			@Override
-			public void invoke(long window) {
-				for(WindowRefreshHandler handler : windowRefreshHandlers) {
-					handler.windowRefresh();
-				}
+		glfwSetWindowRefreshCallback(window, windowID -> {
+			for(WindowRefreshHandler handler : windowRefreshHandlers) {
+				handler.windowRefresh();
 			}
 		});
 		
-		glfwSetWindowCloseCallback(window, new GLFWWindowCloseCallback() {
-			@Override
-			public void invoke(long window) {
-				for(WindowCloseHandler handler : windowCloseHandlers) {
-					handler.windowClose();
-				}
+		glfwSetWindowCloseCallback(window, windowID -> {
+			for(WindowCloseHandler handler : windowCloseHandlers) {
+				handler.windowClose();
 			}
 		});
 		
-		glfwSetWindowIconifyCallback(window, new GLFWWindowIconifyCallback() {
-			@Override
-			public void invoke(long window, boolean iconified) {
-				for(WindowIconifyHandler handler : windowIconifyHandlers) {
-					handler.windowIconify(iconified);
-				}
+		glfwSetWindowIconifyCallback(window, (windowID, iconified) -> {
+			for(WindowIconifyHandler handler : windowIconifyHandlers) {
+				handler.windowIconify(iconified);
 			}
 		});
 		
-		glfwSetWindowFocusCallback(window, new GLFWWindowFocusCallback() {
-			@Override
-			public void invoke(long window, boolean focused) {
-				for(WindowFocusHandler handler : windowFocusHandlers) {
-					handler.windowFocus(focused);
-				}
+		glfwSetWindowFocusCallback(window, (windowID, focused) -> {
+			for(WindowFocusHandler handler : windowFocusHandlers) {
+				handler.windowFocus(focused);
 			}
 		});
 	}
 	
 	public void add(InputHandler handler) {
 		handler.link(this);
-	}
-	
-	public final void unlinkAll() {
-		cursorPosHandlers.clear();
-		framebufferSizeHandlers.clear();
-		keyHandlers.clear();
-		mouseButtonHandlers.clear();
-		scrollHandlers.clear();
-		windowRefreshHandlers.clear();
-		windowCloseHandlers.clear();
-		windowIconifyHandlers.clear();
-		windowFocusHandlers.clear();
 	}
 
 	public final Collection<CursorPosHandler> getCursorPosHandlers() {
