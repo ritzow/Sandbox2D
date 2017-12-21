@@ -48,15 +48,20 @@ public final class Utility {
 					try {
 						lock.wait();
 					} catch(InterruptedException e) {
-						throw new RuntimeException("waitOnCondition should not be interrupted", e);
+						throw new RuntimeException("waitOnCondition was interrupted", e);
 					}
 				}
 			}
 		}
 	}
 	
-	public static float millisToTime(long millis) {
-		return millis * 0.0625f; //TODO not sure if this is correct
+	public static float addMagnitude(float number, float magnitude) {
+		if(number < 0)
+			return Math.min(0, number + magnitude);
+		else if(number > 0)
+			return Math.max(0, number - magnitude);
+		else
+			return 0;
 	}
 	
 	public static float randomFloat(float min, float max) {
@@ -75,11 +80,23 @@ public final class Utility {
 		return (Math.abs(x - x2) * 2 < (width + width2)) && (Math.abs(y - y2) * 2 < (height + height2));
 	}
 	
-	public static float combineFriction(float friction1, float friction2) {
-		return (friction1 + friction2)/2;
+	public static float average(float val1, float val2) {
+		return (val1 + val1)/2;
 	}
 	
 	public static double distance(double x1, double y1, double x2, double y2) {
-		return Math.sqrt(Math.pow((x1-x2), 2) + Math.pow((y1-y2), 2));
+		return Math.sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2));
+	}
+	
+	public static float distance(float x1, float y1, float x2, float y2) {
+		return (float)Math.sqrt(distanceSquared(x1, y1, x2, y2));
+	}
+	
+	public static boolean withinDistance(float x1, float y1, float x2, float y2, float distance) {
+		return distanceSquared(x1, y1, x2, y2) <= distance*distance;
+	}
+	
+	private static float distanceSquared(float x1, float y1, float x2, float y2) {
+		return (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2);
 	}
 }
