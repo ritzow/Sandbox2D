@@ -187,7 +187,11 @@ public final class Client {
 		return server;
 	}
 	
-	public void disconnect(boolean notifyServer) {
+	public void disconnect() {
+		disconnect(true);
+	}
+	
+	private void disconnect(boolean notifyServer) {
 		if(!isConnected())
 			throw new IllegalStateException("not connected to a server");
 		if(notifyServer) {
@@ -310,6 +314,8 @@ public final class Client {
 	}
 	
 	private void processReceiveWorldData(DataReader data) {
+		if(worldPackets == null)
+			throw new IllegalStateException("world head packet has not been received");
 		synchronized(worldPackets) {
 			for(int i = 0; i < worldPackets.length; i++) {
 				//find an empty slot to put the received data

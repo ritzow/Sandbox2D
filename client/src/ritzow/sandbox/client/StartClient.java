@@ -172,7 +172,7 @@ public final class StartClient {
 					eventProcessor.getDisplay().setVisible(false);
 					gameUpdater.stop();
 					eventProcessor.waitForExit();
-					client.disconnect(true);
+					client.disconnect();
 					audio.close();
 					ClientAudioSystem.shutdown();
 					System.out.println("done!");
