@@ -204,12 +204,13 @@ public final class NetworkController {
 		@Override
 		public void run() {
 			//Create the thread dispatcher for processing received messages
-			ExecutorService dispatcher = Executors.newCachedThreadPool(); //Executors.newSingleThreadExecutor();
+			ExecutorService dispatcher = Executors.newSingleThreadExecutor(); //Executors.newFixedThreadPool(10); 
+			//TODO fix client world loading to wait for head packet, perhaps synchronize on a separate lock instead of 'worldPackets', dunno
+			//TODO maybe have a single thread for reliable data, and an executor/pool for unreliable data? (stuff who's order doesn't matter)
 			
 			//Create the buffer DatagramPacket that is the maximum length a message can be 
 			//plus the 5 header bytes (messageID and reliable flag)
-			DatagramPacket buffer = 
-					new DatagramPacket(new byte[Protocol.MAX_MESSAGE_LENGTH + 5], Protocol.MAX_MESSAGE_LENGTH + 5);
+			DatagramPacket buffer = new DatagramPacket(new byte[Protocol.MAX_MESSAGE_LENGTH + 5], Protocol.MAX_MESSAGE_LENGTH + 5);
 
 			while(!exit) {
 				//wait for a packet to be received
