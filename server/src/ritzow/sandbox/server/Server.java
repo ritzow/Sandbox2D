@@ -9,8 +9,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.BrokenBarrierException;
-import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -42,7 +41,7 @@ public final class Server {
 	
 	public Server(InetSocketAddress bindAddress) throws SocketException {
 		this.controller = new NetworkController(bindAddress, this::process);
-		this.broadcaster = Executors.newCachedThreadPool();
+		this.broadcaster = Executors.newSingleThreadExecutor();
 		this.clients = Collections.synchronizedMap(new HashMap<InetSocketAddress, ClientState>());
 		this.serialRegistry = SerializationProvider.getProvider();
 		this.updater = new ServerRepeatUpdater(this);
@@ -141,7 +140,7 @@ public final class Server {
 		ByteUtil.putShort(broadcast, 0, Protocol.CONSOLE_MESSAGE);
 		ByteUtil.copy(decoration, broadcast, 2);
 		System.arraycopy(data, 2, broadcast, 2 + decoration.length, data.length - 2);
-		broadcast(broadcast, true);
+		broadcastReliable(broadcast, true);
 	}
 	
 	public void sendEntity(Entity e) {
@@ -152,7 +151,7 @@ public final class Server {
 		ByteUtil.putShort(packet, 0, Protocol.SERVER_ADD_ENTITY);
 		ByteUtil.putBoolean(packet, 2, compress);
 		ByteUtil.copy(entity, packet, 3);
-		broadcast(packet);
+		broadcastReliable(packet, true);
 	}
 	
 	public void sendEntityUpdate(Entity e) {
@@ -164,7 +163,7 @@ public final class Server {
 		ByteUtil.putFloat(update, 10, e.getPositionY());
 		ByteUtil.putFloat(update, 14, e.getVelocityX());
 		ByteUtil.putFloat(update, 18, e.getVelocityY());
-		broadcast(update);
+		broadcastUnreliable(update);
 	}
 	
 	public void sendRemoveBlock(Block block, int x, int y) {
@@ -172,21 +171,21 @@ public final class Server {
 		ByteUtil.putShort(packet, 0, Protocol.SERVER_REMOVE_BLOCK);
 		ByteUtil.putInteger(packet, 2, x);
 		ByteUtil.putInteger(packet, 6, y);
-		broadcast(packet);
+		broadcastReliable(packet, true);
 	}
 	
 	private void sendPlayerIDMessage(PlayerEntity player, ClientState recipient) {
 		byte[] packet = new byte[6];
 		ByteUtil.putShort(packet, 0, Protocol.SERVER_PLAYER_ID);
 		ByteUtil.putInteger(packet, 2, player.getID());
-		send(packet, recipient, true);
+		sendReliable(recipient, packet, true);
 	}
 	
 	public void sendRemoveEntity(Entity e) {
 		byte[] packet = new byte[2 + 4];
 		ByteUtil.putShort(packet, 0, Protocol.SERVER_REMOVE_ENTITY);
 		ByteUtil.putInteger(packet, 2, e.getID());
-		broadcast(packet);
+		broadcastReliable(packet, true);
 	}
 	
 	public static byte[] buildServerDisconnect(String reason) {
@@ -234,48 +233,32 @@ public final class Server {
 	}
 	
 	public void broadcastMessage(String message) {
-		broadcast(Protocol.buildConsoleMessage(message));
-	}
-	
-	public void broadcast(byte[] data) {
-		broadcast(data, true);
+		broadcastReliable(Protocol.buildConsoleMessage(message), true);
 	}
 	
 	/**
 	 * Broadcasts {@code data} to each client connected to this Server and returns once all clients have received the data or
-	 * become unresponsive, unless the data is unreliable, in which case the method will return immediately
+	 * become unresponsive
 	 * @param data the packet of data to send.
 	 * @param removeUnresponsive whether or not to remove clients that do not respond from the server
 	 */
-	public void broadcast(byte[] data, boolean removeUnresponsive) {
-		if(Protocol.isReliable(ByteUtil.getShort(data, 0))) {
-			broadcastReliable(data, removeUnresponsive);
-		} else {
-			broadcastUnreliable(data);
-		}
-	}
-	
 	private void broadcastReliable(byte[] data, boolean removeUnresponsive) {
 		synchronized(clients) { //synchronize entire method so clients cant connect mid-send
 			if(clients.size() > 1) {
-				CyclicBarrier barrier = new CyclicBarrier(clients.size() + 1); //all clients and calling thread
+				CountDownLatch barrier = new CountDownLatch(clients.size()); //all clients and calling thread
 				clients.forEach((address, client) -> {
 					broadcaster.execute(() -> {
 						sendReliable(client, data, removeUnresponsive);
-						try {
-							barrier.await();
-						} catch (InterruptedException | BrokenBarrierException e) {
-							e.printStackTrace();
-						}
+						barrier.countDown();
 					});
 				});
 			
 				try {
-					barrier.await(); //wait until all clients have received the message
-				} catch (InterruptedException | BrokenBarrierException e) {
+					barrier.await(); //wait until an acknowledgement has been received from all clients
+				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
-			} else if(clients.size() == 1) { 
+			} else if(clients.size() == 1) {
 				//if there is only one client, skip synchronization
 				ClientState client = clients.values().iterator().next();
 				sendReliable(client, data, removeUnresponsive);
@@ -283,6 +266,10 @@ public final class Server {
 		}
 	}
 	
+	/**
+	 * Broadcasts {@code data} to each client connected to this Server and returns
+	 * @param data the packet of data to send.
+	 */
 	private void broadcastUnreliable(byte[] data) {
 		synchronized(clients) {
 			for(ClientState client : clients.values()) {
@@ -295,7 +282,7 @@ public final class Server {
 		try {
 			long time = System.nanoTime();
 			controller.sendReliable(client.address, client.nextReliableID(), data, 10, 100);
-			client.ping = (client.ping + (int)(System.nanoTime() - time)/1_000_000)/2; //average ping
+			client.ping = (int)(System.nanoTime() - time)/1_000_000;
 		} catch(TimeoutException e) {
 			if(removeUnresponsive) {
 				disconnect(client, false);
@@ -303,16 +290,17 @@ public final class Server {
 		}
 	}
 	
-	private void send(byte[] data, ClientState client, boolean removeUnresponsive) {
-		if(Protocol.isReliable(ByteUtil.getShort(data, 0))) {
-			sendReliable(client, data, true);
-		} else {
-			controller.sendUnreliable(client.address, client.nextUnreliableID(), data);
-		}
+	@SuppressWarnings("unused")
+	private void sendUnreliable(ClientState client, byte[] data) {
+		controller.sendUnreliable(client.address, client.nextUnreliableID(), data);
 	}
 	
 	public boolean isConnected(ClientState client) {
 		return clients.containsValue(client);
+	}
+	
+	public boolean isConnected(InetSocketAddress address) {
+		return clients.containsKey(address);
 	}
 	
 	/**
@@ -332,7 +320,7 @@ public final class Server {
 	private void disconnect(ClientState client, String reason) {
 		if(clients.remove(client.address) != null) {
 			if(reason != null)
-				send(buildServerDisconnect(reason), client, false);
+				sendReliable(client, buildServerDisconnect(reason), true);
 			controller.removeSender(client.address);
 			if(client.player != null) {
 				updater.submitTask(() -> {
@@ -358,7 +346,7 @@ public final class Server {
 		synchronized(clients) {
 			for(ClientState client : clients.values()) {
 				if(reason != null)
-					send(buildServerDisconnect(reason), client, false);
+					sendReliable(client, buildServerDisconnect(reason), true);
 				controller.removeSender(client.address);
 				if(client.player != null) {
 					removePlayer(client.player);
@@ -406,8 +394,8 @@ public final class Server {
 					sendEntity(player);
 					
 					//send the world to the client
-					for(byte[] a : buildWorldPackets(world, serialRegistry)) {
-						send(a, newClient, true);
+					for(byte[] packet : buildWorldPackets(world, serialRegistry)) {
+						sendReliable(newClient, packet, true);
 					}
 					
 					clients.put(address, newClient);
