@@ -1,14 +1,20 @@
 package ritzow.sandbox.client.graphics;
 
+import java.util.Arrays;
+
 public class TextureAtlas {
 	private final byte[] image;
 	
 	public TextureAtlas(TextureImage... textures) {
+		TextureImage[] texturesSorted = textures.clone();
+		Arrays.sort(texturesSorted);
+		
 		//accumulate total width and height of final texture atlas
 		int finalWidth = 0, finalHeight = 0;
 		for(TextureImage t : textures) {
-			finalWidth += t.getWidth();
-			finalHeight += t.getBytesPerPixel()/t.getWidth();
+			if(t.getBytesPerPixel() != texturesSorted[0].getBytesPerPixel())
+				throw new IllegalArgumentException("mismatch between texture formats (bytes per pixel not the same)");
+			//TODO compute atlas size in bytes, method for doing so will need to be decided
 		}
 		byte[] atlas = new byte[finalWidth * finalHeight];
 		
@@ -23,6 +29,10 @@ public class TextureAtlas {
 			}
 		}
 		image = atlas;
+	}
+	
+	private static void copyInto(byte[] dest, int row, int column) {
+		
 	}
 	
 	public byte[] getData() {

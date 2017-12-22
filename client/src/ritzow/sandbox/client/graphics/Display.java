@@ -59,7 +59,6 @@ public final class Display {
 	}
 	
 	public void destroy() {
-		input.unlinkAll();
 		glfwDestroyWindow(displayID);
 	}
 	

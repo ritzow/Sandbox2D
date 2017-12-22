@@ -6,8 +6,8 @@ import static org.lwjgl.opengl.GL12.GL_CLAMP_TO_EDGE;
 import java.nio.ByteBuffer;
 
 public final class Texture {
-	protected final int id;
-	protected final boolean fromImage;
+	public final int id;
+	private final boolean fromImage;
 	
 	public Texture(ByteBuffer pixels, int width, int height) {
 		this.id = glGenTextures();

@@ -81,11 +81,10 @@ public final class ClientGameRenderer implements Renderer {
 			for(int column = leftBound; column <= rightBound; column++) {
 				if(foreground.isBlock(column, row)) {
 					ClientBlock block = (ClientBlock)foreground.get(column, row);
-					modelProgram.render(Models.forIndex(block.getModelIndex()), 1.0f, column, row, 1.0f, 1.0f, 0.0f);
+					modelProgram.render(block.getModelIndex(), 1.0f, column, row, 1.0f, 1.0f, 0.0f);
 				} else if(background.isBlock(column, row)) {
 					ClientBlock block = (ClientBlock)background.get(column, row);
-					modelProgram.render(Models.forIndex(block.getModelIndex()), 0.5f, column, row, 1.0f, 1.0f, 0.0f); 
-					//TODO when the player destroys a block (happens on a different thread), this can cause a null pointer
+					modelProgram.render(block.getModelIndex(), 0.5f, column, row, 1.0f, 1.0f, 0.0f); 
 				}
 			}
 		}

@@ -9,6 +9,8 @@ import static org.lwjgl.opengl.GL20.glBindAttribLocation;
 import static org.lwjgl.opengl.GL30.glBindVertexArray;
 
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 public final class ModelRenderProgram extends ShaderProgram {
 	private final Camera camera;
@@ -56,10 +58,11 @@ public final class ModelRenderProgram extends ShaderProgram {
 			0, 0, 0, 1,
 	};
 	
-	//TODO store models in ModelRenderProgram, rather than Models class?
+	private final Map<Integer, Model> models;
 	
 	public ModelRenderProgram(Shader vertexShader, Shader fragmentShader, Camera camera) {
 		super(vertexShader, fragmentShader);
+		models = new HashMap<Integer, Model>();
 		GraphicsUtility.checkProgramCompilation(this);
 		glBindAttribLocation(programID, RendererConstants.ATTRIBUTE_POSITIONS, "position");
 		glBindAttribLocation(programID, RendererConstants.ATTRIBUTE_TEXTURE_COORDS, "textureCoord");
@@ -73,8 +76,10 @@ public final class ModelRenderProgram extends ShaderProgram {
 		GraphicsUtility.checkErrors();
 	}
 	
-	public void register(Model model) {
-		
+	public void register(int modelID, Model model) {
+		if(models.containsKey(modelID))
+			throw new IllegalArgumentException("modelID already in use");
+		models.put(modelID, model);
 	}
 	
 	public Camera getCamera() {
@@ -93,7 +98,10 @@ public final class ModelRenderProgram extends ShaderProgram {
 	 * Renders a model using the current shader program properties
 	 * @param model the model to render
 	 */
-	public void render(Model model) {
+	public void render(int modelID) {
+		Model model = models.get(modelID);
+		if(model == null)
+			throw new IllegalArgumentException("no model exists for model id " + modelID);
 		glBindVertexArray(model.vao);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model.indices);
 		setTexture(textureUnit, model.texture);
@@ -110,14 +118,18 @@ public final class ModelRenderProgram extends ShaderProgram {
 	 * @param scaleY the vertical stretch scale of the model
 	 * @param rotation the rotation, in radians, of the model
 	 */
-	public void render(Model model, float opacity, float posX, float posY, float scaleX, float scaleY, float rotation) {
+	public void render(int modelID, float opacity, float posX, float posY, float scaleX, float scaleY, float rotation) {
 		loadOpacity(opacity);
 		loadTransformationMatrix(posX, posY, scaleX, scaleY, rotation);
-		render(model);
+		render(modelID);
+	}
+	
+	public void render(Graphics g, float posX, float posY) {
+		render(g.getModelID(), g.getOpacity(), posX, posY, g.getScaleX(), g.getScaleY(), g.getRotation());
 	}
 	
 	public void render(Graphics g, float opacity, float posX, float posY, float scaleX, float scaleY, float rotation) {
-		render(Models.forIndex(g.getModelIndex()), g.getOpacity() * opacity, posX, posY, g.getScaleX() * scaleX, g.getScaleY() * scaleY, g.getRotation() + rotation);
+		render(g.getModelID(), g.getOpacity() * opacity, posX, posY, g.getScaleX() * scaleX, g.getScaleY() * scaleY, g.getRotation() + rotation);
 	}
 	
 	public void loadTransformationMatrix(float posX, float posY, float scaleX, float scaleY, float rotation) {
