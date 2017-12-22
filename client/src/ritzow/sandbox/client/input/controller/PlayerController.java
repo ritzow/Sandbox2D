@@ -61,32 +61,4 @@ public class PlayerController implements Controller, KeyHandler {
 		client.sendPlayerAction(playerAction, enabled);
 		player.processAction(playerAction, enabled);
 	}
-	
-//	TODO fix, not working
-//	private boolean canJump() {
-//		return client.getPlayer().getVelocityY() <= 0 && (entityBelow() || blockBelow());
-//	}
-//	
-//	private boolean blockBelow() {
-//		return blockBelow(client.getPlayer().getPositionX(), client.getPlayer().getPositionY(), client.getPlayer().getWidth(), client.getPlayer().getHeight());
-//	}
-//	
-//	private boolean blockBelow(float x, float y, float width, float height) {
-//		for(float h = x - width/2; h <= x + width/2; h++) {	
-//			if(client.getWorld().getForeground().isBlock(h + (h < x ? +0.05f : -0.05f), y - height/2 - 0.05f)
-//					&& client.getWorld().getForeground().get(h + (h < x ? +0.05f : -0.05f), y - height/2 - 0.05f).isSolid()) {
-//				return true;
-//			}
-//		}
-//		return false;
-//	}
-//
-//	private boolean entityBelow() {
-//		for(Entity e : client.getWorld().getEntitiesInRectangle(client.getPlayer().getPositionX(), client.getPlayer().getPositionY(), client.getPlayer().getWidth(), client.getPlayer().getHeight())) {
-//			if(e.doEntityCollisionResolution()) {
-//				return true;
-//			}
-//		}
-//		return false;
-//	}
 }

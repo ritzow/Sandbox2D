@@ -17,7 +17,7 @@ public class ClientGrassBlock extends ClientBlock {
 
 	@Override
 	public int getModelIndex() {
-		return Models.GRASS_INDEX;
+		return Models.GRASS_BLOCK;
 	}
 
 	@Override

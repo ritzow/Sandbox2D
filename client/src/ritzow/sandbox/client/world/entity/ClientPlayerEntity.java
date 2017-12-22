@@ -24,12 +24,12 @@ public class ClientPlayerEntity extends PlayerEntity implements Luminous, Render
 
 	@Override
 	public void render(ModelRenderProgram renderer) {
-		renderer.render(Models.forIndex(Models.GREEN_FACE_INDEX), 1.0f, positionX, positionY + 0.5f, 1.0f, 1.0f, 0.0f);
-		renderer.render(Models.forIndex(Models.RED_SQUARE_INDEX), 1.0f, positionX, positionY - 0.5f, 1.0f, 1.0f, positionX);
+		renderer.render(Models.GREEN_FACE, 1.0f, positionX, positionY + 0.5f, 1.0f, 1.0f, 0.0f);
+		renderer.render(Models.RED_SQUARE, 1.0f, positionX, positionY - 0.5f, 1.0f, 1.0f, positionX);
 		
 		Graphical selectedItem = (Graphical)inventory.get(selected);
 		if(selectedItem != null) {
-			renderer.render(Models.forIndex(selectedItem.getGraphics().getModelIndex()), 1.0f, positionX, positionY, 0.5f, 0.5f, 0);
+			renderer.render(selectedItem.getGraphics().getModelID(), 1.0f, positionX, positionY, 0.5f, 0.5f, 0);
 		}
 	}
 

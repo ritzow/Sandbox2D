@@ -2,7 +2,6 @@ package ritzow.sandbox.server;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Collections;
@@ -13,6 +12,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import ritzow.sandbox.data.ByteUtil;
 import ritzow.sandbox.data.Serializer;
@@ -28,12 +28,12 @@ import ritzow.sandbox.world.entity.ItemEntity;
 import ritzow.sandbox.world.entity.PlayerEntity;
 import ritzow.sandbox.world.item.BlockItem;
 
-public final class Server {
-	private final NetworkController controller;
-	private final ExecutorService broadcaster;
-	private final Map<InetSocketAddress, ClientState> clients;
+public class Server {
+	private final NetworkController network;
+	private final ExecutorService worker, broadcaster;
 	private final ServerRepeatUpdater updater;
 	private final SerializerReaderWriter serialRegistry;
+	private final Map<InetSocketAddress, ClientState> clients;
 	private volatile boolean canConnect;
 	
 	public Server(int port) throws SocketException, UnknownHostException {
@@ -41,8 +41,11 @@ public final class Server {
 	}
 	
 	public Server(InetSocketAddress bindAddress) throws SocketException {
-		this.controller = new NetworkController(bindAddress, this::process);
-		this.broadcaster = Executors.newSingleThreadExecutor();
+		this.network = new NetworkController(bindAddress, this::process);
+		ThreadGroup processors = new ThreadGroup("Message Processors");
+		ThreadGroup senders = new ThreadGroup("Broadcaster Group");
+		this.worker = Executors.newCachedThreadPool(runnable -> new Thread(processors, runnable));
+		this.broadcaster = Executors.newCachedThreadPool(runnable -> new Thread(senders, runnable));
 		this.clients = Collections.synchronizedMap(new HashMap<InetSocketAddress, ClientState>());
 		this.serialRegistry = SerializationProvider.getProvider();
 		this.updater = new ServerRepeatUpdater(this);
@@ -51,8 +54,9 @@ public final class Server {
 	public void start(World world) {
 		world.setRemoveEntities(this::sendRemoveEntity);
 		updater.startWorld(world);
-		updater.start();
-		controller.start();
+		//updater.addRepeatTask(() -> sendRemoveBlock(0,0));
+		updater.start("Game Updater");
+		network.start();
 		canConnect = true;
 	}
 	
@@ -60,10 +64,12 @@ public final class Server {
 		canConnect = false;
 		disconnectAll("server shutting down");
 		updater.stop();
+		worker.shutdown();
 		broadcaster.shutdown();
-		controller.stop();
+		network.stop();
 		try {
 			broadcaster.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+			worker.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
@@ -91,21 +97,22 @@ public final class Server {
 	}
 	
 	private void process(InetSocketAddress sender, int messageID, byte[] data) {
-		short protocol = ByteUtil.getShort(data, 0);
-		ClientState client = clients.get(sender);
-		
-		try {
-			if(client == null && protocol == Protocol.CLIENT_CONNECT_REQUEST) {
-				connectClient(sender);
-			} else if(client != null && protocol != Protocol.CLIENT_CONNECT_REQUEST) {
-				onReceive(client, protocol, data);
+		worker.execute(() -> {
+			short protocol = ByteUtil.getShort(data, 0);
+			ClientState client = clients.get(sender);
+			try {
+				if(client == null && protocol == Protocol.CLIENT_CONNECT_REQUEST) {
+					connectClient(sender);
+				} else if(client != null && protocol != Protocol.CLIENT_CONNECT_REQUEST) {
+					onReceive(client, protocol, data);
+				}
+			} catch(ClientBadDataException e) {
+				//disconnect the client if it sends invalid data three times or more
+				if(client != null && client.strike() >= 3) {
+					disconnect(client, "server received bad data from client 3 times");
+				}
 			}
-		} catch(ClientBadDataException e) {
-			//disconnect the client if it sends invalid data three times or more
-			if(client != null && client.strike() >= 3) {
-				disconnect(client, "server received bad data from client 3 times");
-			}
-		}
+		});
 	}
 	
 
@@ -115,7 +122,6 @@ public final class Server {
 		updater.submitTask(() -> {
 			PlayerAction action = PlayerAction.forCode(data[2]);
 			boolean enable = ByteUtil.getBoolean(data, 3);
-			//TODO check if player can jump 
 			client.player.processAction(action, enable);
 		});
 	}
@@ -136,15 +142,14 @@ public final class Server {
 					drop.setVelocityX(-0.2f + ((float) Math.random() * (0.4f)));
 					drop.setVelocityY((float) Math.random() * (0.35f));
 					updater.getWorld().add(drop);
-					
-					sendRemoveBlock(block, x, y);
+					sendRemoveBlock(x, y);
 					sendAddEntity(drop);
 				}
 			}
 		});
 	}
 	
-	public void sendRemoveBlock(Block block, int x, int y) {
+	public void sendRemoveBlock(int x, int y) {
 		byte[] packet = new byte[10];
 		ByteUtil.putShort(packet, 0, Protocol.SERVER_REMOVE_BLOCK);
 		ByteUtil.putInteger(packet, 2, x);
@@ -210,6 +215,7 @@ public final class Server {
 	 * Broadcasts {@code data} to each client connected to this Server and returns once all clients have received the data or
 	 * become unresponsive
 	 * @param data the packet of data to send.
+	 * @param sendTest specify which clients the message should be sent to and which should not
 	 * @param removeUnresponsive whether or not to remove clients that do not respond from the server
 	 */
 	private void broadcastReliable(byte[] data, boolean removeUnresponsive, Predicate<ClientState> sendTest) {
@@ -217,13 +223,19 @@ public final class Server {
 			if(clients.size() > 1) {
 				CountDownLatch barrier = new CountDownLatch(clients.size());
 				clients.forEach((address, client) -> {
-					broadcaster.execute(() -> {
-						if(sendTest.test(client))
-							sendReliable(client, data, removeUnresponsive);
+					if(sendTest.test(client)) {
+						broadcaster.execute(() -> {
+							try {
+								sendReliable(client, data, removeUnresponsive);
+							} finally {
+								barrier.countDown();
+							}
+						});
+					} else {
 						barrier.countDown();
-					});
+					}
 				});
-			
+				
 				try {
 					barrier.await(); //wait until an acknowledgement has been received from all clients
 				} catch (InterruptedException e) {
@@ -233,7 +245,7 @@ public final class Server {
 				ClientState client = clients.values().iterator().next();
 				if(sendTest.test(client))
 					sendReliable(client, data, removeUnresponsive);
-			}
+			} //else: no clients are connected, send nothing
 		}
 	}
 	
@@ -249,7 +261,7 @@ public final class Server {
 		synchronized(clients) {
 			for(ClientState client : clients.values()) {
 				if(sendTest.test(client))
-					controller.sendUnreliable(client.address, client.nextUnreliableID(), data);
+					network.sendUnreliable(client.address, client.nextUnreliableID(), data);
 			}
 		}
 	}
@@ -257,7 +269,7 @@ public final class Server {
 	private void sendReliable(ClientState client, byte[] data, boolean removeUnresponsive) {
 		try {
 			long time = System.nanoTime();
-			controller.sendReliable(client.address, client.nextReliableID(), data, 10, 100);
+			network.sendReliable(client.address, client.nextReliableID(), data, 10, 100); //TODO no resend, for debugging purposes
 			client.ping = (int)(System.nanoTime() - time)/1_000_000; //update client ping
 		} catch(TimeoutException e) {
 			if(removeUnresponsive) {
@@ -268,7 +280,7 @@ public final class Server {
 	
 	@SuppressWarnings("unused")
 	private void sendUnreliable(ClientState client, byte[] data) {
-		controller.sendUnreliable(client.address, client.nextUnreliableID(), data);
+		network.sendUnreliable(client.address, client.nextUnreliableID(), data);
 	}
 	
 	public boolean isConnected(ClientState client) {
@@ -297,13 +309,9 @@ public final class Server {
 		if(clients.remove(client.address) != null) {
 			if(reason != null)
 				sendReliable(client, buildServerDisconnect(reason), true);
-			controller.removeSender(client.address);
+			network.removeSender(client.address);
 			if(client.player != null) {
-				updater.submitTask(() -> {
-					Entity player = client.player;
-					updater.getWorld().remove(player);
-					sendRemoveEntity(player);
-				});
+				updater.submitTask(() -> removePlayer(client.player));
 			}
 			System.out.println(client + " disconnected (reason: " + reason + ", " + clients.size() + " players connected)");
 		} else {
@@ -311,38 +319,37 @@ public final class Server {
 		}
 	}
 	
-	private void removePlayer(Entity player) {
-		updater.submitTask(() -> {
-			updater.getWorld().remove(player);
-			sendRemoveEntity(player);
-		});
-	}
-	
-	private void disconnectAll(String reason) {
+	public void disconnectAll(String reason) {
 		synchronized(clients) {
+			//do not remove unresponsive clients here because they will always be unresponsive (they disconnected!)
+			broadcastReliable(buildServerDisconnect(reason), false);
+			
 			for(ClientState client : clients.values()) {
-				if(reason != null)
-					sendReliable(client, buildServerDisconnect(reason), true);
-				controller.removeSender(client.address);
+				network.removeSender(client.address);
 				if(client.player != null) {
-					removePlayer(client.player);
+					updater.submitTask(() -> removePlayer(client.player));
 				}
 			}
 			clients.clear();
 		}
 	}
 	
-	private void sendClientConnectReply(SocketAddress client, int messageID, boolean connected) {
+	private void removePlayer(Entity player) {
+		updater.getWorld().remove(player);
+		sendRemoveEntity(player);
+	}
+	
+	private void sendClientConnectReply(InetSocketAddress client, int messageID, boolean connected) {
 		byte[] response = new byte[3];
 		ByteUtil.putShort(response, 0, Protocol.SERVER_CONNECT_ACKNOWLEDGMENT);
 		ByteUtil.putBoolean(response, 2, canConnect);
-		controller.sendReliable(client, messageID, response, 10, 100);
+		network.sendReliable(client, messageID, response, 10, 100);
 	}
 	
 	private void connectClient(InetSocketAddress address) {
 		try {
 			//determine if client can connect, and send a response
-			boolean canConnect = this.canConnect;
+			boolean canConnect = this.canConnect; //TODO add other connection conditions
 			sendClientConnectReply(address, 0, canConnect);
 			
 			if(canConnect) {
@@ -425,24 +432,27 @@ public final class Server {
 	
 	public static final class ClientState {
 		private final InetSocketAddress address;
-		private volatile int unreliableMessageID, reliableMessageID;
+		private final AtomicInteger reliableMessageID, unreliableMessageID;
 		private volatile String username;
 		private volatile PlayerEntity player;
-		private volatile byte disconnectStrikes;
+		private volatile byte disconnectStrikes; //TODO should this be an AtomicInteger?
 		private volatile int ping; //set ping on receive message
 		
+		private static final AtomicInteger playerID = new AtomicInteger(1);
+		
 		public ClientState(int initReliable, InetSocketAddress address) {
-			this.reliableMessageID = initReliable;
+			this.reliableMessageID = new AtomicInteger(initReliable);
+			this.unreliableMessageID = new AtomicInteger();
 			this.address = address;
-			username = "player";
+			username = "player" + playerID.getAndIncrement();
 		}
 		
 		int nextUnreliableID() {
-			return unreliableMessageID++;
+			return unreliableMessageID.getAndIncrement();
 		}
 		
 		int nextReliableID() {
-			return reliableMessageID++;
+			return reliableMessageID.getAndIncrement();
 		}
 		
 		byte strike() {

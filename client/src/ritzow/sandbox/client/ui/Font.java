@@ -4,13 +4,12 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Scanner;
-import ritzow.sandbox.client.graphics.Model;
 import ritzow.sandbox.client.graphics.Texture;
 import ritzow.sandbox.client.graphics.Textures;
 
 public final class Font {
 	
-	protected final Model[] glyphs;
+	protected final int[] glyphs;
 	protected final Texture charsetLatin;
 	protected final String name;
 	
@@ -21,7 +20,7 @@ public final class Font {
 		File info = new File(directory, "info.txt");
 		File latin = new File(directory, "sheet01.png");
 		
-		glyphs = new Model[200];
+		glyphs = new int[200];
 		
 		if(info.exists() && info.canRead()) {
 			try(Scanner reader = new Scanner(info)) {
@@ -45,19 +44,15 @@ public final class Font {
 	}
 	
 	public void delete() {
-//		for(Model model : glyphs) {
-//			if(model != null) {
-//				model.delete();
-//			}
-//		}
 		charsetLatin.delete();
 	}
 	
-	public Model getModel(char c) {
-		if(c < glyphs.length && glyphs[c] != null) {
+	public int getModelID(char c) {
+		if(c < glyphs.length) {
 			return glyphs[c];
+		} else {
+			return 0;
 		}
-		return null; //TODO make a custom unknown character model and return it instead
 	}
 	
 	protected void loadCharacters() {

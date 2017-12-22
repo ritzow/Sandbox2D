@@ -1,7 +1,6 @@
 package ritzow.sandbox.client.world.entity;
 
 import ritzow.sandbox.client.graphics.ModelRenderProgram;
-import ritzow.sandbox.client.graphics.Models;
 import ritzow.sandbox.client.graphics.Renderable;
 import ritzow.sandbox.data.DataReader;
 import ritzow.sandbox.data.Serializer;
@@ -61,7 +60,7 @@ public class ParticleEntity extends Entity implements Renderable {
 
 	@Override
 	public void render(ModelRenderProgram renderer) {
-		renderer.render(Models.forIndex(model), opacity, positionX, positionY, scaleX, scaleY, rotation);
+		renderer.render(model, opacity, positionX, positionY, scaleX, scaleY, rotation);
 	}
 	
 	protected long getLifetimeRemaining() {

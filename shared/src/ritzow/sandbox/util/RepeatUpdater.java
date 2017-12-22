@@ -31,12 +31,15 @@ public class RepeatUpdater {
 		this(() -> {}, () -> {});
 	}
 	
-	public void start() {
+	public void start(String threadName) {
 		if(thread != null)
 			throw new IllegalStateException("updater already started");
-		(thread = new Thread(this::run, "repeat updater")).start();
+		(thread = new Thread(this::run, threadName)).start();
 	}
 	
+	/**
+	 * Finishes executing all queued tasks then exits.
+	 */
 	public void stop() {
 		if(thread == null)
 			throw new IllegalStateException("updater hasn't been started");

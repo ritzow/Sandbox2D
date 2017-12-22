@@ -19,7 +19,7 @@ public class Text extends Element {
 		int index = 0; //TODO optimize text rendering and make text position in center
 		float charWidth = (size * 0.02f) + (size * 0.02f * spacing);
 		for(float pos = positionX; index < text.length(); pos += charWidth) {
-			renderer.render(font.getModel(text.charAt(index)), 1.0f, pos, positionY, size * 0.02f, size * 0.02f, 0.0f);
+			renderer.render(font.getModelID(text.charAt(index)), 1.0f, pos, positionY, size * 0.02f, size * 0.02f, 0.0f);
 			index++;
 		}
 	}
