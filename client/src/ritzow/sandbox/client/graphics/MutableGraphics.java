@@ -12,7 +12,7 @@ public class MutableGraphics implements Graphics {
 	}
 	
 	public MutableGraphics(Graphics graphics, float opacity, float scaleX, float scaleY, float rotation) {
-		this.model = graphics.getModelIndex();
+		this.model = graphics.getModelID();
 		this.opacity = graphics.getOpacity() * opacity;
 		this.scaleX = graphics.getScaleX() * scaleX;
 		this.scaleY = graphics.getScaleY() * scaleY;
@@ -28,7 +28,7 @@ public class MutableGraphics implements Graphics {
 	}
 
 	@Override
-	public final int getModelIndex() {
+	public final int getModelID() {
 		return model;
 	}
 

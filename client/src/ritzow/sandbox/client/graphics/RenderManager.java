@@ -45,11 +45,11 @@ public final class RenderManager implements Runnable, FramebufferSizeHandler, Wi
 		
 		try {
 			Textures.loadAll(new File("resources/assets/textures"));
-			Models.loadAll();
-			GraphicsUtility.checkErrors();
-		} catch(IOException | OpenGLException e) {
+		} catch(IOException e) {
 			throw new RuntimeException(e);
 		}
+		
+		GraphicsUtility.checkErrors();
 	}
 
 	public void shutdown() {
