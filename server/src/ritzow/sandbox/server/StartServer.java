@@ -17,7 +17,7 @@ import ritzow.sandbox.world.block.GrassBlock;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
 public final class StartServer {
-	private static final boolean SAVE_WORLD = true;
+	private static final boolean SAVE_WORLD = false;
 	
 	public static void main(String... args) throws SocketException {
 		Thread.currentThread().setName("Server Setup");
@@ -49,6 +49,9 @@ public final class StartServer {
 						System.out.print("\t - ");
 						System.out.println(client);
 					}
+					break;
+				case "disconnect":
+					server.disconnectAll("server manual disconnect");
 					break;
 				default:
 					server.broadcastConsoleMessage(next);

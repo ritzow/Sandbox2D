@@ -17,7 +17,7 @@ public class ClientDirtBlock extends ClientBlock {
 
 	@Override
 	public int getModelIndex() {
-		return Models.DIRT_INDEX;
+		return Models.DIRT_BLOCK;
 	}
 
 	@Override

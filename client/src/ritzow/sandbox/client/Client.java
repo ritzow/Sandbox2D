@@ -1,8 +1,10 @@
 package ritzow.sandbox.client;
 
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.net.SocketException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import ritzow.sandbox.client.util.SerializationProvider;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
 import ritzow.sandbox.data.ByteArrayDataReader;
@@ -24,16 +26,8 @@ import ritzow.sandbox.world.entity.Entity;
  *
  */
 public final class Client {
-	private static final class Integrater extends TaskQueue {
-		public boolean running;
-		public void run() {
-			running = true;
-			super.run();
-		}
-	}
-	
 	private final InetSocketAddress server;
-	private final NetworkController controller;
+	private final NetworkController network;
 	private volatile boolean connected;
 	private volatile int unreliableMessageID, reliableMessageID, lastReceivedUnreliableMessageID = -1;
 	
@@ -48,6 +42,16 @@ public final class Client {
 	private final Object worldLock, playerLock;
 	private final SerializerReaderWriter serializer;
 	private final Integrater integrater;
+	private final ExecutorService workers;
+	private Runnable onDisconnect;
+	
+	private static final class Integrater extends TaskQueue {
+		public boolean running;
+		public void run() {
+			running = true;
+			super.run();
+		}
+	}
 	
 	/**
 	 * Creates a client bound to the provided address
@@ -55,38 +59,41 @@ public final class Client {
 	 * @throws SocketException
 	 */
 	public Client(InetSocketAddress bindAddress, InetSocketAddress serverAddress) throws SocketException {
-		controller = new NetworkController(bindAddress, this::process);
+		network = new NetworkController(bindAddress, this::process);
 		server = serverAddress;
 		worldLock = new Object();
 		playerLock = new Object();
 		serializer = SerializationProvider.getProvider();
 		integrater = new Integrater();
+		workers = Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "Message Processor"));
 	}
 	
 	private void process(InetSocketAddress sender, int messageID, byte[] data) {
-		if(!sender.equals(server))
-			return;
-		DataReader reader = new ByteArrayDataReader(data);
-		short protocol = reader.readShort();
+		workers.execute(() -> {
+			if(!sender.equals(server))
+				return;
+			DataReader reader = new ByteArrayDataReader(data);
+			short protocol = reader.readShort();
 
-		if(!Protocol.isReliable(protocol)) {
-			if(messageID > lastReceivedUnreliableMessageID) {
-				lastReceivedUnreliableMessageID = messageID;
-			} else {
-				return; //discard if not the latest unreliable message
+			if(!Protocol.isReliable(protocol)) {
+				if(messageID > lastReceivedUnreliableMessageID) {
+					lastReceivedUnreliableMessageID = messageID;
+				} else {
+					return; //discard if not the latest unreliable message
+				}
 			}
-		}
-		
-		try {
-			if(integrater.running) {
-				integrater.add(() -> onReceive(protocol, reader));
-			} else {
-				onReceive(protocol, reader);
+			
+			try {
+				if(integrater.running) {
+					integrater.add(() -> onReceive(protocol, reader));
+				} else {
+					onReceive(protocol, reader);
+				}
+			} catch(RuntimeException e) {
+				e.printStackTrace();
+				disconnect(false);
 			}
-		} catch(RuntimeException e) {
-			e.printStackTrace();
-			disconnect(false);
-		}
+		});
 	}
 	
 	private void onReceive(short protocol, DataReader data) {
@@ -128,6 +135,10 @@ public final class Client {
 		}
 	}
 	
+	public void onDisconnect(Runnable task) {
+		onDisconnect = task;
+	}
+	
 	public Runnable onReceiveMessageTask() {
 		return integrater;
 	}
@@ -137,45 +148,25 @@ public final class Client {
 	}
 	
 	public boolean connect(int timeout) {
-		if(!isConnected()) {
-			controller.start();
-			try {
-				sendClientConnectRequest(server, timeout);
-				synchronized(server) {
-					server.wait();
-				}
-				if(!connected) {
-					controller.stop();
-				}
-				return connected;
-			} catch(TimeoutException e) {
-				controller.stop();
-				connected = false;
-				return false;
-			} catch (InterruptedException e) {
-				throw new RuntimeException("client connect method should never be interrupted", e);
-			}
-		} else {
+		if(isConnected())
 			throw new IllegalStateException("client already connected to connect to a server");
-		}
-	}
-	
-	/**
-	 * Sends data to the currently connected Server
-	 * @param data the data to send, where the first two bytes represent the protocol
-	 * @throws IllegalStateException if the client is not connected to a server
-	 */
-	public void send(byte[] data) {
-		if(!connected)
-			throw new IllegalStateException("client is not connected to a server");
-		if(Protocol.isReliable(ByteUtil.getShort(data, 0))) {
-			try{
-				controller.sendReliable(server, nextReliableMessageID(), data, 10, 100);
-			} catch(TimeoutException e) {
-				disconnect(false);
+		
+		network.start();
+		try {
+			sendConnectRequest(server, timeout);
+			synchronized(server) {
+				server.wait();
 			}
-		} else {
-			controller.sendUnreliable(server, nextUnreliableMessageID(), data);
+			if(!connected) {
+				close();
+			}
+			return connected;
+		} catch(TimeoutException e) {
+			close();
+			connected = false;
+			return false;
+		} catch (InterruptedException e) {
+			throw new RuntimeException("client connect method should never be interrupted", e);
 		}
 	}
 	
@@ -200,16 +191,43 @@ public final class Client {
 			send(packet);
 		}
 		connected = false;
-		controller.stop();
+		close();
+		onDisconnect.run();
 	}
 	
-	private void sendClientConnectRequest(SocketAddress server, int timeout) {
+	private void close() {
+		network.stop();
+		try {
+			workers.shutdown();
+			workers.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	/**
+	 * Sends data to the currently connected Server
+	 * @param data the data to send, where the first two bytes represent the protocol
+	 * @throws IllegalStateException if the client is not connected to a server
+	 */
+	public void send(byte[] data) {
+		if(!connected)
+			throw new IllegalStateException("client is not connected to a server");
+		if(Protocol.isReliable(ByteUtil.getShort(data, 0))) {
+			try{
+				network.sendReliable(server, nextReliableMessageID(), data, 10, 100);
+			} catch(TimeoutException e) {
+				disconnect(false);
+			}
+		} else {
+			network.sendUnreliable(server, nextUnreliableMessageID(), data);
+		}
+	}
+	
+	private void sendConnectRequest(InetSocketAddress server, int timeout) {
 		byte[] packet = new byte[2];
 		ByteUtil.putShort(packet, 0, Protocol.CLIENT_CONNECT_REQUEST);
-		if(!controller.sendReliable(server, nextReliableMessageID(), 
-				packet, Math.max(1, timeout/100), Math.min(timeout, 100))) {
-			throw new TimeoutException();
-		}
+		network.sendReliable(server, nextReliableMessageID(), packet, Math.max(1, timeout/100), Math.min(timeout, 100));
 	}
 
 	public void sendBlockBreak(int x, int y) {
@@ -326,11 +344,10 @@ public final class Client {
 					if(i == worldPackets.length - 1) {
 						world = reconstructWorld(worldPackets, serializer);
 						world.setRemoveEntities(false);
-						System.out.println("Received world data.");
+						worldPackets = null; //release the raw data to the garbage collector!
 						synchronized(worldLock) {
 							worldLock.notifyAll();
 						}
-						worldPackets = null; //release the raw data to the garbage collector!
 					}
 					break;
 				}

@@ -13,13 +13,7 @@ import java.util.Map;
 import ritzow.sandbox.client.audio.ClientAudioSystem;
 import ritzow.sandbox.client.audio.Sound;
 import ritzow.sandbox.client.audio.WAVEDecoder;
-import ritzow.sandbox.client.graphics.Camera;
-import ritzow.sandbox.client.graphics.ClientGameRenderer;
-import ritzow.sandbox.client.graphics.LightRenderProgram;
-import ritzow.sandbox.client.graphics.ModelRenderProgram;
-import ritzow.sandbox.client.graphics.OpenGLException;
-import ritzow.sandbox.client.graphics.RenderManager;
-import ritzow.sandbox.client.graphics.Shader;
+import ritzow.sandbox.client.graphics.*;
 import ritzow.sandbox.client.graphics.Shader.ShaderType;
 import ritzow.sandbox.client.input.ControlScheme;
 import ritzow.sandbox.client.input.EventProcessor;
@@ -56,11 +50,35 @@ public final class StartClient {
 				
 				private void initGraphics(RenderManager renderManager, World world, CameraController cameraGrip) {
 					try {
+						int indices = GraphicsUtility.uploadIndexData(0, 1, 2, 0, 2, 3);
+						
+						int positions = GraphicsUtility.uploadVertexData(
+								-0.5f,	 0.5f,
+								-0.5f,	-0.5f,
+								0.5f,	-0.5f,
+								0.5f,	 0.5f
+						);
+						
+						int textureCoordinates = GraphicsUtility.uploadVertexData(
+								0f, 1f,
+								0f, 0f,
+								1f, 0f,
+								1f, 1f	
+						);
+						
+						GraphicsUtility.checkErrors();
+						
 						ModelRenderProgram modelProgram = new ModelRenderProgram(
 								new Shader(new FileInputStream("resources/shaders/modelVertexShader"), ShaderType.VERTEX),
 								new Shader(new FileInputStream("resources/shaders/modelFragmentShader"), ShaderType.FRAGMENT), 
 								cameraGrip.getCamera()
 								);
+						
+						modelProgram.register(Models.GRASS_BLOCK,	new Model(6, indices, positions, textureCoordinates, Textures.GRASS.id));
+						modelProgram.register(Models.DIRT_BLOCK,	new Model(6, indices, positions, textureCoordinates, Textures.DIRT.id));
+						modelProgram.register(Models.GREEN_FACE,	new Model(6, indices, positions, textureCoordinates, Textures.GREEN_FACE.id));
+						modelProgram.register(Models.RED_SQUARE,	new Model(6, indices, positions, textureCoordinates, Textures.RED_SQUARE.id));
+						
 						LightRenderProgram lightProgram = new LightRenderProgram(
 								new Shader(new FileInputStream("resources/shaders/lightVertexShader"), ShaderType.VERTEX),
 								new Shader(new FileInputStream("resources/shaders/lightFragmentShader"), ShaderType.FRAGMENT),
@@ -146,7 +164,7 @@ public final class StartClient {
 								e1.printStackTrace();
 							}
 						});
-					gameUpdater.start();
+					gameUpdater.start("Game updater");
 					gameUpdater.waitForSetup();
 					
 					InputManager input = eventProcessor.getDisplay().getInputManager();
@@ -159,6 +177,7 @@ public final class StartClient {
 					});
 
 					input.getWindowCloseHandlers().add(this::exit);
+					client.onDisconnect(this::exit);
 					
 					//display the window now that everything is set up.
 					eventProcessor.setReadyToDisplay();
@@ -172,7 +191,8 @@ public final class StartClient {
 					eventProcessor.getDisplay().setVisible(false);
 					gameUpdater.stop();
 					eventProcessor.waitForExit();
-					client.disconnect();
+					if(client.isConnected())
+						client.disconnect();
 					audio.close();
 					ClientAudioSystem.shutdown();
 					System.out.println("done!");
