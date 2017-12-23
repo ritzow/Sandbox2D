@@ -28,7 +28,7 @@ import ritzow.sandbox.world.entity.Entity;
 public class World implements Transportable, Iterable<Entity> {
 	
 	/** collection of entities in the world **/
-	private final List<Entity> entities; //TODO switch to using a Map<Integer, Entity> to store entity IDs
+	private final List<Entity> entities; //TODO switch to using a Map<Integer, Entity> to store entity IDs?
 	
 	/** blocks in the world that collide with entities and and are rendered **/
 	private final BlockGrid foreground, background;
@@ -44,9 +44,6 @@ public class World implements Transportable, Iterable<Entity> {
 	
 	/** called when an entity is removed from the world **/
 	private Consumer<Entity> onRemove;
-
-	/** remove entities outside the world or that are flagged for deletion **/
-	private boolean removeExtraneous;
 	
 	/**
 	 * Initializes a new World object with a foreground, background, entity storage, and gravity.
@@ -171,16 +168,11 @@ public class World implements Transportable, Iterable<Entity> {
 	 * @param onRemove action to take when an entity is removed
 	 */
 	public void setRemoveEntities(Consumer<Entity> onRemove) {
-		removeExtraneous = true;
 		this.onRemove = onRemove;
 	}
 	
-	/**
-	 * Sets whether the world should remove entities outside its boundaries when updated
-	 * @param removeExtraneous if the world should remove entities
-	 */
-	public void setRemoveEntities(boolean removeExtraneous) {
-		this.removeExtraneous = removeExtraneous;
+	public void setRemoveEntities() {
+		this.onRemove = e -> {};
 	}
 	
 	public void removeIf(Predicate<Entity> predicate) {
@@ -275,13 +267,9 @@ public class World implements Transportable, Iterable<Entity> {
 			Entity e = entities.get(i);
 			
 			//remove entities that are below the world or are flagged for deletion
-			if(removeExtraneous) {
+			if(onRemove != null) {
 				if(e.getPositionY() < 0 || e.getShouldDelete()) {
-					if(onRemove != null) {
-						onRemove.accept(entities.remove(i));
-					} else {
-						entities.remove(i);
-					}
+					onRemove.accept(entities.remove(i));
 					i = Math.max(0, i - 1);
 					continue;
 				}
@@ -352,7 +340,7 @@ public class World implements Transportable, Iterable<Entity> {
 	 * @param o an entity
 	 * @return true if the entities intersect eachother, false otherwise
 	 */
-	protected final static boolean checkCollision(Entity e, Entity o) {
+	private final static boolean checkCollision(Entity e, Entity o) {
 		return checkCollision(e, o.getPositionX(), o.getPositionY(), o.getWidth(), o.getHeight());
 	}
 
@@ -365,7 +353,7 @@ public class World implements Transportable, Iterable<Entity> {
 	 * @param otherHeight the height of the hitbox
 	 * @return true if the entity and hitbox intersect, false otherwise;
 	 */
-	protected final static boolean checkCollision(Entity e, float otherX, float otherY, float otherWidth, float otherHeight) {
+	private final static boolean checkCollision(Entity e, float otherX, float otherY, float otherWidth, float otherHeight) {
 		 return (Math.abs(e.getPositionX() - otherX) * 2 < (e.getWidth() + otherWidth)) &&  (Math.abs(e.getPositionY() - otherY) * 2 < (e.getHeight() + otherHeight));
 	}
 
@@ -376,7 +364,7 @@ public class World implements Transportable, Iterable<Entity> {
 	 * @param time the amount of time to simulate during the collision resolution
 	 * @return true if a collision occurred, false otherwise
 	 */
-	protected final static boolean resolveCollision(Entity e, Entity o, float time) {
+	private final static boolean resolveCollision(Entity e, Entity o, float time) {
 		return resolveCollision(e, o.getPositionX(), o.getPositionY(), o.getWidth(), o.getHeight(), o.getFriction(), time);
 	}
 	
@@ -391,7 +379,7 @@ public class World implements Transportable, Iterable<Entity> {
 	 * @param time the amount of time that the resolution should simulate
 	 * @return true if a collision occurred
 	 */
-	protected static boolean resolveCollision(Entity e, float otherX, float otherY, float otherWidth, float otherHeight, float otherFriction, float time) {
+	private static boolean resolveCollision(Entity e, float otherX, float otherY, float otherWidth, float otherHeight, float otherFriction, float time) {
 		float width = 0.5f * (e.getWidth() + otherWidth);
 		float height = 0.5f * (e.getHeight() + otherHeight);
 		float deltaX = otherX - e.getPositionX();
@@ -437,7 +425,7 @@ public class World implements Transportable, Iterable<Entity> {
 		return false;
 	}
 	
-	protected static boolean resolveBlockCollision(World world, Entity e, Block block, float blockX, float blockY, float time, 
+	private static boolean resolveBlockCollision(World world, Entity e, Block block, float blockX, float blockY, float time, 
 			boolean blockUp, boolean blockLeft, boolean blockRight, boolean blockDown) {
 		float width = 0.5f * (e.getWidth() + 1);
 		float height = 0.5f * (e.getHeight() + 1);

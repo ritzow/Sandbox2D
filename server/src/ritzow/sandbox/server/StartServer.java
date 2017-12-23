@@ -6,6 +6,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.util.Scanner;
 import ritzow.sandbox.audio.AudioSystem;
 import ritzow.sandbox.data.ByteUtil;
@@ -17,9 +18,9 @@ import ritzow.sandbox.world.block.GrassBlock;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
 public final class StartServer {
-	private static final boolean SAVE_WORLD = false;
+	private static final boolean SAVE_WORLD = true;
 	
-	public static void main(String... args) throws SocketException {
+	public static void main(String... args) throws SocketException, UnknownHostException {
 		Thread.currentThread().setName("Server Setup");
 		Server server = new Server(new InetSocketAddress(50000));
 
@@ -34,15 +35,13 @@ public final class StartServer {
 		System.out.println("Startup Complete.");
 		System.out.println("Type 'exit' to stop server or 'list' to list connected clients");
 		try(Scanner scanner = new Scanner(System.in)) {
-			boolean exit = false;
 			String next;
-			while(!exit) {
+			reader: while(true) {
 				switch(next = scanner.nextLine()) {
 				case "exit":
 				case "quit":
 				case "stop":
-					exit = true;
-					break;
+					break reader;
 				case "list":
 					System.out.println("Connected clients:");
 					for(ClientState client : server.listClients()) {

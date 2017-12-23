@@ -9,25 +9,33 @@ import java.net.SocketException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import ritzow.sandbox.data.ByteUtil;
 
 /** Provides common functionality of the client and server. Manages incoming and outgoing packets. **/
-public final class NetworkController {
+public class NetworkController {
 	private final DatagramSocket socket;
 	private final Queue<MessageAddressPair> reliableQueue;
 	private final Map<InetSocketAddress, MessageIDHolder> lastReceived;
+	private final ThreadLocal<DatagramPacket> packets;
 	private final MessageProcessor messageProcessor;
-	private Thread receivingThread;
-	private volatile boolean exit;
+	private volatile boolean started, exit;
+	
+	private static final int RESPONSE_ID = -1;
 	
 	public NetworkController(InetSocketAddress bindAddress, MessageProcessor processor) throws SocketException {
+		messageProcessor = processor;
 		socket = new DatagramSocket(bindAddress);
 		reliableQueue = new ConcurrentLinkedQueue<MessageAddressPair>();
-		lastReceived = Collections.synchronizedMap(new HashMap<>());
-		messageProcessor = processor;
+		lastReceived = Collections.synchronizedMap(new HashMap<InetSocketAddress, MessageIDHolder>());
+		packets = new ThreadLocal<DatagramPacket>() {
+			protected DatagramPacket initialValue() {
+				return new DatagramPacket(new byte[Protocol.MAX_MESSAGE_LENGTH + 5], 0);
+			}
+		};
 	}
 	
 	/**
@@ -55,13 +63,10 @@ public final class NetworkController {
 	public void sendUnreliable(InetSocketAddress recipient, int messageID, byte[] data) {
 		checkMessage(messageID, data.length);
 		try {
-			byte[] packet = new byte[5 + data.length];
-			ByteUtil.putInteger(packet, 0, messageID);
-			ByteUtil.putBoolean(packet, 4, false);
-			ByteUtil.copy(data, packet, 5);
-			socket.send(new DatagramPacket(packet, packet.length, recipient));
+			socket.send(getPacket(recipient, false, messageID, data));
 		} catch(IOException e) {
 			e.printStackTrace();
+			stop();
 		}
 	}
 	
@@ -79,18 +84,15 @@ public final class NetworkController {
 		if(resendInterval < 0)
 			throw new IllegalArgumentException("resendInterval must be zero or positive");
 		checkMessage(messageID, data.length);
-		byte[] packet = new byte[5 + data.length];
-		ByteUtil.putInteger(packet, 0, messageID); //put message id
-		ByteUtil.putBoolean(packet, 4, true); //put reliable
-		ByteUtil.copy(data, packet, 5); //put data
-		DatagramPacket datagram = new DatagramPacket(packet, packet.length, recipient);
+		
+		DatagramPacket packet = getPacket(recipient, true, messageID, data);
 		MessageAddressPair pair = new MessageAddressPair(recipient, messageID);
 		synchronized(pair) {
 			reliableQueue.add(pair);
 			int attemptsRemaining = attempts;
 			while(attemptsRemaining > 0 && !pair.received && !socket.isClosed()) {
 				try {
-					socket.send(datagram);
+					socket.send(packet);
 					attemptsRemaining--;
 					pair.wait(resendInterval); //wait for ack to be received by network controller receiver
 				} catch (InterruptedException | IOException e) {
@@ -107,14 +109,23 @@ public final class NetworkController {
 	
 	private void sendResponse(SocketAddress recipient, int receivedMessageID) {
 		try {
-			byte[] packet = new byte[9];
-			ByteUtil.putInteger(packet, 0, -1);
-			ByteUtil.putBoolean(packet, 4, false);
-			ByteUtil.putInteger(packet, 5, receivedMessageID);
-			socket.send(new DatagramPacket(packet, packet.length, recipient));
+			byte[] data = new byte[4];
+			ByteUtil.putInteger(data, 0, receivedMessageID);
+			socket.send(getPacket(recipient, false, RESPONSE_ID, data));
 		} catch (IOException e) {
+			e.printStackTrace();
 			stop();
 		}
+	}
+	
+	private DatagramPacket getPacket(SocketAddress recipient, boolean reliable, int messageID, byte[] data) {
+		DatagramPacket datagram = packets.get();
+		datagram.setSocketAddress(recipient);
+		ByteUtil.putInteger(datagram.getData(), 0, messageID); //put message id
+		ByteUtil.putBoolean(datagram.getData(), 4, reliable);
+		ByteUtil.copy(data, datagram.getData(), 5); //put data
+		datagram.setLength(data.length + 5);
+		return datagram;
 	}
 	
 	public void removeSender(SocketAddress address) {
@@ -129,10 +140,10 @@ public final class NetworkController {
 	}
 	
 	public void start() {
-		if(receivingThread != null)
+		if(started)
 			throw new IllegalStateException("network controller already started");
-		receivingThread = new Thread(this::run, "Network Controller");
-		receivingThread.start();
+		new Thread(this::run, "Network Controller").start();
+		started = true;
 	}
 	
 	public void stop() {
@@ -140,7 +151,7 @@ public final class NetworkController {
 		socket.close();
 	}
 	
-	public InetSocketAddress getSocketAddress() {
+	public InetSocketAddress getBindAddress() {
 		return (InetSocketAddress)socket.getLocalSocketAddress();
 	}
 	
@@ -192,24 +203,20 @@ public final class NetworkController {
 			final int messageID = ByteUtil.getInteger(buffer.getData(), buffer.getOffset());
 			byte[] data = Arrays.copyOfRange(buffer.getData(), buffer.getOffset() + 5, buffer.getOffset() + buffer.getLength());
 
-			if(messageID == -1) { //if message is a response, rather than data
+			if(messageID == RESPONSE_ID) { //if message is a response, rather than data
 				int responseMessageID = ByteUtil.getInteger(data, 0);
 				synchronized(reliableQueue) {
-					MessageAddressPair pair = null;
-					for(MessageAddressPair p : reliableQueue) { //find first message addressed to the sender of the ack
-						if(p.recipient.equals(sender)) {
-							pair = p;
-							break;
-						}
-					}
-					
-					if(pair != null && pair.messageID == responseMessageID) {
-						//if the response is for the next message in the queue awaiting confirmation of reception, 
-						//it can be removed
-						reliableQueue.remove(pair);
-						synchronized(pair) {
-							pair.received = true;
-							pair.notifyAll();
+					Iterator<MessageAddressPair> iterator = reliableQueue.iterator();
+					while(iterator.hasNext()) {
+						MessageAddressPair pair = iterator.next();
+						if(pair.recipient.equals(sender)) { //find first message addressed to the sender of the ack
+							if(pair.messageID == responseMessageID) { //if the ack is for the correct message (oldest awaiting ack)
+								reliableQueue.remove(pair);
+								synchronized(pair) { //notify waiting send method
+									pair.received = true;
+									pair.notifyAll();
+								}
+							} break;
 						}
 					}
 				}

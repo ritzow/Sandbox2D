@@ -38,6 +38,7 @@ public final class ServerRepeatUpdater extends RepeatUpdater {
 		if(System.nanoTime() - lastSendTime > NETWORK_SEND_INTERVAL_NANOSECONDS) {
 			for(Entity e : world)
 				server.sendEntityUpdate(e);
+			server.broadcastPing(); //send a reliable packet to make sure clients are connected
 			lastSendTime = System.nanoTime();
 		}
 		try {

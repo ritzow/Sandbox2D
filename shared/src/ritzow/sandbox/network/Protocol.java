@@ -6,15 +6,15 @@ import ritzow.sandbox.data.ByteUtil;
 
 public final class Protocol {
 	
-	private Protocol() {}
+	private Protocol() {throw new UnsupportedOperationException("instantiation of Protocol not allowed");}
 	
-	/** The Charset used by the client and server **/
+	/** The Charset for text encoding used by the client and server **/
 	public static final Charset CHARSET = Charset.forName("UTF-8");
 	
 	/** The maximum length a sent message can be in bytes **/
 	public static final short MAX_MESSAGE_LENGTH = 1000;
 	
-	/** message protocol ID **/
+	/** Message Protocol ID **/
 	public static final short
 		CONSOLE_MESSAGE = 0,
 		SERVER_CONNECT_ACKNOWLEDGMENT = 1,
@@ -29,9 +29,10 @@ public final class Protocol {
 		CLIENT_CONNECT_REQUEST = 10,
 		CLIENT_DISCONNECT = 11,
 		CLIENT_PLAYER_ACTION = 12,
-		CLIENT_BREAK_BLOCK = 13;
+		CLIENT_BREAK_BLOCK = 13,
+		PING = 14;
 	
-	/** serialization type ID **/
+	/** Serialization Type ID **/
 	public static final short
 		WORLD = 1,
 		BLOCK_GRID = 2,
@@ -45,16 +46,17 @@ public final class Protocol {
 		RED_BLOCK = 10;
 	
 	private static final Set<Short> RELIABLE_PROTOCOLS = Set.of(
-			CLIENT_CONNECT_REQUEST, //also SERVER_CONNECT_ACKNOWLEDGMENT
-			CLIENT_DISCONNECT, //also SERVER_WORLD_DATA
+			CLIENT_CONNECT_REQUEST,
+			CLIENT_DISCONNECT,
 			CLIENT_PLAYER_ACTION,
 			SERVER_ADD_ENTITY,
 			SERVER_REMOVE_ENTITY,
 			SERVER_CLIENT_DISCONNECT,
 			SERVER_PLAYER_ID,
 			CONSOLE_MESSAGE,
-			CLIENT_BREAK_BLOCK, //also SERVER_ADD_ENTITY
-			SERVER_REMOVE_BLOCK
+			CLIENT_BREAK_BLOCK,
+			SERVER_REMOVE_BLOCK,
+			PING
 	);
 	
 	public static boolean isReliable(short protocol) {

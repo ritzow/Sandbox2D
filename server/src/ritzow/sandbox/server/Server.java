@@ -54,7 +54,6 @@ public class Server {
 	public void start(World world) {
 		world.setRemoveEntities(this::sendRemoveEntity);
 		updater.startWorld(world);
-		//updater.addRepeatTask(() -> sendRemoveBlock(0,0));
 		updater.start("Game Updater");
 		network.start();
 		canConnect = true;
@@ -147,6 +146,12 @@ public class Server {
 				}
 			}
 		});
+	}
+	
+	public void broadcastPing() {
+		byte[] packet = new byte[2];
+		ByteUtil.putShort(packet, 0, Protocol.PING);
+		broadcastReliable(packet, true);
 	}
 	
 	public void sendRemoveBlock(int x, int y) {
@@ -269,7 +274,7 @@ public class Server {
 	private void sendReliable(ClientState client, byte[] data, boolean removeUnresponsive) {
 		try {
 			long time = System.nanoTime();
-			network.sendReliable(client.address, client.nextReliableID(), data, 10, 100); //TODO no resend, for debugging purposes
+			network.sendReliable(client.address, client.nextReliableID(), data, 10, 100);
 			client.ping = (int)(System.nanoTime() - time)/1_000_000; //update client ping
 		} catch(TimeoutException e) {
 			if(removeUnresponsive) {

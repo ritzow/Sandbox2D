@@ -25,7 +25,7 @@ import ritzow.sandbox.world.entity.Entity;
  * @author Solomon Ritzow
  *
  */
-public final class Client {
+public class Client {
 	private final InetSocketAddress server;
 	private final NetworkController network;
 	private volatile boolean connected;
@@ -129,6 +129,8 @@ public final class Client {
 				break;
 			case Protocol.SERVER_REMOVE_BLOCK:
 				processServerRemoveBlock(data);
+				break;
+			case Protocol.PING:
 				break;
 			default:
 				throw new IllegalArgumentException("Client received message of unknown protocol " + protocol);
@@ -343,7 +345,6 @@ public final class Client {
 					//deserialize the world after receiving the final packet
 					if(i == worldPackets.length - 1) {
 						world = reconstructWorld(worldPackets, serializer);
-						world.setRemoveEntities(false);
 						worldPackets = null; //release the raw data to the garbage collector!
 						synchronized(worldLock) {
 							worldLock.notifyAll();

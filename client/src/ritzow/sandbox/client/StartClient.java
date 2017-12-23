@@ -152,7 +152,7 @@ public final class StartClient {
 						.addRepeatTask(new Runnable() {
 							private long previousTime = System.nanoTime();
 							
-							public void run() {
+							public void run() { //TODO pause world updates when not focused
 								previousTime = Utility.updateWorld(world, previousTime, SharedConstants.MAX_TIMESTEP, SharedConstants.TIME_SCALE_NANOSECONDS);
 							}
 						})
@@ -160,8 +160,8 @@ public final class StartClient {
 						.addRepeatTask(() -> {
 							try {
 								Thread.sleep(1);
-							} catch (InterruptedException e1) {
-								e1.printStackTrace();
+							} catch (InterruptedException e) {
+								e.printStackTrace();
 							}
 						});
 					gameUpdater.start("Game updater");
