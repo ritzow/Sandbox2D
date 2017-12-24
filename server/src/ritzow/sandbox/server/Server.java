@@ -162,7 +162,7 @@ public class Server {
 		broadcastReliable(packet, true);
 	}
 	
-	private void sendPlayerIDMessage(PlayerEntity player, ClientState recipient) {
+	private void sendPlayerID(PlayerEntity player, ClientState recipient) {
 		byte[] packet = new byte[6];
 		ByteUtil.putShort(packet, 0, Protocol.SERVER_PLAYER_ID);
 		ByteUtil.putInteger(packet, 2, player.getID());
@@ -180,7 +180,14 @@ public class Server {
 		broadcastReliable(packet, true);
 	}
 	
-	public void sendEntityUpdate(Entity e) {
+	public void sendRemoveEntity(Entity e) {
+		byte[] packet = new byte[2 + 4];
+		ByteUtil.putShort(packet, 0, Protocol.SERVER_REMOVE_ENTITY);
+		ByteUtil.putInteger(packet, 2, e.getID());
+		broadcastReliable(packet, true);
+	}
+	
+	public void sendUpdateEntity(Entity e) {
 		//protocol, id, posX, posY, velX, velY
 		byte[] update = new byte[2 + 4 + 4 + 4 + 4 + 4];
 		ByteUtil.putShort(update, 0, Protocol.SERVER_ENTITY_UPDATE);
@@ -190,13 +197,6 @@ public class Server {
 		ByteUtil.putFloat(update, 14, e.getVelocityX());
 		ByteUtil.putFloat(update, 18, e.getVelocityY());
 		broadcastUnreliable(update);
-	}
-	
-	public void sendRemoveEntity(Entity e) {
-		byte[] packet = new byte[2 + 4];
-		ByteUtil.putShort(packet, 0, Protocol.SERVER_REMOVE_ENTITY);
-		ByteUtil.putInteger(packet, 2, e.getID());
-		broadcastReliable(packet, true);
 	}
 	
 	private static byte[] buildServerDisconnect(String reason) {
@@ -387,7 +387,7 @@ public class Server {
 					}
 					
 					clients.put(address, newClient);
-					sendPlayerIDMessage(player, newClient);
+					sendPlayerID(player, newClient);
 					System.out.println(newClient + " joined (" + clients.size() + " players connected)");
 				});
 			}
