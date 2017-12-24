@@ -1,9 +1,7 @@
 package ritzow.sandbox.client.ui;
 
 public abstract class Element {
-	
-	protected float positionX;
-	protected float positionY;
+	private float positionX, positionY;
 	
 	public abstract float getWidth();
 	public abstract float getHeight();

@@ -30,6 +30,9 @@ import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.World;
 
 public final class StartClient {
+	
+	//TODO: figure out what causes subsequent client connect slowdowns, investigate new DataWriter packet creation system
+	
 	public static void main(String... args) throws SocketException, UnknownHostException {
 		InetSocketAddress serverAddress = 
 				new InetSocketAddress(args.length > 0 ? args[0] : InetAddress.getLocalHost().getHostAddress(), 50000);

@@ -2,15 +2,12 @@ package ritzow.sandbox.client.input.controller;
 
 import org.lwjgl.glfw.GLFW;
 import ritzow.sandbox.client.Client;
-import ritzow.sandbox.client.audio.Sound;
 import ritzow.sandbox.client.graphics.Camera;
-import ritzow.sandbox.client.input.ControlScheme;
 import ritzow.sandbox.client.input.InputManager;
 import ritzow.sandbox.client.input.handler.CursorPosHandler;
 import ritzow.sandbox.client.input.handler.FramebufferSizeHandler;
 import ritzow.sandbox.client.input.handler.KeyHandler;
 import ritzow.sandbox.client.input.handler.MouseButtonHandler;
-import ritzow.sandbox.client.world.entity.ClientItemEntity;
 import ritzow.sandbox.client.world.item.ClientBlockItem;
 import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.item.Item;
@@ -53,37 +50,30 @@ public final class InteractionController implements Controller, MouseButtonHandl
 		float playerX = client.getPlayer().getPositionX();						//get player position
 		float playerY = client.getPlayer().getPositionY();
 		
-		if(Utility.withinDistance(playerX, playerY, blockX, blockY, range)) {
-			if(primaryAction && System.nanoTime() - lastBreak > cooldownBreak * 1000000) {
+		if(Utility.withinDistance(playerX, playerY, blockX, blockY, range) || true) {
+			if(primaryAction && !breakCooldownActive()) {
 				if(client.getWorld().getForeground().isBlock(blockX, blockY)) {
 					client.sendBlockBreak(blockX, blockY);
 					lastBreak = System.nanoTime();
 				}
-			} else if(secondaryAction && (System.nanoTime() - lastPlace > cooldownPlace * 1000000)) {
+			} else if(secondaryAction && !placeCooldownActive()) {
 				Item item = client.getPlayer().getSelectedItem();
 				if((item instanceof ClientBlockItem) && client.getWorld().getForeground().isValid(blockX, blockY) && 
 					(client.getWorld().getBackground().place(client.getWorld(), blockX, blockY, ((ClientBlockItem)item).getBlock()) || 
 					client.getWorld().getForeground().place(client.getWorld(), blockX, blockY, ((ClientBlockItem)item).getBlock()))) {
-					lastPlace = System.nanoTime();
 					client.getPlayer().removeSelectedItem();
+					lastPlace = System.nanoTime();
 				}
 			}
 		}
 	}
 	
-	private static float mouseHorizontalToWorld(Camera camera, float mouseX, int frameWidth, int frameHeight) {
-		float worldX = (2f * mouseX) / frameWidth - 1f; //normalize the mouse coordinate
-		worldX /= frameHeight/(float)frameWidth; 		//apply aspect ratio
-		worldX /= camera.getZoom(); 					//apply zoom
-		worldX += camera.getPositionX(); 				//apply camera position
-		return worldX;
+	private boolean breakCooldownActive() {
+		return false && System.nanoTime() - lastBreak < cooldownBreak * 1000000;
 	}
 	
-	private static float mouseVerticalToWorld(Camera camera, float mouseY, int frameHeight) {
-		float worldY = -((2f * mouseY) / frameHeight - 1f);
-		worldY /= camera.getZoom();
-		worldY += camera.getPositionY();
-		return worldY;
+	private boolean placeCooldownActive() {
+		return System.nanoTime() - lastPlace < cooldownPlace * 1000000;
 	}
 
 	@Override
@@ -124,20 +114,6 @@ public final class InteractionController implements Controller, MouseButtonHandl
 	public void keyboardButton(int key, int scancode, int action, int mods) {
 		if(action == GLFW.GLFW_PRESS) {
 			switch(key) {
-				case ControlScheme.KEYBIND_DOWN:
-					Item item = client.getPlayer().removeSelectedItem();
-					if(item != null) {
-						//TODO deal with entityID for entities created outside server directly
-						ClientItemEntity<Item> entity = new ClientItemEntity<>(0, item);
-						entity.setVelocityX(mouseHorizontalToWorld(camera, mouseX, frameWidth, frameHeight) - client.getPlayer().getPositionX());
-						entity.setVelocityY(mouseVerticalToWorld(camera, mouseY, frameHeight) - client.getPlayer().getPositionY());
-						entity.setSpeed(0.5f);
-						entity.setPositionX(client.getPlayer().getPositionX() + 2 * client.getPlayer().getWidth() * entity.getVelocityX());
-						entity.setPositionY(client.getPlayer().getPositionY() + 2 * client.getPlayer().getHeight() * entity.getVelocityY());
-						client.getWorld().getAudioSystem().playSound(Sound.THROW.code(), client.getPlayer().getPositionX(), client.getPlayer().getPositionY(), entity.getVelocityX(), entity.getVelocityY(), 1.0f, 1f);
-						client.getWorld().add(entity);
-					}
-					break;
 				case GLFW.GLFW_KEY_KP_1:
 				case GLFW.GLFW_KEY_1:
 					client.getPlayer().setSlot(0);

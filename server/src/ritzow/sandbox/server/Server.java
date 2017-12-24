@@ -12,8 +12,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import ritzow.sandbox.data.ByteUtil;
+import ritzow.sandbox.data.DataWriter;
 import ritzow.sandbox.data.SerializerReaderWriter;
 import ritzow.sandbox.network.NetworkController;
 import ritzow.sandbox.network.Protocol;
@@ -196,6 +198,15 @@ public class Server {
 		ByteUtil.putFloat(update, 14, e.getVelocityX());
 		ByteUtil.putFloat(update, 18, e.getVelocityY());
 		broadcastUnreliable(update);
+		
+//		broadcastUnreliable(writer -> {
+//			writer.writeShort(Protocol.SERVER_ENTITY_UPDATE);
+//			writer.writeInteger(e.getID());
+//			writer.writeFloat(e.getPositionX());
+//			writer.writeFloat(e.getPositionY());
+//			writer.writeFloat(e.getVelocityX());
+//			writer.writeFloat(e.getVelocityY());
+//		}, client -> true);
 	}
 	
 	private static byte[] buildServerDisconnect(String reason) {
@@ -262,6 +273,15 @@ public class Server {
 	 * @param data the packet of data to send.
 	 */
 	private void broadcastUnreliable(byte[] data, Predicate<ClientState> sendTest) {
+		synchronized(clients) {
+			for(ClientState client : clients.values()) {
+				if(sendTest.test(client))
+					network.sendUnreliable(client.address, data);
+			}
+		}
+	}
+	
+	private void broadcastUnreliable(Consumer<DataWriter> data, Predicate<ClientState> sendTest) {
 		synchronized(clients) {
 			for(ClientState client : clients.values()) {
 				if(sendTest.test(client))

@@ -14,7 +14,10 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import ritzow.sandbox.data.ByteUtil;
+import ritzow.sandbox.data.DataWriter;
+import ritzow.sandbox.data.UncheckedByteArrayDataWriter;
 import ritzow.sandbox.util.Utility;
 
 /** Provides common functionality of the client and server. Manages incoming and outgoing packets. **/
@@ -143,15 +146,9 @@ public class NetworkController {
 		}
 	}
 	
-	/**
-	 * Sends a message without ensuring it is received by the recipient.
-	 * @param recipient the address that should receive the message.
-	 * @param messageID the unique ID of the message.
-	 * @param data the message data.
-	 */
-	public void sendUnreliable(InetSocketAddress recipient, int messageID, byte[] data) {
+	public void sendUnreliable(InetSocketAddress recipient, Consumer<DataWriter> data) {
 		try {
-			socket.send(getPacket(recipient, UNRELIABLE_TYPE, messageID, data));
+			socket.send(getPacket(recipient, UNRELIABLE_TYPE, getState(recipient).nextUnreliableSendID(), data));
 		} catch(IOException e) {
 			e.printStackTrace();
 			stop();
@@ -176,13 +173,13 @@ public class NetworkController {
 		return datagram;
 	}
 	
-//	private DatagramPacket getPacket(SocketAddress recipient, byte type, int messageID, Consumer<DataWriter> data) {
-//		DatagramPacket datagram = packets.get();
-//		UncheckedByteArrayDataWriter writer = new UncheckedByteArrayDataWriter(datagram.getData(), 5);
-//		data.accept(writer);
-//		setupDatagram(datagram, recipient, type, messageID, writer.index()-5);
-//		return datagram;
-//	}
+	private DatagramPacket getPacket(SocketAddress recipient, byte type, int messageID, Consumer<DataWriter> data) {
+		DatagramPacket datagram = packets.get();
+		UncheckedByteArrayDataWriter writer = new UncheckedByteArrayDataWriter(datagram.getData(), HEADER_SIZE);
+		data.accept(writer);
+		setupDatagram(datagram, recipient, type, messageID, writer.index() - HEADER_SIZE);
+		return datagram;
+	}
 	
 	private static void setupDatagram(DatagramPacket datagram, SocketAddress recipient, byte type, int messageID, int dataSize) {
 		if(messageID < 0)
