@@ -1,8 +1,8 @@
 package ritzow.sandbox.world.entity;
 
 import ritzow.sandbox.data.ByteUtil;
-import ritzow.sandbox.data.DataReader;
 import ritzow.sandbox.data.Serializer;
+import ritzow.sandbox.data.TransportableDataReader;
 import ritzow.sandbox.network.Protocol.PlayerAction;
 import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.BlockGrid;
@@ -25,7 +25,7 @@ public class PlayerEntity extends Entity implements Living {
 		this.inventory = new Inventory<>(9);
 	}
 	
-	public PlayerEntity(DataReader input) {
+	public PlayerEntity(TransportableDataReader input) {
 		super(input);
 		inventory = input.readObject();
 		health = input.readInteger();

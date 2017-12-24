@@ -1,9 +1,9 @@
 package ritzow.sandbox.world.component;
 
 import ritzow.sandbox.data.ByteUtil;
-import ritzow.sandbox.data.DataReader;
 import ritzow.sandbox.data.Serializer;
 import ritzow.sandbox.data.Transportable;
+import ritzow.sandbox.data.TransportableDataReader;
 import ritzow.sandbox.world.item.Item;
 
 public class Inventory<T extends Transportable> implements Transportable {
@@ -13,7 +13,7 @@ public class Inventory<T extends Transportable> implements Transportable {
 		this.items = new Item[capacity];
 	}
 	
-	public Inventory(DataReader input) {
+	public Inventory(TransportableDataReader input) {
 		items = new Item[input.readInteger()];
 		for(int i = 0; i < items.length; i++) {
 			items[i] = input.readObject();

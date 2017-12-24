@@ -440,7 +440,7 @@ public class Server {
 		private final AtomicInteger reliableMessageID, unreliableMessageID;
 		private volatile String username;
 		private volatile PlayerEntity player;
-		private volatile byte disconnectStrikes; //TODO should this be an AtomicInteger?
+		private final AtomicInteger disconnectStrikes;
 		private volatile int ping; //set ping on receive message
 		
 		private static final AtomicInteger playerID = new AtomicInteger(1);
@@ -448,6 +448,7 @@ public class Server {
 		public ClientState(int initReliable, InetSocketAddress address) {
 			this.reliableMessageID = new AtomicInteger(initReliable);
 			this.unreliableMessageID = new AtomicInteger();
+			this.disconnectStrikes = new AtomicInteger();
 			this.address = address;
 			username = "player" + playerID.getAndIncrement();
 		}
@@ -461,7 +462,7 @@ public class Server {
 		}
 		
 		byte strike() {
-			return ++disconnectStrikes;
+			return (byte)disconnectStrikes.incrementAndGet();
 		}
 		
 		@Override

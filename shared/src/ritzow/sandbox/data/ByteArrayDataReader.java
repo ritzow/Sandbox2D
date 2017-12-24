@@ -88,9 +88,4 @@ public class ByteArrayDataReader implements DataReader {
 			throw new IndexOutOfBoundsException("not enough data remaining");
 		}
 	}
-
-	@Override
-	public <T extends Transportable> T readObject() {
-		throw new UnsupportedOperationException("object deserialization not implemented");
-	}
 }

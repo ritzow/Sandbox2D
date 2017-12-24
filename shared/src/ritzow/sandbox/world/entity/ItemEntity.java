@@ -1,8 +1,8 @@
 package ritzow.sandbox.world.entity;
 
 import ritzow.sandbox.data.ByteUtil;
-import ritzow.sandbox.data.DataReader;
 import ritzow.sandbox.data.Serializer;
+import ritzow.sandbox.data.TransportableDataReader;
 import ritzow.sandbox.world.item.Item;
 
 public class ItemEntity<I extends Item> extends Entity {
@@ -20,7 +20,7 @@ public class ItemEntity<I extends Item> extends Entity {
 		this.positionY = y;
 	}
 	
-	public ItemEntity(DataReader input) {
+	public ItemEntity(TransportableDataReader input) {
 		super(input);
 		item = input.readObject();
 	}

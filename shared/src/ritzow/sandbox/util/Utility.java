@@ -14,6 +14,23 @@ public final class Utility {
 	}
 	
 	/**
+	 * Sleeps for the provided number of milliseconds
+	 * @param milliseconds the number of milliseconds to sleep for
+	 * @throws IllegalStateException if the thread is interrupted while sleeping
+	 */
+	public static void sleep(long milliseconds) {
+		try {
+			Thread.sleep(milliseconds);
+		} catch(InterruptedException e) {
+			throwInterrupted(e);
+		}
+	}
+	
+	private static void throwInterrupted(InterruptedException cause) {
+		throw new IllegalStateException(Thread.currentThread() + " should not be interrupted", cause);
+	}
+	
+	/**
 	 * Updates the world
 	 * @param world the world to update
 	 * @param previousTime the previous update start time
@@ -34,6 +51,22 @@ public final class Utility {
 			totalUpdateTime -= time;
 		}
 		return current;
+	}
+	
+	public static void notify(Object o) {
+		synchronized(o) {
+			o.notifyAll();
+		}
+	}
+	
+	public static void waitUnconditionally(Object o) {
+		try {
+			synchronized(o) {
+				o.wait();
+			}
+		} catch (InterruptedException e) {
+			throwInterrupted(e);
+		}
 	}
 	
 	/**

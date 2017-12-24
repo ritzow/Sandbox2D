@@ -13,5 +13,4 @@ public interface DataReader {
 	public byte readByte();
 	public byte[] readBytes(int count);
 	public void readBytes(byte[] dest, int offset);
-	public <T extends Transportable> T readObject();
 }

@@ -58,9 +58,7 @@ public class RepeatUpdater {
 	public void resume() {
 		if(paused) {
 			paused = false;
-			synchronized(resumeLock) {
-				resumeLock.notifyAll();
-			}
+			Utility.notify(resumeLock);
 		}
 	}
 	
@@ -78,30 +76,14 @@ public class RepeatUpdater {
 		return this;
 	}
 	
-	public RepeatUpdater addRepeatTask(Runnable task) {
-		runnables.add(task);
-		return this;
-	}
-	
-	public RepeatUpdater addRepeatTasks(Collection<? extends Runnable> tasks) {
-		runnables.addAll(tasks);
-		return this;
-	}
-	
-	public void removeRepeatTask(Runnable task) {
-		runnables.remove(task);
-	}
-	
-	public void removeRepeatTasks(Collection<Runnable> tasks) {
-		runnables.removeAll(tasks);
+	public Collection<Runnable> getRepeatTasks() {
+		return runnables;
 	}
 	
 	private void run() {
 		pre.run();
 		paused = false;
-		synchronized(resumeLock) {
-			resumeLock.notifyAll();
-		}
+		Utility.notify(resumeLock);
 		
 		while(!exit) {
 			runnables.forEach(r -> r.run());
