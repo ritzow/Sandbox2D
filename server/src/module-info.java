@@ -4,5 +4,4 @@
  */
 module ritzow.sandbox.server {
 	requires ritzow.sandbox.shared;
-	requires java.base;
 }

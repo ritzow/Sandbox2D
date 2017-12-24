@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.BindException;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
@@ -22,56 +23,61 @@ public final class StartServer {
 	
 	public static void main(String... args) throws SocketException, UnknownHostException {
 		Thread.currentThread().setName("Server Setup");
-		Server server = new Server(new InetSocketAddress(50000));
+		
+		try {
+			Server server = new Server(new InetSocketAddress(50000));
 
-		//the save file to try to load the world from
-		final File saveFile = new File(args.length > 0 ? args[0] : "data/worlds/world.dat");
-		
-		ServerAudioSystem audio = new ServerAudioSystem();
-		World world = saveFile.exists() ? 
-				loadWorld(saveFile, audio, SerializationProvider.getProvider()) : generateWorld(200, 100, audio, server);
-		server.start(world);
-		
-		System.out.println("Startup Complete.");
-		System.out.println("Type 'exit' to stop server or 'list' to list connected clients");
-		try(Scanner scanner = new Scanner(System.in)) {
-			String next;
-			reader: while(true) {
-				switch(next = scanner.nextLine()) {
-				case "exit":
-				case "quit":
-				case "stop":
-					break reader;
-				case "list":
-					System.out.println("Connected clients:");
-					for(ClientState client : server.listClients()) {
-						System.out.print("\t - ");
-						System.out.println(client);
+			//the save file to try to load the world from
+			final File saveFile = new File(args.length > 0 ? args[0] : "data/worlds/world.dat");
+			
+			ServerAudioSystem audio = new ServerAudioSystem();
+			World world = saveFile.exists() ? 
+					loadWorld(saveFile, audio, SerializationProvider.getProvider()) : generateWorld(100, 50, audio, server);
+			server.start(world);
+			
+			System.out.println("Startup Complete.");
+			System.out.println("Type 'exit' to stop server or 'list' to list connected clients");
+			try(Scanner scanner = new Scanner(System.in)) {
+				String next;
+				reader: while(true) {
+					switch(next = scanner.nextLine()) {
+					case "exit":
+					case "quit":
+					case "stop":
+						break reader;
+					case "list":
+						System.out.println("Connected clients:");
+						for(ClientState client : server.listClients()) {
+							System.out.print("\t - ");
+							System.out.println(client);
+						}
+						break;
+					case "disconnect":
+						server.disconnectAll("server manual disconnect");
+						break;
+					default:
+						server.broadcastConsoleMessage(next);
+						System.out.println("Sent message '" + next + "' to " + 
+						server.getConnectedClients() + " connected client(s).");
 					}
-					break;
-				case "disconnect":
-					server.disconnectAll("server manual disconnect");
-					break;
-				default:
-					server.broadcastConsoleMessage(next);
-					System.out.println("Sent message '" + next + "' to " + 
-					server.getConnectedClients() + " connected client(s).");
 				}
 			}
-		}
-		
-		server.stop();
-		
-		if(SAVE_WORLD) {
-			try {
-				if(!saveFile.exists())
-					saveFile.createNewFile();
-				saveWorld(world, saveFile);
-			} catch (IOException e) {
-				System.out.println("Could not find or create file to save world: " + e.getLocalizedMessage());
+			
+			server.stop();
+			
+			if(SAVE_WORLD) {
+				try {
+					if(!saveFile.exists())
+						saveFile.createNewFile();
+					saveWorld(world, saveFile);
+				} catch (IOException e) {
+					System.out.println("Could not find or create file to save world: " + e.getLocalizedMessage());
+				}
+			} else {
+				System.out.println("Server stopped.");
 			}
-		} else {
-			System.out.println("Server stopped.");
+		} catch(BindException e) {
+			System.out.println("A server is likely already running on the specified port");
 		}
 	}
 	

@@ -5,3 +5,4 @@ Client texture atlas creation
 Client world mesh generation
 rewrite input handling system to be more abstract
 Use or create proper logging system
+create user interface system/renderer
