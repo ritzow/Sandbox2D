@@ -14,9 +14,9 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import ritzow.sandbox.audio.AudioSystem;
 import ritzow.sandbox.data.ByteUtil;
-import ritzow.sandbox.data.DataReader;
 import ritzow.sandbox.data.Serializer;
 import ritzow.sandbox.data.Transportable;
+import ritzow.sandbox.data.TransportableDataReader;
 import ritzow.sandbox.world.block.Block;
 import ritzow.sandbox.world.entity.Entity;
 
@@ -59,7 +59,7 @@ public class World implements Transportable, Iterable<Entity> {
 		this.gravity = gravity;
 	}
 	
-	public World(DataReader reader) {
+	public World(TransportableDataReader reader) {
 		gravity = reader.readFloat();
 		foreground = Objects.requireNonNull(reader.readObject());
 		background = Objects.requireNonNull(reader.readObject());

@@ -6,7 +6,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class SerializerReaderWriter implements Serializer, Deserializer {
-	private final Map<Short, Function<DataReader, ? extends Transportable>> deserializeLookup;
+	private final Map<Short, Function<TransportableDataReader, ? extends Transportable>> deserializeLookup;
 	private final Map<Class<? extends Transportable>, Short> serializeLookup;
 	
 	public SerializerReaderWriter() {
@@ -15,13 +15,13 @@ public class SerializerReaderWriter implements Serializer, Deserializer {
 	}
 
 	public <T extends Transportable> SerializerReaderWriter 
-		register(short identifier, Class<T> returnType, Function<DataReader, T> deserializer) {
+		register(short identifier, Class<T> returnType, Function<TransportableDataReader, T> deserializer) {
 		deserializeLookup.put(identifier, deserializer);
 		serializeLookup.put(returnType, identifier);
 		return this;
 	}
 	
-	public void register(short identifier, Consumer<DataReader> deserializer) {
+	public void register(short identifier, Consumer<TransportableDataReader> deserializer) {
 		if(identifier == 0)
 			throw new IllegalArgumentException("identifier 0 reserved for null values");
 		
@@ -69,7 +69,7 @@ public class SerializerReaderWriter implements Serializer, Deserializer {
 		short type = ByteUtil.getShort(object, 4);
 		
 		//get the concrete class of the object
-		Function<DataReader, ? extends Transportable> func = deserializeLookup.get(type);
+		Function<TransportableDataReader, ? extends Transportable> func = deserializeLookup.get(type);
 		
 		//throw exception if not registered
 		if(func == null)
@@ -77,8 +77,8 @@ public class SerializerReaderWriter implements Serializer, Deserializer {
 		return (T)func.apply(getReader(object));
 	}
 	
-	private DataReader getReader(final byte[] bytes) { //for use by objects you want to deserialize.
-		return new DataReader() {
+	private TransportableDataReader getReader(final byte[] bytes) { //for use by objects you want to deserialize.
+		return new TransportableDataReader() {
 			private int index = 6; //skip past object size and type
 			
 			public int remaining() {
@@ -170,7 +170,7 @@ public class SerializerReaderWriter implements Serializer, Deserializer {
 					return null;
 				int beginIndex = index; //store the starting index for error checking later
 				short type = readShort(); //read type
-				Function<DataReader, ? extends Transportable> func = deserializeLookup.get(type); //get associated function
+				Function<TransportableDataReader, ? extends Transportable> func = deserializeLookup.get(type); //get associated function
 				if(func == null)
 					throw new ClassNotRegisteredException("Cannot deserialize unregistered class of type " + type);
 				try {

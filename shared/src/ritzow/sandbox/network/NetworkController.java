@@ -13,10 +13,36 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.function.Consumer;
+import ritzow.sandbox.data.UncheckedByteArrayDataWriter;
+import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.data.ByteUtil;
+import ritzow.sandbox.data.DataWriter;
 
 /** Provides common functionality of the client and server. Manages incoming and outgoing packets. **/
 public class NetworkController {
+	
+	private static final class MessageAddressPair {
+		private final InetSocketAddress recipient;
+		private final int messageID;
+		private volatile boolean received;
+		
+		public MessageAddressPair(InetSocketAddress recipient, int messageID) {
+			this.messageID = messageID;
+			this.recipient = recipient;
+		}
+	}
+	
+	private static final class MessageIDHolder {
+	    private int reliableMessageID, unreliableMessageID;
+	    
+	    public MessageIDHolder(int reliable, int unreliable) {
+	        this.reliableMessageID = reliable;
+	        this.unreliableMessageID = unreliable;
+	    }
+	}
+	
+	//fields
 	private final DatagramSocket socket;
 	private final Queue<MessageAddressPair> reliableQueue;
 	private final Map<InetSocketAddress, MessageIDHolder> lastReceived;
@@ -24,18 +50,15 @@ public class NetworkController {
 	private final MessageProcessor messageProcessor;
 	private volatile boolean started, exit;
 	
-	private static final int RESPONSE_ID = -1;
+	/** Message Type **/
+	private static final byte RESPONSE_TYPE = 1, RELIABLE_TYPE = 2, UNRELIABLE_TYPE = 3;
 	
 	public NetworkController(InetSocketAddress bindAddress, MessageProcessor processor) throws SocketException {
 		messageProcessor = processor;
 		socket = new DatagramSocket(bindAddress);
 		reliableQueue = new ConcurrentLinkedQueue<MessageAddressPair>();
 		lastReceived = Collections.synchronizedMap(new HashMap<InetSocketAddress, MessageIDHolder>());
-		packets = new ThreadLocal<DatagramPacket>() {
-			protected DatagramPacket initialValue() {
-				return new DatagramPacket(new byte[Protocol.MAX_MESSAGE_LENGTH + 5], 0);
-			}
-		};
+		packets = ThreadLocal.withInitial(() -> new DatagramPacket(new byte[Protocol.MAX_MESSAGE_LENGTH + 5], 0));
 	}
 	
 	/**
@@ -52,24 +75,6 @@ public class NetworkController {
 		void process(InetSocketAddress sender, int messageID, byte[] data);
 	}
 	
-	private static void checkMessage(int messageID, int length) {
-		if(messageID < 0)
-			throw new IllegalArgumentException("messageID must be greater than or equal to zero");
-		else if(length > Protocol.MAX_MESSAGE_LENGTH)
-			throw new IllegalArgumentException("message length is greater than maximum allowed (" + 
-					Protocol.MAX_MESSAGE_LENGTH + " bytes)");
-	}
-	
-	public void sendUnreliable(InetSocketAddress recipient, int messageID, byte[] data) {
-		checkMessage(messageID, data.length);
-		try {
-			socket.send(getPacket(recipient, false, messageID, data));
-		} catch(IOException e) {
-			e.printStackTrace();
-			stop();
-		}
-	}
-	
 	/**
 	 * Send a message reliably, blocking until the message is received or a specified number 
 	 * of attempts have been made to send the message.
@@ -83,9 +88,7 @@ public class NetworkController {
 			throw new IllegalArgumentException("attempts must be greater than 0");
 		if(resendInterval < 0)
 			throw new IllegalArgumentException("resendInterval must be zero or positive");
-		checkMessage(messageID, data.length);
-		
-		DatagramPacket packet = getPacket(recipient, true, messageID, data);
+		DatagramPacket packet = getPacket(recipient, RELIABLE_TYPE, messageID, data);
 		MessageAddressPair pair = new MessageAddressPair(recipient, messageID);
 		synchronized(pair) {
 			reliableQueue.add(pair);
@@ -107,25 +110,64 @@ public class NetworkController {
 		}
 	}
 	
+	public void sendUnreliable(InetSocketAddress recipient, int messageID, byte[] data) {
+		checkID(messageID);
+		try {
+			socket.send(getPacket(recipient, RELIABLE_TYPE, messageID, data));
+		} catch(IOException e) {
+			e.printStackTrace();
+			stop();
+		}
+	}
+	
+	public void sendUnreliable(InetSocketAddress recipient, int messageID, Consumer<DataWriter> data) {
+		checkID(messageID);
+		try {
+			socket.send(getPacket(recipient, UNRELIABLE_TYPE, messageID, data));
+		} catch(IOException e) {
+			e.printStackTrace();
+			stop();
+		}		
+	}
+	
 	private void sendResponse(SocketAddress recipient, int receivedMessageID) {
 		try {
-			byte[] data = new byte[4];
-			ByteUtil.putInteger(data, 0, receivedMessageID);
-			socket.send(getPacket(recipient, false, RESPONSE_ID, data));
+			DatagramPacket datagram = packets.get();
+			setupDatagram(datagram, recipient, RESPONSE_TYPE, receivedMessageID, 0);
+			socket.send(datagram);
 		} catch (IOException e) {
 			e.printStackTrace();
 			stop();
 		}
 	}
 	
-	private DatagramPacket getPacket(SocketAddress recipient, boolean reliable, int messageID, byte[] data) {
+	private static void checkID(int messageID) {
+		if(messageID < -1)
+			throw new IllegalArgumentException("messageID must be greater than or equal to zero");
+	}
+	
+	private DatagramPacket getPacket(SocketAddress recipient, byte type, int messageID, byte[] data) {
 		DatagramPacket datagram = packets.get();
-		datagram.setSocketAddress(recipient);
-		ByteUtil.putInteger(datagram.getData(), 0, messageID); //put message id
-		ByteUtil.putBoolean(datagram.getData(), 4, reliable);
+		setupDatagram(datagram, recipient, type, messageID, data.length);
 		ByteUtil.copy(data, datagram.getData(), 5); //put data
-		datagram.setLength(data.length + 5);
 		return datagram;
+	}
+	
+	private DatagramPacket getPacket(SocketAddress recipient, byte type, int messageID, Consumer<DataWriter> data) {
+		DatagramPacket datagram = packets.get();
+		UncheckedByteArrayDataWriter writer = new UncheckedByteArrayDataWriter(datagram.getData(), 5);
+		data.accept(writer);
+		setupDatagram(datagram, recipient, type, messageID, writer.index()-5);
+		return datagram;
+	}
+	
+	private static void setupDatagram(DatagramPacket datagram, SocketAddress recipient, byte type, int messageID, int dataSize) {
+		if(dataSize > Protocol.MAX_MESSAGE_LENGTH)
+			throw new IllegalArgumentException("message length is greater than maximum allowed (" + Protocol.MAX_MESSAGE_LENGTH + " bytes)");
+		datagram.setSocketAddress(recipient);
+		datagram.getData()[0] = type;
+		ByteUtil.putInteger(datagram.getData(), 1, messageID);
+		datagram.setLength(dataSize + 5);
 	}
 	
 	public void removeSender(SocketAddress address) {
@@ -135,7 +177,7 @@ public class NetworkController {
 	/**
 	 * Removes all connections
 	 */
-	public void removeSenders() {
+	public void removeAllSenders() {
 		lastReceived.clear();
 	}
 	
@@ -155,34 +197,14 @@ public class NetworkController {
 		return (InetSocketAddress)socket.getLocalSocketAddress();
 	}
 	
-	private static final class MessageAddressPair {
-		private final InetSocketAddress recipient;
-		private final int messageID;
-		private volatile boolean received;
-		
-		public MessageAddressPair(InetSocketAddress recipient, int messageID) {
-			this.messageID = messageID;
-			this.recipient = recipient;
-		}
-	}
-	
-	private static final class MessageIDHolder {
-	    public int latestMessageID;
-	    
-	    public MessageIDHolder(int value) {
-	        this.latestMessageID = value;
-	    }
-	}
-	
 	private void run() {
 		//Create the buffer DatagramPacket that is the maximum length a message can be 
 		//plus the 5 header bytes (messageID and reliable flag)
 		DatagramPacket buffer = new DatagramPacket(new byte[Protocol.MAX_MESSAGE_LENGTH + 5], Protocol.MAX_MESSAGE_LENGTH + 5);
 
 		while(!exit) {
-			//wait for a packet to be received
 			try {
-				socket.receive(buffer);
+				socket.receive(buffer); //wait for a packet to be received
 			} catch(SocketException e) {
 				if(!socket.isClosed()) {
 					e.printStackTrace();
@@ -193,52 +215,59 @@ public class NetworkController {
 				continue;
 			}
 			
-			//ignore received packets that are not large enough to cont ain the full header
-			if(buffer.getLength() < 5) {
-				continue;
-			}
-			
-			//parse the packet information
-			InetSocketAddress sender = (InetSocketAddress)buffer.getSocketAddress();
-			final int messageID = ByteUtil.getInteger(buffer.getData(), buffer.getOffset());
-			byte[] data = Arrays.copyOfRange(buffer.getData(), buffer.getOffset() + 5, buffer.getOffset() + buffer.getLength());
+			//ignore received packets that are not large enough to contain the full header
+			if(buffer.getLength() >= 5) {
+				//parse the packet information
+				final InetSocketAddress sender = (InetSocketAddress)buffer.getSocketAddress();
+				final byte type = buffer.getData()[buffer.getOffset()];
 
-			if(messageID == RESPONSE_ID) { //if message is a response, rather than data
-				int responseMessageID = ByteUtil.getInteger(data, 0);
-				synchronized(reliableQueue) {
-					Iterator<MessageAddressPair> iterator = reliableQueue.iterator();
-					while(iterator.hasNext()) {
-						MessageAddressPair pair = iterator.next();
-						if(pair.recipient.equals(sender)) { //find first message addressed to the sender of the ack
-							if(pair.messageID == responseMessageID) { //if the ack is for the correct message (oldest awaiting ack)
-								reliableQueue.remove(pair);
-								synchronized(pair) { //notify waiting send method
+				if(type == RESPONSE_TYPE) {
+					int responseMessageID = ByteUtil.getInteger(buffer.getData(), buffer.getOffset() + 1);
+					synchronized(reliableQueue) {
+						Iterator<MessageAddressPair> iterator = reliableQueue.iterator();
+						while(iterator.hasNext()) {
+							MessageAddressPair pair = iterator.next();
+							if(pair.recipient.equals(sender)) { //find first message addressed to the sender of the ack
+								if(pair.messageID == responseMessageID) { //if the ack is for the correct message (oldest awaiting ack)
+									reliableQueue.remove(pair);
 									pair.received = true;
-									pair.notifyAll();
-								}
-							} break;
+									Utility.notify(pair); //notify waiting send method
+								} break;
+							}
+						}
+					}
+				} else {
+					synchronized(lastReceived) {
+						final int messageID = ByteUtil.getInteger(buffer.getData(), buffer.getOffset() + 1);
+						MessageIDHolder holder = lastReceived.get(sender);
+						if(type == RELIABLE_TYPE) { //message is reliable
+							if(holder == null) {
+								//if sender isn't registered yet, add it to hashmap,
+								//if the ack isn't received, it will be resent on next send
+								lastReceived.put(sender, new MessageIDHolder(messageID, -1));
+								messageProcessor.process(sender, messageID, getDataCopy(buffer));
+							} else if(messageID == holder.reliableMessageID + 1) {
+								//if the message is the next one, process it and update last message
+								holder.reliableMessageID = messageID;
+								messageProcessor.process(sender, messageID, getDataCopy(buffer));
+							} //else: already received, or too early
+							sendResponse(sender, messageID);
+						} else if(type == UNRELIABLE_TYPE) { //message is unreliable
+							if(holder == null) {
+								lastReceived.put(sender, new MessageIDHolder(0, messageID));
+								messageProcessor.process(sender, messageID, getDataCopy(buffer));
+							} else if(messageID > holder.unreliableMessageID) {
+								holder.unreliableMessageID = messageID;
+								messageProcessor.process(sender, messageID, getDataCopy(buffer));
+							}
 						}
 					}
 				}
-			} else if(ByteUtil.getBoolean(buffer.getData(), buffer.getOffset() + 4)) { //message is reliable
-				synchronized(lastReceived) {
-					MessageIDHolder holder = lastReceived.get(sender);
-					if(holder == null) {
-						//if sender isn't registered yet, add it to hashmap,
-						//if the ack isn't received, it will be resent on next send
-						lastReceived.put(sender, new MessageIDHolder(messageID));
-						messageProcessor.process(sender, messageID, data);
-					} else if(messageID == holder.latestMessageID + 1) {
-						//if the message is the next one, process it and update last message
-						holder.latestMessageID = messageID;
-						messageProcessor.process(sender, messageID, data);
-					}
-					sendResponse(sender, messageID);
-				}
-			} else {
-				//if the message isnt a response and isn't reliable, process it without doing anything else!
-				messageProcessor.process(sender, messageID, data);
 			}
 		}
+	}
+	
+	private static byte[] getDataCopy(DatagramPacket buffer) {
+		return Arrays.copyOfRange(buffer.getData(), buffer.getOffset() + 5, buffer.getOffset() + buffer.getLength());
 	}
 }

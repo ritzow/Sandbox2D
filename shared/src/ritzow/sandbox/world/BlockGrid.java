@@ -1,9 +1,9 @@
 package ritzow.sandbox.world;
 
 import ritzow.sandbox.data.ByteUtil;
-import ritzow.sandbox.data.DataReader;
 import ritzow.sandbox.data.Serializer;
 import ritzow.sandbox.data.Transportable;
+import ritzow.sandbox.data.TransportableDataReader;
 import ritzow.sandbox.world.block.Block;
 
 public final class BlockGrid implements Transportable {
@@ -14,7 +14,7 @@ public final class BlockGrid implements Transportable {
 		blocks = new Block[height][width];
 	}
 	
-	public BlockGrid(DataReader data) {
+	public BlockGrid(TransportableDataReader data) {
 		int width = data.readInteger();
 		int height = data.readInteger();
 		blocks = new Block[height][width];

@@ -19,7 +19,7 @@ public final class ServerRepeatUpdater extends RepeatUpdater {
 	
 	public ServerRepeatUpdater(Server server) {
 		this.server = server;
-		addRepeatTask(tasks = new TaskQueue());
+		getRepeatTasks().add(tasks = new TaskQueue());
 	}
 	
 	public World getWorld() {
@@ -28,7 +28,7 @@ public final class ServerRepeatUpdater extends RepeatUpdater {
 	
 	public void startWorld(World world) {
 		if(this.world == null)
-			addRepeatTask(worldUpdater);
+			getRepeatTasks().add(worldUpdater);
 		this.world = world;
 		previousTime = System.nanoTime();
 	}
@@ -41,15 +41,12 @@ public final class ServerRepeatUpdater extends RepeatUpdater {
 			server.broadcastPing(); //send a reliable packet to make sure clients are connected
 			lastSendTime = System.nanoTime();
 		}
-		try {
-			Thread.sleep(1);
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
+		
+		Utility.sleep(1);
 	}
 	
 	public void stopWorld() {
-		removeRepeatTask(worldUpdater);
+		getRepeatTasks().remove(worldUpdater);
 	}
 	
 	public void submitTask(Runnable task) {

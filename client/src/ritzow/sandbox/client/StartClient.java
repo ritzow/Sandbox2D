@@ -35,7 +35,8 @@ public final class StartClient {
 				new InetSocketAddress(args.length > 0 ? args[0] : InetAddress.getLocalHost().getHostAddress(), 50000);
 		Client client = new Client(new InetSocketAddress(0), serverAddress); //wildcard address, and any port
 		System.out.print("Connecting to " + serverAddress + "... ");
-		if(client.connect(1000)) {
+		
+		if(client.connect()) {
 			System.out.println("connected!");
 			EventProcessor eventProcessor = new EventProcessor();
 			new Thread(new Runnable () { //run code on separate thread
@@ -85,7 +86,6 @@ public final class StartClient {
 								cameraGrip.getCamera()
 								);
 						renderManager.getRenderers().add(new ClientGameRenderer(modelProgram, lightProgram, world));
-						System.out.println("Renderer started");
 					} catch (IOException | OpenGLException e) {
 						throw new RuntimeException(e);
 					}
@@ -96,7 +96,7 @@ public final class StartClient {
 					
 					//wait for the client to receive the world and return it
 					World world = client.getWorld();
-					System.out.println("world received");
+					System.out.println("Received world from server.");
 					
 					ClientAudioSystem audio = new ClientAudioSystem();
 					
@@ -124,9 +124,8 @@ public final class StartClient {
 					eventProcessor.getDisplay().getInputManager().getWindowFocusHandlers()
 						.add(focused -> audio.setVolume(focused ? 1.0f : 0.0f));
 					
-					System.out.println("Audio system setup complete");
-					
 					ClientPlayerEntity player = client.getPlayer();
+					System.out.println("Received player from server.");
 					
 					CameraController cameraGrip =
 							new TrackingCameraController(new Camera(0, 0, 1), audio, player, 0.005f, 0.05f, 0.6f);
@@ -146,24 +145,17 @@ public final class StartClient {
 						initGraphics(renderManager, world, cameraGrip);
 					}, renderManager::shutdown);
 					
-					gameUpdater
-						.addRepeatTask(client.onReceiveMessageTask())
-						.addRepeatTasks(controllers)
-						.addRepeatTask(new Runnable() {
-							private long previousTime = System.nanoTime();
-							
-							public void run() { //TODO pause world updates when not focused
-								previousTime = Utility.updateWorld(world, previousTime, SharedConstants.MAX_TIMESTEP, SharedConstants.TIME_SCALE_NANOSECONDS);
-							}
-						})
-						.addRepeatTask(renderManager)
-						.addRepeatTask(() -> {
-							try {
-								Thread.sleep(1);
-							} catch (InterruptedException e) {
-								e.printStackTrace();
-							}
-						});
+					gameUpdater.getRepeatTasks().add(client.onReceiveMessageTask());
+					gameUpdater.getRepeatTasks().addAll(controllers);
+					gameUpdater.getRepeatTasks().add(new Runnable() {
+						private long previousTime = System.nanoTime();
+						
+						public void run() { //TODO pause world updates when not focused
+							previousTime = Utility.updateWorld(world, previousTime, SharedConstants.MAX_TIMESTEP, SharedConstants.TIME_SCALE_NANOSECONDS);
+						}
+					});
+					gameUpdater.getRepeatTasks().add(renderManager);
+					gameUpdater.getRepeatTasks().add(() -> Utility.sleep(1));
 					gameUpdater.start("Game updater");
 					gameUpdater.waitForSetup();
 					
@@ -181,12 +173,11 @@ public final class StartClient {
 					
 					//display the window now that everything is set up.
 					eventProcessor.setReadyToDisplay();
-					System.out.println("Window displayed");
+					System.out.println("Rendering started.");
 					
 					//wait until the window is closed or escape key is pressed
 					Utility.waitOnCondition(this, () -> exit);
 					
-					//TODO need to fix ordering of these things
 					System.out.print("Exiting... ");
 					eventProcessor.getDisplay().setVisible(false);
 					gameUpdater.stop();

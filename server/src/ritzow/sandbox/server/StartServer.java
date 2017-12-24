@@ -18,7 +18,7 @@ import ritzow.sandbox.world.block.GrassBlock;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
 public final class StartServer {
-	private static final boolean SAVE_WORLD = true;
+	private static final boolean SAVE_WORLD = false;
 	
 	public static void main(String... args) throws SocketException, UnknownHostException {
 		Thread.currentThread().setName("Server Setup");
@@ -64,25 +64,27 @@ public final class StartServer {
 		
 		if(SAVE_WORLD) {
 			try {
-				if(!saveFile.exists()) {
+				if(!saveFile.exists())
 					saveFile.createNewFile();
-				}
-				
-				try(FileOutputStream out = new FileOutputStream(saveFile)) {
-					System.out.print("Saving world... ");
-					world.removeIf(e -> e instanceof PlayerEntity); //remove players before saving to file
-					byte[] serialized = ByteUtil.compress(SerializationProvider.getProvider().serialize(world));
-					out.write(serialized);
-					out.getChannel().truncate(serialized.length);
-					System.out.println("world saved to " + serialized.length + " bytes.");
-				} catch (IOException e) {
-					System.out.println("Error while saving world to file: " + e.getLocalizedMessage());
-				}
+				saveWorld(world, saveFile);
 			} catch (IOException e) {
 				System.out.println("Could not find or create file to save world: " + e.getLocalizedMessage());
 			}
 		} else {
 			System.out.println("Server stopped.");
+		}
+	}
+	
+	public static void saveWorld(World world, File file) {
+		try(FileOutputStream out = new FileOutputStream(file)) {
+			System.out.print("Saving world... ");
+			world.removeIf(e -> e instanceof PlayerEntity); //remove players before saving to file
+			byte[] serialized = ByteUtil.compress(SerializationProvider.getProvider().serialize(world));
+			out.write(serialized);
+			out.getChannel().truncate(serialized.length);
+			System.out.println("world saved to " + serialized.length + " bytes.");
+		} catch (IOException e) {
+			System.out.println("Error while saving world to file: " + e.getLocalizedMessage());
 		}
 	}
 	

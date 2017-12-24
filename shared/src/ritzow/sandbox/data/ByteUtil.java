@@ -14,6 +14,11 @@ import java.util.zip.InflaterOutputStream;
 public final class ByteUtil {
 	public static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
 	
+	public static void checkCapacity(byte[] dest, int offset, int count) {
+		if(count > dest.length - offset)
+			throw new IllegalStateException("capacity exceeded");
+	}
+	
 	public static <T extends Transportable> byte[] serializeCollection(Collection<T> elements, Serializer ser) {
 		byte[][] serialized = new byte[elements.size()][]; //store each serialized object's data
 		int bytes = 0; //for counting total number of bytes
@@ -97,7 +102,11 @@ public final class ByteUtil {
 		return sub;
 	}
 	
-	/* Data composition from bytes */
+	/* bytes to values */
+	
+	public static double getDouble(byte[] array, int index) {
+		return Double.longBitsToDouble(ByteUtil.getLong(array, index));
+	}
 	
 	public static float getFloat(byte[] array, int index) {
 		return Float.intBitsToFloat(getInteger(array, index));
@@ -107,12 +116,26 @@ public final class ByteUtil {
 		return ((array[index] & 255) << 24) | ((array[index + 1] & 255) << 16) | ((array[index + 2] & 255) << 8) | ((array[index + 3] & 255) << 0);
 	}
 	
+	public static long getLong(byte[] array, int index) {
+		long value = 0;
+		for (int i = 0; i < 8; i++) {
+			value = (value << 8) + (array[index + i] & 0xff);
+		}
+		return value;
+	}
+	
 	public static short getShort(byte[] array, int index) {
 		return (short)((array[index] << 8) | (array[index + 1] & 255));
 	}
 	
 	public static boolean getBoolean(byte[] array, int index) {
 		return array[index] == 1 ? true : false;
+	}
+	
+	/* values to bytes */
+	
+	public static void putDouble(byte[] array, int index, double value) {
+		putLong(array, index, Double.doubleToRawLongBits(value));
 	}
 	
 	public static void putFloat(byte[] array, int index, float value) {
@@ -124,6 +147,13 @@ public final class ByteUtil {
 		array[index + 1] = (byte)(value >>> 16);
 		array[index + 2] = (byte)(value >>> 8);
 		array[index + 3] = (byte)(value >>> 0);
+	}
+	
+	public static void putLong(byte[] array, int index, long value) {
+	    for (int i = 7; i >= 0; i--) {
+	        array[index + i] = (byte)(value & 255);
+	        value >>= 8;
+	    }
 	}
 	
 	public static void putShort(byte[] array, int index, short value) {

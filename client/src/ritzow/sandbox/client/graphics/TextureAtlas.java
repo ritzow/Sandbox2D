@@ -31,9 +31,9 @@ public class TextureAtlas {
 		image = atlas;
 	}
 	
-	private static void copyInto(byte[] dest, int row, int column) {
-		
-	}
+//	private static void copyInto(byte[] dest, int row, int column) {
+//		
+//	}
 	
 	public byte[] getData() {
 		return image;

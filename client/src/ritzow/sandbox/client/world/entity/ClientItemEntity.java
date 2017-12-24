@@ -3,7 +3,7 @@ package ritzow.sandbox.client.world.entity;
 import ritzow.sandbox.client.graphics.Graphical;
 import ritzow.sandbox.client.graphics.ModelRenderProgram;
 import ritzow.sandbox.client.graphics.Renderable;
-import ritzow.sandbox.data.DataReader;
+import ritzow.sandbox.data.TransportableDataReader;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.ItemEntity;
 import ritzow.sandbox.world.item.Item;
@@ -17,7 +17,7 @@ public final class ClientItemEntity<I extends Item> extends ItemEntity<I> implem
 		this(entityID, item, (float) (Math.random() * Math.PI * 2), 0, 0);
 	}
 	
-	public ClientItemEntity(DataReader data) {
+	public ClientItemEntity(TransportableDataReader data) {
 		super(data);
 		this.rotation = (float) (Math.random() * Math.PI * 2);
 	}

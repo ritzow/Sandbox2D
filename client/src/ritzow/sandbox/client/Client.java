@@ -28,22 +28,17 @@ import ritzow.sandbox.world.entity.Entity;
 public class Client {
 	private final InetSocketAddress server;
 	private final NetworkController network;
-	private volatile boolean connected;
-	private volatile int unreliableMessageID, reliableMessageID, lastReceivedUnreliableMessageID = -1;
-	
-	/** The World object sent by the server **/
-	private volatile World world;
-	private byte[][] worldPackets;
-	
-	/** The Player object sent by the server for the client to control **/
-	private volatile ClientPlayerEntity player;
-	
-	/** lock object for synchronizing server-initiated actions with the client **/
-	private final Object worldLock, playerLock;
 	private final SerializerReaderWriter serializer;
 	private final Integrater integrater;
 	private final ExecutorService workers;
-	private Runnable onDisconnect;
+	private Runnable disconnectAction;
+	private volatile boolean connected;
+	private int unreliableMessageID, reliableMessageID;
+	
+	private volatile World world;
+	private byte[][] worldPackets;
+	private volatile ClientPlayerEntity player;
+	private final Object worldLock, playerLock;
 	
 	private static final class Integrater extends TaskQueue {
 		public boolean running;
@@ -74,15 +69,6 @@ public class Client {
 				return;
 			DataReader reader = new ByteArrayDataReader(data);
 			short protocol = reader.readShort();
-
-			if(!Protocol.isReliable(protocol)) {
-				if(messageID > lastReceivedUnreliableMessageID) {
-					lastReceivedUnreliableMessageID = messageID;
-				} else {
-					return; //discard if not the latest unreliable message
-				}
-			}
-			
 			try {
 				if(integrater.running) {
 					integrater.add(() -> onReceive(protocol, reader));
@@ -138,7 +124,7 @@ public class Client {
 	}
 	
 	public void onDisconnect(Runnable task) {
-		onDisconnect = task;
+		disconnectAction = task;
 	}
 	
 	public Runnable onReceiveMessageTask() {
@@ -149,27 +135,24 @@ public class Client {
 		world.getForeground().destroy(world, data.readInteger(), data.readInteger());
 	}
 	
-	public boolean connect(int timeout) {
+	public boolean connect() {
 		if(isConnected())
-			throw new IllegalStateException("client already connected to connect to a server");
+			throw new IllegalStateException("client already connected to a server");
+		start();
 		
-		network.start();
 		try {
-			sendConnectRequest(server, timeout);
-			synchronized(server) {
-				server.wait();
-			}
-			if(!connected) {
-				close();
-			}
-			return connected;
+			byte[] packet = new byte[2];
+			ByteUtil.putShort(packet, 0, Protocol.CLIENT_CONNECT_REQUEST);
+			network.sendReliable(server, nextReliableMessageID(), packet, 10, 100);
 		} catch(TimeoutException e) {
-			close();
-			connected = false;
+			stop();
 			return false;
-		} catch (InterruptedException e) {
-			throw new RuntimeException("client connect method should never be interrupted", e);
 		}
+		
+		Utility.waitUnconditionally(server);
+		if(!connected)
+			stop();
+		return connected;
 	}
 	
 	public boolean isConnected() {
@@ -185,19 +168,21 @@ public class Client {
 	}
 	
 	private void disconnect(boolean notifyServer) {
-		if(!isConnected())
-			throw new IllegalStateException("not connected to a server");
+		checkConnected();
 		if(notifyServer) {
 			byte[] packet = new byte[2];
 			ByteUtil.putShort(packet, 0, Protocol.CLIENT_DISCONNECT);
-			send(packet);
+			sendReliable(packet);
 		}
-		connected = false;
-		close();
-		onDisconnect.run();
+		stop();
+		disconnectAction.run();
 	}
 	
-	private void close() {
+	private void start() {
+		network.start();
+	}
+	
+	private void stop() {
 		network.stop();
 		try {
 			workers.shutdown();
@@ -207,29 +192,23 @@ public class Client {
 		}
 	}
 	
-	/**
-	 * Sends data to the currently connected Server
-	 * @param data the data to send, where the first two bytes represent the protocol
-	 * @throws IllegalStateException if the client is not connected to a server
-	 */
-	public void send(byte[] data) {
-		if(!connected)
-			throw new IllegalStateException("client is not connected to a server");
-		if(Protocol.isReliable(ByteUtil.getShort(data, 0))) {
-			try{
-				network.sendReliable(server, nextReliableMessageID(), data, 10, 100);
-			} catch(TimeoutException e) {
-				disconnect(false);
-			}
-		} else {
-			network.sendUnreliable(server, nextUnreliableMessageID(), data);
-		}
+	private void sendReliable(byte[] data) {
+		try{
+			network.sendReliable(server, nextReliableMessageID(), data, 10, 100);
+		} catch(TimeoutException e) {
+			disconnect(false);
+		}		
 	}
 	
-	private void sendConnectRequest(InetSocketAddress server, int timeout) {
-		byte[] packet = new byte[2];
-		ByteUtil.putShort(packet, 0, Protocol.CLIENT_CONNECT_REQUEST);
-		network.sendReliable(server, nextReliableMessageID(), packet, Math.max(1, timeout/100), Math.min(timeout, 100));
+	@SuppressWarnings("unused")
+	private void sendUnreliable(byte[] data) {
+		checkConnected();
+		network.sendUnreliable(server, nextUnreliableMessageID(), data);
+	}
+	
+	private void checkConnected() {
+		if(!isConnected())
+			throw new IllegalStateException("client is not connected to a server");
 	}
 
 	public void sendBlockBreak(int x, int y) {
@@ -237,7 +216,7 @@ public class Client {
 		ByteUtil.putShort(packet, 0, Protocol.CLIENT_BREAK_BLOCK);
 		ByteUtil.putInteger(packet, 2, x);
 		ByteUtil.putInteger(packet, 6, y);
-		send(packet);
+		sendReliable(packet);
 	}
 	
 	public void sendPlayerAction(PlayerAction action, boolean enable) {
@@ -246,7 +225,7 @@ public class Client {
 			ByteUtil.putShort(packet, 0, Protocol.CLIENT_PLAYER_ACTION);
 			packet[2] = action.getCode();
 			ByteUtil.putBoolean(packet, 3, enable);
-			send(packet);
+			sendReliable(packet);
 		} else {
 			throw new IllegalStateException("Client not connected to a server");
 		}
@@ -279,9 +258,7 @@ public class Client {
 	
 	private void processServerConnectAcknowledgement(DataReader data) {
 		connected = data.readBoolean();
-		synchronized(server) {
-			server.notifyAll();
-		}
+		Utility.notify(server);
 	}
 	
 	private void processReceivePlayerEntityID(DataReader data) {
@@ -290,9 +267,7 @@ public class Client {
 			for(Entity e : getWorld()) {
 				if(e.getID() == id) {
 					this.player = (ClientPlayerEntity)e;
-					synchronized(playerLock) {
-						playerLock.notifyAll();
-					}
+					Utility.notify(playerLock);
 					return;
 				}
 			}
@@ -300,14 +275,14 @@ public class Client {
 	}
 	
 	private void processRemoveEntity(DataReader data) {
-		int id = data.readInteger(); //ByteUtil.getInteger(data, 2);
+		int id = data.readInteger();
 		getWorld().removeIf(e -> e.getID() == id);
 	}
 	
 	private void processAddEntity(DataReader data) {
 		try {
-			boolean compressed = data.readBoolean(); //ByteUtil.getBoolean(data, 2);
-			byte[] entity = data.readBytes(data.remaining()); //Arrays.copyOfRange(data, 3, data.length);
+			boolean compressed = data.readBoolean();
+			byte[] entity = data.readBytes(data.remaining());
 			Entity e = serializer.deserialize(compressed ? ByteUtil.decompress(entity) : entity);
 			world.forEach(o -> {
 				if(o.getID() == e.getID())
@@ -346,9 +321,7 @@ public class Client {
 					if(i == worldPackets.length - 1) {
 						world = reconstructWorld(worldPackets, serializer);
 						worldPackets = null; //release the raw data to the garbage collector!
-						synchronized(worldLock) {
-							worldLock.notifyAll();
-						}
+						Utility.notify(worldLock);
 					}
 					break;
 				}

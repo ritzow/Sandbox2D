@@ -4,7 +4,7 @@ import ritzow.sandbox.client.graphics.Graphical;
 import ritzow.sandbox.client.graphics.ModelRenderProgram;
 import ritzow.sandbox.client.graphics.Models;
 import ritzow.sandbox.client.graphics.Renderable;
-import ritzow.sandbox.data.DataReader;
+import ritzow.sandbox.data.TransportableDataReader;
 import ritzow.sandbox.world.component.Luminous;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
@@ -18,7 +18,7 @@ public class ClientPlayerEntity extends PlayerEntity implements Luminous, Render
 		super(entityID);
 	}
 	
-	public ClientPlayerEntity(DataReader input) {
+	public ClientPlayerEntity(TransportableDataReader input) {
 		super(input);
 	}
 
