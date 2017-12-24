@@ -7,7 +7,6 @@ import java.net.UnknownHostException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -15,12 +14,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import ritzow.sandbox.data.ByteUtil;
-import ritzow.sandbox.data.Serializer;
 import ritzow.sandbox.data.SerializerReaderWriter;
 import ritzow.sandbox.network.NetworkController;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.network.Protocol.PlayerAction;
 import ritzow.sandbox.network.TimeoutException;
+import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.block.Block;
 import ritzow.sandbox.world.entity.Entity;
@@ -266,7 +265,7 @@ public class Server {
 		synchronized(clients) {
 			for(ClientState client : clients.values()) {
 				if(sendTest.test(client))
-					network.sendUnreliable(client.address, client.nextUnreliableID(), data);
+					network.sendUnreliable(client.address, data);
 			}
 		}
 	}
@@ -274,7 +273,7 @@ public class Server {
 	private void sendReliable(ClientState client, byte[] data, boolean removeUnresponsive) {
 		try {
 			long time = System.nanoTime();
-			network.sendReliable(client.address, client.nextReliableID(), data, 10, 100);
+			network.sendReliable(client.address, data, 10, 100);
 			client.ping = (int)(System.nanoTime() - time)/1_000_000; //update client ping
 		} catch(TimeoutException e) {
 			if(removeUnresponsive) {
@@ -285,7 +284,7 @@ public class Server {
 	
 	@SuppressWarnings("unused")
 	private void sendUnreliable(ClientState client, byte[] data) {
-		network.sendUnreliable(client.address, client.nextUnreliableID(), data);
+		network.sendUnreliable(client.address, data);
 	}
 	
 	public boolean isConnected(ClientState client) {
@@ -348,7 +347,7 @@ public class Server {
 		byte[] response = new byte[3];
 		ByteUtil.putShort(response, 0, Protocol.SERVER_CONNECT_ACKNOWLEDGMENT);
 		ByteUtil.putBoolean(response, 2, canConnect);
-		network.sendReliable(client, messageID, response, 10, 100);
+		network.sendReliable(client, response, 10, 100);
 	}
 	
 	private void connectClient(InetSocketAddress address) {
@@ -359,7 +358,7 @@ public class Server {
 			
 			if(canConnect) {
 				//create the client's ClientState object to track their information
-				ClientState newClient = new ClientState(1, address);
+				ClientState newClient = new ClientState(address);
 				updater.submitTask(() -> {
 					World world = updater.getWorld();
 					
@@ -368,11 +367,11 @@ public class Server {
 					newClient.player = player;
 					
 					//set the player's position to directly above the ground in the center of the world
-					player.setPositionX(world.getForeground().getWidth()/2);
-					for(int i = world.getForeground().getHeight() - 2; i > 1; i--) {
-						if(world.getForeground().get(player.getPositionX(), i) == null 
-								&& world.getForeground().get(player.getPositionX(), i + 1) == null 
-								&& world.getForeground().get(player.getPositionX(), i - 1) != null) {
+					BlockGrid grid = world.getForeground();
+					float posX = world.getForeground().getWidth()/2;
+					player.setPositionX(posX);
+					for(int i = grid.getHeight() - 2; i > 1; i--) {
+						if(grid.get(posX, i) == null && grid.get(posX, i + 1) == null && grid.get(posX, i - 1) != null) {
 							player.setPositionY(i);
 							break;
 						}
@@ -382,7 +381,7 @@ public class Server {
 					sendAddEntity(player);
 					
 					//send the world to the client
-					for(byte[] packet : buildWorldPackets(world, serialRegistry)) {
+					for(byte[] packet : buildWorldPackets(world)) {
 						sendReliable(newClient, packet, true);
 					}
 					
@@ -396,37 +395,21 @@ public class Server {
 		}
 	}
 	
-	public static byte[][] buildWorldPackets(World world, Serializer ser) {
-		Objects.requireNonNull(world);
-		
-		int headerSize = 2;
-		int dataBytesPerPacket = Protocol.MAX_MESSAGE_LENGTH - headerSize;
-	
+	public byte[][] buildWorldPackets(World world) {
 		//serialize the world for transfer
-		byte[] worldBytes = ByteUtil.compress(ser.serialize(world));
+		byte[] worldBytes = ByteUtil.compress(serialRegistry.serialize(world));
 		
-		//split world data into evenly sized packets and one extra packet if not evenly divisible by max packet size
-		int packetCount = (worldBytes.length/dataBytesPerPacket) + (worldBytes.length % dataBytesPerPacket > 0 ? 1 : 0);
-		
-		//create the array to store all the constructed packets to send, in order
-		byte[][] packets = new byte[1 + packetCount][];
+		//build packets
+		byte[][] packets = ByteUtil.split(worldBytes, Protocol.MAX_MESSAGE_LENGTH - 2, 2, 1);
+		for(int i = 1; i < packets.length; i++) {
+			ByteUtil.putShort(packets[i], 0, Protocol.SERVER_WORLD_DATA);
+		}
 	
 		//create the first packet to send, which contains the number of subsequent packets
 		byte[] head = new byte[6];
 		ByteUtil.putShort(head, 0, Protocol.SERVER_WORLD_HEAD);
-		ByteUtil.putInteger(head, 2, packetCount);
+		ByteUtil.putInteger(head, 2, worldBytes.length);
 		packets[0] = head;
-		
-		//construct the packets containing the world data, which begin with a standard header and contain chunks of world bytes
-		for(int slot = 1, index = 0; slot < packets.length; slot++) {
-			int remaining = worldBytes.length - index;
-			int dataSize = Math.min(dataBytesPerPacket, remaining);
-			byte[] packet = new byte[headerSize + dataSize];
-			ByteUtil.putShort(packet, 0, Protocol.SERVER_WORLD_DATA);
-			System.arraycopy(worldBytes, index, packet, headerSize, dataSize);
-			packets[slot] = packet;
-			index += dataSize;
-		}
 		
 		return packets;
 	}
@@ -437,7 +420,6 @@ public class Server {
 	
 	public static final class ClientState {
 		private final InetSocketAddress address;
-		private final AtomicInteger reliableMessageID, unreliableMessageID;
 		private volatile String username;
 		private volatile PlayerEntity player;
 		private final AtomicInteger disconnectStrikes;
@@ -445,20 +427,10 @@ public class Server {
 		
 		private static final AtomicInteger playerID = new AtomicInteger(1);
 		
-		public ClientState(int initReliable, InetSocketAddress address) {
-			this.reliableMessageID = new AtomicInteger(initReliable);
-			this.unreliableMessageID = new AtomicInteger();
+		public ClientState(InetSocketAddress address) {
 			this.disconnectStrikes = new AtomicInteger();
 			this.address = address;
 			username = "player" + playerID.getAndIncrement();
-		}
-		
-		int nextUnreliableID() {
-			return unreliableMessageID.getAndIncrement();
-		}
-		
-		int nextReliableID() {
-			return reliableMessageID.getAndIncrement();
 		}
 		
 		byte strike() {
