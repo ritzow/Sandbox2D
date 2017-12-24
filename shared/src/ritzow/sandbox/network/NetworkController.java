@@ -13,6 +13,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 import ritzow.sandbox.data.ByteUtil;
 import ritzow.sandbox.util.Utility;
 
@@ -30,19 +31,30 @@ public class NetworkController {
 		}
 	}
 	
-	private static final class MessageIDHolder {
-	    private int reliableMessageID, unreliableMessageID;
+	private static final class ConnectionState {
+	    private int lastReceivedReliableMessageID, lastReceivedUnreliableMessageID;
+	    private final AtomicInteger reliableSendID, unreliableSendID;
 	    
-	    public MessageIDHolder(int reliable, int unreliable) {
-	        this.reliableMessageID = reliable;
-	        this.unreliableMessageID = unreliable;
+	    public ConnectionState(int reliable, int unreliable) {
+	        this.lastReceivedReliableMessageID = reliable;
+	        this.lastReceivedUnreliableMessageID = unreliable;
+	        this.reliableSendID = new AtomicInteger(0);
+	        this.unreliableSendID = new AtomicInteger(0);
+	    }
+	    
+	    public int nextReliableSendID() {
+	    	return reliableSendID.getAndIncrement();
+	    }
+	    
+	    public int nextUnreliableSendID() {
+	    	return unreliableSendID.getAndIncrement();
 	    }
 	}
 	
 	//fields
 	private final DatagramSocket socket;
 	private final Queue<MessageAddressPair> reliableQueue;
-	private final Map<InetSocketAddress, MessageIDHolder> connections;
+	private final Map<InetSocketAddress, ConnectionState> connections;
 	private final ThreadLocal<DatagramPacket> packets;
 	private final MessageProcessor messageProcessor;
 	private volatile boolean started, exit;
@@ -56,7 +68,7 @@ public class NetworkController {
 		messageProcessor = processor;
 		socket = new DatagramSocket(bindAddress);
 		reliableQueue = new ConcurrentLinkedQueue<MessageAddressPair>();
-		connections = Collections.synchronizedMap(new HashMap<InetSocketAddress, MessageIDHolder>());
+		connections = Collections.synchronizedMap(new HashMap<InetSocketAddress, ConnectionState>());
 		packets = ThreadLocal.withInitial(() -> new DatagramPacket(new byte[Protocol.MAX_MESSAGE_LENGTH + 5], 0));
 	}
 	
@@ -74,6 +86,13 @@ public class NetworkController {
 		void process(InetSocketAddress sender, int messageID, byte[] data);
 	}
 	
+	private ConnectionState getState(InetSocketAddress address) {
+		ConnectionState state = connections.get(address);
+		if(state == null)
+			connections.put(address, state = new ConnectionState(-1, -1));
+		return state;
+	}
+	
 	/**
 	 * Send a message reliably, blocking until the message is received or a specified number 
 	 * of attempts have been made to send the message.
@@ -82,11 +101,12 @@ public class NetworkController {
 	 * @param data the data to send to the recipient.
 	 * @throws TimeoutException if all send attempts have occurred but no message was received
 	 */
-	public void sendReliable(InetSocketAddress recipient, int messageID, byte[] data, int attempts, int resendInterval) throws TimeoutException {
+	public void sendReliable(InetSocketAddress recipient, byte[] data, int attempts, int resendInterval) throws TimeoutException {
 		if(attempts < 1)
 			throw new IllegalArgumentException("attempts must be greater than 0");
 		if(resendInterval < 0)
 			throw new IllegalArgumentException("resendInterval must be greater than or equal to zero");
+		int messageID = getState(recipient).nextReliableSendID();
 		DatagramPacket packet = getPacket(recipient, RELIABLE_TYPE, messageID, data);
 		MessageAddressPair pair = new MessageAddressPair(recipient, messageID);
 		synchronized(pair) {
@@ -106,6 +126,20 @@ public class NetworkController {
 				reliableQueue.remove(pair); //remove the timed out message
 				throw new TimeoutException();
 			}
+		}
+	}
+
+	/**
+	 * Sends a message without ensuring it is received by the recipient.
+	 * @param recipient the address that should receive the message.
+	 * @param data the message data.
+	 */
+	public void sendUnreliable(InetSocketAddress recipient, byte[] data) {
+		try {
+			socket.send(getPacket(recipient, UNRELIABLE_TYPE, getState(recipient).nextUnreliableSendID(), data));
+		} catch(IOException e) {
+			e.printStackTrace();
+			stop();
 		}
 	}
 	
@@ -230,28 +264,28 @@ public class NetworkController {
 						}
 					}
 				} else {
-					MessageIDHolder holder = connections.get(sender);
+					ConnectionState holder = connections.get(sender);
 					if(type == RELIABLE_TYPE) { //message is reliable
 						if(holder == null) {
 							//if sender isn't registered yet, add it to map,
 							//if the ack isn't received, it will be resent on next send
 							sendResponse(sender, messageID);
-							connections.put(sender, new MessageIDHolder(messageID, -1));
+							connections.put(sender, new ConnectionState(messageID, -1));
 							messageProcessor.process(sender, messageID, getDataCopy(buffer));
-						} else if(messageID == holder.reliableMessageID + 1) {
+						} else if(messageID == holder.lastReceivedReliableMessageID + 1) {
 							//if the message is the next one, process it and update last message
 							sendResponse(sender, messageID);
-							holder.reliableMessageID = messageID;
+							holder.lastReceivedReliableMessageID = messageID;
 							messageProcessor.process(sender, messageID, getDataCopy(buffer));
-						} else if(messageID < holder.reliableMessageID) { //message already received
+						} else if(messageID < holder.lastReceivedReliableMessageID) { //message already received
 							sendResponse(sender, messageID);
 						} //else: message received too early
 					} else if(type == UNRELIABLE_TYPE) { //message is unreliable
 						if(holder == null) {
-							connections.put(sender, new MessageIDHolder(-1, messageID));
+							connections.put(sender, new ConnectionState(-1, messageID));
 							messageProcessor.process(sender, messageID, getDataCopy(buffer));
-						} else if(messageID > holder.unreliableMessageID) {
-							holder.unreliableMessageID = messageID;
+						} else if(messageID > holder.lastReceivedUnreliableMessageID) {
+							holder.lastReceivedUnreliableMessageID = messageID;
 							messageProcessor.process(sender, messageID, getDataCopy(buffer));
 						}
 					}
