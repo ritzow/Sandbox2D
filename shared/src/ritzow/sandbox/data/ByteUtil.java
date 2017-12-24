@@ -19,6 +19,28 @@ public final class ByteUtil {
 			throw new IllegalStateException("capacity exceeded");
 	}
 	
+	/**
+	 * Splits source into arrays of at most {@code length} bytes.
+	 * @param source the source array.
+	 * @param length the maximum number of bytes in each returned array.
+	 * @param padding number of bytes of extra space to put at the beginning of each destination array.
+	 * @param extraArrays number of extra null slots to add at the beginning of the returned arrays.
+	 * @return an array of the split arrays.
+	 */
+	public static byte[][] split(byte[] source, int length, int padding, int extraArrays) {
+		int arraycount = (source.length/length) + (source.length % length > 0 ? 1 : 0);
+		byte[][] dest = new byte[extraArrays + arraycount][];
+		for(int i = extraArrays, pos = 0; i <= arraycount; i++) {
+			int remaining = source.length - pos;
+			int dataSize = Math.min(length, remaining);
+			byte[] packet = new byte[padding + dataSize];
+			System.arraycopy(source, pos, packet, padding, dataSize);
+			dest[i] = packet;
+			pos += dataSize;
+		}
+		return dest;
+	}
+	
 	public static <T extends Transportable> byte[] serializeCollection(Collection<T> elements, Serializer ser) {
 		byte[][] serialized = new byte[elements.size()][]; //store each serialized object's data
 		int bytes = 0; //for counting total number of bytes
@@ -88,7 +110,7 @@ public final class ByteUtil {
 	}
 	
 	/**
-	 * @param original the array to copy
+	 * @param source the array to copy
 	 * @param destination the destination array
 	 * @param offset the offset into the destination array
 	 */

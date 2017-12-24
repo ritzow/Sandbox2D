@@ -77,14 +77,31 @@ public final class Utility {
 	public static void waitOnCondition(Object lock, BooleanSupplier condition) {
 		if(!condition.getAsBoolean()) {
 			synchronized(lock) {
-				while(!condition.getAsBoolean()) {
-					try {
-						lock.wait();
-					} catch(InterruptedException e) {
-						throw new RuntimeException("waitOnCondition was interrupted", e);
-					}
+				try {
+					lock.wait();
+				} catch(InterruptedException e) {
+					throwInterrupted(e);
+				}
+				if(!condition.getAsBoolean())
+					throw new IllegalStateException("condition not met");
+			}
+		}
+	}
+	
+	public static void waitOnCondition(Object lock, long timeoutMillis, BooleanSupplier condition) {
+		if(timeoutMillis == 0)
+			throw new IllegalArgumentException("timeout of 0 not allowed, use other overload");
+		if(!condition.getAsBoolean()) {
+			long start = System.currentTimeMillis();
+			synchronized(lock) {
+				try {
+					lock.wait(timeoutMillis);
+				} catch(InterruptedException e) {
+					throwInterrupted(e);
 				}
 			}
+			if((System.currentTimeMillis() - start) < timeoutMillis && !condition.getAsBoolean())
+				throw new IllegalStateException("condition not met");
 		}
 	}
 	
