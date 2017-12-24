@@ -32,13 +32,15 @@ public class Client {
 	private final Integrater integrater;
 	private final ExecutorService workers;
 	private Runnable disconnectAction;
-	private volatile boolean connected;
-	private int unreliableMessageID, reliableMessageID;
+	private volatile byte connectedStatus;
 	
 	private volatile World world;
-	private byte[][] worldPackets;
+	private byte[] worldData;
+	private int worldBytesRemaining;
 	private volatile ClientPlayerEntity player;
 	private final Object worldLock, playerLock;
+	
+	private static final byte STATUS_NOT_CONNECTED = 0, STATUS_REJECTED = 1, STATUS_CONNECTED = 2;
 	
 	private static final class Integrater extends TaskQueue {
 		public boolean running;
@@ -93,7 +95,8 @@ public class Client {
 				processServerConnectAcknowledgement(data);
 				break;
 			case Protocol.SERVER_WORLD_HEAD:
-				worldPackets = new byte[data.readInteger()][];
+				worldBytesRemaining = data.readInteger();
+				worldData = new byte[worldBytesRemaining];
 				break;
 			case Protocol.SERVER_WORLD_DATA:
 				processReceiveWorldData(data);
@@ -139,24 +142,24 @@ public class Client {
 		if(isConnected())
 			throw new IllegalStateException("client already connected to a server");
 		start();
-		
-		try {
-			byte[] packet = new byte[2];
-			ByteUtil.putShort(packet, 0, Protocol.CLIENT_CONNECT_REQUEST);
-			network.sendReliable(server, nextReliableMessageID(), packet, 10, 100);
-		} catch(TimeoutException e) {
-			stop();
-			return false;
+		synchronized(server) {
+			try {
+				byte[] packet = new byte[2];
+				ByteUtil.putShort(packet, 0, Protocol.CLIENT_CONNECT_REQUEST);
+				network.sendReliable(server, packet, 10, 100);
+			} catch(TimeoutException e) {
+				stop();
+				return false;
+			}
+			Utility.waitOnCondition(server, 1000, () -> connectedStatus != STATUS_NOT_CONNECTED);
 		}
-		
-		Utility.waitUnconditionally(server);
-		if(!connected)
+		if(connectedStatus != STATUS_CONNECTED)
 			stop();
-		return connected;
+		return isConnected();
 	}
 	
 	public boolean isConnected() {
-		return connected;
+		return connectedStatus == STATUS_CONNECTED;
 	}
 	
 	public InetSocketAddress getServerAddress() {
@@ -194,7 +197,7 @@ public class Client {
 	
 	private void sendReliable(byte[] data) {
 		try{
-			network.sendReliable(server, nextReliableMessageID(), data, 10, 100);
+			network.sendReliable(server, data, 10, 100);
 		} catch(TimeoutException e) {
 			disconnect(false);
 		}		
@@ -203,7 +206,7 @@ public class Client {
 	@SuppressWarnings("unused")
 	private void sendUnreliable(byte[] data) {
 		checkConnected();
-		network.sendUnreliable(server, nextUnreliableMessageID(), data);
+		network.sendUnreliable(server, data);
 	}
 	
 	private void checkConnected() {
@@ -231,14 +234,6 @@ public class Client {
 		}
 	}
 	
-	private int nextReliableMessageID() {
-		return reliableMessageID++;
-	}
-	
-	private int nextUnreliableMessageID() {
-		return unreliableMessageID++;
-	}
-	
 	public World getWorld() {
 		Utility.waitOnCondition(worldLock, () -> world != null);
 		return world;
@@ -257,7 +252,7 @@ public class Client {
 	}
 	
 	private void processServerConnectAcknowledgement(DataReader data) {
-		connected = data.readBoolean();
+		connectedStatus = data.readBoolean() ? STATUS_CONNECTED : STATUS_REJECTED;
 		Utility.notify(server);
 	}
 	
@@ -309,45 +304,16 @@ public class Client {
 	}
 	
 	private void processReceiveWorldData(DataReader data) {
-		if(worldPackets == null)
+		if(worldData == null)
 			throw new IllegalStateException("world head packet has not been received");
-		synchronized(worldPackets) {
-			for(int i = 0; i < worldPackets.length; i++) {
-				//find an empty slot to put the received data
-				if(worldPackets[i] == null) {
-					worldPackets[i] = data.readBytes(data.remaining());
-					
-					//deserialize the world after receiving the final packet
-					if(i == worldPackets.length - 1) {
-						world = reconstructWorld(worldPackets, serializer);
-						worldPackets = null; //release the raw data to the garbage collector!
-						Utility.notify(worldLock);
-					}
-					break;
-				}
+		synchronized(worldData) {
+			int remaining = data.remaining();
+			ByteUtil.copy(data.readBytes(remaining), worldData, worldData.length - worldBytesRemaining);
+			if((worldBytesRemaining -= remaining) == 0) {
+				world = serializer.deserialize(ByteUtil.decompress(worldData));
+				worldData = null; //release the raw data to the garbage collector!
+				Utility.notify(worldLock);
 			}
 		}
-	}
-
-	//TODO this should be generalized for anything spread accros packets
-	private static World reconstructWorld(byte[][] data, SerializerReaderWriter deserializer) {
-		final int headerSize = 0; //for WORLD_DATA protocol id
-		//create a sum of the number of bytes so that a single byte array can be allocated
-		int bytes = 0;
-		for(byte[] a : data) {
-			bytes += (a.length - headerSize);
-		}
-		
-		//the size of the world data (sum of all arrays without 2 byte headers)
-		byte[] worldBytes = new byte[bytes];
-		
-		//copy the received packets into the final world data array
-		int index = 0;
-		for(byte[] array : data) {
-			System.arraycopy(array, headerSize, worldBytes, index, array.length - headerSize);
-			index += (array.length - headerSize);
-		}
-		
-		return deserializer.deserialize(ByteUtil.decompress(worldBytes));
 	}
 }
