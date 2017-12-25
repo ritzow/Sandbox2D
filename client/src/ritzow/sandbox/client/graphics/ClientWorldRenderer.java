@@ -11,22 +11,22 @@ import ritzow.sandbox.client.world.block.ClientBlock;
 import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
 
-public final class ClientGameRenderer implements Renderer {
+public final class ClientWorldRenderer implements Renderer {
 	private final ModelRenderProgram modelProgram;
 //	private final LightRenderProgram lightProgram;
 	private final Framebuffer framebuffer;
-	private final Texture diffuseTexture;
-	private final Texture finalTexture;
+	private final OpenGLTexture diffuseTexture;
+	private final OpenGLTexture finalTexture;
 	private int previousWidth, previousHeight;
 	private final World world;
 	
-	public ClientGameRenderer(ModelRenderProgram modelProgram, LightRenderProgram lightProgram, World world) {
+	public ClientWorldRenderer(ModelRenderProgram modelProgram, LightRenderProgram lightProgram, World world) {
 		this.world = world;
 		this.modelProgram = modelProgram;
 //		this.lightProgram = lightProgram;
 		this.framebuffer = new Framebuffer();
-		this.diffuseTexture = new Texture(100, 100);
-		this.finalTexture = new Texture(100, 100);
+		this.diffuseTexture = new OpenGLTexture(100, 100);
+		this.finalTexture = new OpenGLTexture(100, 100);
 		framebuffer.attachTexture(diffuseTexture, GL_COLOR_ATTACHMENT0);
 		framebuffer.attachTexture(finalTexture, GL_COLOR_ATTACHMENT1);
 		GraphicsUtility.checkErrors();

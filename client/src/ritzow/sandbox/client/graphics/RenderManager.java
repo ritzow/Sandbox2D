@@ -14,8 +14,6 @@ import static org.lwjgl.opengl.GL30.GL_READ_FRAMEBUFFER;
 import static org.lwjgl.opengl.GL30.glBindFramebuffer;
 import static org.lwjgl.opengl.GL30.glBlitFramebuffer;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -42,13 +40,6 @@ public final class RenderManager implements Runnable, FramebufferSizeHandler, Wi
 		glfwSwapInterval(0);
 		glDisable(GL_DEPTH_TEST);
 		glEnable(GL_BLEND);
-		
-		try {
-			Textures.loadAll(new File("resources/assets/textures"));
-		} catch(IOException e) {
-			throw new RuntimeException(e);
-		}
-		
 		GraphicsUtility.checkErrors();
 	}
 

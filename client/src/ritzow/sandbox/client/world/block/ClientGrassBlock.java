@@ -1,9 +1,9 @@
 package ritzow.sandbox.client.world.block;
 
-import ritzow.sandbox.client.graphics.Models;
 import ritzow.sandbox.data.ByteUtil;
 import ritzow.sandbox.data.DataReader;
 import ritzow.sandbox.data.Serializer;
+import ritzow.sandbox.client.graphics.RenderConstants;
 
 public class ClientGrassBlock extends ClientBlock {
 	
@@ -17,7 +17,7 @@ public class ClientGrassBlock extends ClientBlock {
 
 	@Override
 	public int getModelIndex() {
-		return Models.GRASS_BLOCK;
+		return RenderConstants.MODEL_GRASS_BLOCK;
 	}
 
 	@Override

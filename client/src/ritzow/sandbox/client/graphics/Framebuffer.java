@@ -42,7 +42,7 @@ public final class Framebuffer {
 		glFramebufferTexture2D(GL_FRAMEBUFFER, location, GL_TEXTURE_2D, texture, 0);
 	}
 	
-	public void attachTexture(Texture texture, int location) {
+	public void attachTexture(OpenGLTexture texture, int location) {
 		glBindFramebuffer(GL_FRAMEBUFFER, framebufferID);
 		texture.bind();
 		glFramebufferTexture2D(GL_FRAMEBUFFER, location, GL_TEXTURE_2D, texture.id, 0);

@@ -2,7 +2,7 @@ package ritzow.sandbox.client.world.entity;
 
 import ritzow.sandbox.client.graphics.Graphical;
 import ritzow.sandbox.client.graphics.ModelRenderProgram;
-import ritzow.sandbox.client.graphics.Models;
+import ritzow.sandbox.client.graphics.RenderConstants;
 import ritzow.sandbox.client.graphics.Renderable;
 import ritzow.sandbox.data.TransportableDataReader;
 import ritzow.sandbox.world.component.Luminous;
@@ -24,8 +24,8 @@ public class ClientPlayerEntity extends PlayerEntity implements Luminous, Render
 
 	@Override
 	public void render(ModelRenderProgram renderer) {
-		renderer.render(Models.GREEN_FACE, 1.0f, positionX, positionY + 0.5f, 1.0f, 1.0f, 0.0f);
-		renderer.render(Models.RED_SQUARE, 1.0f, positionX, positionY - 0.5f, 1.0f, 1.0f, positionX);
+		renderer.render(RenderConstants.MODEL_GREEN_FACE, 1.0f, positionX, positionY + 0.5f, 1.0f, 1.0f, 0.0f);
+		renderer.render(RenderConstants.MODEL_RED_SQUARE, 1.0f, positionX, positionY - 0.5f, 1.0f, 1.0f, positionX);
 		
 		Graphical selectedItem = (Graphical)inventory.get(selected);
 		if(selectedItem != null) {

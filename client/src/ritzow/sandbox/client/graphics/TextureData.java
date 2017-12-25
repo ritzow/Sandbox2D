@@ -1,6 +1,6 @@
 package ritzow.sandbox.client.graphics;
 
-class TextureImage implements Comparable<TextureImage> {
+class TextureData implements Comparable<TextureData> {
 	private final int width;
 	private final int bytesPerPixel;
 	private final byte[] data;
@@ -11,7 +11,7 @@ class TextureImage implements Comparable<TextureImage> {
 	 * @param bytesPerPixel the number of bytes per pixel
 	 * @param data the texture data
 	 */
-	public TextureImage(int widthPixels, int bytesPerPixel, byte[] data) {
+	public TextureData(int widthPixels, int bytesPerPixel, byte[] data) {
 		this.width = widthPixels;
 		this.bytesPerPixel = bytesPerPixel;
 		this.data = data;
@@ -32,9 +32,13 @@ class TextureImage implements Comparable<TextureImage> {
 	public int getBytesPerPixel() {
 		return bytesPerPixel;
 	}
+	
+	private int pixelCount() {
+		return getWidth() * getHeight();
+	}
 
 	@Override
-	public int compareTo(TextureImage other) { //larger (more pixels) textures come first
-		return other.getWidth() * other.getHeight() - getWidth() * getHeight();
+	public int compareTo(TextureData other) {
+		return other.pixelCount() - pixelCount(); //images with more pixels come first
 	}
 }

@@ -2,23 +2,17 @@ package ritzow.sandbox.client.world.entity;
 
 import ritzow.sandbox.client.graphics.ModelRenderProgram;
 import ritzow.sandbox.client.graphics.Renderable;
-import ritzow.sandbox.data.DataReader;
-import ritzow.sandbox.data.Serializer;
+import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.Entity;
 
 public class ParticleEntity extends Entity implements Renderable {
-	protected final int model;
-	protected final float scaleX;
-	protected final float scaleY;
-	protected float rotation;
-	protected float opacity;
-	protected float rotationSpeed;
-	protected final boolean fade;
-	protected final long birthtime;
-	protected final long lifetime;
-	
-	protected volatile boolean remove;
+	private final int model;
+	private final float scaleX, scaleY, rotationSpeed;
+	private float rotation, opacity;
+	private final long birthtime, lifetime;
+	private final boolean fade;
+	private boolean remove;
 
 	public ParticleEntity(int entityID, int model, float scaleX, float scaleY, long lifetime, boolean fade) {
 		super(entityID);
@@ -27,17 +21,8 @@ public class ParticleEntity extends Entity implements Renderable {
 		this.scaleY = scaleY;
 		this.fade = fade;
 		this.lifetime = lifetime;
+		this.rotationSpeed = Utility.randomFloat(-0.5f, 0.5f);
 		this.birthtime = System.currentTimeMillis();
-	}
-	
-	public ParticleEntity(DataReader input) {
-		super(-1);
-		throw new UnsupportedOperationException("not implemented");
-	}
-	
-	@Override
-	public byte[] getBytes(Serializer ser) {
-		throw new UnsupportedOperationException("not implemented");
 	}
 	
 	@Override
