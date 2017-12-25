@@ -88,8 +88,7 @@ public class Client {
 		switch(protocol) {
 			case Protocol.CONSOLE_MESSAGE:
 				int length = data.remaining();
-				System.out.println("[Server Message] " + 
-						new String(data.readBytes(data.remaining()), 0, length, Protocol.CHARSET));
+				System.out.println("[Server Message] " + new String(data.readBytes(data.remaining()), 0, length, Protocol.CHARSET));
 				break;
 			case Protocol.SERVER_CONNECT_ACKNOWLEDGMENT:
 				processServerConnectAcknowledgement(data);

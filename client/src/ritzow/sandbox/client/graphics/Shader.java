@@ -19,7 +19,7 @@ public final class Shader {
 		FRAGMENT(GL20.GL_FRAGMENT_SHADER),
 		GEOMETRY(GL32.GL_GEOMETRY_SHADER);
 		
-		int glType;
+		private int glType;
 		
 		ShaderType(int glType) {
 			this.glType = glType;

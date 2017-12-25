@@ -8,7 +8,7 @@ import static org.lwjgl.opengl.GL20.glVertexAttribPointer;
 import static org.lwjgl.opengl.GL30.glBindVertexArray;
 import static org.lwjgl.opengl.GL30.glGenVertexArrays;
 
-public final class Model {
+public final class RenderData {
 	public final int vao;
 	public final int vertexCount;
 	public final int indices;
@@ -16,7 +16,7 @@ public final class Model {
 	public final int textureCoordinates;
 	public final int texture;
 	
-	public Model(int vertexCount, int indices, int positions, int textureCoordinates, int texture) {
+	public RenderData(int vertexCount, int indices, int positions, int textureCoordinates, int texture) {
 		this.vao = glGenVertexArrays();
 		this.vertexCount = vertexCount;
 		this.indices = indices;
@@ -27,12 +27,12 @@ public final class Model {
 		//bind the vao and specify its layout
 		glBindVertexArray(vao);
 		glBindBuffer(GL_ARRAY_BUFFER, positions);
-		glEnableVertexAttribArray(RendererConstants.ATTRIBUTE_POSITIONS);
-		glVertexAttribPointer(RendererConstants.ATTRIBUTE_POSITIONS, 2, GL_FLOAT, false, 0, 0);
+		glEnableVertexAttribArray(RenderConstants.ATTRIBUTE_POSITIONS);
+		glVertexAttribPointer(RenderConstants.ATTRIBUTE_POSITIONS, 2, GL_FLOAT, false, 0, 0);
 		
 		glBindBuffer(GL_ARRAY_BUFFER, textureCoordinates);
-		glEnableVertexAttribArray(RendererConstants.ATTRIBUTE_TEXTURE_COORDS);
-		glVertexAttribPointer(RendererConstants.ATTRIBUTE_TEXTURE_COORDS, 2, GL_FLOAT, false, 0, 0);
+		glEnableVertexAttribArray(RenderConstants.ATTRIBUTE_TEXTURE_COORDS);
+		glVertexAttribPointer(RenderConstants.ATTRIBUTE_TEXTURE_COORDS, 2, GL_FLOAT, false, 0, 0);
 		glBindVertexArray(0);
 		
 		GraphicsUtility.checkErrors();

@@ -54,6 +54,8 @@ public final class StartClient {
 				
 				private void initGraphics(RenderManager renderManager, World world, CameraController cameraGrip) {
 					try {
+						renderManager.initialize(); //set up opengl
+						
 						int indices = GraphicsUtility.uploadIndexData(0, 1, 2, 0, 2, 3);
 						
 						int positions = GraphicsUtility.uploadVertexData(
@@ -70,7 +72,11 @@ public final class StartClient {
 								1f, 1f	
 						);
 						
-						GraphicsUtility.checkErrors();
+						try {
+							Textures.loadAll(new File("resources/assets/textures"));
+						} catch(IOException e) {
+							throw new RuntimeException(e);
+						}
 						
 						ModelRenderProgram modelProgram = new ModelRenderProgram(
 								new Shader(new FileInputStream("resources/shaders/modelVertexShader"), ShaderType.VERTEX),
@@ -78,17 +84,18 @@ public final class StartClient {
 								cameraGrip.getCamera()
 								);
 						
-						modelProgram.register(Models.GRASS_BLOCK,	new Model(6, indices, positions, textureCoordinates, Textures.GRASS.id));
-						modelProgram.register(Models.DIRT_BLOCK,	new Model(6, indices, positions, textureCoordinates, Textures.DIRT.id));
-						modelProgram.register(Models.GREEN_FACE,	new Model(6, indices, positions, textureCoordinates, Textures.GREEN_FACE.id));
-						modelProgram.register(Models.RED_SQUARE,	new Model(6, indices, positions, textureCoordinates, Textures.RED_SQUARE.id));
+						modelProgram.register(RenderConstants.MODEL_GRASS_BLOCK,new RenderData(6, indices, positions, textureCoordinates, Textures.GRASS.id));
+						modelProgram.register(RenderConstants.MODEL_DIRT_BLOCK,	new RenderData(6, indices, positions, textureCoordinates, Textures.DIRT.id));
+						modelProgram.register(RenderConstants.MODEL_GREEN_FACE,	new RenderData(6, indices, positions, textureCoordinates, Textures.GREEN_FACE.id));
+						modelProgram.register(RenderConstants.MODEL_RED_SQUARE,	new RenderData(6, indices, positions, textureCoordinates, Textures.RED_SQUARE.id));
 						
 						LightRenderProgram lightProgram = new LightRenderProgram(
 								new Shader(new FileInputStream("resources/shaders/lightVertexShader"), ShaderType.VERTEX),
 								new Shader(new FileInputStream("resources/shaders/lightFragmentShader"), ShaderType.FRAGMENT),
 								cameraGrip.getCamera()
 								);
-						renderManager.getRenderers().add(new ClientGameRenderer(modelProgram, lightProgram, world));
+						renderManager.getRenderers().add(new ClientWorldRenderer(modelProgram, lightProgram, world));
+						GraphicsUtility.checkErrors();
 					} catch (IOException | OpenGLException e) {
 						throw new RuntimeException(e);
 					}
@@ -143,10 +150,7 @@ public final class StartClient {
 					controllers.forEach(eventProcessor.getDisplay().getInputManager()::add);
 					
 					RenderManager renderManager = eventProcessor.getDisplay().getRenderManager();
-					RepeatUpdater gameUpdater = new RepeatUpdater(() -> {
-						renderManager.initialize();
-						initGraphics(renderManager, world, cameraGrip);
-					}, renderManager::shutdown);
+					RepeatUpdater gameUpdater = new RepeatUpdater(() -> initGraphics(renderManager, world, cameraGrip), renderManager::shutdown);
 					
 					gameUpdater.getRepeatTasks().add(client.onReceiveMessageTask());
 					gameUpdater.getRepeatTasks().addAll(controllers);

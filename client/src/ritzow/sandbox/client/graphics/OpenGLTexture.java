@@ -5,11 +5,14 @@ import static org.lwjgl.opengl.GL12.GL_CLAMP_TO_EDGE;
 
 import java.nio.ByteBuffer;
 
-public final class Texture {
+/**
+ * Represents an OpenGL texture
+ */
+public final class OpenGLTexture {
 	public final int id;
 	private final boolean fromImage;
 	
-	public Texture(ByteBuffer pixels, int width, int height) {
+	public OpenGLTexture(ByteBuffer pixels, int width, int height) {
 		this.id = glGenTextures();
 		this.fromImage = true;
 		setup(id);
@@ -17,7 +20,7 @@ public final class Texture {
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 	
-	public Texture(int width, int height) {
+	public OpenGLTexture(int width, int height) {
 		this.id = glGenTextures();
 		this.fromImage = false;
 		setSize(width, height);

@@ -1,23 +1,8 @@
 package ritzow.sandbox.client.graphics;
 
 public final class ImmutableGraphics implements Graphics {
-	protected final int model;
-	protected final float opacity;
-	protected final float scaleX;
-	protected final float scaleY;
-	protected final float rotation;
-	
-	public ImmutableGraphics(int modelIndex) {
-		this(modelIndex, 1.0f, 1.0f, 1.0f, 0.0f);
-	}
-	
-	public ImmutableGraphics(Graphics graphics, float opacity, float scaleX, float scaleY, float rotation) {
-		this.model = graphics.getModelID();
-		this.opacity = graphics.getOpacity() * opacity;
-		this.scaleX = graphics.getScaleX() * scaleX;
-		this.scaleY = graphics.getScaleY() * scaleY;
-		this.rotation = graphics.getRotation() + rotation;
-	}
+	private final int model;
+	private final float opacity, rotation, scaleX, scaleY;
 	
 	public ImmutableGraphics(int modelIndex, float opacity, float scaleX, float scaleY, float rotation) {
 		this.model = modelIndex;

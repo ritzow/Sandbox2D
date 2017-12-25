@@ -11,7 +11,6 @@ import ritzow.sandbox.world.item.BlockItem;
 import ritzow.sandbox.world.item.Item;
 
 public final class ClientBlockItem extends BlockItem implements Graphical {
-	//protected final ClientBlock block;
 	protected final Graphics graphics;
 	
 	public ClientBlockItem(TransportableDataReader input) {
@@ -21,7 +20,6 @@ public final class ClientBlockItem extends BlockItem implements Graphical {
 	
 	public ClientBlockItem(ClientBlock block) {
 		super(block);
-		//this.block = block;
 		this.graphics = new ImmutableGraphics(block.getModelIndex(), 1.0f, 1.0f, 1.0f, 0.0f);
 	}
 	

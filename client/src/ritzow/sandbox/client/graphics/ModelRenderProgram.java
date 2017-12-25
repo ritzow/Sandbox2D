@@ -58,14 +58,14 @@ public final class ModelRenderProgram extends ShaderProgram {
 			0, 0, 0, 1,
 	};
 	
-	private final Map<Integer, Model> models;
+	private final Map<Integer, RenderData> models;
 	
 	public ModelRenderProgram(Shader vertexShader, Shader fragmentShader, Camera camera) {
 		super(vertexShader, fragmentShader);
-		models = new HashMap<Integer, Model>();
+		models = new HashMap<Integer, RenderData>();
 		GraphicsUtility.checkProgramCompilation(this);
-		glBindAttribLocation(programID, RendererConstants.ATTRIBUTE_POSITIONS, "position");
-		glBindAttribLocation(programID, RendererConstants.ATTRIBUTE_TEXTURE_COORDS, "textureCoord");
+		glBindAttribLocation(programID, RenderConstants.ATTRIBUTE_POSITIONS, "position");
+		glBindAttribLocation(programID, RenderConstants.ATTRIBUTE_TEXTURE_COORDS, "textureCoord");
 		this.uniform_transform = getUniformID("transform");
 		this.uniform_opacity = getUniformID("opacity");
 		this.uniform_view = getUniformID("view");
@@ -76,7 +76,7 @@ public final class ModelRenderProgram extends ShaderProgram {
 		GraphicsUtility.checkErrors();
 	}
 	
-	public void register(int modelID, Model model) {
+	public void register(int modelID, RenderData model) {
 		if(models.containsKey(modelID))
 			throw new IllegalArgumentException("modelID already in use");
 		models.put(modelID, model);
@@ -99,7 +99,7 @@ public final class ModelRenderProgram extends ShaderProgram {
 	 * @param model the model to render
 	 */
 	public void render(int modelID) {
-		Model model = models.get(modelID);
+		RenderData model = models.get(modelID);
 		if(model == null)
 			throw new IllegalArgumentException("no model exists for model id " + modelID);
 		glBindVertexArray(model.vao);

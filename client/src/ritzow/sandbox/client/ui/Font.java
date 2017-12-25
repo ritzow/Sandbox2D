@@ -4,13 +4,13 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Scanner;
-import ritzow.sandbox.client.graphics.Texture;
+import ritzow.sandbox.client.graphics.OpenGLTexture;
 import ritzow.sandbox.client.graphics.Textures;
 
 public final class Font {
 	
 	protected final int[] glyphs;
-	protected final Texture charsetLatin;
+	protected final OpenGLTexture charsetLatin;
 	protected final String name;
 	
 	/** A class for loading and managing fonts, should only be used in GraphicsManager 
@@ -74,7 +74,7 @@ public final class Font {
 	}
 	
 	@SuppressWarnings("static-method")
-	protected void loadCharacter(char c, Texture characterSheet, float[] textureCoordinates) {
+	protected void loadCharacter(char c, OpenGLTexture characterSheet, float[] textureCoordinates) {
 		throw new UnsupportedOperationException("character loading needs to be rewritten");
 		//glyphs[(int)c] = new Model(6, Models.SQUARE_POSITIONS_BUFFER, characterSheet, new TextureCoordinateBuffer(textureCoordinates), Models.RECTANGLE_INDICES_BUFFER);
 	}
