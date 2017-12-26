@@ -1,9 +1,9 @@
 #Project
 bin/
-data/
+/data/
 libraries/
-oldcode/
-build/
+/oldcode/
+/build/
 
 #Eclipse
 .settings
