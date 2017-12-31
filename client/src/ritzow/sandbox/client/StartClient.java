@@ -23,6 +23,8 @@ import ritzow.sandbox.client.input.controller.Controller;
 import ritzow.sandbox.client.input.controller.InteractionController;
 import ritzow.sandbox.client.input.controller.PlayerController;
 import ritzow.sandbox.client.input.controller.TrackingCameraController;
+import ritzow.sandbox.client.input.handler.InputHandler;
+import ritzow.sandbox.client.input.handler.WindowFocusHandler;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
 import ritzow.sandbox.util.RepeatUpdater;
 import ritzow.sandbox.util.SharedConstants;
@@ -52,6 +54,7 @@ public final class StartClient {
 					}
 				}
 				
+				//to be run on game update thread (rendering thread)
 				private void initGraphics(RenderManager renderManager, World world, CameraController cameraGrip) {
 					try {
 						renderManager.initialize(); //set up opengl
@@ -152,15 +155,39 @@ public final class StartClient {
 					RenderManager renderManager = eventProcessor.getDisplay().getRenderManager();
 					RepeatUpdater gameUpdater = new RepeatUpdater(() -> initGraphics(renderManager, world, cameraGrip), renderManager::shutdown);
 					
+					class WorldUpdater implements Runnable, WindowFocusHandler, InputHandler {
+						private volatile long previousTime = System.nanoTime();
+						private volatile boolean focused = true;
+						
+						public void run() {
+							if(focused)
+								previousTime = Utility.updateWorld(world, previousTime, SharedConstants.MAX_TIMESTEP, SharedConstants.TIME_SCALE_NANOSECONDS);
+						}
+						
+						@Override
+						public void windowFocus(boolean focused) {
+							if(focused)
+								previousTime = System.nanoTime();
+							this.focused = focused;
+						}
+
+						@Override
+						public void link(InputManager m) {
+							m.getWindowFocusHandlers().add(this);
+						}
+
+						@Override
+						public void unlink(InputManager m) {
+							m.getWindowFocusHandlers().remove(this);
+						}
+					}
+					
+					WorldUpdater updater = new WorldUpdater();
+					eventProcessor.getDisplay().getInputManager().add(updater);
+					
 					gameUpdater.getRepeatTasks().add(client.onReceiveMessageTask());
 					gameUpdater.getRepeatTasks().addAll(controllers);
-					gameUpdater.getRepeatTasks().add(new Runnable() {
-						private long previousTime = System.nanoTime();
-						
-						public void run() { //TODO pause world updates when not focused
-							previousTime = Utility.updateWorld(world, previousTime, SharedConstants.MAX_TIMESTEP, SharedConstants.TIME_SCALE_NANOSECONDS);
-						}
-					});
+					gameUpdater.getRepeatTasks().add(updater);
 					gameUpdater.getRepeatTasks().add(renderManager);
 					gameUpdater.getRepeatTasks().add(() -> Utility.sleep(1));
 					gameUpdater.start("Game updater");
