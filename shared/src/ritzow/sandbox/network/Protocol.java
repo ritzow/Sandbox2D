@@ -10,6 +10,8 @@ public final class Protocol {
 	/** The Charset for text encoding used by the client and server **/
 	public static final Charset CHARSET = Charset.forName("UTF-8");
 	
+	public static final int DEFAULT_SERVER_UDP_PORT = 50000;
+	
 	/** The maximum length a sent message can be in bytes **/
 	public static final short MAX_MESSAGE_LENGTH = 1000;
 	
