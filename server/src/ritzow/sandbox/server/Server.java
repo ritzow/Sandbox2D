@@ -12,10 +12,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
 import java.util.function.Predicate;
 import ritzow.sandbox.data.ByteUtil;
-import ritzow.sandbox.data.DataWriter;
 import ritzow.sandbox.data.SerializerReaderWriter;
 import ritzow.sandbox.network.NetworkController;
 import ritzow.sandbox.network.Protocol;
@@ -281,14 +279,14 @@ public class Server {
 		}
 	}
 	
-	private void broadcastUnreliable(Consumer<DataWriter> data, Predicate<ClientState> sendTest) {
-		synchronized(clients) {
-			for(ClientState client : clients.values()) {
-				if(sendTest.test(client))
-					network.sendUnreliable(client.address, data);
-			}
-		}
-	}
+//	private void broadcastUnreliable(Consumer<DataWriter> data, Predicate<ClientState> sendTest) {
+//		synchronized(clients) {
+//			for(ClientState client : clients.values()) {
+//				if(sendTest.test(client))
+//					network.sendUnreliable(client.address, data);
+//			}
+//		}
+//	}
 	
 	private void sendReliable(ClientState client, byte[] data, boolean removeUnresponsive) {
 		try {
