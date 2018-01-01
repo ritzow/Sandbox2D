@@ -12,6 +12,7 @@ import java.util.Scanner;
 import ritzow.sandbox.audio.AudioSystem;
 import ritzow.sandbox.data.ByteUtil;
 import ritzow.sandbox.data.Deserializer;
+import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.server.Server.ClientState;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.block.DirtBlock;
@@ -19,20 +20,20 @@ import ritzow.sandbox.world.block.GrassBlock;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
 public final class StartServer {
-	private static final boolean SAVE_WORLD = false;
+	private static final boolean SAVE_WORLD = true;
 	
 	public static void main(String... args) throws SocketException, UnknownHostException {
 		Thread.currentThread().setName("Server Setup");
 		
 		try {
-			Server server = new Server(new InetSocketAddress(50000));
+			Server server = new Server(new InetSocketAddress(Protocol.DEFAULT_SERVER_UDP_PORT));
 
 			//the save file to try to load the world from
 			final File saveFile = new File(args.length > 0 ? args[0] : "data/worlds/world.dat");
 			
 			ServerAudioSystem audio = new ServerAudioSystem();
 			World world = saveFile.exists() ? 
-					loadWorld(saveFile, audio, SerializationProvider.getProvider()) : generateWorld(100, 50, audio, server);
+					loadWorld(saveFile, audio, SerializationProvider.getProvider()) : generateWorld(100, 100, audio, server);
 			server.start(world);
 			
 			System.out.println("Startup Complete.");
@@ -77,7 +78,8 @@ public final class StartServer {
 				System.out.println("Server stopped.");
 			}
 		} catch(BindException e) {
-			System.out.println("A server is likely already running on the specified port");
+			e.printStackTrace();
+			//System.out.println("A server is likely already running on the specified port");
 		}
 	}
 	

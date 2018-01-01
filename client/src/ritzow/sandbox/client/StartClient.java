@@ -26,6 +26,7 @@ import ritzow.sandbox.client.input.controller.TrackingCameraController;
 import ritzow.sandbox.client.input.handler.InputHandler;
 import ritzow.sandbox.client.input.handler.WindowFocusHandler;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
+import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.util.RepeatUpdater;
 import ritzow.sandbox.util.SharedConstants;
 import ritzow.sandbox.util.Utility;
@@ -34,12 +35,12 @@ import ritzow.sandbox.world.World;
 public final class StartClient {
 	
 	//TODO: figure out what causes subsequent client connect slowdowns, investigate new DataWriter packet creation system
-	
 	public static void main(String... args) throws SocketException, UnknownHostException {
-		InetSocketAddress serverAddress = 
-				new InetSocketAddress(args.length > 0 ? args[0] : InetAddress.getLocalHost().getHostAddress(), 50000);
-		Client client = new Client(new InetSocketAddress(0), serverAddress); //wildcard address, and any port
-		System.out.print("Connecting to " + serverAddress + "... ");
+		InetAddress serverAddress = args.length > 0 ? InetAddress.getByName(args[0]) : InetAddress.getLocalHost();
+		InetSocketAddress serverSocket = new InetSocketAddress(serverAddress, Protocol.DEFAULT_SERVER_UDP_PORT);
+		
+		Client client = new Client(new InetSocketAddress(0), serverSocket); //wildcard address, and any port
+		System.out.print("Connecting to " + serverAddress.getHostAddress() + " on port " + serverSocket.getPort() + "... ");
 		
 		if(client.connect()) {
 			System.out.println("connected!");
@@ -85,18 +86,19 @@ public final class StartClient {
 								new Shader(new FileInputStream("resources/shaders/modelVertexShader"), ShaderType.VERTEX),
 								new Shader(new FileInputStream("resources/shaders/modelFragmentShader"), ShaderType.FRAGMENT), 
 								cameraGrip.getCamera()
-								);
+						);
 						
 						modelProgram.register(RenderConstants.MODEL_GRASS_BLOCK,new RenderData(6, indices, positions, textureCoordinates, Textures.GRASS.id));
 						modelProgram.register(RenderConstants.MODEL_DIRT_BLOCK,	new RenderData(6, indices, positions, textureCoordinates, Textures.DIRT.id));
 						modelProgram.register(RenderConstants.MODEL_GREEN_FACE,	new RenderData(6, indices, positions, textureCoordinates, Textures.GREEN_FACE.id));
 						modelProgram.register(RenderConstants.MODEL_RED_SQUARE,	new RenderData(6, indices, positions, textureCoordinates, Textures.RED_SQUARE.id));
+						//modelProgram.register(23, new RenderData(6, indices, positions, textureCoordinates, Textures.ATLAS.id));
 						
 						LightRenderProgram lightProgram = new LightRenderProgram(
 								new Shader(new FileInputStream("resources/shaders/lightVertexShader"), ShaderType.VERTEX),
 								new Shader(new FileInputStream("resources/shaders/lightFragmentShader"), ShaderType.FRAGMENT),
 								cameraGrip.getCamera()
-								);
+						);
 						renderManager.getRenderers().add(new ClientWorldRenderer(modelProgram, lightProgram, world));
 						GraphicsUtility.checkErrors();
 					} catch (IOException | OpenGLException e) {
@@ -195,11 +197,12 @@ public final class StartClient {
 					
 					InputManager input = eventProcessor.getDisplay().getInputManager();
 					input.getKeyHandlers().add((key, scancode, action, mods) -> {
-						if(key == ControlScheme.KEYBIND_QUIT && action == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
-							exit();
-						} else if(key == ControlScheme.KEYBIND_FULLSCREEN && action == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
-				            eventProcessor.getDisplay().toggleFullscreen();
-				        }
+						if(action == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
+							if(key == ControlScheme.KEYBIND_QUIT)
+								exit();
+							else if(key == ControlScheme.KEYBIND_FULLSCREEN)
+					            eventProcessor.getDisplay().toggleFullscreen();
+						}
 					});
 
 					input.getWindowCloseHandlers().add(this::exit);
