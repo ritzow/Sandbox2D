@@ -23,6 +23,8 @@ import ritzow.sandbox.util.Utility;
 /** Provides common functionality of the client and server. Manages incoming and outgoing packets. **/
 public class NetworkController {
 	
+	private static final int STARTING_SEND_ID = 0;
+	
 	private static final class MessageAddressPair {
 		private final InetSocketAddress recipient;
 		private final int messageID;
@@ -35,14 +37,14 @@ public class NetworkController {
 	}
 	
 	private static final class ConnectionState {
-	    private int lastReceivedReliableMessageID, lastReceivedUnreliableMessageID;
+	    private int nextReliableReceiveID, nextUnreliableReceiveID;
 	    private final AtomicInteger reliableSendID, unreliableSendID;
 	    
-	    public ConnectionState(int reliable, int unreliable) {
-	        this.lastReceivedReliableMessageID = reliable;
-	        this.lastReceivedUnreliableMessageID = unreliable;
-	        this.reliableSendID = new AtomicInteger(0);
-	        this.unreliableSendID = new AtomicInteger(0);
+	    public ConnectionState() {
+	        this.nextReliableReceiveID = 0;
+	        this.nextUnreliableReceiveID = 0;
+	        this.reliableSendID = new AtomicInteger(STARTING_SEND_ID);
+	        this.unreliableSendID = new AtomicInteger(STARTING_SEND_ID);
 	    }
 	    
 	    public int nextReliableSendID() {
@@ -209,13 +211,6 @@ public class NetworkController {
 		return (InetSocketAddress)socket.getLocalSocketAddress();
 	}
 	
-	private ConnectionState getState(InetSocketAddress address) {
-		ConnectionState state = connections.get(address);
-		if(state == null)
-			connections.put(address, state = new ConnectionState(-1, -1));
-		return state;
-	}
-	
 	private static byte[] getDataCopy(DatagramPacket buffer) {
 		return Arrays.copyOfRange(buffer.getData(), buffer.getOffset() + HEADER_SIZE, buffer.getOffset() + buffer.getLength());
 	}
@@ -224,6 +219,13 @@ public class NetworkController {
 		InetSocketAddress address = (InetSocketAddress)packet.getSocketAddress();
 		connections.put(address, connections.get(address));
 		return address;
+	}
+	
+	private ConnectionState getState(InetSocketAddress address) {
+		ConnectionState state = connections.get(address);
+		if(state == null)
+			connections.put(address, state = new ConnectionState());
+		return state;
 	}
 	
 	private void run() {
@@ -244,7 +246,7 @@ public class NetworkController {
 				e.printStackTrace();
 				continue;
 			}
-			
+
 			//ignore received packets that are not large enough to contain the full header
 			if(buffer.getLength() >= 5) {
 				//parse the packet information
@@ -269,19 +271,19 @@ public class NetworkController {
 					} break;
 				case RELIABLE_TYPE:
 					ConnectionState reliableState = getState(sender);
-					if(messageID == reliableState.lastReceivedReliableMessageID + 1) {
+					if(messageID == reliableState.nextReliableReceiveID) {
 						//if the message is the next one, process it and update last message
 						InetSocketAddress address = sender;
 						sendResponse(address, messageID);
-						reliableState.lastReceivedReliableMessageID = messageID;
+						reliableState.nextReliableReceiveID++;
 						messageProcessor.process(address, messageID, getDataCopy(buffer));
-					} else if(messageID <= reliableState.lastReceivedReliableMessageID) { //message already received
+					} else if(messageID < reliableState.nextReliableReceiveID) { //message already received
 						sendResponse(sender, messageID);
 					} break; //else: message received too early
 				case UNRELIABLE_TYPE:
 					ConnectionState unreliableState = getState(sender);
-					if(messageID > unreliableState.lastReceivedUnreliableMessageID) {
-						unreliableState.lastReceivedUnreliableMessageID = messageID;
+					if(messageID >= unreliableState.nextUnreliableReceiveID) {
+						unreliableState.nextUnreliableReceiveID = messageID + 1;
 						messageProcessor.process(sender, messageID, getDataCopy(buffer));
 					} break; //else: message is outdated
 				}
