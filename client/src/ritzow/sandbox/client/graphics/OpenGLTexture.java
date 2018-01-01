@@ -18,6 +18,7 @@ public final class OpenGLTexture {
 		setup(id);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 		glBindTexture(GL_TEXTURE_2D, 0);
+		GraphicsUtility.checkErrors();
 	}
 	
 	public OpenGLTexture(int width, int height) {

@@ -73,7 +73,7 @@ public class Client {
 			short protocol = reader.readShort();
 			try {
 				if(integrater.running) {
-					integrater.add(() -> onReceive(protocol, reader));
+					integrater.add(() -> onReceive(protocol, reader)); //TODO improve this code, too much spaghetti!
 				} else {
 					onReceive(protocol, reader);
 				}
@@ -234,11 +234,13 @@ public class Client {
 	}
 	
 	public World getWorld() {
+		checkConnected();
 		Utility.waitOnCondition(worldLock, () -> world != null);
 		return world;
 	}
 	
 	public ClientPlayerEntity getPlayer() {
+		checkConnected();
 		Utility.waitOnCondition(playerLock, () -> player != null);
 		return player;
 	}
