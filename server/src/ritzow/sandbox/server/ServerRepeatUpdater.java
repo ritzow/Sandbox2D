@@ -15,7 +15,7 @@ public final class ServerRepeatUpdater extends RepeatUpdater {
 	
 	private final Runnable worldUpdater = this::updateWorld;
 	
-	private static final long NETWORK_SEND_INTERVAL_NANOSECONDS = 50_000_000;
+	private static final long NETWORK_SEND_INTERVAL_NANOSECONDS = Utility.millisToNanos(500);
 	
 	public ServerRepeatUpdater(Server server) {
 		this.server = server;
