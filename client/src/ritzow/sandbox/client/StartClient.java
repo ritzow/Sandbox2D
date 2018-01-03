@@ -113,7 +113,7 @@ public final class StartClient {
 					World world = client.getWorld();
 					System.out.println("Received world from server.");
 					
-					ClientAudioSystem audio = new ClientAudioSystem();
+					ClientAudioSystem audio = ClientAudioSystem.getAudioSystem();
 					
 					Map<String, Sound> soundFiles = Map.ofEntries(
 						Map.entry("dig.wav", Sound.BLOCK_BREAK),
@@ -133,7 +133,6 @@ public final class StartClient {
 					}
 					
 					audio.setVolume(1.0f);
-					world.setAudioSystem(audio);
 					
 					//mute audio in background
 					eventProcessor.getDisplay().getInputManager().getWindowFocusHandlers()
