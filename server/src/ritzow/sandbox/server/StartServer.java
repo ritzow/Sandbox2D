@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.net.BindException;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
-import java.net.UnknownHostException;
 import java.util.Scanner;
 import ritzow.sandbox.data.ByteUtil;
 import ritzow.sandbox.data.Deserializer;
@@ -21,7 +20,7 @@ import ritzow.sandbox.world.entity.PlayerEntity;
 public final class StartServer {
 	private static final boolean SAVE_WORLD = true;
 	
-	public static void main(String... args) throws SocketException, UnknownHostException {
+	public static void main(String... args) throws SocketException {
 		Thread.currentThread().setName("Server Setup");
 		
 		try {
