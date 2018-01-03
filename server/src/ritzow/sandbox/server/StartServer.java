@@ -9,7 +9,6 @@ import java.net.InetSocketAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Scanner;
-import ritzow.sandbox.audio.AudioSystem;
 import ritzow.sandbox.data.ByteUtil;
 import ritzow.sandbox.data.Deserializer;
 import ritzow.sandbox.network.Protocol;
@@ -31,9 +30,8 @@ public final class StartServer {
 			//the save file to try to load the world from
 			final File saveFile = new File(args.length > 0 ? args[0] : "data/worlds/world.dat");
 			
-			ServerAudioSystem audio = new ServerAudioSystem();
 			World world = saveFile.exists() ? 
-					loadWorld(saveFile, audio, SerializationProvider.getProvider()) : generateWorld(100, 100, audio, server);
+					loadWorld(saveFile, SerializationProvider.getProvider()) : generateWorld(100, 100, server);
 			server.start(world);
 			
 			System.out.println("Startup Complete.");
@@ -96,12 +94,11 @@ public final class StartServer {
 		}
 	}
 	
-	public static World loadWorld(File file, AudioSystem audio, Deserializer des) {
+	public static World loadWorld(File file, Deserializer des) {
 		try(FileInputStream in = new FileInputStream(file)) {
 			byte[] data = new byte[(int)file.length()];
 			in.read(data);
 			World world = des.deserialize(ByteUtil.decompress(data));
-			world.setAudioSystem(audio);
 			return world;
 		} catch(IOException e) {
 			System.out.println("Error loading world from file " + e);
@@ -109,8 +106,8 @@ public final class StartServer {
 		}
 	}
 	
-	public static World generateWorld(int width, int height, AudioSystem audio, Server server) {
-		World world = new World(audio, width, height, 0.016f);
+	public static World generateWorld(int width, int height, Server server) {
+		World world = new World(width, height, 0.016f);
 		for(int column = 0; column < world.getForeground().getWidth(); column++) {
 			double halfheight = world.getForeground().getHeight()/2;
 			halfheight += (Math.sin(column * 0.1f) + 1) * (world.getForeground().getHeight() - halfheight) * 0.05f;
