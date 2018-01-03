@@ -4,7 +4,6 @@
  * @author Solomon Ritzow
  */
 module ritzow.sandbox.shared {
-	exports ritzow.sandbox.audio;
 	exports ritzow.sandbox.network;
 	exports ritzow.sandbox.util to
 		ritzow.sandbox.client,

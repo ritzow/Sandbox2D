@@ -12,7 +12,6 @@ import java.util.Objects;
 import java.util.Spliterator;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import ritzow.sandbox.audio.AudioSystem;
 import ritzow.sandbox.data.ByteUtil;
 import ritzow.sandbox.data.Serializer;
 import ritzow.sandbox.data.Transportable;
@@ -33,9 +32,6 @@ public class World implements Transportable, Iterable<Entity> {
 	/** blocks in the world that collide with entities and and are rendered **/
 	private final BlockGrid foreground, background;
 	
-	/** AudioSystem to allow entities to play sounds **/
-	private AudioSystem audio;
-	
 	/** amount of downwards acceleration to apply to entities in the world **/
 	private float gravity;
 	
@@ -51,8 +47,7 @@ public class World implements Transportable, Iterable<Entity> {
 	 * @param height the height of the foreground and background
 	 * @param gravity the amount of gravity
 	 */
-	public World(AudioSystem audio, int width, int height, float gravity) {
-		this.audio = audio;
+	public World(int width, int height, float gravity) {
 		entities = new ArrayList<>(100);
 		foreground = new BlockGrid(width, height);
 		background = new BlockGrid(width, height);
@@ -217,17 +212,6 @@ public class World implements Transportable, Iterable<Entity> {
 			}
 		}
 		return col == null ? Collections.emptyList() : col;
-	}
-
-	
-	public final AudioSystem getAudioSystem() {
-		return audio;
-	}
-	
-	
-	public final void setAudioSystem(AudioSystem audio) {
-		Objects.requireNonNull(audio);
-		this.audio = audio;
 	}
 	
 	/**
