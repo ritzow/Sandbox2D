@@ -105,6 +105,10 @@ public final class Utility {
 		}
 	}
 	
+	public static long millisToNanos(long milliseconds) {
+		return milliseconds * 1_000_000;
+	}
+	
 	public static float addMagnitude(float number, float magnitude) {
 		if(number < 0)
 			return Math.min(0, number + magnitude);
