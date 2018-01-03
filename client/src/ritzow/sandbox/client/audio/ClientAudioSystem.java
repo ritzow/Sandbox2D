@@ -16,12 +16,16 @@ import java.util.Map;
 import org.lwjgl.openal.AL;
 import org.lwjgl.openal.ALC;
 import org.lwjgl.openal.ALCCapabilities;
-import ritzow.sandbox.audio.AudioSystem;
 
 public final class ClientAudioSystem implements AudioSystem {
 	private static final long alContext;
 	private static final long device;
 	private static final int[] sources;
+	private static final ClientAudioSystem audio;
+	
+	public static ClientAudioSystem getAudioSystem() {
+		return audio;
+	}
 	
 	static {
 		device = alcOpenDevice((ByteBuffer)null);
@@ -36,6 +40,7 @@ public final class ClientAudioSystem implements AudioSystem {
 		
 		sources = new int[alcGetInteger(device, ALC_MONO_SOURCES)];
 		alGenSources(sources);
+		audio = new ClientAudioSystem();
 	}
 	
 	public static void shutdown() {
