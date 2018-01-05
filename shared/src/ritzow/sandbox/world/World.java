@@ -143,17 +143,24 @@ public class World implements Transportable, Iterable<Entity> {
 		return builder.toString();
 	}
 	
-	
+	/**
+	 * Provides a unique entity identifier than can be used to identify a single entity.
+	 * @return an entity identifier.
+	 */
 	public int nextEntityID() {
 		return ++lastEntityID;
 	}
 	
-	
+	/**
+	 * Get the foreground {@code BlockGrid} of the world.
+	 */
 	public final BlockGrid getForeground() {
 		return foreground;
 	}
 	
-	
+	/**
+	 * Get the background {@code BlockGrid} of the world.
+	 */
 	public final BlockGrid getBackground() {
 		return background;
 	}
@@ -166,6 +173,10 @@ public class World implements Transportable, Iterable<Entity> {
 		this.onRemove = onRemove;
 	}
 	
+	/**
+	 * Enables entity removal.
+	 * @see setRemoveEntities(Consumer)
+	 */
 	public void setRemoveEntities() {
 		this.onRemove = e -> {};
 	}
@@ -215,17 +226,17 @@ public class World implements Transportable, Iterable<Entity> {
 	}
 	
 	/**
-	 * Non-thread-safe version of queueAdd that will add the entity to the world immediately
-	 * @param e the entity to add
+	 * Adds the provided non-null Entity to the world.
+	 * @param e the entity to add.
 	 */
 	public final void add(Entity e) {
 		Objects.requireNonNull(e);
 		entities.add(e);
 	}
-	
+
 	/**
-	 * Non-thread-safe version of queueRemove that will remove the entity from the world immediately
-	 * @param e the entity to add
+	 * Removes the provided entity from the world.
+	 * @param e the entity to remove.
 	 */
 	public final void remove(Entity e) {
 		entities.remove(e);
@@ -240,12 +251,13 @@ public class World implements Transportable, Iterable<Entity> {
 	}
 
 	/**
-	 * Updates the entities in the world, simulating the specified amount of time. Entities below the world or marked for deletion will be removed
-	 * from the world. Entities are be updated, gravity is applied, entity vs entity collisions are resolved, and entity vs block collisions
-	 * are resolved.
+	 * Updates the entities in the world, simulating a single timestep of the provided amount. 
+	 * Entities are updated, gravity is applied, entity vs entity collisions are resolved, 
+	 * and entity vs block collisions are resolved. If {@code setRemoveEntities has been called},
+	 * entities that are below the bottom of the world will be removed and, if provided, the entity
+	 * remove handler will be called.
 	 * @param time the amount of time to simulate.
 	 */
-	
 	public final void update(float time) {
 		for(int i = 0; i < entities.size(); i++) {
 			Entity e = entities.get(i);
