@@ -87,7 +87,7 @@ public class NetworkController {
 	 * @param data the body of the message received
 	 */	
 	@FunctionalInterface
-	public static interface MessageProcessor {
+	public interface MessageProcessor {
 		void process(InetSocketAddress sender, int messageID, byte[] data);
 	}
 	
@@ -237,56 +237,53 @@ public class NetworkController {
 		while(!exit) {
 			try {
 				socket.receive(buffer); //wait for a packet to be received
-			} catch(SocketException e) {
-				if(!socket.isClosed()) {
-					e.printStackTrace();
-					continue;
-				}
-			} catch (IOException e) {
-				e.printStackTrace();
-				continue;
-			}
-
-			//ignore received packets that are not large enough to contain the full header
-			if(buffer.getLength() >= 5) {
-				//parse the packet information
-				final InetSocketAddress sender = getAddress(buffer);
-				final byte type = buffer.getData()[buffer.getOffset()]; //type of message (RESPONSE, RELIABLE, UNRELIABLE)
-				final int messageID = ByteUtil.getInteger(buffer.getData(), buffer.getOffset() + 1); //received ID or messageID for ack.
 				
-				switch(type) {
-				case RESPONSE_TYPE:
-					synchronized(reliableQueue) {
-						Iterator<MessageAddressPair> iterator = reliableQueue.iterator();
-						while(iterator.hasNext()) {
-							MessageAddressPair pair = iterator.next();
-							if(pair.recipient.equals(sender)) { //find first message addressed to the sender of the ack
-								if(pair.messageID == messageID) { //if the ack is for the correct message (oldest awaiting ack)
-									iterator.remove();
-									pair.received = true;
-									Utility.notify(pair); //notify waiting send method
-								} break;
+				//ignore received packets that are not large enough to contain the full header
+				if(buffer.getLength() >= 5) {
+					//parse the packet information
+					final InetSocketAddress sender = getAddress(buffer);
+					final byte type = buffer.getData()[buffer.getOffset()]; //type of message (RESPONSE, RELIABLE, UNRELIABLE)
+					final int messageID = ByteUtil.getInteger(buffer.getData(), buffer.getOffset() + 1); //received ID or messageID for ack.
+					
+					switch(type) {
+					case RESPONSE_TYPE:
+						synchronized(reliableQueue) {
+							Iterator<MessageAddressPair> iterator = reliableQueue.iterator();
+							while(iterator.hasNext()) {
+								MessageAddressPair pair = iterator.next();
+								if(pair.recipient.equals(sender)) { //find first message addressed to the sender of the ack
+									if(pair.messageID == messageID) { //if the ack is for the correct message (oldest awaiting ack)
+										iterator.remove();
+										pair.received = true;
+										Utility.notify(pair); //notify waiting send method
+									} break;
+								}
 							}
-						}
-					} break;
-				case RELIABLE_TYPE:
-					ConnectionState reliableState = getState(sender);
-					if(messageID == reliableState.nextReliableReceiveID) {
-						//if the message is the next one, process it and update last message
-						InetSocketAddress address = sender;
-						sendResponse(address, messageID);
-						reliableState.nextReliableReceiveID++;
-						messageProcessor.process(address, messageID, getDataCopy(buffer));
-					} else if(messageID < reliableState.nextReliableReceiveID) { //message already received
-						sendResponse(sender, messageID);
-					} break; //else: message received too early
-				case UNRELIABLE_TYPE:
-					ConnectionState unreliableState = getState(sender);
-					if(messageID >= unreliableState.nextUnreliableReceiveID) {
-						unreliableState.nextUnreliableReceiveID = messageID + 1;
-						messageProcessor.process(sender, messageID, getDataCopy(buffer));
-					} break; //else: message is outdated
+						} break;
+					case RELIABLE_TYPE:
+						ConnectionState reliableState = getState(sender);
+						if(messageID == reliableState.nextReliableReceiveID) {
+							//if the message is the next one, process it and update last message
+							InetSocketAddress address = sender;
+							sendResponse(address, messageID);
+							reliableState.nextReliableReceiveID++;
+							messageProcessor.process(address, messageID, getDataCopy(buffer));
+						} else if(messageID < reliableState.nextReliableReceiveID) { //message already received
+							sendResponse(sender, messageID);
+						} break; //else: message received too early
+					case UNRELIABLE_TYPE:
+						ConnectionState unreliableState = getState(sender);
+						if(messageID >= unreliableState.nextUnreliableReceiveID) {
+							unreliableState.nextUnreliableReceiveID = messageID + 1;
+							messageProcessor.process(sender, messageID, getDataCopy(buffer));
+						} break; //else: message is outdated
+					}
 				}
+			} catch(SocketException e) {
+				if(!socket.isClosed())
+					e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace(); //print exception and continue
 			}
 		}
 	}
