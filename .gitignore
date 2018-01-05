@@ -1,12 +1,23 @@
-#Project
+#don't include binaries in git repo
 bin/
+
+#don't include generated javadocs in repo
+doc/
+
+#don't include application storage
 /server/data/
+
+#don't include library binaries or documentation
 libraries/
+
+#don't include outdated code
 /oldcode/
+
+#don't include packaged binaries
 /build/
 
-#Eclipse
+#don't include eclipse project settings
 .settings
 
-#Mac system files
+#don't include stupid mac metadata files
 .DS_Store
