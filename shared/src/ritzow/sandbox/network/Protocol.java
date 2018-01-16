@@ -46,24 +46,6 @@ public final class Protocol {
 		GRASS_BLOCK = 9,
 		RED_BLOCK = 10;
 	
-//	private static final Set<Short> RELIABLE_PROTOCOLS = Set.of(
-//			CLIENT_CONNECT_REQUEST,
-//			CLIENT_DISCONNECT,
-//			CLIENT_PLAYER_ACTION,
-//			SERVER_ADD_ENTITY,
-//			SERVER_REMOVE_ENTITY,
-//			SERVER_CLIENT_DISCONNECT,
-//			SERVER_PLAYER_ID,
-//			CONSOLE_MESSAGE,
-//			CLIENT_BREAK_BLOCK,
-//			SERVER_REMOVE_BLOCK,
-//			PING
-//	);
-//	
-//	public static boolean isReliable(short protocol) {
-//		return RELIABLE_PROTOCOLS.contains(protocol);
-//	}
-	
 	public static byte[] buildConsoleMessage(String message) {
 		byte[] msg = message.getBytes(Protocol.CHARSET);
 		byte[] packet = new byte[2 + msg.length];
