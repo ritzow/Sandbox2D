@@ -187,11 +187,11 @@ public class NetworkController {
 		datagram.setLength(dataSize + 5);
 	}
 	
-	public void removeSender(SocketAddress address) {
+	public void removeConnection(SocketAddress address) {
 		connections.remove(address);
 	}
 	
-	public void removeAllSenders() {
+	public void removeAllConnections() {
 		connections.clear();
 	}
 	
