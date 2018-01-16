@@ -31,13 +31,13 @@ public class Client {
 	private final SerializerReaderWriter serializer;
 	private final Integrater integrater;
 	private final ExecutorService workers;
-	private Runnable disconnectAction;
 	private volatile byte connectedStatus;
+	private Runnable disconnectAction;
 	
+	private volatile ClientPlayerEntity player;
 	private volatile World world;
 	private byte[] worldData;
 	private int worldBytesRemaining;
-	private volatile ClientPlayerEntity player;
 	private final Object worldLock, playerLock;
 	
 	private static final byte STATUS_NOT_CONNECTED = 0, STATUS_REJECTED = 1, STATUS_CONNECTED = 2;
@@ -125,7 +125,7 @@ public class Client {
 		}
 	}
 	
-	public void onDisconnect(Runnable task) {
+	public void setOnDisconnect(Runnable task) {
 		disconnectAction = task;
 	}
 	

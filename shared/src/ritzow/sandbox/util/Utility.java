@@ -111,9 +111,9 @@ public final class Utility {
 	
 	public static float addMagnitude(float number, float magnitude) {
 		if(number < 0)
-			return Math.min(0, number + magnitude);
+			return Math.min(0, number - magnitude);
 		else if(number > 0)
-			return Math.max(0, number - magnitude);
+			return Math.max(0, number + magnitude);
 		else
 			return 0;
 	}

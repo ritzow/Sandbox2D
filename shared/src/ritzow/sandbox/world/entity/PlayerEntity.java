@@ -20,6 +20,8 @@ public class PlayerEntity extends Entity implements Living {
 	protected int selected, health;
 	protected boolean left, right, up, down;
 	
+	private static final float MOVEMENT_SPEED = 0.2f;
+	
 	public PlayerEntity(int entityID) {
 		super(entityID);
 		this.inventory = new Inventory<>(9);
@@ -46,15 +48,23 @@ public class PlayerEntity extends Entity implements Living {
 	
 	@Override
 	public void update(World world, float time) {
-		super.update(world, time);
-		if(left)
-			velocityX = -getMass();
-		else if(right)
-			velocityX = getMass();
-		if(up && blockBelow(world.getForeground())) {
-			velocityY = getMass();
-			velocityX = Utility.addMagnitude(velocityX, 0.075f);
+		if(left && right) {
+			velocityX = 0;
+		} else if(left) {
+			velocityX = -MOVEMENT_SPEED;
+		} else if(right) {
+			velocityX = MOVEMENT_SPEED;
 		}
+		
+		if(up && blockBelow(world.getForeground())) {
+			velocityY = MOVEMENT_SPEED;
+		}
+		
+		if(!(left || right || blockBelow(world.getForeground()))) {
+			velocityX = Utility.addMagnitude(velocityX, -MOVEMENT_SPEED/50 * time);
+		}
+		
+		super.update(world, time);
 	}
 	
 	private boolean blockBelow(BlockGrid blocks) {

@@ -11,15 +11,7 @@ public interface Exitable {
 	public boolean isFinished();
 	
 	public default void waitUntilFinished() {
-		synchronized(this) {
-			while(!isFinished()) {
-				try {
-					wait();
-				} catch (InterruptedException e) {
-					continue;
-				}
-			}
-		}
+		Utility.waitOnCondition(this, () -> !isFinished());
 	}
 	
 	public default void waitForExit() {

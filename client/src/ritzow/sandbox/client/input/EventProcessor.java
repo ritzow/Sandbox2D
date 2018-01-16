@@ -8,12 +8,11 @@ import java.io.IOException;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import ritzow.sandbox.client.graphics.Display;
 import ritzow.sandbox.client.ui.Cursors;
-import ritzow.sandbox.util.Exitable;
-import ritzow.sandbox.util.Installable;
+import ritzow.sandbox.util.Service;
 import ritzow.sandbox.util.Utility;
 
 /** Initializes GLFW, loads mouse cursors, processes all GLFW events until exited **/
-public final class EventProcessor implements Runnable, Installable, Exitable {
+public final class EventProcessor implements Service {
 	
 	/** status markers for the state of the event manager thread **/
 	private volatile boolean setupComplete, shouldDisplay, exit, finished;
