@@ -140,20 +140,20 @@ public class Client {
 	public boolean connect() {
 		if(isConnected())
 			throw new IllegalStateException("client already connected to a server");
-		start();
+		network.start();
 		synchronized(server) {
 			try {
 				byte[] packet = new byte[2];
 				ByteUtil.putShort(packet, 0, Protocol.CLIENT_CONNECT_REQUEST);
 				network.sendReliable(server, packet, 10, 100);
 			} catch(TimeoutException e) {
-				stop();
+				disconnect(false);
 				return false;
 			}
 			Utility.waitOnCondition(server, 1000, () -> connectedStatus != STATUS_NOT_CONNECTED);
 		}
 		if(connectedStatus != STATUS_CONNECTED)
-			stop();
+			disconnect(false);
 		return isConnected();
 	}
 	
@@ -166,29 +166,22 @@ public class Client {
 	}
 	
 	public void disconnect() {
-		disconnect(true);
+		if(isConnected())
+			disconnect(true);
 	}
 	
 	private void disconnect(boolean notifyServer) {
-		checkConnected();
-		if(notifyServer) {
-			byte[] packet = new byte[2];
-			ByteUtil.putShort(packet, 0, Protocol.CLIENT_DISCONNECT);
-			sendReliable(packet);
-		}
-		stop();
-		disconnectAction.run();
-	}
-	
-	private void start() {
-		network.start();
-	}
-	
-	private void stop() {
-		network.stop();
 		try {
+			if(notifyServer) {
+				checkConnected();
+				byte[] packet = new byte[2];
+				ByteUtil.putShort(packet, 0, Protocol.CLIENT_DISCONNECT);
+				sendReliable(packet);
+			}
+			network.stop();
 			workers.shutdown();
 			workers.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+			disconnectAction.run();
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
@@ -259,15 +252,14 @@ public class Client {
 	
 	private void processReceivePlayerEntityID(DataReader data) {
 		int id = data.readInteger();
-		while(player == null) { //loop infinitely until there is an entity with the correct ID
-			for(Entity e : getWorld()) {
-				if(e.getID() == id) {
-					this.player = (ClientPlayerEntity)e;
-					Utility.notify(playerLock);
-					return;
-				}
+		for(Entity e : getWorld()) {
+			if(e.getID() == id) {
+				this.player = (ClientPlayerEntity)e;
+				Utility.notify(playerLock);
+				return;
 			}
 		}
+		throw new IllegalStateException("no entity with ID " + id + " exists");
 	}
 	
 	private void processRemoveEntity(DataReader data) {
