@@ -43,7 +43,7 @@ public class Server {
 		this.network = new NetworkController(bindAddress, this::process);
 		ThreadGroup processors = new ThreadGroup("Message Processors");
 		ThreadGroup senders = new ThreadGroup("Broadcaster Group");
-		this.worker = Executors.newCachedThreadPool(runnable -> new Thread(processors, runnable));
+		this.worker = Executors.newFixedThreadPool(10, runnable -> new Thread(processors, runnable));
 		this.broadcaster = Executors.newCachedThreadPool(runnable -> new Thread(senders, runnable));
 		this.clients = Collections.synchronizedMap(new HashMap<InetSocketAddress, ClientState>());
 		this.serialRegistry = SerializationProvider.getProvider();
@@ -80,7 +80,7 @@ public class Server {
 	
 	private void onReceive(ClientState client, short protocol, byte[] data) {
 		switch(protocol) {
-			case Protocol.CLIENT_DISCONNECT:
+			case Protocol.CLIENT_DISCONNECT: //this will make clients "unresponsive" still
 				disconnect(client, false);
 				break;
 			case Protocol.CLIENT_PLAYER_ACTION:
@@ -232,34 +232,34 @@ public class Server {
 	 * @param removeUnresponsive whether or not to remove clients that do not respond from the server
 	 */
 	private void broadcastReliable(byte[] data, boolean removeUnresponsive, Predicate<ClientState> sendTest) {
-		synchronized(clients) { //synchronize entire method so clients cant connect mid-send
-			if(clients.size() > 1) {
-				CountDownLatch barrier = new CountDownLatch(clients.size());
-				clients.forEach((address, client) -> {
-					if(sendTest.test(client)) {
-						broadcaster.execute(() -> {
-							try {
-								sendReliable(client, data, removeUnresponsive);
-							} finally {
-								barrier.countDown();
-							}
-						});
-					} else {
-						barrier.countDown();
-					}
-				});
-				
-				try {
-					barrier.await(); //wait until an acknowledgement has been received from all clients
-				} catch (InterruptedException e) {
-					e.printStackTrace();
+		//TODO need alternative to synchronizing over all clients (separate lock to disallow add during broadcast?
+		if(clients.size() > 1) {
+			CountDownLatch barrier = new CountDownLatch(clients.size());
+			clients.forEach((address, client) -> {
+				if(sendTest.test(client)) {
+					broadcaster.execute(() -> {
+						try {
+							sendReliable(client, data, removeUnresponsive);
+						} finally {
+							barrier.countDown();
+						}
+					});
+				} else {
+					barrier.countDown();
 				}
-			} else if(clients.size() == 1) { //if there is only one client, skip extra steps
-				ClientState client = clients.values().iterator().next();
-				if(sendTest.test(client))
-					sendReliable(client, data, removeUnresponsive);
-			} //else: no clients are connected, send nothing
-		}
+			});
+			
+			try {
+				barrier.await(); //wait until an acknowledgement has been received from all clients
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		} else if(clients.size() == 1) { //if there is only one client, skip extra steps
+			ClientState client = clients.values().iterator().next();
+			if(sendTest.test(client))
+				sendReliable(client, data, removeUnresponsive);
+		} //else: no clients are connected, send nothing
+	
 	}
 	
 	private void broadcastUnreliable(byte[] data) {
@@ -278,15 +278,6 @@ public class Server {
 			}
 		}
 	}
-	
-//	private void broadcastUnreliable(Consumer<DataWriter> data, Predicate<ClientState> sendTest) {
-//		synchronized(clients) {
-//			for(ClientState client : clients.values()) {
-//				if(sendTest.test(client))
-//					network.sendUnreliable(client.address, data);
-//			}
-//		}
-//	}
 	
 	private void sendReliable(ClientState client, byte[] data, boolean removeUnresponsive) {
 		try {
@@ -327,15 +318,18 @@ public class Server {
 	 * @param client the client to disconnect
 	 * @param reason the reason for disconnecting the client, or null to not notify the client
 	 */
-	private void disconnect(ClientState client, String reason) {
+	private void disconnect(ClientState client, String reason) { //TODO there is still a synchronization issue somewhere here
 		if(clients.remove(client.address) != null) {
 			if(reason != null)
 				sendReliable(client, buildServerDisconnect(reason), true);
-			network.removeSender(client.address);
+			network.removeConnection(client.address);
 			if(client.player != null) {
 				updater.submitTask(() -> removePlayer(client.player));
 			}
-			System.out.println(client + " disconnected (reason: " + reason + ", " + clients.size() + " players connected)");
+			System.out.println(client.username 
+					+ " disconnected ("
+					+ (reason != null && reason.length() > 0 ? "reason: " + reason + ", ": "") 
+					+ clients.size() + " players connected)");
 		} else {
 			System.out.println(client + " is not connected to the server");
 		}
@@ -347,7 +341,7 @@ public class Server {
 			broadcastReliable(buildServerDisconnect(reason), false);
 			
 			for(ClientState client : clients.values()) {
-				network.removeSender(client.address);
+				network.removeConnection(client.address);
 				if(client.player != null) {
 					updater.submitTask(() -> removePlayer(client.player));
 				}
@@ -396,7 +390,7 @@ public class Server {
 					}
 					
 					world.add(player);
-					sendAddEntity(player);
+					sendAddEntity(player); //send entity to already connected players
 					
 					//send the world to the client
 					for(byte[] packet : buildWorldPackets(world)) {
@@ -404,7 +398,7 @@ public class Server {
 					}
 					
 					clients.put(address, newClient);
-					sendPlayerID(player, newClient);
+					sendPlayerID(player, newClient); //send id of player entity (which was sent in world data)
 					System.out.println(newClient + " joined (" + clients.size() + " players connected)");
 				});
 			}
