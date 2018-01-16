@@ -220,11 +220,9 @@ public final class StartClient {
 		Utility.waitOnCondition(exitLock, () -> exit);
 		
 		System.out.print("Exiting... ");
-		eventProcessor.getDisplay().setVisible(false);
+		eventProcessor.stop();
 		gameUpdater.stop();
-		eventProcessor.waitForExit();
-		if(client.isConnected())
-			client.disconnect();
+		if(client.isConnected()) client.disconnect();
 		audio.close();
 		ClientAudioSystem.shutdown();
 		System.out.println("done!");

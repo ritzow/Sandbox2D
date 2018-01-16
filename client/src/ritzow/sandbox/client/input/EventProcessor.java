@@ -1,24 +1,24 @@
 package ritzow.sandbox.client.input;
 
 import static org.lwjgl.glfw.GLFW.glfwInit;
-import static org.lwjgl.glfw.GLFW.glfwPostEmptyEvent;
 import static org.lwjgl.glfw.GLFW.glfwTerminate;
+import static org.lwjgl.glfw.GLFW.glfwPostEmptyEvent;
 
 import java.io.IOException;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import ritzow.sandbox.client.graphics.Display;
 import ritzow.sandbox.client.ui.Cursors;
-import ritzow.sandbox.util.Service;
 import ritzow.sandbox.util.Utility;
 
 /** Initializes GLFW, loads mouse cursors, processes all GLFW events until exited **/
-public final class EventProcessor implements Service {
+public final class EventProcessor implements Runnable {
 	
-	/** status markers for the state of the event manager thread **/
-	private volatile boolean setupComplete, shouldDisplay, exit, finished;
+	/** status markers for the state of the event manager **/
+	private volatile boolean setupComplete, shouldDisplay, exit;
 	
 	/** the window to use this event manager with **/
 	private Display display;
+	private final Object lock = new Object();
 	
 	@Override
 	public void run() {
@@ -34,13 +34,11 @@ public final class EventProcessor implements Service {
 		
 		display = new Display("2D Game");
 		display.setCursor(Cursors.PICKAXE);
+
+		setupComplete = true;
+		Utility.notify(lock);
 		
-		synchronized(this) {
-			setupComplete = true;
-			notifyAll();
-		}
-		
-		Utility.waitOnCondition(this, () -> shouldDisplay);
+		Utility.waitOnCondition(lock, () -> shouldDisplay);
 		display.setFullscreen(true);
 		
 		while(!exit) {
@@ -49,36 +47,25 @@ public final class EventProcessor implements Service {
 		
 		display.destroy();
 		glfwTerminate();
-
-		synchronized(this) {
-			finished = true;
-			notifyAll();
-		}
+	}
+	
+	public void waitForSetup() {
+		Utility.waitOnCondition(lock, () -> setupComplete);
+	}
+	
+	public void stop() {
+		exit = true;
+		glfwPostEmptyEvent();
 	}
 	
 	public Display getDisplay() {
+		if(display == null)
+			throw new IllegalStateException("event processor is not running yet and hasn't been initialized");
 		return display;
 	}
 	
-	public synchronized void setReadyToDisplay() {
+	public void setReadyToDisplay() {
 		shouldDisplay = true;
-		this.notifyAll();
-	}
-	
-	@Override
-	public boolean isSetupComplete() {
-		return setupComplete;
-	}
-	
-	@Override
-	public synchronized void exit() {
-		exit = true;
-		glfwPostEmptyEvent();
-		this.notifyAll();
-	}
-
-	@Override
-	public boolean isFinished() {
-		return finished;
+		Utility.notify(lock);
 	}
 }
