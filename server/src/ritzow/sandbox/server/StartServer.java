@@ -42,10 +42,14 @@ public final class StartServer {
 				case "stop":
 					break reader;
 				case "list":
-					System.out.println("Connected clients:");
-					for(ClientState client : server.listClients()) {
-						System.out.print("\t - ");
-						System.out.println(client);
+					if(server.getConnectedClients() == 0) {
+						System.out.println("No connected clients.");
+					} else {
+						System.out.println("Connected clients:");
+						for(ClientState client : server.listClients()) {
+							System.out.print("\t - ");
+							System.out.println(client);
+						}
 					}
 					break;
 				case "disconnect":
