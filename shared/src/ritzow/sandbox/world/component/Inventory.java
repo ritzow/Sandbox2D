@@ -54,6 +54,10 @@ public class Inventory<T extends Transportable> implements Transportable {
 		return (T)items[slot];
 	}
 	
+	public boolean isItem(int slot) {
+		return items[slot] != null;
+	}
+	
 	public int getSize() {
 		return items.length;
 	}
