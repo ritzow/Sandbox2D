@@ -23,8 +23,8 @@ public final class TrackingCameraController extends CameraController {
 		super(camera);
 		this.zoomSpeed = zoomSpeed;
 		this.target = target;
-		this.minZoom = minZoom;
-		this.maxZoom = maxZoom;
+		this.minZoom = minZoom / target.getWidth();
+		this.maxZoom = maxZoom / target.getWidth();
 		this.soundFalloff = 1.5f;
 		this.camera.setZoom(minZoom);
 		this.audio = audio;
