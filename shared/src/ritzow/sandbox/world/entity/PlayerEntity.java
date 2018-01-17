@@ -4,7 +4,6 @@ import ritzow.sandbox.data.ByteUtil;
 import ritzow.sandbox.data.Serializer;
 import ritzow.sandbox.data.TransportableDataReader;
 import ritzow.sandbox.network.Protocol.PlayerAction;
-import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.component.Inventory;
@@ -20,7 +19,13 @@ public class PlayerEntity extends Entity implements Living {
 	protected int selected, health;
 	protected boolean left, right, up, down;
 	
-	private static final float MOVEMENT_SPEED = 0.2f;
+	protected static final boolean 
+			JETPACK_MODE = false;
+	protected static final float 
+			SIZE_SCALE = 0.4f,
+			MOVEMENT_SPEED = SIZE_SCALE / 5,
+			JUMP_SPEED = MOVEMENT_SPEED * 1.5f,
+			AIR_MOVEMENT = MOVEMENT_SPEED / 7;
 	
 	public PlayerEntity(int entityID) {
 		super(entityID);
@@ -46,22 +51,32 @@ public class PlayerEntity extends Entity implements Living {
 		return bytes;
 	}
 	
+	@SuppressWarnings("unused")
 	@Override
 	public void update(World world, float time) {
-		if(left && right) {
-			velocityX = 0;
-		} else if(left) {
-			velocityX = -MOVEMENT_SPEED;
-		} else if(right) {
-			velocityX = MOVEMENT_SPEED;
+		if(blockBelow(world.getForeground())) {
+			if(left && right) {
+				velocityX = 0;
+			} if(left) {
+				velocityX = -MOVEMENT_SPEED;
+			} else if(right) {
+				velocityX = MOVEMENT_SPEED;
+			}
+			if(!JETPACK_MODE && up) {
+				velocityY = JUMP_SPEED;
+			}
+		} else {
+			if(left ^ right) { //only one is down
+				if(left) {
+					velocityX = Math.max(-MOVEMENT_SPEED, velocityX - AIR_MOVEMENT / 10);
+				} else if(right) {
+					velocityX = Math.min(MOVEMENT_SPEED, velocityX + AIR_MOVEMENT / 10);
+				}
+			}
 		}
 		
-		if(up && blockBelow(world.getForeground())) {
-			velocityY = MOVEMENT_SPEED;
-		}
-		
-		if(!(left || right || blockBelow(world.getForeground()))) {
-			velocityX = Utility.addMagnitude(velocityX, -MOVEMENT_SPEED/50 * time);
+		if(JETPACK_MODE && up) {
+			velocityY = Math.min(JUMP_SPEED, velocityY + AIR_MOVEMENT / 3);
 		}
 		
 		super.update(world, time);
@@ -69,8 +84,18 @@ public class PlayerEntity extends Entity implements Living {
 	
 	private boolean blockBelow(BlockGrid blocks) {
 		return blockInRectangle(blocks, 
-				positionX - getWidth()/2 + 0.1f, positionY - getHeight()/2 - 0.1f, 
-				positionX + getWidth()/2 - 0.1f, positionY - getHeight()/2);
+				positionX - getWidth()/2 + 0.1f, 	//x1
+				positionY - getHeight()/2 - 0.1f, 	//y1
+				positionX + getWidth()/2 - 0.1f, 	//x2
+				positionY - getHeight()/2); 		//y2
+	}
+	
+	private boolean blockAbove(BlockGrid blocks) {
+		return blockInRectangle(blocks, 
+				positionX - getWidth()/2 + 0.1f, 	//x1
+				positionY + getHeight()/2 - 0.1f, 	//y1
+				positionX + getWidth()/2 - 0.1f, 	//x2
+				positionY + getHeight()/2); 		//y2
 	}
 	
 	private static boolean blockInRectangle(BlockGrid blocks, float x1, float y1, float x2, float y2) {
@@ -93,6 +118,10 @@ public class PlayerEntity extends Entity implements Living {
 			case MOVE_UP:
 				up = enabled; break;
 			case MOVE_DOWN:
+				if(enabled)
+					positionY -= SIZE_SCALE/2;
+				else
+					positionY += SIZE_SCALE/2;
 				down = enabled; break;
 		}
 	}
@@ -110,7 +139,9 @@ public class PlayerEntity extends Entity implements Living {
 	}
 	
 	public void setSlot(int slot) {
-		selected = Math.min(Math.max(slot, 0), inventory.getSize());
+		if(slot > inventory.getSize() - 1 || slot < 0)
+			throw new IllegalArgumentException("slot out of bounds");
+		selected = slot;
 	}
 
 	@Override
@@ -140,17 +171,17 @@ public class PlayerEntity extends Entity implements Living {
 
 	@Override
 	public float getWidth() {
-		return 1;
+		return SIZE_SCALE;
 	}
 
 	@Override
 	public float getHeight() {
-		return 2;
+		return SIZE_SCALE * (down ? 1 : 2);
 	}
 
 	@Override
 	public float getMass() {
-		return 0.2f;
+		return 0.2f * SIZE_SCALE;
 	}
 
 	@Override
