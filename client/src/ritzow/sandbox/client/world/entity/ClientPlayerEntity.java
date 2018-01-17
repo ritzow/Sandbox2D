@@ -5,14 +5,13 @@ import ritzow.sandbox.client.graphics.ModelRenderProgram;
 import ritzow.sandbox.client.graphics.RenderConstants;
 import ritzow.sandbox.client.graphics.Renderable;
 import ritzow.sandbox.data.TransportableDataReader;
-import ritzow.sandbox.world.component.Luminous;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
 /**
- * Represents a player controlled by a human
+ * Represents a player
  * @author Solomon Ritzow
  */
-public class ClientPlayerEntity extends PlayerEntity implements Luminous, Renderable {
+public class ClientPlayerEntity extends PlayerEntity implements Renderable {
 	
 	public ClientPlayerEntity(int entityID) {
 		super(entityID);
@@ -24,37 +23,20 @@ public class ClientPlayerEntity extends PlayerEntity implements Luminous, Render
 
 	@Override
 	public void render(ModelRenderProgram renderer) {
-		renderer.render(RenderConstants.MODEL_GREEN_FACE, 1.0f, positionX, positionY + 0.5f, 1.0f, 1.0f, 0.0f);
-		renderer.render(RenderConstants.MODEL_RED_SQUARE, 1.0f, positionX, positionY - 0.5f, 1.0f, 1.0f, positionX);
-		
-		Graphical selectedItem = (Graphical)inventory.get(selected);
-		if(selectedItem != null) {
-			renderer.render(selectedItem.getGraphics().getModelID(), 1.0f, positionX, positionY, 0.5f, 0.5f, 0);
+		float positionX = this.positionX;
+		float positionY = this.positionY;
+		renderer.render(
+				RenderConstants.MODEL_GREEN_FACE, 1.0f, positionX, positionY + (down ? 0 : 1) * SIZE_SCALE/2, 
+				SIZE_SCALE, SIZE_SCALE, 0.0f);
+		if(!down) {
+			renderer.render(
+					RenderConstants.MODEL_RED_SQUARE, 1.0f, positionX, positionY - SIZE_SCALE/2, 
+					SIZE_SCALE, SIZE_SCALE, positionX/SIZE_SCALE);
 		}
-	}
-
-	@Override
-	public float getLightRed() {
-		return 1.0f;
-	}
-
-	@Override
-	public float getLightGreen() {
-		return 0.0f;
-	}
-
-	@Override
-	public float getLightBlue() {
-		return 1.0f;
-	}
-
-	@Override
-	public float getLightRadius() {
-		return 50;
-	}
-
-	@Override
-	public float getLightIntensity() {
-		return 100;
+		
+		if(inventory.isItem(selected)) {
+			renderer.render(((Graphical) inventory.get(selected)).getGraphics().getModelID(), 
+					1.0f, positionX, positionY, 0.5f * SIZE_SCALE, 0.5f * SIZE_SCALE, 0);
+		}
 	}
 }
