@@ -29,31 +29,39 @@ public class Client {
 	private final InetSocketAddress server;
 	private final NetworkController network;
 	private final SerializerReaderWriter serializer;
-	private final Integrater integrater;
+	private final Integrator integrator;
 	private final ExecutorService workers;
-	private volatile byte connectedStatus;
 	private Runnable disconnectAction;
-	
-	private volatile ClientPlayerEntity player;
-	private volatile World world;
-	private byte[] worldData;
-	private int worldBytesRemaining;
 	private final Object worldLock, playerLock;
+	private ConnectionState state;
+	private volatile byte connectedStatus;
 	
 	private static final byte STATUS_NOT_CONNECTED = 0, STATUS_REJECTED = 1, STATUS_CONNECTED = 2;
 	
-	private static final class Integrater extends TaskQueue {
-		public boolean running;
+	private static final class Integrator extends TaskQueue {
+		private boolean running;
+		
 		public void run() {
 			running = true;
 			super.run();
 		}
+		
+		public boolean isRunning() {
+			return running;
+		}
+	}
+	
+	private static final class ConnectionState {
+		private volatile World world;
+		private volatile ClientPlayerEntity player;
+		private byte[] worldData;
+		private int worldBytesRemaining;
 	}
 	
 	/**
 	 * Creates a client bound to the provided address
-	 * @param bindAddress
-	 * @throws SocketException
+	 * @param bindAddress the local address to bind to.
+	 * @throws SocketException if the local address could not be bound to.
 	 */
 	public Client(InetSocketAddress bindAddress, InetSocketAddress serverAddress) throws SocketException {
 		network = new NetworkController(bindAddress, this::process);
@@ -61,7 +69,7 @@ public class Client {
 		worldLock = new Object();
 		playerLock = new Object();
 		serializer = SerializationProvider.getProvider();
-		integrater = new Integrater();
+		integrator = new Integrator();
 		workers = Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "Message Processor"));
 	}
 	
@@ -72,8 +80,8 @@ public class Client {
 			DataReader reader = new ByteArrayDataReader(data);
 			short protocol = reader.readShort();
 			try {
-				if(integrater.running) {
-					integrater.add(() -> onReceive(protocol, reader)); //TODO improve this code, too much spaghetti!
+				if(integrator.isRunning()) {
+					integrator.add(() -> onReceive(protocol, reader)); //TODO improve this code, too much spaghetti!
 				} else {
 					onReceive(protocol, reader);
 				}
@@ -94,8 +102,8 @@ public class Client {
 				processServerConnectAcknowledgement(data);
 				break;
 			case Protocol.SERVER_WORLD_HEAD:
-				worldBytesRemaining = data.readInteger();
-				worldData = new byte[worldBytesRemaining];
+				state.worldBytesRemaining = data.readInteger();
+				state.worldData = new byte[state.worldBytesRemaining];
 				break;
 			case Protocol.SERVER_WORLD_DATA:
 				processReceiveWorldData(data);
@@ -130,11 +138,11 @@ public class Client {
 	}
 	
 	public Runnable onReceiveMessageTask() {
-		return integrater;
+		return integrator;
 	}
 	
 	private void processServerRemoveBlock(DataReader data) {
-		world.getForeground().destroy(world, data.readInteger(), data.readInteger());
+		state.world.getForeground().destroy(state.world, data.readInteger(), data.readInteger());
 	}
 	
 	public boolean connect() {
@@ -152,7 +160,9 @@ public class Client {
 			}
 			Utility.waitOnCondition(server, 1000, () -> connectedStatus != STATUS_NOT_CONNECTED);
 		}
-		if(connectedStatus != STATUS_CONNECTED)
+		if(connectedStatus == STATUS_CONNECTED)
+			state = new ConnectionState();
+		else
 			disconnect(false);
 		return isConnected();
 	}
@@ -182,6 +192,7 @@ public class Client {
 			workers.shutdown();
 			workers.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
 			disconnectAction.run();
+			state = null;
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
@@ -228,14 +239,14 @@ public class Client {
 	
 	public World getWorld() {
 		checkConnected();
-		Utility.waitOnCondition(worldLock, () -> world != null);
-		return world;
+		Utility.waitOnCondition(worldLock, () -> state.world != null);
+		return state.world;
 	}
 	
 	public ClientPlayerEntity getPlayer() {
 		checkConnected();
-		Utility.waitOnCondition(playerLock, () -> player != null);
-		return player;
+		Utility.waitOnCondition(playerLock, () -> state.player != null);
+		return state.player;
 	}
 	
 	private void processServerDisconnect(DataReader data) {
@@ -254,7 +265,7 @@ public class Client {
 		int id = data.readInteger();
 		for(Entity e : getWorld()) {
 			if(e.getID() == id) {
-				this.player = (ClientPlayerEntity)e;
+				state.player = (ClientPlayerEntity)e;
 				Utility.notify(playerLock);
 				return;
 			}
@@ -272,7 +283,7 @@ public class Client {
 			boolean compressed = data.readBoolean();
 			byte[] entity = data.readBytes(data.remaining());
 			Entity e = serializer.deserialize(compressed ? ByteUtil.decompress(entity) : entity);
-			world.forEach(o -> {
+			state.world.forEach(o -> {
 				if(o.getID() == e.getID())
 					throw new IllegalStateException("cannot have two entities with the same ID");
 			});
@@ -297,14 +308,14 @@ public class Client {
 	}
 	
 	private void processReceiveWorldData(DataReader data) {
-		if(worldData == null)
+		if(state.worldData == null)
 			throw new IllegalStateException("world head packet has not been received");
-		synchronized(worldData) {
+		synchronized(state.worldData) {
 			int remaining = data.remaining();
-			ByteUtil.copy(data.readBytes(remaining), worldData, worldData.length - worldBytesRemaining);
-			if((worldBytesRemaining -= remaining) == 0) {
-				world = serializer.deserialize(ByteUtil.decompress(worldData));
-				worldData = null; //release the raw data to the garbage collector!
+			ByteUtil.copy(data.readBytes(remaining), state.worldData, state.worldData.length - state.worldBytesRemaining);
+			if((state.worldBytesRemaining -= remaining) == 0) {
+				state.world = serializer.deserialize(ByteUtil.decompress(state.worldData));
+				state.worldData = null; //release the raw data to the garbage collector!
 				Utility.notify(worldLock);
 			}
 		}
