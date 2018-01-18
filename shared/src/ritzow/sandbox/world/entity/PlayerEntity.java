@@ -22,7 +22,7 @@ public class PlayerEntity extends Entity implements Living {
 	protected static final boolean 
 			JETPACK_MODE = false;
 	protected static final float 
-			SIZE_SCALE = 0.4f,
+			SIZE_SCALE = 1.0f,
 			MOVEMENT_SPEED = SIZE_SCALE / 5,
 			JUMP_SPEED = MOVEMENT_SPEED * 1.5f,
 			AIR_MOVEMENT = MOVEMENT_SPEED / 7;
@@ -90,13 +90,13 @@ public class PlayerEntity extends Entity implements Living {
 				positionY - getHeight()/2); 		//y2
 	}
 	
-	private boolean blockAbove(BlockGrid blocks) {
-		return blockInRectangle(blocks, 
-				positionX - getWidth()/2 + 0.1f, 	//x1
-				positionY + getHeight()/2 - 0.1f, 	//y1
-				positionX + getWidth()/2 - 0.1f, 	//x2
-				positionY + getHeight()/2); 		//y2
-	}
+//	private boolean blockAbove(BlockGrid blocks) {
+//		return blockInRectangle(blocks, 
+//				positionX - getWidth()/2 + 0.1f, 	//x1
+//				positionY + getHeight()/2 - 0.1f, 	//y1
+//				positionX + getWidth()/2 - 0.1f, 	//x2
+//				positionY + getHeight()/2); 		//y2
+//	}
 	
 	private static boolean blockInRectangle(BlockGrid blocks, float x1, float y1, float x2, float y2) {
 		int a1 = Math.round(x1), b1 = Math.round(y1), a2 = Math.round(x2), b2 = Math.round(y2);

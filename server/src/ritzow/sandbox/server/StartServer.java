@@ -28,7 +28,7 @@ public final class StartServer {
 		final File saveFile = new File(args.length > 0 ? args[0] : "data/worlds/world.dat");
 		
 		World world = saveFile.exists() ? 
-				loadWorld(saveFile, SerializationProvider.getProvider()) : generateWorld(100, 100, server);
+				loadWorld(saveFile, SerializationProvider.getProvider()) : generateWorld(1000, 1000, server);
 		server.start(world);
 		
 		System.out.println("Startup Complete.");

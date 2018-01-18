@@ -187,7 +187,7 @@ public class NetworkController {
 		datagram.setLength(dataSize + 5);
 	}
 	
-	public void removeConnection(SocketAddress address) {
+	public void removeConnection(InetSocketAddress address) {
 		connections.remove(address);
 	}
 	

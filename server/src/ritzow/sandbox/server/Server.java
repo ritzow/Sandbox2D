@@ -196,15 +196,6 @@ public class Server {
 		ByteUtil.putFloat(update, 14, e.getVelocityX());
 		ByteUtil.putFloat(update, 18, e.getVelocityY());
 		broadcastUnreliable(update);
-		
-//		broadcastUnreliable(writer -> {
-//			writer.writeShort(Protocol.SERVER_ENTITY_UPDATE);
-//			writer.writeInteger(e.getID());
-//			writer.writeFloat(e.getPositionX());
-//			writer.writeFloat(e.getPositionY());
-//			writer.writeFloat(e.getVelocityX());
-//			writer.writeFloat(e.getVelocityY());
-//		}, client -> true);
 	}
 	
 	private static byte[] buildServerDisconnect(String reason) {
@@ -318,7 +309,7 @@ public class Server {
 	 * @param client the client to disconnect
 	 * @param reason the reason for disconnecting the client, or null to not notify the client
 	 */
-	private void disconnect(ClientState client, String reason) { //TODO there is still a synchronization issue somewhere here
+	private void disconnect(ClientState client, String reason) {
 		if(clients.remove(client.address) != null) {
 			if(reason != null)
 				sendReliable(client, buildServerDisconnect(reason), true);
@@ -337,7 +328,6 @@ public class Server {
 	
 	public void disconnectAll(String reason) {
 		synchronized(clients) {
-			//do not remove unresponsive clients here because they will always be unresponsive (they disconnected!)
 			broadcastReliable(buildServerDisconnect(reason), false);
 			
 			for(ClientState client : clients.values()) {
