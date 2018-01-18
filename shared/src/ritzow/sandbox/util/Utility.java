@@ -105,6 +105,11 @@ public final class Utility {
 		}
 	}
 	
+	//TODO implement rotateAround
+	public static float rotateAround(float radians, float radius, float centerX, float centerY) {
+		throw new UnsupportedOperationException("not implemented");
+	}
+	
 	public static long millisToNanos(long milliseconds) {
 		return milliseconds * 1_000_000;
 	}
