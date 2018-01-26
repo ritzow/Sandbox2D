@@ -6,7 +6,7 @@ import java.nio.ByteBuffer;
 import org.lwjgl.BufferUtils;
 
 /** Instances of WAVEDecoder will decode a .wav file from an InputStream **/
-public final class WAVEDecoder implements SoundData {
+public final class WAVEDecoder implements SoundInfo {
 	private final InputStream input;
 	private ByteBuffer data;
 	
@@ -17,7 +17,7 @@ public final class WAVEDecoder implements SoundData {
 	private short blockAlign; //numChannels * bitsPerSample/8
 	private short bitsPerSample; //8 bits = 8, 16 bits = 16, etc.
 	
-	public static SoundData decode(InputStream wavData) throws IOException {
+	public static SoundInfo decode(InputStream wavData) throws IOException {
 		WAVEDecoder dec = new WAVEDecoder(wavData);
 		dec.decode();
 		return dec;

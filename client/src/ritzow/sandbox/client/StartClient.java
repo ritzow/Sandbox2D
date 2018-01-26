@@ -10,6 +10,7 @@ import java.net.UnknownHostException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import ritzow.sandbox.client.audio.ClientAudioSystem;
 import ritzow.sandbox.client.audio.Sound;
 import ritzow.sandbox.client.audio.WAVEDecoder;
@@ -128,13 +129,14 @@ public final class StartClient {
 			Map.entry("snap.wav", Sound.SNAP)
 		);
 		
-		for(File f : new File("resources/assets/audio").listFiles(f -> f.isFile())) {
-			try(FileInputStream input = new FileInputStream(f)) {
-				audio.registerSound(soundFiles.get(f.getName()).code(), WAVEDecoder.decode(input));	
-			} catch (IOException e) {
-				e.printStackTrace();
-				System.exit(1);
+		try {
+			for(Entry<String, Sound> entry : soundFiles.entrySet()) {
+				audio.registerSound(entry.getValue().code(), WAVEDecoder.decode(
+						new FileInputStream(new File("resources/assets/audio", entry.getKey()))));
 			}
+		} catch (IOException e) {
+			e.printStackTrace();
+			System.exit(1);
 		}
 		
 		audio.setVolume(1.0f);
