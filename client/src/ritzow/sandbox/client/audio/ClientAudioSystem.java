@@ -13,21 +13,22 @@ import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import org.lwjgl.openal.AL;
 import org.lwjgl.openal.ALC;
 import org.lwjgl.openal.ALCCapabilities;
 
 public final class ClientAudioSystem implements AudioSystem {
-	private static final long alContext;
-	private static final long device;
-	private static final int[] sources;
-	private static final ClientAudioSystem audio;
+	private static long alContext;
+	private static long device;
+	private static int[] sources;
+	private static ClientAudioSystem audio;
 	
 	public static ClientAudioSystem getAudioSystem() {
-		return audio;
+		return audio == null ? audio = initialize() : audio;
 	}
 	
-	static {
+	private static ClientAudioSystem initialize() {
 		device = alcOpenDevice((ByteBuffer)null);
 		alContext = alcCreateContext(device, (IntBuffer)null);
 		ALCCapabilities alcCaps = ALC.createCapabilities(device);
@@ -36,11 +37,12 @@ public final class ClientAudioSystem implements AudioSystem {
 		if(!AL.createCapabilities(alcCaps).OpenAL11) {
 			System.err.println("OpenAL 1.1 not supported");
 			shutdown();
+			return null;
+		} else {
+			sources = new int[alcGetInteger(device, ALC_MONO_SOURCES)];
+			alGenSources(sources);
+			return new ClientAudioSystem();
 		}
-		
-		sources = new int[alcGetInteger(device, ALC_MONO_SOURCES)];
-		alGenSources(sources);
-		audio = new ClientAudioSystem();
 	}
 	
 	public static void shutdown() {
@@ -63,7 +65,8 @@ public final class ClientAudioSystem implements AudioSystem {
 		}
 	}
 	
-	public void registerSound(int id, SoundData data) {
+	public void registerSound(int id, SoundInfo data) {
+		Objects.requireNonNull(data);
     	int format = AL_FORMAT_STEREO16;
     	
     	if(data.getBitsPerSample() == 8) {
@@ -93,10 +96,13 @@ public final class ClientAudioSystem implements AudioSystem {
 
 	@Override
 	public void playSound(int soundID, float x, float y, float velocityX, float velocityY, float gain, float pitch) {
+		Integer bufferID = sounds.get(Integer.valueOf(soundID));
+		if(bufferID == null)
+			throw new IllegalStateException("soundID " + soundID + " does not exist");
 		for(int source : sources) {
 			int state = alGetSourcei(source, AL_SOURCE_STATE);
 			if(state == AL_STOPPED || state == AL_INITIAL) {
-				alSourcei(source, AL_BUFFER, sounds.get(soundID));
+				alSourcei(source, AL_BUFFER, bufferID);
 				alSource3f(source, AL_POSITION, x, y, 0);
 				alSource3f(source, AL_VELOCITY, velocityX, velocityY, 0);
 				alSourcef(source, AL_GAIN, gain);
