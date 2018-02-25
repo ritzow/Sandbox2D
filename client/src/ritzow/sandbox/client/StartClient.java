@@ -98,7 +98,6 @@ public final class StartClient {
 			modelProgram.register(RenderConstants.MODEL_DIRT_BLOCK,	new RenderData(6, indices, positions, textureCoordinates, Textures.DIRT.id));
 			modelProgram.register(RenderConstants.MODEL_GREEN_FACE,	new RenderData(6, indices, positions, textureCoordinates, Textures.GREEN_FACE.id));
 			modelProgram.register(RenderConstants.MODEL_RED_SQUARE,	new RenderData(6, indices, positions, textureCoordinates, Textures.RED_SQUARE.id));
-			//modelProgram.register(23, new RenderData(6, indices, positions, textureCoordinates, Textures.ATLAS.id));
 			
 			LightRenderProgram lightProgram = new LightRenderProgram(
 					new Shader(new FileInputStream("resources/shaders/lightVertexShader"), ShaderType.VERTEX),

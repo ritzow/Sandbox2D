@@ -72,7 +72,7 @@ public final class Utility {
 	/**
 	 * Waits on {@code lock} and returns once {@code condition} returns {@code true}.
 	 * @param lock the object to wait to be notified by.
-	 * @param object the condition to check.
+	 * @param condition the condition to check.
 	 */
 	public static void waitOnCondition(Object lock, BooleanSupplier condition) {
 		if(!condition.getAsBoolean()) {

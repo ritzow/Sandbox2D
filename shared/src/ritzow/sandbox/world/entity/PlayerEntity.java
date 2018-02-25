@@ -57,7 +57,7 @@ public class PlayerEntity extends Entity implements Living {
 		if(blockBelow(world.getForeground())) {
 			if(left && right) {
 				velocityX = 0;
-			} if(left) {
+			} else if(left) {
 				velocityX = -MOVEMENT_SPEED;
 			} else if(right) {
 				velocityX = MOVEMENT_SPEED;
@@ -65,13 +65,11 @@ public class PlayerEntity extends Entity implements Living {
 			if(!JETPACK_MODE && up) {
 				velocityY = JUMP_SPEED;
 			}
-		} else {
-			if(left ^ right) { //only one is down
-				if(left) {
-					velocityX = Math.max(-MOVEMENT_SPEED, velocityX - AIR_MOVEMENT / 10);
-				} else if(right) {
-					velocityX = Math.min(MOVEMENT_SPEED, velocityX + AIR_MOVEMENT / 10);
-				}
+		} else if(left ^ right) { //only one is down
+			if(left) {
+				velocityX = Math.max(-MOVEMENT_SPEED, velocityX - AIR_MOVEMENT / 10);
+			} else if(right) {
+				velocityX = Math.min(MOVEMENT_SPEED, velocityX + AIR_MOVEMENT / 10);
 			}
 		}
 		

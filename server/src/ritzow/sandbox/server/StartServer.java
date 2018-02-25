@@ -27,10 +27,12 @@ public final class StartServer {
 		//the save file to try to load the world from
 		final File saveFile = new File(args.length > 0 ? args[0] : "data/worlds/world.dat");
 		
+		//if a save file exists, load it, otherwise generate a world
 		World world = saveFile.exists() ? 
-				loadWorld(saveFile, SerializationProvider.getProvider()) : generateWorld(1000, 1000, server);
+				loadWorld(saveFile, SerializationProvider.getProvider()) : generateWorld(100, 100, server);
 		server.start(world);
 		
+		//read user input commands
 		System.out.println("Startup Complete.");
 		System.out.println("Type 'exit' to stop server or 'list' to list connected clients");
 		try(Scanner scanner = new Scanner(System.in)) {
@@ -65,6 +67,7 @@ public final class StartServer {
 		
 		server.stop();
 		
+		//save world to file if enabled
 		if(SAVE_WORLD) {
 			try {
 				if(!saveFile.exists())

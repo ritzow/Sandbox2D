@@ -1,12 +1,11 @@
 package ritzow.sandbox.network;
 
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.net.SocketException;
-import java.util.Arrays;
+import java.nio.ByteBuffer;
+import java.nio.channels.AsynchronousCloseException;
+import java.nio.channels.DatagramChannel;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -14,10 +13,6 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
-import ritzow.sandbox.data.ByteUtil;
-import ritzow.sandbox.data.DataWriter;
-import ritzow.sandbox.data.UncheckedByteArrayDataWriter;
 import ritzow.sandbox.util.Utility;
 
 /** Provides common functionality of the client and server. Manages incoming and outgoing packets. **/
@@ -56,11 +51,10 @@ public class NetworkController {
 	    }
 	}
 	
-	//fields
-	private final DatagramSocket socket;
+	private final DatagramChannel channel;
 	private final Queue<MessageAddressPair> reliableQueue;
 	private final Map<InetSocketAddress, ConnectionState> connections;
-	private final ThreadLocal<DatagramPacket> packets;
+	private final ThreadLocal<ByteBuffer> packets;
 	private final MessageProcessor messageProcessor;
 	private volatile boolean started, exit;
 	
@@ -69,12 +63,16 @@ public class NetworkController {
 	/** Message Type **/
 	private static final byte RESPONSE_TYPE = 1, RELIABLE_TYPE = 2, UNRELIABLE_TYPE = 3;
 	
-	public NetworkController(InetSocketAddress bindAddress, MessageProcessor processor) throws SocketException {
-		messageProcessor = processor;
-		socket = new DatagramSocket(bindAddress);
-		reliableQueue = new ConcurrentLinkedQueue<MessageAddressPair>();
-		connections = Collections.synchronizedMap(new HashMap<InetSocketAddress, ConnectionState>());
-		packets = ThreadLocal.withInitial(() -> new DatagramPacket(new byte[Protocol.MAX_MESSAGE_LENGTH + 5], 0));
+	public NetworkController(InetSocketAddress bindAddress, MessageProcessor processor) {
+		try {
+			messageProcessor = processor;
+			channel = DatagramChannel.open().bind(bindAddress);
+			reliableQueue = new ConcurrentLinkedQueue<MessageAddressPair>();
+			connections = Collections.synchronizedMap(new HashMap<InetSocketAddress, ConnectionState>());
+			packets = ThreadLocal.withInitial(() -> ByteBuffer.allocate(HEADER_SIZE + Protocol.MAX_MESSAGE_LENGTH));
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 	}
 	
 	/**
@@ -105,14 +103,13 @@ public class NetworkController {
 		if(resendInterval < 0)
 			throw new IllegalArgumentException("resendInterval must be greater than or equal to zero");
 		int messageID = getState(recipient).nextReliableSendID();
-		DatagramPacket packet = getPacket(recipient, RELIABLE_TYPE, messageID, data);
 		MessageAddressPair pair = new MessageAddressPair(recipient, messageID);
 		synchronized(pair) {
 			reliableQueue.add(pair);
 			int attemptsRemaining = attempts;
-			while(attemptsRemaining > 0 && !pair.received && !socket.isClosed()) {
+			while(attemptsRemaining > 0 && !pair.received && channel.isOpen()) {
 				try {
-					socket.send(packet);
+					channel.send(getBuffer(RELIABLE_TYPE, messageID, data), recipient);
 					attemptsRemaining--;
 					pair.wait(resendInterval); //wait for ack to be received by network controller receiver
 				} catch (InterruptedException | IOException e) {
@@ -134,16 +131,7 @@ public class NetworkController {
 	 */
 	public void sendUnreliable(InetSocketAddress recipient, byte[] data) {
 		try {
-			socket.send(getPacket(recipient, UNRELIABLE_TYPE, getState(recipient).nextUnreliableSendID(), data));
-		} catch(IOException e) {
-			e.printStackTrace();
-			stop();
-		}
-	}
-	
-	public void sendUnreliable(InetSocketAddress recipient, Consumer<DataWriter> data) {
-		try {
-			socket.send(getPacket(recipient, UNRELIABLE_TYPE, getState(recipient).nextUnreliableSendID(), data));
+			channel.send(getBuffer(UNRELIABLE_TYPE, getState(recipient).nextUnreliableSendID(), data), recipient);
 		} catch(IOException e) {
 			e.printStackTrace();
 			stop();
@@ -152,39 +140,17 @@ public class NetworkController {
 	
 	private void sendResponse(SocketAddress recipient, int receivedMessageID) {
 		try {
-			DatagramPacket datagram = packets.get();
-			setupDatagram(datagram, recipient, RESPONSE_TYPE, receivedMessageID, 0);
-			socket.send(datagram);
+			channel.send(ByteBuffer.allocate(5).put(RESPONSE_TYPE).putInt(receivedMessageID).flip(), recipient);
 		} catch (IOException e) {
 			e.printStackTrace();
 			stop();
 		}
 	}
 	
-	private DatagramPacket getPacket(SocketAddress recipient, byte type, int messageID, byte[] data) {
-		DatagramPacket datagram = packets.get();
-		setupDatagram(datagram, recipient, type, messageID, data.length);
-		ByteUtil.copy(data, datagram.getData(), datagram.getOffset() + 5); //put data
-		return datagram;
-	}
-	
-	private DatagramPacket getPacket(SocketAddress recipient, byte type, int messageID, Consumer<DataWriter> data) {
-		DatagramPacket datagram = packets.get();
-		UncheckedByteArrayDataWriter writer = new UncheckedByteArrayDataWriter(datagram.getData(), HEADER_SIZE);
-		data.accept(writer);
-		setupDatagram(datagram, recipient, type, messageID, writer.index() - HEADER_SIZE);
-		return datagram;
-	}
-	
-	private static void setupDatagram(DatagramPacket datagram, SocketAddress recipient, byte type, int messageID, int dataSize) {
-		if(messageID < 0)
-			throw new IllegalArgumentException("messageID cannot be negative");
-		if(dataSize > Protocol.MAX_MESSAGE_LENGTH)
-			throw new IllegalArgumentException("message length is greater than maximum allowed (" + Protocol.MAX_MESSAGE_LENGTH + " bytes)");
-		datagram.setSocketAddress(recipient);
-		datagram.getData()[datagram.getOffset()] = type;
-		ByteUtil.putInteger(datagram.getData(), datagram.getOffset() + 1, messageID);
-		datagram.setLength(dataSize + 5);
+	private ByteBuffer getBuffer(byte type, int messageID, byte[] data) {
+		ByteBuffer buffer = packets.get();
+		buffer.limit(buffer.capacity());
+		return buffer.rewind().put(type).putInt(messageID).put(data).flip();
 	}
 	
 	public void removeConnection(InetSocketAddress address) {
@@ -204,21 +170,25 @@ public class NetworkController {
 	
 	public void stop() {
 		exit = true;
-		socket.close();
+		try {
+			channel.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	public InetSocketAddress getBindAddress() {
-		return (InetSocketAddress)socket.getLocalSocketAddress();
+		try {
+			return (InetSocketAddress)channel.getLocalAddress();
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 	}
 	
-	private static byte[] getDataCopy(DatagramPacket buffer) {
-		return Arrays.copyOfRange(buffer.getData(), buffer.getOffset() + HEADER_SIZE, buffer.getOffset() + buffer.getLength());
-	}
-	
-	private InetSocketAddress getAddress(DatagramPacket packet) { //TODO is this more or less efficient?
-		InetSocketAddress address = (InetSocketAddress)packet.getSocketAddress();
-		connections.put(address, connections.get(address));
-		return address;
+	private static byte[] getDataCopy(ByteBuffer buffer) {
+		byte[] data = new byte[buffer.position() - 5];
+		buffer.position(5).get(data);
+		return data;
 	}
 	
 	private ConnectionState getState(InetSocketAddress address) {
@@ -231,31 +201,29 @@ public class NetworkController {
 	private void run() {
 		//Create the buffer DatagramPacket that is the maximum length a message can be 
 		//plus the 5 header bytes (type and messageID)
-		int bufferSize = Protocol.MAX_MESSAGE_LENGTH + HEADER_SIZE;
-		DatagramPacket buffer = new DatagramPacket(new byte[bufferSize], bufferSize);
-
+		ByteBuffer buffer = ByteBuffer.allocateDirect(HEADER_SIZE + Protocol.MAX_MESSAGE_LENGTH);
+		
 		while(!exit) {
 			try {
-				socket.receive(buffer); //wait for a packet to be received
+				buffer.rewind();
+				InetSocketAddress sender = (InetSocketAddress)channel.receive(buffer); //wait for a packet to be received
 				//ignore received packets that are not large enough to contain the full header
-				if(buffer.getLength() >= 5) {
-					InetSocketAddress sender = getAddress(buffer);
+				if(buffer.position() >= 5) {
 					//type of message (RESPONSE, RELIABLE, UNRELIABLE)
-					byte type = buffer.getData()[buffer.getOffset()];
+					byte type = buffer.get(0);
 					//received ID or messageID for ack.
-					int messageID = ByteUtil.getInteger(buffer.getData(), buffer.getOffset() + 1);
+					int messageID = buffer.getInt(1);
 					processPacket(buffer, sender, type, messageID);
 				}
-			} catch(SocketException e) {
-				if(!socket.isClosed())
-					e.printStackTrace();
+			} catch(AsynchronousCloseException e) {
+				//socket has been closed, do nothing
 			} catch (IOException e) {
 				e.printStackTrace(); //print exception and continue
 			}
 		}
 	}
 	
-	private void processPacket(DatagramPacket buffer, InetSocketAddress sender, byte type, int messageID) {
+	private void processPacket(ByteBuffer buffer, InetSocketAddress sender, byte type, int messageID) {
 		switch(type) {
 		case RESPONSE_TYPE:
 			synchronized(reliableQueue) {
