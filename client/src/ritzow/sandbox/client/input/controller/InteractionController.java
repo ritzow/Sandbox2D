@@ -50,7 +50,7 @@ public final class InteractionController implements Controller, MouseButtonHandl
 		float playerX = client.getPlayer().getPositionX();						//get player position
 		float playerY = client.getPlayer().getPositionY();
 		
-		if(true || Utility.withinDistance(playerX, playerY, blockX, blockY, range)) {
+		if(Utility.withinDistance(playerX, playerY, blockX, blockY, range)) {
 			if(primaryAction && !breakCooldownActive()) {
 				if(client.getWorld().getForeground().isBlock(blockX, blockY)) {
 					client.sendBlockBreak(blockX, blockY);
@@ -69,7 +69,7 @@ public final class InteractionController implements Controller, MouseButtonHandl
 	}
 	
 	private boolean breakCooldownActive() {
-		return false && System.nanoTime() - lastBreak < cooldownBreak * 1000000;
+		return System.nanoTime() - lastBreak < cooldownBreak * 1000000;
 	}
 	
 	private boolean placeCooldownActive() {
