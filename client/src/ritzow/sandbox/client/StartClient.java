@@ -5,8 +5,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.SocketException;
-import java.net.UnknownHostException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +32,7 @@ import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.World;
 
 public final class StartClient {
-	public static void main(String... args) throws SocketException, UnknownHostException {
+	public static void main(String... args) throws IOException {
 		InetAddress serverAddress = args.length > 0 ? InetAddress.getByName(args[0]) : InetAddress.getLocalHost();
 		InetSocketAddress serverSocket = new InetSocketAddress(serverAddress, Protocol.DEFAULT_SERVER_UDP_PORT);
 		
@@ -55,10 +53,8 @@ public final class StartClient {
 	private static Object exitLock = new Object();
 	
 	private static void exit() {
-		synchronized(exitLock) {
-			exit = true;
-			exitLock.notifyAll();
-		}
+		exit = true;
+		Utility.notify(exitLock);
 	}
 	
 	//to be run on game update thread (rendering thread)
@@ -94,10 +90,14 @@ public final class StartClient {
 					cameraGrip.getCamera()
 			);
 			
-			modelProgram.register(RenderConstants.MODEL_GRASS_BLOCK,new RenderData(6, indices, positions, textureCoordinates, Textures.GRASS.id));
-			modelProgram.register(RenderConstants.MODEL_DIRT_BLOCK,	new RenderData(6, indices, positions, textureCoordinates, Textures.DIRT.id));
-			modelProgram.register(RenderConstants.MODEL_GREEN_FACE,	new RenderData(6, indices, positions, textureCoordinates, Textures.GREEN_FACE.id));
-			modelProgram.register(RenderConstants.MODEL_RED_SQUARE,	new RenderData(6, indices, positions, textureCoordinates, Textures.RED_SQUARE.id));
+			modelProgram.register(RenderConstants.MODEL_GRASS_BLOCK,
+					new RenderData(6, indices, positions, textureCoordinates, Textures.GRASS.id));
+			modelProgram.register(RenderConstants.MODEL_DIRT_BLOCK,	
+					new RenderData(6, indices, positions, textureCoordinates, Textures.DIRT.id));
+			modelProgram.register(RenderConstants.MODEL_GREEN_FACE,	
+					new RenderData(6, indices, positions, textureCoordinates, Textures.GREEN_FACE.id));
+			modelProgram.register(RenderConstants.MODEL_RED_SQUARE,	
+					new RenderData(6, indices, positions, textureCoordinates, Textures.RED_SQUARE.id));
 			
 			LightRenderProgram lightProgram = new LightRenderProgram(
 					new Shader(new FileInputStream("resources/shaders/lightVertexShader"), ShaderType.VERTEX),
@@ -168,7 +168,10 @@ public final class StartClient {
 			
 			public void run() {
 				if(focused)
-					previousTime = Utility.updateWorld(world, previousTime, SharedConstants.MAX_TIMESTEP, SharedConstants.TIME_SCALE_NANOSECONDS);
+					previousTime = Utility.updateWorld(world, 
+							previousTime, 
+							SharedConstants.MAX_TIMESTEP, 
+							SharedConstants.TIME_SCALE_NANOSECONDS);
 			}
 			
 			@Override

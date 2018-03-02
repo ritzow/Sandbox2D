@@ -3,6 +3,7 @@ package ritzow.sandbox.network;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.net.StandardSocketOptions;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.DatagramChannel;
@@ -58,21 +59,18 @@ public class NetworkController {
 	private final MessageProcessor messageProcessor;
 	private volatile boolean started, exit;
 	
-	private static final int HEADER_SIZE = 5;
+	private static final int HEADER_SIZE = 5, MAX_PACKET_SIZE = HEADER_SIZE + Protocol.MAX_MESSAGE_LENGTH;
 	
 	/** Message Type **/
 	private static final byte RESPONSE_TYPE = 1, RELIABLE_TYPE = 2, UNRELIABLE_TYPE = 3;
 	
-	public NetworkController(InetSocketAddress bindAddress, MessageProcessor processor) {
-		try {
-			messageProcessor = processor;
-			channel = DatagramChannel.open().bind(bindAddress);
-			reliableQueue = new ConcurrentLinkedQueue<MessageAddressPair>();
-			connections = Collections.synchronizedMap(new HashMap<InetSocketAddress, ConnectionState>());
-			packets = ThreadLocal.withInitial(() -> ByteBuffer.allocate(HEADER_SIZE + Protocol.MAX_MESSAGE_LENGTH));
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		}
+	public NetworkController(InetSocketAddress bindAddress, MessageProcessor processor) throws IOException {
+		messageProcessor = processor;
+		channel = DatagramChannel.open().bind(bindAddress);
+		channel.setOption(StandardSocketOptions.SO_SNDBUF, Integer.valueOf(MAX_PACKET_SIZE));
+		reliableQueue = new ConcurrentLinkedQueue<MessageAddressPair>();
+		connections = Collections.synchronizedMap(new HashMap<InetSocketAddress, ConnectionState>());
+		packets = ThreadLocal.withInitial(() -> ByteBuffer.allocate(MAX_PACKET_SIZE));
 	}
 	
 	/**
@@ -140,7 +138,7 @@ public class NetworkController {
 	
 	private void sendResponse(SocketAddress recipient, int receivedMessageID) {
 		try {
-			channel.send(ByteBuffer.allocate(5).put(RESPONSE_TYPE).putInt(receivedMessageID).flip(), recipient);
+			channel.send(ByteBuffer.allocate(HEADER_SIZE).put(RESPONSE_TYPE).putInt(receivedMessageID).flip(), recipient);
 		} catch (IOException e) {
 			e.printStackTrace();
 			stop();
@@ -186,8 +184,8 @@ public class NetworkController {
 	}
 	
 	private static byte[] getDataCopy(ByteBuffer buffer) {
-		byte[] data = new byte[buffer.position() - 5];
-		buffer.position(5).get(data);
+		byte[] data = new byte[buffer.position() - HEADER_SIZE];
+		buffer.position(HEADER_SIZE).get(data);
 		return data;
 	}
 	
@@ -201,20 +199,20 @@ public class NetworkController {
 	private void run() {
 		//Create the buffer DatagramPacket that is the maximum length a message can be 
 		//plus the 5 header bytes (type and messageID)
-		ByteBuffer buffer = ByteBuffer.allocateDirect(HEADER_SIZE + Protocol.MAX_MESSAGE_LENGTH);
+		ByteBuffer buffer = ByteBuffer.allocateDirect(MAX_PACKET_SIZE);
 		
 		while(!exit) {
 			try {
-				buffer.rewind();
 				InetSocketAddress sender = (InetSocketAddress)channel.receive(buffer); //wait for a packet to be received
 				//ignore received packets that are not large enough to contain the full header
-				if(buffer.position() >= 5) {
+				if(buffer.position() >= HEADER_SIZE) {
 					//type of message (RESPONSE, RELIABLE, UNRELIABLE)
 					byte type = buffer.get(0);
 					//received ID or messageID for ack.
 					int messageID = buffer.getInt(1);
 					processPacket(buffer, sender, type, messageID);
 				}
+				buffer.rewind();
 			} catch(AsynchronousCloseException e) {
 				//socket has been closed, do nothing
 			} catch (IOException e) {

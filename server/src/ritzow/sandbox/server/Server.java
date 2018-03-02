@@ -1,9 +1,7 @@
 package ritzow.sandbox.server;
 
-import java.net.InetAddress;
+import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.net.SocketException;
-import java.net.UnknownHostException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -35,11 +33,7 @@ public class Server {
 	private final Map<InetSocketAddress, ClientState> clients;
 	private volatile boolean canConnect;
 	
-	public Server(int port) throws SocketException, UnknownHostException {
-		this(new InetSocketAddress(InetAddress.getLocalHost(), port));
-	}
-	
-	public Server(InetSocketAddress bindAddress) throws SocketException {
+	public Server(InetSocketAddress bindAddress) throws IOException {
 		this.network = new NetworkController(bindAddress, this::process);
 		ThreadGroup processors = new ThreadGroup("Message Processors");
 		ThreadGroup senders = new ThreadGroup("Broadcaster Group");

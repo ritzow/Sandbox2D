@@ -1,5 +1,6 @@
 package ritzow.sandbox.client;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
 import java.util.concurrent.ExecutorService;
@@ -31,10 +32,10 @@ public class Client {
 	private final SerializerReaderWriter serializer;
 	private final Integrator integrator;
 	private final ExecutorService workers;
-	private Runnable disconnectAction;
 	private final Object worldLock, playerLock;
-	private ConnectionState state;
 	private volatile byte connectedStatus;
+	private ConnectionState state;
+	private Runnable disconnectAction;
 	
 	private static final byte STATUS_NOT_CONNECTED = 0, STATUS_REJECTED = 1, STATUS_CONNECTED = 2;
 	
@@ -61,9 +62,10 @@ public class Client {
 	/**
 	 * Creates a client bound to the provided address
 	 * @param bindAddress the local address to bind to.
+	 * @throws IOException if an internal I/O error occurrs
 	 * @throws SocketException if the local address could not be bound to.
 	 */
-	public Client(InetSocketAddress bindAddress, InetSocketAddress serverAddress) throws SocketException {
+	public Client(InetSocketAddress bindAddress, InetSocketAddress serverAddress) throws IOException {
 		network = new NetworkController(bindAddress, this::process);
 		server = serverAddress;
 		worldLock = new Object();
@@ -191,7 +193,8 @@ public class Client {
 			network.stop();
 			workers.shutdown();
 			workers.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
-			disconnectAction.run();
+			if(disconnectAction != null)
+				disconnectAction.run();
 			state = null;
 		} catch (InterruptedException e) {
 			e.printStackTrace();
