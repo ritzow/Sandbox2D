@@ -32,9 +32,9 @@ public class Client {
 	private final SerializerReaderWriter serializer;
 	private final Integrator integrator;
 	private final ExecutorService workers;
-	private final Object worldLock, playerLock;
+	private final Object worldLock, playerLock, connectionLock;
 	private volatile byte connectedStatus;
-	private ConnectionState state;
+	private volatile ConnectionState state;
 	private Runnable disconnectAction;
 	
 	private static final byte STATUS_NOT_CONNECTED = 0, STATUS_REJECTED = 1, STATUS_CONNECTED = 2;
@@ -53,10 +53,10 @@ public class Client {
 	}
 	
 	private static final class ConnectionState {
-		public volatile World world;
-		public volatile ClientPlayerEntity player;
-		public byte[] worldData;
-		public int worldBytesRemaining;
+		volatile World world;
+		volatile ClientPlayerEntity player;
+		volatile byte[] worldData;
+		volatile int worldBytesRemaining;
 	}
 	
 	/**
@@ -74,6 +74,7 @@ public class Client {
 		server = serverAddress;
 		worldLock = new Object();
 		playerLock = new Object();
+		connectionLock = new Object();
 		serializer = SerializationProvider.getProvider();
 		integrator = new Integrator();
 		workers = Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "Message Processor"));
@@ -108,8 +109,8 @@ public class Client {
 				processServerConnectAcknowledgement(data);
 				break;
 			case Protocol.SERVER_WORLD_HEAD:
-				state.worldBytesRemaining = data.readInteger();
-				state.worldData = new byte[state.worldBytesRemaining];
+				state().worldBytesRemaining = data.readInteger();
+				state().worldData = new byte[state.worldBytesRemaining];
 				break;
 			case Protocol.SERVER_WORLD_DATA:
 				processReceiveWorldData(data);
@@ -148,7 +149,12 @@ public class Client {
 	}
 	
 	private void processServerRemoveBlock(DataReader data) {
-		state.world.getForeground().destroy(state.world, data.readInteger(), data.readInteger());
+		state().world.getForeground().destroy(state().world, data.readInteger(), data.readInteger());
+	}
+	
+	private ConnectionState state() {
+		Utility.waitOnCondition(connectionLock, () -> state != null);
+		return state;
 	}
 	
 	public boolean connect() {
@@ -159,17 +165,19 @@ public class Client {
 			try {
 				byte[] packet = new byte[2];
 				ByteUtil.putShort(packet, 0, Protocol.CLIENT_CONNECT_REQUEST);
-				network.sendReliable(server, packet, 10, 100);
+				network.sendReliable(server, packet, 10, 100); //TODO major bug, this will OK server to send more data, even though connection hasn't been completely set up
 			} catch(TimeoutException e) {
 				disconnect(false);
 				return false;
 			}
 			Utility.waitOnCondition(server, 1000, () -> connectedStatus != STATUS_NOT_CONNECTED);
 		}
-		if(connectedStatus == STATUS_CONNECTED)
+		if(connectedStatus == STATUS_CONNECTED) {
 			state = new ConnectionState();
-		else
+			Utility.notify(connectionLock); //to ensure that nothing tries to access state before it is created
+		} else {
 			disconnect(false);
+		}
 		return isConnected();
 	}
 	
@@ -290,7 +298,7 @@ public class Client {
 			boolean compressed = data.readBoolean();
 			byte[] entity = data.readBytes(data.remaining());
 			Entity e = serializer.deserialize(compressed ? ByteUtil.decompress(entity) : entity);
-			state.world.forEach(o -> {
+			state().world.forEach(o -> {
 				if(o.getID() == e.getID())
 					throw new IllegalStateException("cannot have two entities with the same ID");
 			});
@@ -315,6 +323,7 @@ public class Client {
 	}
 	
 	private void processReceiveWorldData(DataReader data) {
+		ConnectionState state = state();
 		if(state.worldData == null)
 			throw new IllegalStateException("world head packet has not been received");
 		synchronized(state.worldData) {
