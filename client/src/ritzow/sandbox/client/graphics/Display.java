@@ -86,6 +86,10 @@ public final class Display {
 		glfwSetWindowSize(displayID, width, height);
 	}
 	
+	public void focus() {
+		glfwFocusWindow(displayID);
+	}
+	
 	public void toggleFullscreen() {
 		setFullscreen(!getFullscreen());
 	}
@@ -112,9 +116,10 @@ public final class Display {
 			int height = glfwGetVideoMode(glfwGetPrimaryMonitor()).height();
 			int refreshRate = glfwGetVideoMode(glfwGetPrimaryMonitor()).refreshRate();
 			glfwSetWindowMonitor(displayID, glfwGetPrimaryMonitor(), 0, 0, width, height, refreshRate);
-			glfwFocusWindow(displayID);
+			focus();
 		} else {
 			glfwSetWindowMonitor(displayID, 0, windowedX, windowedY, windowedWidth, windowedHeight, GLFW_DONT_CARE);
+			focus();
 		}
 	}
 }

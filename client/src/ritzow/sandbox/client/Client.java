@@ -53,10 +53,10 @@ public class Client {
 	}
 	
 	private static final class ConnectionState {
-		private volatile World world;
-		private volatile ClientPlayerEntity player;
-		private byte[] worldData;
-		private int worldBytesRemaining;
+		public volatile World world;
+		public volatile ClientPlayerEntity player;
+		public byte[] worldData;
+		public int worldBytesRemaining;
 	}
 	
 	/**
@@ -65,7 +65,11 @@ public class Client {
 	 * @throws IOException if an internal I/O error occurrs
 	 * @throws SocketException if the local address could not be bound to.
 	 */
-	public Client(InetSocketAddress bindAddress, InetSocketAddress serverAddress) throws IOException {
+	public static Client open(InetSocketAddress bindAddress, InetSocketAddress serverAddress) throws IOException {
+		return new Client(bindAddress, serverAddress);
+	}
+	
+	private Client(InetSocketAddress bindAddress, InetSocketAddress serverAddress) throws IOException {
 		network = new NetworkController(bindAddress, this::process);
 		server = serverAddress;
 		worldLock = new Object();

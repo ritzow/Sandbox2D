@@ -33,7 +33,11 @@ public class Server {
 	private final Map<InetSocketAddress, ClientState> clients;
 	private volatile boolean canConnect;
 	
-	public Server(InetSocketAddress bindAddress) throws IOException {
+	public static Server open(InetSocketAddress bindAddress) throws IOException {
+		return new Server(bindAddress);
+	}
+	
+	private Server(InetSocketAddress bindAddress) throws IOException {
 		this.network = new NetworkController(bindAddress, this::process);
 		ThreadGroup processors = new ThreadGroup("Message Processors");
 		ThreadGroup senders = new ThreadGroup("Broadcaster Group");
@@ -75,7 +79,8 @@ public class Server {
 	private void onReceive(ClientState client, short protocol, byte[] data) {
 		switch(protocol) {
 			case Protocol.CLIENT_DISCONNECT: //this will make clients "unresponsive" still
-				disconnect(client, false);
+				removeClient(client);
+				System.out.println(getClientDisconnectMessage(client));
 				break;
 			case Protocol.CLIENT_PLAYER_ACTION:
 				processPlayerAction(client, data);
@@ -107,7 +112,6 @@ public class Server {
 		});
 	}
 	
-
 	private final void processPlayerAction(ClientState client, byte[] data) {
 		if(client.player == null)
 			throw new ClientBadDataException("client has no associated player to perform an action");
@@ -217,6 +221,7 @@ public class Server {
 	 * @param removeUnresponsive whether or not to remove clients that do not respond from the server
 	 */
 	private void broadcastReliable(byte[] data, boolean removeUnresponsive, Predicate<ClientState> sendTest) {
+
 		//TODO need alternative to synchronizing over all clients (separate lock to disallow add during broadcast?
 		if(clients.size() > 1) {
 			CountDownLatch barrier = new CountDownLatch(clients.size());
@@ -240,11 +245,13 @@ public class Server {
 				e.printStackTrace();
 			}
 		} else if(clients.size() == 1) { //if there is only one client, skip extra steps
-			ClientState client = clients.values().iterator().next();
+			ClientState client;
+			synchronized(clients) {
+				client = clients.values().iterator().next();
+			}
 			if(sendTest.test(client))
 				sendReliable(client, data, removeUnresponsive);
 		} //else: no clients are connected, send nothing
-	
 	}
 	
 	private void broadcastUnreliable(byte[] data) {
@@ -270,8 +277,8 @@ public class Server {
 			network.sendReliable(client.address, data, 10, 100);
 			client.ping = (int)(System.nanoTime() - time)/1_000_000; //update client ping
 		} catch(TimeoutException e) {
-			if(removeUnresponsive) {
-				disconnect(client, false);
+			if(removeUnresponsive && isConnected(client.address)) {
+				removeClient(client);
 			}
 		}
 	}
@@ -281,62 +288,68 @@ public class Server {
 		network.sendUnreliable(client.address, data);
 	}
 	
-	public boolean isConnected(ClientState client) {
-		return clients.containsValue(client);
-	}
-	
 	public boolean isConnected(InetSocketAddress address) {
 		return clients.containsKey(address);
 	}
 	
-	/**
-	 * Disconnects a client from the server
-	 * @param client the client to disconnect
-	 * @param notifyClient whether or not to notify the client that is being disconnected
-	 */
-	private void disconnect(ClientState client, boolean notifyClient) {
-		disconnect(client, notifyClient ? "" : null);
+	public int getConnectedClients() {
+		return clients.size();
 	}
 	
 	/**
-	 * Disconnects a client from the server
+	 * Gracefully notifies and disconnects a client.
 	 * @param client the client to disconnect
-	 * @param reason the reason for disconnecting the client, or null to not notify the client
+	 * @param reason the reason for the disconnection
 	 */
 	private void disconnect(ClientState client, String reason) {
-		if(clients.remove(client.address) != null) {
-			if(reason != null)
-				sendReliable(client, buildServerDisconnect(reason), true);
-			network.removeConnection(client.address);
-			if(client.player != null) {
-				updater.submitTask(() -> removePlayer(client.player));
-			}
-			System.out.println(client.username 
-					+ " disconnected ("
-					+ (reason != null && reason.length() > 0 ? "reason: " + reason + ", ": "") 
-					+ clients.size() + " players connected)");
-		} else {
-			System.out.println(client + " is not connected to the server");
-		}
+		sendReliable(client, buildServerDisconnect(reason), false);
+		removeClient(client);
+		System.out.println(getForcibleDisconnectMessage(client, reason));
+	}
+	
+	private String getForcibleDisconnectMessage(ClientState client, String reason) {
+		return client.username + " was disconnected ("
+				+ (reason != null && reason.length() > 0 ? "reason: " + reason + ", ": "") 
+				+ clients.size() + " players connected)";
+	}
+	
+	private String getClientDisconnectMessage(ClientState client) {
+		return client.username + " disconnected (" + clients.size() + " players connected)";
+	}
+
+	/**
+	 * Removes all of a client's state from the server.
+	 * @param client the client to remove from the server.
+	 */
+	private void removeClient(ClientState client) {
+		if(clients.remove(client.address) == null)
+			throw new IllegalStateException(client + " is not connected to the server");
+		network.removeConnection(client.address);
+		if(client.player != null)
+			removePlayer(client.player);
+	}
+	
+	private void removePlayer(Entity player) {
+		updater.submitTask(() -> {
+			updater.getWorld().remove(player);
+			sendRemoveEntity(player);
+		});
 	}
 	
 	public void disconnectAll(String reason) {
+		int count = clients.size();
 		synchronized(clients) {
 			broadcastReliable(buildServerDisconnect(reason), false);
-			
 			for(ClientState client : clients.values()) {
 				network.removeConnection(client.address);
 				if(client.player != null) {
-					updater.submitTask(() -> removePlayer(client.player));
+					removePlayer(client.player);
 				}
 			}
 			clients.clear();
 		}
-	}
-	
-	private void removePlayer(Entity player) {
-		updater.getWorld().remove(player);
-		sendRemoveEntity(player);
+		if(count > 0)
+			System.out.println("Disconnected " + count + " remaining clients");
 	}
 	
 	private void sendClientConnectReply(InetSocketAddress client, int messageID, boolean connected) {
@@ -383,7 +396,8 @@ public class Server {
 					
 					clients.put(address, newClient);
 					sendPlayerID(player, newClient); //send id of player entity (which was sent in world data)
-					System.out.println(newClient + " joined (" + clients.size() + " players connected)");
+					System.out.println(newClient.address.getAddress().getHostAddress()
+							+ " joined (" + clients.size() + " players connected)");
 				});
 			}
 		} catch(TimeoutException e) {
@@ -410,10 +424,6 @@ public class Server {
 		return packets;
 	}
 	
-	public int getConnectedClients() {
-		return clients.size();
-	}
-	
 	public static final class ClientState {
 		private final InetSocketAddress address;
 		private volatile String username;
@@ -437,8 +447,7 @@ public class Server {
 		public boolean equals(Object o) {
 			if(o instanceof ClientState)
 				return address.equals(((ClientState)o).address);
-			else
-				return false;
+			return false;
 		}
 		
 		@Override

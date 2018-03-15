@@ -38,11 +38,10 @@ public final class ClientAudioSystem implements AudioSystem {
 			System.err.println("OpenAL 1.1 not supported");
 			shutdown();
 			return null;
-		} else {
-			sources = new int[alcGetInteger(device, ALC_MONO_SOURCES)];
-			alGenSources(sources);
-			return new ClientAudioSystem();
 		}
+		sources = new int[alcGetInteger(device, ALC_MONO_SOURCES)];
+		alGenSources(sources);
+		return new ClientAudioSystem();
 	}
 	
 	public static void shutdown() {

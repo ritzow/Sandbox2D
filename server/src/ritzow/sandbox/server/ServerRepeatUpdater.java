@@ -13,8 +13,6 @@ public final class ServerRepeatUpdater extends RepeatUpdater {
 	private final TaskQueue tasks;
 	private long previousTime, lastSendTime;
 	
-	private final Runnable worldUpdater = this::updateWorld;
-	
 	private static final long NETWORK_SEND_INTERVAL_NANOSECONDS = Utility.millisToNanos(5);
 	
 	public ServerRepeatUpdater(Server server) {
@@ -32,6 +30,8 @@ public final class ServerRepeatUpdater extends RepeatUpdater {
 		this.world = world;
 		previousTime = System.nanoTime();
 	}
+	
+	private final Runnable worldUpdater = this::updateWorld;
 	
 	private void updateWorld() {
 		previousTime = Utility.updateWorld(world, previousTime, SharedConstants.MAX_TIMESTEP, SharedConstants.TIME_SCALE_NANOSECONDS);

@@ -23,7 +23,7 @@ public final class StartServer {
 		Thread.currentThread().setName("Server Setup");
 		
 		try {
-			Server server = new Server(new InetSocketAddress(Protocol.DEFAULT_SERVER_UDP_PORT));
+			Server server = Server.open(new InetSocketAddress(Protocol.DEFAULT_SERVER_UDP_PORT));
 
 			//the save file to try to load the world from
 			final File saveFile = new File(args.length > 0 ? args[0] : "data/worlds/world.dat");
@@ -96,7 +96,7 @@ public final class StartServer {
 			out.getChannel().truncate(serialized.length);
 			System.out.println("world saved to " + serialized.length + " bytes.");
 		} catch (IOException e) {
-			System.out.println("Error while saving world to file: " + e.getLocalizedMessage());
+			System.out.println("Error while saving world to file: " + e.getMessage());
 		}
 	}
 	

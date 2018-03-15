@@ -53,6 +53,11 @@ public final class EventProcessor implements Runnable {
 		Utility.waitOnCondition(lock, () -> setupComplete);
 	}
 	
+	public void setReadyToDisplay() {
+		shouldDisplay = true;
+		Utility.notify(lock);
+	}
+	
 	public void stop() {
 		exit = true;
 		glfwPostEmptyEvent();
@@ -62,10 +67,5 @@ public final class EventProcessor implements Runnable {
 		if(display == null)
 			throw new IllegalStateException("event processor is not running yet and hasn't been initialized");
 		return display;
-	}
-	
-	public void setReadyToDisplay() {
-		shouldDisplay = true;
-		Utility.notify(lock);
 	}
 }

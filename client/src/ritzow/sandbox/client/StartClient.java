@@ -36,7 +36,7 @@ public final class StartClient {
 		InetAddress serverAddress = args.length > 0 ? InetAddress.getByName(args[0]) : InetAddress.getLocalHost();
 		InetSocketAddress serverSocket = new InetSocketAddress(serverAddress, Protocol.DEFAULT_SERVER_UDP_PORT);
 		
-		Client client = new Client(new InetSocketAddress(0), serverSocket); //wildcard address, and any port
+		Client client = Client.open(new InetSocketAddress(0), serverSocket); //wildcard address, and any port
 		System.out.print("Connecting to " + serverAddress.getHostAddress() + " on port " + serverSocket.getPort() + "... ");
 		
 		if(client.connect()) {
