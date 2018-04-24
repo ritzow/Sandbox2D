@@ -9,7 +9,6 @@ import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.DatagramChannel;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -37,8 +36,8 @@ public class NetworkController {
 	    private final AtomicInteger reliableSendID, unreliableSendID;
 	    
 	    public ConnectionState() {
-	        this.nextReliableReceiveID = 0;
-	        this.nextUnreliableReceiveID = 0;
+	        this.nextReliableReceiveID = STARTING_SEND_ID;
+	        this.nextUnreliableReceiveID = STARTING_SEND_ID;
 	        this.reliableSendID = new AtomicInteger(STARTING_SEND_ID);
 	        this.unreliableSendID = new AtomicInteger(STARTING_SEND_ID);
 	    }
@@ -115,10 +114,9 @@ public class NetworkController {
 				}
 			}
 			
-			if(!pair.received) {
-				reliableQueue.remove(pair); //remove the timed out message
+			reliableQueue.remove(pair);
+			if(!pair.received)
 				throw new TimeoutException();
-			}
 		}
 	}
 
@@ -225,12 +223,9 @@ public class NetworkController {
 		switch(type) {
 		case RESPONSE_TYPE:
 			synchronized(reliableQueue) {
-				Iterator<MessageAddressPair> iterator = reliableQueue.iterator();
-				while(iterator.hasNext()) {
-					MessageAddressPair pair = iterator.next();
+				for(MessageAddressPair pair : reliableQueue) {
 					if(pair.recipient.equals(sender)) { //find first message addressed to the sender of the ack
 						if(pair.messageID == messageID) { //if the ack is for the correct message (oldest awaiting ack)
-							iterator.remove();
 							pair.received = true;
 							Utility.notify(pair); //notify waiting send method
 						} break;
