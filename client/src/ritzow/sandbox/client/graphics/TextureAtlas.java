@@ -1,9 +1,8 @@
 package ritzow.sandbox.client.graphics;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.HashMap;
 import java.util.Map;
+import org.lwjgl.BufferUtils;
 
 public class TextureAtlas {
 	private byte[] image;
@@ -12,7 +11,6 @@ public class TextureAtlas {
 	
 	public TextureAtlas(TextureData... textures) {
 		coordinates = new HashMap<TextureData, float[]>();
-		
 	}
 	
 	public float[] getTextureCoordinates(TextureData texture) {
@@ -20,10 +18,18 @@ public class TextureAtlas {
 	}
 	
 	public OpenGLTexture toTexture() {
-		return new OpenGLTexture(ByteBuffer.allocateDirect(image.length).order(ByteOrder.nativeOrder()).put(image), width, height);
+		return new OpenGLTexture(BufferUtils.createByteBuffer(image.length).put(image), width, height);
 	}
 	
 	public byte[] getData() {
 		return image;
 	}
+
+	@Override
+	public String toString() {
+		return "TextureAtlas [image=" + image.length + " bytes, width=" + width + ", height=" + height
+				+ ", coordinates=" + coordinates + "]";
+	}
+	
+	
 }

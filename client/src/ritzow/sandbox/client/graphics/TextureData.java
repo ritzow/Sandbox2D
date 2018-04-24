@@ -1,6 +1,6 @@
 package ritzow.sandbox.client.graphics;
 
-class TextureData implements Comparable<TextureData> {
+public class TextureData implements Comparable<TextureData> {
 	private final int width;
 	private final int bytesPerPixel;
 	private final byte[] data;
@@ -40,5 +40,10 @@ class TextureData implements Comparable<TextureData> {
 	@Override
 	public int compareTo(TextureData other) {
 		return other.pixelCount() - pixelCount(); //images with more pixels come first
+	}
+
+	@Override
+	public String toString() {
+		return "TextureData [width=" + width + ", bytesPerPixel=" + bytesPerPixel + ", data=" + data.length + " bytes]";
 	}
 }

@@ -1,6 +1,11 @@
 package ritzow.sandbox.util;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.function.BooleanSupplier;
+import ritzow.sandbox.data.ByteUtil;
+import ritzow.sandbox.data.Deserializer;
 import ritzow.sandbox.world.World;
 
 /**
@@ -11,6 +16,17 @@ import ritzow.sandbox.world.World;
 public final class Utility {
 	private Utility() {
 		throw new UnsupportedOperationException("Utility class cannot be instantiated");
+	}
+	
+	public static World loadWorld(File file, Deserializer des) {
+		try(FileInputStream in = new FileInputStream(file)) {
+			byte[] data = new byte[(int)file.length()];
+			in.read(data);
+			World world = des.deserialize(ByteUtil.decompress(data));
+			return world;
+		} catch(IOException e) {
+			throw new RuntimeException("Error loading world from file ", e);
+		}
 	}
 	
 	/**
