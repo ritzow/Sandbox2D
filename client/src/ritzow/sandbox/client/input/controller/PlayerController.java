@@ -8,8 +8,8 @@ import ritzow.sandbox.client.Client;
 import ritzow.sandbox.client.input.ControlScheme;
 import ritzow.sandbox.client.input.InputManager;
 import ritzow.sandbox.client.input.handler.KeyHandler;
+import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
 import ritzow.sandbox.network.Protocol.PlayerAction;
-import ritzow.sandbox.world.entity.PlayerEntity;
 
 public class PlayerController implements Controller, KeyHandler {
 	protected final Client client;
@@ -18,12 +18,10 @@ public class PlayerController implements Controller, KeyHandler {
 		this.client = client;
 	}
 
-	@Override
 	public void link(InputManager manager) {
 		manager.getKeyHandlers().add(this);
 	}
 
-	@Override
 	public void unlink(InputManager manager) {
 		manager.getKeyHandlers().remove(this);
 	}
@@ -38,7 +36,7 @@ public class PlayerController implements Controller, KeyHandler {
 		if(action == GLFW_REPEAT)
 			return;
 		boolean enabled = action == GLFW_PRESS;
-		PlayerEntity player = client.getPlayer();
+		ClientPlayerEntity player = client.getPlayer();
 		PlayerAction playerAction;
 		
 		switch(key) {

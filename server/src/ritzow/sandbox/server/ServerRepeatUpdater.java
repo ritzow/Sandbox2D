@@ -17,7 +17,7 @@ public final class ServerRepeatUpdater extends RepeatUpdater {
 	
 	public ServerRepeatUpdater(Server server) {
 		this.server = server;
-		getRepeatTasks().add(tasks = new TaskQueue());
+		repeatTasks().add(tasks = new TaskQueue());
 	}
 	
 	public World getWorld() {
@@ -26,7 +26,7 @@ public final class ServerRepeatUpdater extends RepeatUpdater {
 	
 	public void startWorld(World world) {
 		if(this.world == null)
-			getRepeatTasks().add(worldUpdater);
+			repeatTasks().add(worldUpdater);
 		this.world = world;
 		previousTime = System.nanoTime();
 	}
@@ -46,7 +46,7 @@ public final class ServerRepeatUpdater extends RepeatUpdater {
 	}
 	
 	public void stopWorld() {
-		getRepeatTasks().remove(worldUpdater);
+		repeatTasks().remove(worldUpdater);
 	}
 	
 	public void submitTask(Runnable task) {

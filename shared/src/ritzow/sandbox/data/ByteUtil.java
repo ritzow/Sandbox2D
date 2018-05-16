@@ -216,8 +216,6 @@ public final class ByteUtil {
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
-		
-		
 	}
 	
 	public static byte[] decompress(byte[] data) {

@@ -8,6 +8,7 @@ import ritzow.sandbox.client.input.handler.CursorPosHandler;
 import ritzow.sandbox.client.input.handler.FramebufferSizeHandler;
 import ritzow.sandbox.client.input.handler.KeyHandler;
 import ritzow.sandbox.client.input.handler.MouseButtonHandler;
+import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
 import ritzow.sandbox.client.world.item.ClientBlockItem;
 import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.item.Item;
@@ -47,8 +48,9 @@ public final class InteractionController implements Controller, MouseButtonHandl
 		worldY += camera.getPositionY();
 		int blockX = Math.round(worldX);						//convert world coordinate to block grid coordinate
 		int blockY = Math.round(worldY);
-		float playerX = client.getPlayer().getPositionX();						//get player position
-		float playerY = client.getPlayer().getPositionY();
+		ClientPlayerEntity player = client.getPlayer();
+		float playerX = player.getPositionX();						//get player position
+		float playerY = player.getPositionY();
 		
 		if(Utility.withinDistance(playerX, playerY, blockX, blockY, range)) {
 			if(primaryAction && !breakCooldownActive()) {
@@ -57,11 +59,11 @@ public final class InteractionController implements Controller, MouseButtonHandl
 					lastBreak = System.nanoTime();
 				}
 			} else if(secondaryAction && !placeCooldownActive()) {
-				Item item = client.getPlayer().getSelectedItem();
+				Item item = player.getSelectedItem();
 				if((item instanceof ClientBlockItem) && client.getWorld().getForeground().isValid(blockX, blockY) && 
 					(client.getWorld().getBackground().place(client.getWorld(), blockX, blockY, ((ClientBlockItem)item).getBlock()) || 
 					client.getWorld().getForeground().place(client.getWorld(), blockX, blockY, ((ClientBlockItem)item).getBlock()))) {
-					client.getPlayer().removeSelectedItem();
+					player.removeSelectedItem();
 					lastPlace = System.nanoTime();
 				}
 			}
@@ -76,7 +78,6 @@ public final class InteractionController implements Controller, MouseButtonHandl
 		return System.nanoTime() - lastPlace < cooldownPlace * 1000000;
 	}
 
-	@Override
 	public void link(InputManager input) {
 		input.getCursorPosHandlers().add(this);
 		input.getFramebufferSizeHandlers().add(this);
@@ -84,7 +85,6 @@ public final class InteractionController implements Controller, MouseButtonHandl
 		input.getMouseButtonHandlers().add(this);
 	}
 	
-	@Override
 	public void unlink(InputManager input) {
 		input.getCursorPosHandlers().remove(this);
 		input.getFramebufferSizeHandlers().remove(this);

@@ -17,14 +17,12 @@ public abstract class CameraController implements Controller, KeyHandler, Scroll
 		return camera;
 	}
 
-	@Override
 	public void link(InputManager manager) {
 		manager.getKeyHandlers().add(this);
 		manager.getScrollHandlers().add(this);
 		manager.getMouseButtonHandlers().add(this);
 	}
 
-	@Override
 	public void unlink(InputManager manager) {
 		manager.getKeyHandlers().remove(this);
 		manager.getScrollHandlers().remove(this);

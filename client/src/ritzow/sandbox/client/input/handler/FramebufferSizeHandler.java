@@ -1,5 +1,5 @@
 package ritzow.sandbox.client.input.handler;
 
-public interface FramebufferSizeHandler extends InputHandler {
+public interface FramebufferSizeHandler {
 	public void framebufferSize(int width, int height);
 }

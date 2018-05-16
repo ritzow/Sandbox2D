@@ -87,13 +87,11 @@ public final class RenderManager implements Runnable, FramebufferSizeHandler, Wi
 		this.focused = focused;
 	}
 
-	@Override
 	public void link(InputManager manager) {
 		manager.getFramebufferSizeHandlers().add(this);
 		manager.getWindowFocusHandlers().add(this);
 	}
 
-	@Override
 	public void unlink(InputManager manager) {
 		manager.getFramebufferSizeHandlers().remove(this);
 		manager.getWindowFocusHandlers().remove(this);

@@ -355,7 +355,7 @@ public class Server {
 	private void sendClientConnectReply(InetSocketAddress client, int messageID, boolean connected) {
 		byte[] response = new byte[3];
 		ByteUtil.putShort(response, 0, Protocol.SERVER_CONNECT_ACKNOWLEDGMENT);
-		ByteUtil.putBoolean(response, 2, canConnect);
+		ByteUtil.putBoolean(response, 2, connected);
 		network.sendReliable(client, response, 10, 100);
 	}
 	

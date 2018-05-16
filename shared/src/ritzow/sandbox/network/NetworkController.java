@@ -66,7 +66,7 @@ public class NetworkController {
 	public NetworkController(InetSocketAddress bindAddress, MessageProcessor processor) throws IOException {
 		messageProcessor = processor;
 		channel = DatagramChannel.open().bind(bindAddress);
-		channel.setOption(StandardSocketOptions.SO_SNDBUF, Integer.valueOf(MAX_PACKET_SIZE));
+		channel.setOption(StandardSocketOptions.SO_SNDBUF, MAX_PACKET_SIZE);
 		reliableQueue = new ConcurrentLinkedQueue<MessageAddressPair>();
 		connections = Collections.synchronizedMap(new HashMap<InetSocketAddress, ConnectionState>());
 		packets = ThreadLocal.withInitial(() -> ByteBuffer.allocate(MAX_PACKET_SIZE));

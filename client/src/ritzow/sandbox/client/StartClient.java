@@ -3,12 +3,17 @@ package ritzow.sandbox.client;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.util.Collection;
-import java.util.List;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import ritzow.sandbox.client.Client.ConnectionFailedException;
 import ritzow.sandbox.client.audio.ClientAudioSystem;
 import ritzow.sandbox.client.audio.Sound;
 import ritzow.sandbox.client.audio.WAVEDecoder;
@@ -18,11 +23,9 @@ import ritzow.sandbox.client.input.ControlScheme;
 import ritzow.sandbox.client.input.EventProcessor;
 import ritzow.sandbox.client.input.InputManager;
 import ritzow.sandbox.client.input.controller.CameraController;
-import ritzow.sandbox.client.input.controller.Controller;
 import ritzow.sandbox.client.input.controller.InteractionController;
 import ritzow.sandbox.client.input.controller.PlayerController;
 import ritzow.sandbox.client.input.controller.TrackingCameraController;
-import ritzow.sandbox.client.input.handler.InputHandler;
 import ritzow.sandbox.client.input.handler.WindowFocusHandler;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
 import ritzow.sandbox.network.Protocol;
@@ -36,16 +39,16 @@ public final class StartClient {
 		InetAddress serverAddress = args.length > 0 ? InetAddress.getByName(args[0]) : InetAddress.getLocalHost();
 		InetSocketAddress serverSocket = new InetSocketAddress(serverAddress, Protocol.DEFAULT_SERVER_UDP_PORT);
 		
-		Client client = Client.open(new InetSocketAddress(0), serverSocket); //wildcard address, and any port
-		System.out.print("Connecting to " + serverAddress.getHostAddress() + " on port " + serverSocket.getPort() + "... ");
-		
-		if(client.connect()) {
+		try {
+			System.out.print("Connecting to " + serverAddress.getHostAddress() + " on port " + serverSocket.getPort() + "... ");
+			//wildcard address, and any port
+			Client client = Client.open(new InetSocketAddress(getLocalAddress(Inet4Address.class), 0), serverSocket);
 			System.out.println("connected!");
 			EventProcessor eventProcessor = new EventProcessor();
 			new Thread(() -> run(eventProcessor, client), "Client Manager").start();
 			eventProcessor.run(); //run the event processor on this thread
-		} else {
-			System.out.println("failed to connect.");
+		} catch(ConnectionFailedException e) {
+			System.out.println("failed to connect: " + e.getMessage());
 		}
 	}
 	
@@ -55,6 +58,26 @@ public final class StartClient {
 	private static void exit() {
 		exit = true;
 		Utility.notify(exitLock);
+	}
+	
+	@SuppressWarnings("unchecked")
+	public static <T extends InetAddress> T getLocalAddress(Class<T> addressType) throws SocketException {
+		Set<InetAddress> addresses = NetworkInterface.networkInterfaces()
+			.filter(network -> {
+				try {
+					return network.isUp() && !network.isLoopback();
+				} catch (SocketException e) {
+					e.printStackTrace();
+					return false;
+				}
+			})
+			.map(network -> network.inetAddresses())
+			.reduce((a, b) -> Stream.concat(a, b))
+			.get().filter(address -> addressType.isInstance(address))
+			.collect(Collectors.toSet());
+		if(addresses.isEmpty())
+			throw new RuntimeException("No address of type " + addressType + " available");
+		return (T)addresses.iterator().next();
 	}
 	
 	//to be run on game update thread (rendering thread)
@@ -113,6 +136,7 @@ public final class StartClient {
 	
 	private static void run(EventProcessor eventProcessor, Client client) {
 		eventProcessor.waitForSetup();
+		InputManager input = eventProcessor.getDisplay().getInputManager();
 		
 		//wait for the client to receive the world and return it
 		World world = client.getWorld();
@@ -141,69 +165,38 @@ public final class StartClient {
 		audio.setVolume(1.0f);
 		
 		//mute audio in background
-		eventProcessor.getDisplay().getInputManager().getWindowFocusHandlers()
-			.add(focused -> audio.setVolume(focused ? 1.0f : 0.0f));
+		input.getWindowFocusHandlers().add(focused -> audio.setVolume(focused ? 1.0f : 0.0f));
 		
 		ClientPlayerEntity player = client.getPlayer();
 		System.out.println("Received player from server.");
 		
 		CameraController cameraGrip =
 				new TrackingCameraController(new Camera(0, 0, 1), audio, player, 0.005f, 0.05f, 0.6f);
+		cameraGrip.link(input);
 		
-		//create and link player controllers so the user canControllergame
-		Collection<Controller> controllers = List.of(
-				new PlayerController(client),
-				new InteractionController(client, cameraGrip.getCamera(), 200, 300, 5),
-				cameraGrip
-		);
+		PlayerController playerController = new PlayerController(client);
+		playerController.link(input);
 		
-		controllers.forEach(eventProcessor.getDisplay().getInputManager()::add);
+		InteractionController interactionController = new InteractionController(client, cameraGrip.getCamera(), 200, 300, 5);
+		interactionController.link(input);
+		
+		WorldUpdater updater = new WorldUpdater(world);
+		updater.link(input);
 		
 		RenderManager renderManager = eventProcessor.getDisplay().getRenderManager();
 		RepeatUpdater gameUpdater = new RepeatUpdater(() -> initGraphics(renderManager, world, cameraGrip), renderManager::shutdown);
 		
-		class WorldUpdater implements Runnable, WindowFocusHandler, InputHandler {
-			private volatile long previousTime = System.nanoTime();
-			private volatile boolean focused = true;
-			
-			public void run() {
-				if(focused)
-					previousTime = Utility.updateWorld(world, 
-							previousTime, 
-							SharedConstants.MAX_TIMESTEP, 
-							SharedConstants.TIME_SCALE_NANOSECONDS);
-			}
-			
-			@Override
-			public void windowFocus(boolean focused) {
-				if(focused)
-					previousTime = System.nanoTime();
-				this.focused = focused;
-			}
-
-			@Override
-			public void link(InputManager m) {
-				m.getWindowFocusHandlers().add(this);
-			}
-
-			@Override
-			public void unlink(InputManager m) {
-				m.getWindowFocusHandlers().remove(this);
-			}
-		}
+		gameUpdater.repeatTasks().add(client.onReceiveMessageTask());
+		gameUpdater.repeatTasks().add(playerController);
+		gameUpdater.repeatTasks().add(interactionController);
+		gameUpdater.repeatTasks().add(cameraGrip);
+		gameUpdater.repeatTasks().add(updater);
+		gameUpdater.repeatTasks().add(renderManager);
+		gameUpdater.repeatTasks().add(() -> Utility.sleep(1));
 		
-		WorldUpdater updater = new WorldUpdater();
-		eventProcessor.getDisplay().getInputManager().add(updater);
-		
-		gameUpdater.getRepeatTasks().add(client.onReceiveMessageTask());
-		gameUpdater.getRepeatTasks().addAll(controllers);
-		gameUpdater.getRepeatTasks().add(updater);
-		gameUpdater.getRepeatTasks().add(renderManager);
-		gameUpdater.getRepeatTasks().add(() -> Utility.sleep(1));
 		gameUpdater.start("Game updater");
 		gameUpdater.waitForSetup();
 		
-		InputManager input = eventProcessor.getDisplay().getInputManager();
 		input.getKeyHandlers().add((key, scancode, action, mods) -> {
 			if(action == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
 				if(key == ControlScheme.KEYBIND_QUIT)
@@ -230,5 +223,34 @@ public final class StartClient {
 		audio.close();
 		ClientAudioSystem.shutdown();
 		System.out.println("done!");
+	}
+	
+	private static class WorldUpdater implements Runnable, WindowFocusHandler {
+		private volatile long previousTime = System.nanoTime();
+		private volatile boolean focused = true;
+		private final World world;
+		
+		public WorldUpdater(World world) {
+			this.world = world;
+		}
+		
+		public void run() {
+			if(focused)
+				previousTime = Utility.updateWorld(world, 
+						previousTime, 
+						SharedConstants.MAX_TIMESTEP, 
+						SharedConstants.TIME_SCALE_NANOSECONDS);
+		}
+		
+		@Override
+		public void windowFocus(boolean focused) {
+			if(focused)
+				previousTime = System.nanoTime();
+			this.focused = focused;
+		}
+
+		public void link(InputManager m) {
+			m.getWindowFocusHandlers().add(this);
+		}
 	}
 }

@@ -33,7 +33,7 @@ public class Client {
 	private final Integrator integrator;
 	private final ExecutorService workers;
 	private final Object worldLock, playerLock, connectionLock;
-	private volatile byte connectedStatus;
+	private volatile byte connectionStatus;
 	private volatile ConnectionState state;
 	private Runnable disconnectAction;
 	
@@ -59,17 +59,25 @@ public class Client {
 		volatile int worldBytesRemaining;
 	}
 	
+	public static final class ConnectionFailedException extends RuntimeException {
+		public ConnectionFailedException(String message) {
+			super(message);
+		}
+	}
+	
 	/**
 	 * Creates a client bound to the provided address
 	 * @param bindAddress the local address to bind to.
 	 * @throws IOException if an internal I/O error occurrs
 	 * @throws SocketException if the local address could not be bound to.
+	 * @throws ConnectionFailedException if the client could not connect to the specified server
 	 */
-	public static Client open(InetSocketAddress bindAddress, InetSocketAddress serverAddress) throws IOException {
+	public static Client open(InetSocketAddress bindAddress, InetSocketAddress serverAddress) 
+			throws IOException, ConnectionFailedException {
 		return new Client(bindAddress, serverAddress);
 	}
 	
-	private Client(InetSocketAddress bindAddress, InetSocketAddress serverAddress) throws IOException {
+	private Client(InetSocketAddress bindAddress, InetSocketAddress serverAddress) throws IOException, ConnectionFailedException {
 		network = new NetworkController(bindAddress, this::process);
 		server = serverAddress;
 		worldLock = new Object();
@@ -78,6 +86,34 @@ public class Client {
 		serializer = SerializationProvider.getProvider();
 		integrator = new Integrator();
 		workers = Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "Message Processor"));
+		if(!connect()) {
+			throw new ConnectionFailedException(connectionStatus == STATUS_REJECTED ?
+					"connection rejected" : "connection timed out");
+		}
+	}
+	
+	private boolean connect() {
+		if(isConnected())
+			throw new IllegalStateException("client already connected to a server");
+		network.start();
+		synchronized(server) {
+			try {
+				byte[] packet = new byte[2];
+				ByteUtil.putShort(packet, 0, Protocol.CLIENT_CONNECT_REQUEST);
+				network.sendReliable(server, packet, 10, 100);
+			} catch(TimeoutException e) {
+				disconnect(false);
+				return false;
+			}
+			Utility.waitOnCondition(server, 1000, () -> connectionStatus != STATUS_NOT_CONNECTED);
+		}
+		if(connectionStatus == STATUS_CONNECTED) {
+			state = new ConnectionState();
+			Utility.notify(connectionLock); //to ensure that nothing tries to access state before it is created
+		} else {
+			disconnect(false);
+		}
+		return isConnected();
 	}
 	
 	private void process(InetSocketAddress sender, int messageID, byte[] data) {
@@ -157,32 +193,8 @@ public class Client {
 		return state;
 	}
 	
-	public boolean connect() {
-		if(isConnected())
-			throw new IllegalStateException("client already connected to a server");
-		network.start();
-		synchronized(server) {
-			try {
-				byte[] packet = new byte[2];
-				ByteUtil.putShort(packet, 0, Protocol.CLIENT_CONNECT_REQUEST);
-				network.sendReliable(server, packet, 10, 100); //TODO major bug, this will OK server to send more data, even though connection hasn't been completely set up
-			} catch(TimeoutException e) {
-				disconnect(false);
-				return false;
-			}
-			Utility.waitOnCondition(server, 1000, () -> connectedStatus != STATUS_NOT_CONNECTED);
-		}
-		if(connectedStatus == STATUS_CONNECTED) {
-			state = new ConnectionState();
-			Utility.notify(connectionLock); //to ensure that nothing tries to access state before it is created
-		} else {
-			disconnect(false);
-		}
-		return isConnected();
-	}
-	
 	public boolean isConnected() {
-		return connectedStatus == STATUS_CONNECTED;
+		return connectionStatus == STATUS_CONNECTED;
 	}
 	
 	public InetSocketAddress getServerAddress() {
@@ -272,7 +284,7 @@ public class Client {
 	}
 	
 	private void processServerConnectAcknowledgement(DataReader data) {
-		connectedStatus = data.readBoolean() ? STATUS_CONNECTED : STATUS_REJECTED;
+		connectionStatus = data.readBoolean() ? STATUS_CONNECTED : STATUS_REJECTED;
 		Utility.notify(server);
 	}
 	

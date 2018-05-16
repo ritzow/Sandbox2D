@@ -26,6 +26,7 @@ public final class InputManager {
 	private final Collection<WindowIconifyHandler> windowIconifyHandlers = 		new LinkedList<>();
 	private final Collection<WindowFocusHandler> windowFocusHandlers = 			new LinkedList<>();
 	
+	//TODO replace InputManager stuff with game related abstractions (like primaryAction instead of mouse left click)
 	public InputManager(long window) {
 		//TODO use a thread pool executor service with lambda expressions to send events to other threads?
 		
@@ -82,10 +83,6 @@ public final class InputManager {
 				handler.windowFocus(focused);
 			}
 		});
-	}
-	
-	public void add(InputHandler handler) {
-		handler.link(this);
 	}
 
 	public final Collection<CursorPosHandler> getCursorPosHandlers() {

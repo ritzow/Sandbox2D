@@ -76,7 +76,7 @@ public class RepeatUpdater {
 		return this;
 	}
 	
-	public Collection<Runnable> getRepeatTasks() {
+	public Collection<Runnable> repeatTasks() {
 		return runnables;
 	}
 	
