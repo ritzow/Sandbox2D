@@ -21,6 +21,8 @@ public final class ModelRenderProgram extends ShaderProgram {
 		uniform_view, 
 		textureUnit;
 	
+	private final int atlasTexture;
+	
 	private float framebufferWidth, framebufferHeight;
 	
 	private static final float[] identityMatrix = {
@@ -60,7 +62,7 @@ public final class ModelRenderProgram extends ShaderProgram {
 	
 	private final Map<Integer, RenderData> models;
 	
-	public ModelRenderProgram(Shader vertexShader, Shader fragmentShader, Camera camera) {
+	public ModelRenderProgram(Shader vertexShader, Shader fragmentShader, Camera camera, int textureAtlas) {
 		super(vertexShader, fragmentShader);
 		models = new HashMap<Integer, RenderData>();
 		GraphicsUtility.checkProgramCompilation(this);
@@ -69,6 +71,7 @@ public final class ModelRenderProgram extends ShaderProgram {
 		this.uniform_transform = getUniformID("transform");
 		this.uniform_opacity = getUniformID("opacity");
 		this.uniform_view = getUniformID("view");
+		this.atlasTexture = textureAtlas;
 		this.textureUnit = 0;
 		this.camera = camera;
 		setCurrent(); //needs this for setSamplerIndex which uses current program
@@ -94,6 +97,11 @@ public final class ModelRenderProgram extends ShaderProgram {
 		setFloat(uniform_opacity, opacity);
 	}
 	
+	public void setCurrent() {
+		super.setCurrent();
+		setTexture(textureUnit, atlasTexture);
+	}
+	
 	/**
 	 * Renders a model using the current shader program properties
 	 * @param model the model to render
@@ -104,7 +112,6 @@ public final class ModelRenderProgram extends ShaderProgram {
 			throw new IllegalArgumentException("no model exists for model id " + modelID);
 		glBindVertexArray(model.vao);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model.indices);
-		setTexture(textureUnit, model.texture);
 		glDrawElements(GL_TRIANGLES, model.vertexCount, GL_UNSIGNED_INT, 0);
 	}
 	

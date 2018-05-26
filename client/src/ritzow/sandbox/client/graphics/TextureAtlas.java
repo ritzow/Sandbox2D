@@ -10,11 +10,7 @@ public class TextureAtlas {
 	private int size;
 	private final Map<TextureData, float[]> coordinates;
 	
-	public static TextureAtlas generate(TextureData... textures) {
-		return new TextureAtlas(textures);
-	}
-	
-	public TextureAtlas(TextureData... textures) {
+	TextureAtlas(TextureData... textures) {
 		coordinates = new HashMap<TextureData, float[]>();
 		texture = generateAtlas(textures, coordinates);
 	}
@@ -33,11 +29,11 @@ public class TextureAtlas {
 			float leftX = pixelX/(float)widthPixels;
 			float rightX = (pixelX + tex.getWidth())/(float)widthPixels;
 			float bottomY =  tex.getHeight()/(float)widthPixels;
-			relations.put(tex, new float[] {
-					leftX, bottomY, 			//top left
-					leftX, 0f, 	//bottom left
+			relations.put(tex, new float[] {	//TODO investigate strange texture coordss
+					leftX, bottomY, //top left
+					leftX, 0f, 		//bottom left
 					rightX, 0f, 	//bottom right
-					rightX, bottomY			//top right
+					rightX, bottomY	//top right
 			});
 			pixelX += tex.getWidth();
 		}
@@ -71,7 +67,11 @@ public class TextureAtlas {
 		return coordinates.get(texture);
 	}
 	
-	public OpenGLTexture toTexture() {
-		return new OpenGLTexture(texture, size, size);
+	public ByteBuffer getAtlasData() {
+		return texture;
+	}
+	
+	public int toTexture() {
+		return GraphicsUtility.uploadTextureData(texture, size, size);
 	}
 }

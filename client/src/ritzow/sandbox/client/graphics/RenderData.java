@@ -14,15 +14,13 @@ public final class RenderData {
 	public final int indices;
 	public final int positions;
 	public final int textureCoordinates;
-	public final int texture;
 	
-	public RenderData(int vertexCount, int indices, int positions, int textureCoordinates, int texture) {
+	public RenderData(int vertexCount, int indices, int positions, int textureCoordinates) {
 		this.vao = glGenVertexArrays();
 		this.vertexCount = vertexCount;
 		this.indices = indices;
 		this.positions = positions;
 		this.textureCoordinates = textureCoordinates;
-		this.texture = texture;
 		
 		//bind the vao and specify its layout
 		glBindVertexArray(vao);

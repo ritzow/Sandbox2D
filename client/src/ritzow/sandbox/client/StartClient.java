@@ -8,7 +8,6 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -93,44 +92,31 @@ public final class StartClient {
 					0.5f,	 0.5f
 			);
 			
-			int textureCoordinates = GraphicsUtility.uploadVertexData( //traces U shape
-					0f, 1f,
-					0f, 0f,
-					1f, 0f,
-					1f, 1f	
-			);
-			
 			TextureData dirt = Textures.loadTextureName("dirt");
 			TextureData grass = Textures.loadTextureName("grass");
 			TextureData face = Textures.loadTextureName("greenFace");
 			TextureData red = Textures.loadTextureName("redSquare");
-			
-			TextureAtlas atlas = new TextureAtlas(dirt, grass, face, red);
-			
-			int texture = atlas.toTexture().id;
-			System.out.println(Arrays.toString(atlas.getTextureCoordinates(dirt)));
-			System.out.println(Arrays.toString(atlas.getTextureCoordinates(grass)));
-			System.out.println(Arrays.toString(atlas.getTextureCoordinates(face)));
-			System.out.println(Arrays.toString(atlas.getTextureCoordinates(red)));
+			TextureAtlas atlas = Textures.buildAtlas(grass, dirt, face, red);
 			
 			ModelRenderProgram modelProgram = new ModelRenderProgram(
 					new Shader(new FileInputStream("resources/shaders/modelVertexShader"), ShaderType.VERTEX),
 					new Shader(new FileInputStream("resources/shaders/modelFragmentShader"), ShaderType.FRAGMENT), 
-					cameraGrip.getCamera()
+					cameraGrip.getCamera(),
+					atlas.toTexture()
 			);
 			
 			modelProgram.register(RenderConstants.MODEL_GRASS_BLOCK,
 					new RenderData(6, indices, positions, 
-					GraphicsUtility.uploadVertexData(atlas.getTextureCoordinates(grass)), texture));
+					GraphicsUtility.uploadVertexData(atlas.getTextureCoordinates(grass))));
 			modelProgram.register(RenderConstants.MODEL_DIRT_BLOCK,	
 					new RenderData(6, indices, positions, 
-					GraphicsUtility.uploadVertexData(atlas.getTextureCoordinates(dirt)), texture));
+					GraphicsUtility.uploadVertexData(atlas.getTextureCoordinates(dirt))));
 			modelProgram.register(RenderConstants.MODEL_GREEN_FACE,	
 					new RenderData(6, indices, positions, 
-					GraphicsUtility.uploadVertexData(atlas.getTextureCoordinates(face)), texture));
+					GraphicsUtility.uploadVertexData(atlas.getTextureCoordinates(face))));
 			modelProgram.register(RenderConstants.MODEL_RED_SQUARE,	
 					new RenderData(6, indices, positions, 
-					GraphicsUtility.uploadVertexData(atlas.getTextureCoordinates(red)), texture));
+					GraphicsUtility.uploadVertexData(atlas.getTextureCoordinates(red))));
 			
 //			LightRenderProgram lightProgram = new LightRenderProgram(
 //					new Shader(new FileInputStream("resources/shaders/lightVertexShader"), ShaderType.VERTEX),

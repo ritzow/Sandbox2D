@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import ritzow.sandbox.client.graphics.TextureAtlas;
 import ritzow.sandbox.client.graphics.TextureData;
+import ritzow.sandbox.client.graphics.Textures;
 
 public class TestAtlas {
 	public static void main(String[] args) throws IOException {
@@ -30,7 +31,7 @@ public class TestAtlas {
 				}).collect(Collectors.toList());
 		
 		System.out.println(textures);
-		TextureAtlas atlas = new TextureAtlas(textures.toArray(new TextureData[textures.size()]));
+		TextureAtlas atlas = Textures.buildAtlas(textures.toArray(new TextureData[textures.size()]));
 		System.out.println(atlas);
 	}
 }
