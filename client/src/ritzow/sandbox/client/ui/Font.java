@@ -50,9 +50,8 @@ public final class Font {
 	public int getModelID(char c) {
 		if(c < glyphs.length) {
 			return glyphs[c];
-		} else {
-			return 0;
 		}
+		return 0;
 	}
 	
 	protected void loadCharacters() {

@@ -121,6 +121,10 @@ public final class Utility {
 		}
 	}
 	
+	public static float convertRange(float oldMin, float oldMax, float newMin, float newMax, float value) {
+		return (((value - oldMin) * (newMax - newMin)) / (oldMax - oldMin)) + newMin;
+	}
+	
 	//TODO implement rotateAround
 	public static float rotateAround(float radians, float radius, float centerX, float centerY) {
 		throw new UnsupportedOperationException("not implemented");

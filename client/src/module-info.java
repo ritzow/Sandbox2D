@@ -8,8 +8,8 @@
 module ritzow.sandbox.client {
 	requires ritzow.sandbox.shared;
 	requires PNGDecoder;
-	requires lwjgl;
-	requires lwjgl.glfw;
-	requires lwjgl.openal;
-	requires lwjgl.opengl;
+	requires org.lwjgl;
+	requires org.lwjgl.glfw;
+	requires org.lwjgl.openal;
+	requires org.lwjgl.opengl;
 }
