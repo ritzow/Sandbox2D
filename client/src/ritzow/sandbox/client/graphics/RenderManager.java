@@ -17,6 +17,7 @@ import static org.lwjgl.opengl.GL30.glBlitFramebuffer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import org.lwjgl.glfw.GLFW;
 import ritzow.sandbox.client.input.InputManager;
 import ritzow.sandbox.client.input.handler.FramebufferSizeHandler;
 import ritzow.sandbox.client.input.handler.WindowFocusHandler;
@@ -44,9 +45,9 @@ public final class RenderManager implements Runnable, FramebufferSizeHandler, Wi
 	}
 
 	public void shutdown() {
-		GraphicsUtility.checkErrors();
 		renderers.clear();
-		display.closeContext();
+		GraphicsUtility.checkErrors();
+		GLFW.glfwMakeContextCurrent(0);
 		org.lwjgl.opengl.GL.destroy();
 	}
 	

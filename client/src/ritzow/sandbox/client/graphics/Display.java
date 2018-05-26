@@ -39,11 +39,6 @@ public final class Display {
 		glfwMakeContextCurrent(displayID);
 	}
 	
-	@SuppressWarnings("static-method")
-	public void closeContext() {
-		glfwMakeContextCurrent(0);
-	}
-	
 	public void refresh() {
 		glfwSwapBuffers(displayID);
 	}
