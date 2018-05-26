@@ -8,8 +8,8 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
+import java.util.Arrays;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -27,7 +27,6 @@ import ritzow.sandbox.client.input.controller.InteractionController;
 import ritzow.sandbox.client.input.controller.PlayerController;
 import ritzow.sandbox.client.input.controller.TrackingCameraController;
 import ritzow.sandbox.client.input.handler.WindowFocusHandler;
-import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.util.RepeatUpdater;
 import ritzow.sandbox.util.SharedConstants;
@@ -94,18 +93,25 @@ public final class StartClient {
 					0.5f,	 0.5f
 			);
 			
-			int textureCoordinates = GraphicsUtility.uploadVertexData(
+			int textureCoordinates = GraphicsUtility.uploadVertexData( //traces U shape
 					0f, 1f,
 					0f, 0f,
 					1f, 0f,
 					1f, 1f	
 			);
 			
-			try {
-				Textures.loadAll(new File("resources/assets/textures"));
-			} catch(IOException e) {
-				throw new RuntimeException(e);
-			}
+			TextureData dirt = Textures.loadTextureName("dirt");
+			TextureData grass = Textures.loadTextureName("grass");
+			TextureData face = Textures.loadTextureName("greenFace");
+			TextureData red = Textures.loadTextureName("redSquare");
+			
+			TextureAtlas atlas = new TextureAtlas(dirt, grass, face, red);
+			
+			int texture = atlas.toTexture().id;
+			System.out.println(Arrays.toString(atlas.getTextureCoordinates(dirt)));
+			System.out.println(Arrays.toString(atlas.getTextureCoordinates(grass)));
+			System.out.println(Arrays.toString(atlas.getTextureCoordinates(face)));
+			System.out.println(Arrays.toString(atlas.getTextureCoordinates(red)));
 			
 			ModelRenderProgram modelProgram = new ModelRenderProgram(
 					new Shader(new FileInputStream("resources/shaders/modelVertexShader"), ShaderType.VERTEX),
@@ -114,20 +120,24 @@ public final class StartClient {
 			);
 			
 			modelProgram.register(RenderConstants.MODEL_GRASS_BLOCK,
-					new RenderData(6, indices, positions, textureCoordinates, Textures.GRASS.id));
+					new RenderData(6, indices, positions, 
+					GraphicsUtility.uploadVertexData(atlas.getTextureCoordinates(grass)), texture));
 			modelProgram.register(RenderConstants.MODEL_DIRT_BLOCK,	
-					new RenderData(6, indices, positions, textureCoordinates, Textures.DIRT.id));
+					new RenderData(6, indices, positions, 
+					GraphicsUtility.uploadVertexData(atlas.getTextureCoordinates(dirt)), texture));
 			modelProgram.register(RenderConstants.MODEL_GREEN_FACE,	
-					new RenderData(6, indices, positions, textureCoordinates, Textures.GREEN_FACE.id));
+					new RenderData(6, indices, positions, 
+					GraphicsUtility.uploadVertexData(atlas.getTextureCoordinates(face)), texture));
 			modelProgram.register(RenderConstants.MODEL_RED_SQUARE,	
-					new RenderData(6, indices, positions, textureCoordinates, Textures.RED_SQUARE.id));
+					new RenderData(6, indices, positions, 
+					GraphicsUtility.uploadVertexData(atlas.getTextureCoordinates(red)), texture));
 			
-			LightRenderProgram lightProgram = new LightRenderProgram(
-					new Shader(new FileInputStream("resources/shaders/lightVertexShader"), ShaderType.VERTEX),
-					new Shader(new FileInputStream("resources/shaders/lightFragmentShader"), ShaderType.FRAGMENT),
-					cameraGrip.getCamera()
-			);
-			renderManager.getRenderers().add(new ClientWorldRenderer(modelProgram, lightProgram, world));
+//			LightRenderProgram lightProgram = new LightRenderProgram(
+//					new Shader(new FileInputStream("resources/shaders/lightVertexShader"), ShaderType.VERTEX),
+//					new Shader(new FileInputStream("resources/shaders/lightFragmentShader"), ShaderType.FRAGMENT),
+//					cameraGrip.getCamera()
+//			);
+			renderManager.getRenderers().add(new ClientWorldRenderer(modelProgram, null, world));
 			GraphicsUtility.checkErrors();
 		} catch (IOException | OpenGLException e) {
 			throw new RuntimeException(e);
@@ -142,9 +152,9 @@ public final class StartClient {
 		World world = client.getWorld();
 		System.out.println("Received world from server.");
 		
-		ClientAudioSystem audio = ClientAudioSystem.getAudioSystem();
+		var audio = ClientAudioSystem.getAudioSystem();
 		
-		Map<String, Sound> soundFiles = Map.ofEntries(
+		var soundFiles = Map.ofEntries(
 			Map.entry("dig.wav", Sound.BLOCK_BREAK),
 			Map.entry("place.wav", Sound.BLOCK_PLACE),
 			Map.entry("pop.wav", Sound.POP),
@@ -153,7 +163,7 @@ public final class StartClient {
 		);
 		
 		try {
-			for(Entry<String, Sound> entry : soundFiles.entrySet()) {
+			for(var entry : soundFiles.entrySet()) {
 				audio.registerSound(entry.getValue().code(), WAVEDecoder.decode(
 						new FileInputStream(new File("resources/assets/audio", entry.getKey()))));
 			}
@@ -167,17 +177,16 @@ public final class StartClient {
 		//mute audio in background
 		input.getWindowFocusHandlers().add(focused -> audio.setVolume(focused ? 1.0f : 0.0f));
 		
-		ClientPlayerEntity player = client.getPlayer();
+		var player = client.getPlayer();
 		System.out.println("Received player from server.");
 		
-		CameraController cameraGrip =
-				new TrackingCameraController(new Camera(0, 0, 1), audio, player, 0.005f, 0.05f, 0.6f);
+		var cameraGrip = new TrackingCameraController(new Camera(0, 0, 1), audio, player, 0.005f, 0.05f, 0.6f);
 		cameraGrip.link(input);
 		
-		PlayerController playerController = new PlayerController(client);
+		var playerController = new PlayerController(client);
 		playerController.link(input);
 		
-		InteractionController interactionController = new InteractionController(client, cameraGrip.getCamera(), 200, 300, 5);
+		var interactionController = new InteractionController(client, cameraGrip.getCamera(), 200, 300, 5);
 		interactionController.link(input);
 		
 		WorldUpdater updater = new WorldUpdater(world);
@@ -209,6 +218,16 @@ public final class StartClient {
 		input.getWindowCloseHandlers().add(StartClient::exit);
 		client.setOnDisconnect(StartClient::exit);
 		
+//		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+//			System.out.print("Exiting... ");
+//			eventProcessor.stop();
+//			gameUpdater.stop();
+//			if(client.isConnected()) client.disconnect();
+//			audio.close();
+//			ClientAudioSystem.shutdown();
+//			System.out.println("done!");
+//		}));
+		
 		//display the window now that everything is set up.
 		eventProcessor.setReadyToDisplay();
 		System.out.println("Rendering started.");
@@ -217,8 +236,8 @@ public final class StartClient {
 		Utility.waitOnCondition(exitLock, () -> exit);
 		
 		System.out.print("Exiting... ");
-		eventProcessor.stop();
 		gameUpdater.stop();
+		eventProcessor.stop();
 		if(client.isConnected()) client.disconnect();
 		audio.close();
 		ClientAudioSystem.shutdown();
@@ -235,11 +254,14 @@ public final class StartClient {
 		}
 		
 		public void run() {
-			if(focused)
-				previousTime = Utility.updateWorld(world, 
+			if(focused) {
+				previousTime = Utility.updateWorld(
+						world, 
 						previousTime, 
 						SharedConstants.MAX_TIMESTEP, 
-						SharedConstants.TIME_SCALE_NANOSECONDS);
+						SharedConstants.TIME_SCALE_NANOSECONDS
+				);	
+			}
 		}
 		
 		@Override

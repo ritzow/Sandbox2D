@@ -8,6 +8,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import org.lwjgl.BufferUtils;
 
 public final class Textures {
@@ -38,5 +40,15 @@ public final class Textures {
 		pixels.flip();
 		input.close();
 		return new OpenGLTexture(pixels, decoder.getWidth(), decoder.getHeight());
+	}
+	
+	public static TextureData loadTextureName(String name) throws IOException {
+		PNGDecoder decoder = new PNGDecoder(Files.newInputStream(Paths.get("resources/assets/textures", name + ".png")));
+		ByteBuffer pixels = BufferUtils.createByteBuffer(decoder.getWidth() * decoder.getHeight() * 4);
+		decoder.decodeFlipped(pixels, decoder.getWidth() * 4, Format.RGBA);
+		pixels.flip();
+		byte[] data = new byte[pixels.remaining()];
+		pixels.get(data);
+		return new TextureData(decoder.getWidth(), 4, data);
 	}
 }

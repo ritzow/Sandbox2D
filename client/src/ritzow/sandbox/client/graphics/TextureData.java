@@ -17,10 +17,16 @@ public class TextureData implements Comparable<TextureData> {
 		this.data = data;
 	}
 	
+	/**
+	 * @return the texture's width, in pixels
+	 */
 	public int getWidth() {
 		return width;
 	}
 	
+	/**
+	 * @return the texture's height, in pixels
+	 */
 	public int getHeight() {
 		return data.length / (bytesPerPixel * width); //total size / bytes per row
 	}
