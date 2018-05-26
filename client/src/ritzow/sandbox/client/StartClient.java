@@ -102,27 +102,21 @@ public final class StartClient {
 					new Shader(new FileInputStream("resources/shaders/modelVertexShader"), ShaderType.VERTEX),
 					new Shader(new FileInputStream("resources/shaders/modelFragmentShader"), ShaderType.FRAGMENT), 
 					cameraGrip.getCamera(),
-					atlas.toTexture()
+					atlas.texture()
 			);
 			
-			modelProgram.register(RenderConstants.MODEL_GRASS_BLOCK,
-					new RenderData(6, indices, positions, 
-					GraphicsUtility.uploadVertexData(atlas.getTextureCoordinates(grass))));
 			modelProgram.register(RenderConstants.MODEL_DIRT_BLOCK,	
 					new RenderData(6, indices, positions, 
 					GraphicsUtility.uploadVertexData(atlas.getTextureCoordinates(dirt))));
+			modelProgram.register(RenderConstants.MODEL_GRASS_BLOCK,
+					new RenderData(6, indices, positions, 
+					GraphicsUtility.uploadVertexData(atlas.getTextureCoordinates(grass))));
 			modelProgram.register(RenderConstants.MODEL_GREEN_FACE,	
 					new RenderData(6, indices, positions, 
 					GraphicsUtility.uploadVertexData(atlas.getTextureCoordinates(face))));
 			modelProgram.register(RenderConstants.MODEL_RED_SQUARE,	
 					new RenderData(6, indices, positions, 
 					GraphicsUtility.uploadVertexData(atlas.getTextureCoordinates(red))));
-			
-//			LightRenderProgram lightProgram = new LightRenderProgram(
-//					new Shader(new FileInputStream("resources/shaders/lightVertexShader"), ShaderType.VERTEX),
-//					new Shader(new FileInputStream("resources/shaders/lightFragmentShader"), ShaderType.FRAGMENT),
-//					cameraGrip.getCamera()
-//			);
 			renderManager.getRenderers().add(new ClientWorldRenderer(modelProgram, null, world));
 			GraphicsUtility.checkErrors();
 		} catch (IOException | OpenGLException e) {
