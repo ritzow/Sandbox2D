@@ -13,17 +13,16 @@ import ritzow.sandbox.world.World;
 
 public final class ClientWorldRenderer implements Renderer {
 	private final ModelRenderProgram modelProgram;
-//	private final LightRenderProgram lightProgram;
 	private final Framebuffer framebuffer;
-	private final OpenGLTexture diffuseTexture;
-	private final OpenGLTexture finalTexture;
+	private final OpenGLTexture diffuseTexture, finalTexture;
 	private int previousWidth, previousHeight;
 	private final World world;
+	private final Camera camera;
 	
-	public ClientWorldRenderer(ModelRenderProgram modelProgram, LightRenderProgram lightProgram, World world) {
-		this.world = world;
+	public ClientWorldRenderer(ModelRenderProgram modelProgram, Camera camera, World world) {
 		this.modelProgram = modelProgram;
-//		this.lightProgram = lightProgram;
+		this.camera = camera;
+		this.world = world;
 		this.framebuffer = new Framebuffer();
 		this.diffuseTexture = new OpenGLTexture(100, 100);
 		this.finalTexture = new OpenGLTexture(100, 100);
@@ -49,13 +48,13 @@ public final class ClientWorldRenderer implements Renderer {
 		modelProgram.setCurrent();
 		
 		//load the view transformation
-		modelProgram.loadViewMatrix(true);
+		modelProgram.loadViewMatrix(camera);
 		
 		//get visible world coordinates
-		final float worldLeft = modelProgram.getWorldViewportLeftBound(),
-					worldRight = modelProgram.getWorldViewportRightBound(),
-					worldTop = modelProgram.getWorldViewportTopBound(),
-					worldBottom = modelProgram.getWorldViewportBottomBound();
+		final float worldLeft = modelProgram.getWorldViewportLeftBound(camera),
+					worldRight = modelProgram.getWorldViewportRightBound(camera),
+					worldTop = modelProgram.getWorldViewportTopBound(camera),
+					worldBottom = modelProgram.getWorldViewportBottomBound(camera);
 		
 		//cache foreground and background of world
 		final BlockGrid foreground = world.getForeground(), background = world.getBackground();

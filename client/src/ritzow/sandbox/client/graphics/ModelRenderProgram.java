@@ -13,7 +13,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public final class ModelRenderProgram extends ShaderProgram {
-	private final Camera camera;
+	//private final Camera camera;
 	
 	private final int 
 		uniform_transform, 
@@ -62,7 +62,7 @@ public final class ModelRenderProgram extends ShaderProgram {
 	
 	private final Map<Integer, RenderData> models;
 	
-	public ModelRenderProgram(Shader vertexShader, Shader fragmentShader, Camera camera, int textureAtlas) {
+	public ModelRenderProgram(Shader vertexShader, Shader fragmentShader, int textureAtlas) {
 		super(vertexShader, fragmentShader);
 		models = new HashMap<Integer, RenderData>();
 		GraphicsUtility.checkProgramCompilation(this);
@@ -73,7 +73,6 @@ public final class ModelRenderProgram extends ShaderProgram {
 		this.uniform_view = getUniformID("view");
 		this.atlasTexture = textureAtlas;
 		this.textureUnit = 0;
-		this.camera = camera;
 		setCurrent(); //needs this for setSamplerIndex which uses current program
 		setSamplerIndex(getUniformID("textureSampler"), textureUnit);
 		GraphicsUtility.checkErrors();
@@ -83,10 +82,6 @@ public final class ModelRenderProgram extends ShaderProgram {
 		if(models.containsKey(modelID))
 			throw new IllegalArgumentException("modelID already in use");
 		models.put(modelID, model);
-	}
-	
-	public Camera getCamera() {
-		return camera;
 	}
 	
 	/**
@@ -153,47 +148,50 @@ public final class ModelRenderProgram extends ShaderProgram {
 		setMatrix(uniform_view, identityMatrix);
 	}
 	
-	public void loadViewMatrix(boolean includeCamera) {
+	public void loadViewMatrix() {
 		aspectMatrix[0] = framebufferHeight/framebufferWidth;
-		if(includeCamera) {
-			loadCameraMatrix(cameraMatrix);
-			Arrays.fill(viewMatrix, 0);
-			multiply(aspectMatrix, cameraMatrix, viewMatrix);
-			setMatrix(uniform_view, viewMatrix);
-		} else {
-			setMatrix(uniform_view, aspectMatrix);
-		}
+		setMatrix(uniform_view, aspectMatrix);
 	}
 	
-	private void loadCameraMatrix(float[] matrix) {
+	public void loadViewMatrix(Camera camera) {
+		aspectMatrix[0] = framebufferHeight/framebufferWidth;
+		loadCameraMatrix(cameraMatrix, camera);
+		Arrays.fill(viewMatrix, 0);
+		multiply(aspectMatrix, cameraMatrix, viewMatrix);
+		setMatrix(uniform_view, viewMatrix);
+	}
+	
+	private static void loadCameraMatrix(float[] matrix, Camera camera) {
 		matrix[0] = camera.getZoom();
 		matrix[3] = -camera.getPositionX() * camera.getZoom();
 		matrix[5] = camera.getZoom();
 		matrix[7] = -camera.getPositionY() * camera.getZoom();
 	}
 	
-	public float getWorldViewportLeftBound() {
+	public float getWorldViewportLeftBound(Camera camera) {
 		float worldX = -framebufferWidth/framebufferHeight; //far left of screen after accounting for aspect ratio, in world coordinates
 		worldX /= camera.getZoom();
 		worldX += camera.getPositionX();
 		return worldX;
 	}
 	
-	public float getWorldViewportRightBound() {
+	public float getWorldViewportRightBound(Camera camera) {
 		float worldX = framebufferWidth/framebufferHeight; //far right of screen, after accounting for aspect ratio, in world coordinates
 		worldX /= camera.getZoom();
 		worldX += camera.getPositionX();
 		return worldX;
 	}
 	
-	public float getWorldViewportTopBound() {
+	@SuppressWarnings("static-method")
+	public float getWorldViewportTopBound(Camera camera) {
 		float worldY = 1;
 		worldY /= camera.getZoom();
 		worldY += camera.getPositionY();
 		return worldY;
 	}
 	
-	public float getWorldViewportBottomBound() {
+	@SuppressWarnings("static-method")
+	public float getWorldViewportBottomBound(Camera camera) {
 		float worldY = -1;
 		worldY /= camera.getZoom();
 		worldY += camera.getPositionY();
@@ -205,7 +203,7 @@ public final class ModelRenderProgram extends ShaderProgram {
 		this.framebufferHeight = framebufferHeight;
 	}
 	
-	//matrix operations on 1-dimensional arrays
+	//matrix operations on 4x4 1-dimensional arrays
 	private static void multiply(float[] a, float[] b, float[] destination) {
 		for(int i = 0; i < 4; i++){
 			for(int j = 0; j < 4; j++){
