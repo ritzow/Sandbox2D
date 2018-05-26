@@ -1,13 +1,13 @@
 package ritzow.sandbox.client;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -99,9 +99,8 @@ public final class StartClient {
 			TextureAtlas atlas = Textures.buildAtlas(grass, dirt, face, red);
 			
 			ModelRenderProgram modelProgram = new ModelRenderProgram(
-					new Shader(new FileInputStream("resources/shaders/modelVertexShader"), ShaderType.VERTEX),
-					new Shader(new FileInputStream("resources/shaders/modelFragmentShader"), ShaderType.FRAGMENT), 
-					cameraGrip.getCamera(),
+					new Shader(Files.newInputStream(Paths.get("resources/shaders/modelVertexShader")), ShaderType.VERTEX),
+					new Shader(Files.newInputStream(Paths.get("resources/shaders/modelFragmentShader")), ShaderType.FRAGMENT), 
 					atlas.texture()
 			);
 			
@@ -117,8 +116,8 @@ public final class StartClient {
 			modelProgram.register(RenderConstants.MODEL_RED_SQUARE,	
 					new RenderData(6, indices, positions, 
 					GraphicsUtility.uploadVertexData(atlas.getTextureCoordinates(red))));
-			renderManager.getRenderers().add(new ClientWorldRenderer(modelProgram, null, world));
 			GraphicsUtility.checkErrors();
+			renderManager.getRenderers().add(new ClientWorldRenderer(modelProgram, cameraGrip.getCamera(), world));
 		} catch (IOException | OpenGLException e) {
 			throw new RuntimeException(e);
 		}
@@ -144,8 +143,9 @@ public final class StartClient {
 		
 		try {
 			for(var entry : soundFiles.entrySet()) {
-				audio.registerSound(entry.getValue().code(), WAVEDecoder.decode(
-						new FileInputStream(new File("resources/assets/audio", entry.getKey()))));
+				audio.registerSound(entry.getValue().code(), 
+						WAVEDecoder.decode(
+								Files.newInputStream(Paths.get("resources/assets/audio", entry.getKey()))));
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -199,13 +199,6 @@ public final class StartClient {
 		client.setOnDisconnect(StartClient::exit);
 		
 //		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-//			System.out.print("Exiting... ");
-//			eventProcessor.stop();
-//			gameUpdater.stop();
-//			if(client.isConnected()) client.disconnect();
-//			audio.close();
-//			ClientAudioSystem.shutdown();
-//			System.out.println("done!");
 //		}));
 		
 		//display the window now that everything is set up.
@@ -235,12 +228,9 @@ public final class StartClient {
 		
 		public void run() {
 			if(focused) {
-				previousTime = Utility.updateWorld(
-						world, 
-						previousTime, 
+				previousTime = Utility.updateWorld(world, previousTime, 
 						SharedConstants.MAX_TIMESTEP, 
-						SharedConstants.TIME_SCALE_NANOSECONDS
-				);	
+						SharedConstants.TIME_SCALE_NANOSECONDS);
 			}
 		}
 		

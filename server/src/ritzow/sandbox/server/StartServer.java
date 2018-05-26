@@ -1,11 +1,12 @@
 package ritzow.sandbox.server;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.BindException;
 import java.net.InetSocketAddress;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Scanner;
 import ritzow.sandbox.data.ByteUtil;
 import ritzow.sandbox.data.Deserializer;
@@ -17,7 +18,7 @@ import ritzow.sandbox.world.block.GrassBlock;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
 public final class StartServer {
-	private static final boolean SAVE_WORLD = false;
+	private static final boolean SAVE_WORLD = true;
 	
 	public static void main(String... args) {
 		Thread.currentThread().setName("Server Setup");
@@ -26,11 +27,11 @@ public final class StartServer {
 			Server server = Server.open(new InetSocketAddress(Protocol.DEFAULT_SERVER_UDP_PORT));
 
 			//the save file to try to load the world from
-			final File saveFile = new File(args.length > 0 ? args[0] : "data/worlds/world.dat");
+			Path saveFile = Paths.get(args.length > 0 ? args[0] : "data/worlds/world.dat");
 			
 			//if a save file exists, load it, otherwise generate a world
-			World world = saveFile.exists() ? 
-					loadWorld(saveFile, SerializationProvider.getProvider()) : generateWorld(1000, 100, server);
+			World world = Files.exists(saveFile) ? 
+					loadWorld(saveFile, SerializationProvider.getProvider()) : generateWorld(100, 100, server);
 			server.start(world);
 			
 			//read user input commands
@@ -71,8 +72,8 @@ public final class StartServer {
 			//save world to file if enabled
 			if(SAVE_WORLD) {
 				try {
-					if(!saveFile.exists())
-						saveFile.createNewFile();
+					if(!Files.exists(saveFile))
+						Files.createFile(saveFile);
 					saveWorld(world, saveFile);
 				} catch (IOException e) {
 					System.out.println("Could not find or create file to save world: " + e.getLocalizedMessage());
@@ -87,22 +88,21 @@ public final class StartServer {
 		}
 	}
 	
-	public static void saveWorld(World world, File file) {
-		try(FileOutputStream out = new FileOutputStream(file)) {
+	public static void saveWorld(World world, Path file) {
+		try {
 			System.out.print("Saving world... ");
 			world.removeIf(e -> e instanceof PlayerEntity); //remove players before saving to file
 			byte[] serialized = ByteUtil.compress(SerializationProvider.getProvider().serialize(world));
-			out.write(serialized);
-			out.getChannel().truncate(serialized.length);
+			Files.write(file, serialized);
 			System.out.println("world saved to " + serialized.length + " bytes.");
 		} catch (IOException e) {
 			System.out.println("Error while saving world to file: " + e.getMessage());
 		}
 	}
 	
-	public static World loadWorld(File file, Deserializer des) {
-		try(FileInputStream in = new FileInputStream(file)) {
-			byte[] data = new byte[(int)file.length()];
+	public static World loadWorld(Path file, Deserializer des) {
+		try(InputStream in = Files.newInputStream(file)) {
+			byte[] data = new byte[(int)Files.size(file)];
 			in.read(data);
 			World world = des.deserialize(ByteUtil.decompress(data));
 			return world;
