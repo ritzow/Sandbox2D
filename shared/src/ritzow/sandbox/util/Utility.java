@@ -182,7 +182,7 @@ public final class Utility {
 		throw new UnsupportedOperationException("not implemented");
 	}
 	
-	public static long millisBetween(long startNanos, long endNanos) {
+	public static double millisBetween(long startNanos, long endNanos) {
 		return nanosToMillis(endNanos - startNanos);
 	}
 	
@@ -190,15 +190,15 @@ public final class Utility {
 		return milliseconds * 1_000_000;
 	}
 	
-	public static long nanosToMillis(long nanoseconds) {
-		return nanoseconds / 1_000_000;
+	public static double nanosToMillis(long nanoseconds) {
+		return nanoseconds / 1_000_000D;
 	}
 	
 	public static long nanosSince(long nanosStart) {
 		return System.nanoTime() - nanosStart;
 	}
 	
-	public static long millisSince(long nanosStart) {
+	public static double millisSince(long nanosStart) {
 		return nanosToMillis(nanosSince(nanosStart));
 	}
 	

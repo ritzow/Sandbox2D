@@ -40,7 +40,7 @@ public final class Display {
 		glfwMakeContextCurrent(displayID);
 	}
 	
-	/** Call from main thread **/
+	/** Call from OpenGL thread thread **/
 	public void refresh() {
 		glfwSwapBuffers(displayID);
 	}

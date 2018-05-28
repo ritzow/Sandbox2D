@@ -280,11 +280,11 @@ public class World implements Transportable, Iterable<Entity> {
 			
 			//check if collision checking is enabled
 			if(e.doCollision()) {
-				
-				//check for entity vs. entity collisions with all entities that have not already been collision checked with (for first element, all entites, for last, no entities)
+				//check for entity vs. entity collisions with all entities that have not already been 
+				//collision checked with (for first element, all entites, for last, no entities)
 				for(int j = i + 1; j < entities.size(); j++) {
 					Entity o = entities.get(j);
-					if(o != null && o.doCollision()) {
+					if(o.doCollision()) {
 						boolean collision;
 						
 						if(e.doEntityCollisionResolution() && o.doEntityCollisionResolution()) {

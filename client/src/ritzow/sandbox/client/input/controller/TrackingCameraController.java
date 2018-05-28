@@ -40,7 +40,7 @@ public final class TrackingCameraController extends CameraController {
 		long time = System.nanoTime();
 		camera.setZoom((Math.max(Math.min(maxZoom, 
 				camera.getZoom() + camera.getZoom() * 
-				Utility.millisBetween(previousTime, time) * velocityZ), minZoom)));
+				(float)Utility.millisBetween(previousTime, time) * velocityZ), minZoom)));
 		previousTime = time;
 		audio.setPosition(camera.getPositionX(), camera.getPositionY());
 	}

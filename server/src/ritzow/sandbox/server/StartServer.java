@@ -20,7 +20,7 @@ public final class StartServer {
 	private static final boolean SAVE_WORLD = true;
 	
 	public static void main(String... args) {
-		Thread.currentThread().setName("Server Setup");
+		Thread.currentThread().setName("Console Input Main");
 		
 		try {
 			Server server = Server.open(new InetSocketAddress(Protocol.DEFAULT_SERVER_UDP_PORT));
