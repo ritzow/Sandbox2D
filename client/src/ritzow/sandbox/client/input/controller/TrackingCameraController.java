@@ -7,6 +7,7 @@ import static org.lwjgl.glfw.GLFW.GLFW_RELEASE;
 import ritzow.sandbox.client.audio.ClientAudioSystem;
 import ritzow.sandbox.client.graphics.Camera;
 import ritzow.sandbox.client.input.ControlScheme;
+import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.entity.Entity;
 
 public final class TrackingCameraController extends CameraController {
@@ -37,7 +38,9 @@ public final class TrackingCameraController extends CameraController {
 		camera.setPositionX(target.getPositionX());
 		camera.setPositionY(target.getPositionY());
 		long time = System.nanoTime();
-		camera.setZoom((Math.max(Math.min(maxZoom, camera.getZoom() + camera.getZoom() * (time - previousTime)/1000000 * velocityZ), minZoom)));
+		camera.setZoom((Math.max(Math.min(maxZoom, 
+				camera.getZoom() + camera.getZoom() * 
+				Utility.millisBetween(previousTime, time) * velocityZ), minZoom)));
 		previousTime = time;
 		audio.setPosition(camera.getPositionX(), camera.getPositionY());
 	}

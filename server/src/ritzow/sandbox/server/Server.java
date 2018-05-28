@@ -17,6 +17,7 @@ import ritzow.sandbox.network.NetworkController;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.network.Protocol.PlayerAction;
 import ritzow.sandbox.network.TimeoutException;
+import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.block.Block;
@@ -275,7 +276,7 @@ public class Server {
 		try {
 			long time = System.nanoTime();
 			network.sendReliable(client.address, data, 10, 100);
-			client.ping = (int)(System.nanoTime() - time)/1_000_000; //update client ping
+			client.ping = (int)Utility.millisSince(time); //update client ping
 		} catch(TimeoutException e) {
 			if(removeUnresponsive && isConnected(client.address)) {
 				removeClient(client);
