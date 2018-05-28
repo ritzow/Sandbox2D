@@ -2,22 +2,19 @@ package ritzow.sandbox.client.graphics;
 
 import static org.lwjgl.glfw.GLFW.*;
 
-import java.util.Queue;
 import ritzow.sandbox.client.input.EventDelegator;
 
 public final class Display {
 	private final long displayID;
 	private final EventDelegator input;
 	private final RenderManager render;
-	//private final Queue<Runnable> methodQueue;
 	
 	private int windowedX;
 	private int windowedY;
 	private int windowedWidth;
 	private int windowedHeight;
 	
-	public Display(String title, Queue<Runnable> methodQueue) {
-		//this.methodQueue = methodQueue;
+	public Display(String title) {
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);

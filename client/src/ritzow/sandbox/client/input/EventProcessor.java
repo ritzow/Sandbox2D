@@ -1,8 +1,9 @@
 package ritzow.sandbox.client.input;
 
 import static org.lwjgl.glfw.GLFW.glfwInit;
-import static org.lwjgl.glfw.GLFW.glfwTerminate;
 import static org.lwjgl.glfw.GLFW.glfwPostEmptyEvent;
+import static org.lwjgl.glfw.GLFW.glfwTerminate;
+import static org.lwjgl.glfw.GLFW.glfwWaitEvents;
 
 import java.io.IOException;
 import org.lwjgl.glfw.GLFWErrorCallback;
@@ -42,7 +43,7 @@ public final class EventProcessor implements Runnable {
 		display.setFullscreen(true);
 		
 		while(!exit) {
-			display.waitEvents();
+			glfwWaitEvents();
 		}
 		
 		display.destroy();

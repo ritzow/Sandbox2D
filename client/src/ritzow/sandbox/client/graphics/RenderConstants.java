@@ -3,7 +3,6 @@ package ritzow.sandbox.client.graphics;
 public class RenderConstants {
 	static final int ATTRIBUTE_POSITIONS = 0;
 	static final int ATTRIBUTE_TEXTURE_COORDS = 1;
-	static final int ATTRIBUTE_INDICES = 2;
 	
 	public static final int
 		MODEL_GRASS_BLOCK = 0,
