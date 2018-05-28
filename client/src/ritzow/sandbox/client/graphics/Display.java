@@ -2,19 +2,22 @@ package ritzow.sandbox.client.graphics;
 
 import static org.lwjgl.glfw.GLFW.*;
 
-import ritzow.sandbox.client.input.InputManager;
+import java.util.Queue;
+import ritzow.sandbox.client.input.EventDelegator;
 
 public final class Display {
 	private final long displayID;
-	private final InputManager input;
+	private final EventDelegator input;
 	private final RenderManager render;
+	//private final Queue<Runnable> methodQueue;
 	
 	private int windowedX;
 	private int windowedY;
 	private int windowedWidth;
 	private int windowedHeight;
 	
-	public Display(String title) {
+	public Display(String title, Queue<Runnable> methodQueue) {
+		//this.methodQueue = methodQueue;
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -27,7 +30,7 @@ public final class Display {
 		displayID = glfwCreateWindow(screenWidth/2, screenHeight/2, title, 0, 0);
 		glfwSetWindowPos(displayID, screenWidth/4, screenHeight/4);
 		
-		input = new InputManager(displayID);
+		input = new EventDelegator(displayID);
 		render = new RenderManager(this);
 	}
 	
@@ -35,24 +38,17 @@ public final class Display {
 		glfwSetCursor(displayID, cursor);
 	}
 	
+	/** Call from OpenGL thread **/
 	public void setGraphicsContextOnThread() {
 		glfwMakeContextCurrent(displayID);
 	}
 	
+	/** Call from main thread **/
 	public void refresh() {
 		glfwSwapBuffers(displayID);
 	}
 	
-	@SuppressWarnings("static-method")
-	public void pollEvents() {
-		glfwPollEvents();
-	}
-	
-	@SuppressWarnings("static-method")
-	public void waitEvents() {
-		glfwWaitEvents();
-	}
-	
+	/** Call from main thread **/
 	public void destroy() {
 		glfwDestroyWindow(displayID);
 	}
@@ -61,7 +57,7 @@ public final class Display {
 		return glfwGetWindowMonitor(displayID) != 0;
 	}
 	
-	public InputManager getInputManager() {
+	public EventDelegator getInputManager() {
 		return input;
 	}
 	
@@ -83,6 +79,10 @@ public final class Display {
 	
 	public void focus() {
 		glfwFocusWindow(displayID);
+	}
+	
+	public boolean focused() {
+		return glfwGetWindowAttrib(displayID, GLFW_FOCUSED) == GLFW_TRUE;
 	}
 	
 	public void toggleFullscreen() {

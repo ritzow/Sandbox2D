@@ -15,21 +15,8 @@ import java.util.LinkedList;
 import ritzow.sandbox.client.input.handler.*;
 
 /** Dispatches GLFW events to handlers in an object oriented fashion **/
-public final class InputManager {
-	private final Collection<CursorPosHandler> cursorPosHandlers = 				new LinkedList<>();
-	private final Collection<FramebufferSizeHandler> framebufferSizeHandlers = 	new LinkedList<>();
-	private final Collection<KeyHandler> keyHandlers =							new LinkedList<>();
-	private final Collection<MouseButtonHandler> mouseButtonHandlers = 			new LinkedList<>();
-	private final Collection<ScrollHandler> scrollHandlers = 					new LinkedList<>();
-	private final Collection<WindowRefreshHandler> windowRefreshHandlers = 		new LinkedList<>();
-	private final Collection<WindowCloseHandler> windowCloseHandlers = 			new LinkedList<>();
-	private final Collection<WindowIconifyHandler> windowIconifyHandlers = 		new LinkedList<>();
-	private final Collection<WindowFocusHandler> windowFocusHandlers = 			new LinkedList<>();
-	
-	//TODO replace InputManager stuff with game related abstractions (like primaryAction instead of mouse left click)
-	public InputManager(long window) {
-		//TODO use a thread pool executor service with lambda expressions to send events to other threads?
-		
+public final class EventDelegator {
+	public EventDelegator(long window) {
 		glfwSetKeyCallback(window, (windowID, key, scancode, action, mods) -> {
 			for(KeyHandler handler : keyHandlers) {
 				handler.keyboardButton(key, scancode, action, mods);
@@ -84,40 +71,50 @@ public final class InputManager {
 			}
 		});
 	}
+	
+	private final Collection<CursorPosHandler> cursorPosHandlers = 				new LinkedList<>();
+	private final Collection<FramebufferSizeHandler> framebufferSizeHandlers = 	new LinkedList<>();
+	private final Collection<KeyHandler> keyHandlers =							new LinkedList<>();
+	private final Collection<MouseButtonHandler> mouseButtonHandlers = 			new LinkedList<>();
+	private final Collection<ScrollHandler> scrollHandlers = 					new LinkedList<>();
+	private final Collection<WindowRefreshHandler> windowRefreshHandlers = 		new LinkedList<>();
+	private final Collection<WindowCloseHandler> windowCloseHandlers = 			new LinkedList<>();
+	private final Collection<WindowIconifyHandler> windowIconifyHandlers = 		new LinkedList<>();
+	private final Collection<WindowFocusHandler> windowFocusHandlers = 			new LinkedList<>();
 
-	public final Collection<CursorPosHandler> getCursorPosHandlers() {
+	public final Collection<CursorPosHandler> cursorPosHandlers() {
 		return cursorPosHandlers;
 	}
 
-	public final Collection<FramebufferSizeHandler> getFramebufferSizeHandlers() {
+	public final Collection<FramebufferSizeHandler> framebufferSizeHandlers() {
 		return framebufferSizeHandlers;
 	}
 
-	public final Collection<KeyHandler> getKeyHandlers() {
+	public final Collection<KeyHandler> keyboardHandlers() {
 		return keyHandlers;
 	}
 
-	public final Collection<MouseButtonHandler> getMouseButtonHandlers() {
+	public final Collection<MouseButtonHandler> mouseButtonHandlers() {
 		return mouseButtonHandlers;
 	}
 
-	public final Collection<ScrollHandler> getScrollHandlers() {
+	public final Collection<ScrollHandler> scrollHandlers() {
 		return scrollHandlers;
 	}
 
-	public final Collection<WindowRefreshHandler> getWindowRefreshHandlers() {
+	public final Collection<WindowRefreshHandler> windowRefreshHandlers() {
 		return windowRefreshHandlers;
 	}
 
-	public final Collection<WindowCloseHandler> getWindowCloseHandlers() {
+	public final Collection<WindowCloseHandler> windowCloseHandlers() {
 		return windowCloseHandlers;
 	}
 
-	public final Collection<WindowIconifyHandler> getWindowIconifyHandlers() {
+	public final Collection<WindowIconifyHandler> windowIconifyHandlers() {
 		return windowIconifyHandlers;
 	}
 
-	public final Collection<WindowFocusHandler> getWindowFocusHandlers() {
+	public final Collection<WindowFocusHandler> windowFocusHandlers() {
 		return windowFocusHandlers;
 	}
 }

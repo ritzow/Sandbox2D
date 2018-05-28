@@ -18,7 +18,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import org.lwjgl.glfw.GLFW;
-import ritzow.sandbox.client.input.InputManager;
+import ritzow.sandbox.client.input.EventDelegator;
 import ritzow.sandbox.client.input.handler.FramebufferSizeHandler;
 import ritzow.sandbox.client.input.handler.WindowFocusHandler;
 
@@ -88,13 +88,13 @@ public final class RenderManager implements Runnable, FramebufferSizeHandler, Wi
 		this.focused = focused;
 	}
 
-	public void link(InputManager manager) {
-		manager.getFramebufferSizeHandlers().add(this);
-		manager.getWindowFocusHandlers().add(this);
+	public void link(EventDelegator manager) {
+		manager.framebufferSizeHandlers().add(this);
+		manager.windowFocusHandlers().add(this);
 	}
 
-	public void unlink(InputManager manager) {
-		manager.getFramebufferSizeHandlers().remove(this);
-		manager.getWindowFocusHandlers().remove(this);
+	public void unlink(EventDelegator manager) {
+		manager.framebufferSizeHandlers().remove(this);
+		manager.windowFocusHandlers().remove(this);
 	}
 }

@@ -3,11 +3,12 @@ package ritzow.sandbox.client.input.controller;
 import org.lwjgl.glfw.GLFW;
 import ritzow.sandbox.client.Client;
 import ritzow.sandbox.client.graphics.Camera;
-import ritzow.sandbox.client.input.InputManager;
+import ritzow.sandbox.client.input.EventDelegator;
 import ritzow.sandbox.client.input.handler.CursorPosHandler;
 import ritzow.sandbox.client.input.handler.FramebufferSizeHandler;
 import ritzow.sandbox.client.input.handler.KeyHandler;
 import ritzow.sandbox.client.input.handler.MouseButtonHandler;
+import ritzow.sandbox.client.util.ClientUtility;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
 import ritzow.sandbox.client.world.item.ClientBlockItem;
 import ritzow.sandbox.util.Utility;
@@ -25,11 +26,11 @@ public final class InteractionController implements Controller, MouseButtonHandl
 	private final Camera camera;
 	private final Client client;
 	
-	public InteractionController(Client client, Camera camera, long breakCooldown, long placeCooldown, float range) {
+	public InteractionController(Client client, Camera camera, long breakCooldownMillis, long placeCooldownMillis, float range) {
 		this.client = client;
 		this.camera = camera;
-		this.cooldownBreak = breakCooldown;
-		this.cooldownPlace = placeCooldown;
+		this.cooldownBreak = Utility.millisToNanos(breakCooldownMillis);
+		this.cooldownPlace = Utility.millisToNanos(placeCooldownMillis);
 		this.range = range;
 	}
 	
@@ -38,21 +39,12 @@ public final class InteractionController implements Controller, MouseButtonHandl
 		update(camera, frameWidth, frameHeight);
 	}
 	
-	protected void update(Camera camera, float frameWidth, float frameHeight) {
-		float worldX = (2f * mouseX) / frameWidth - 1f; 		//normalize the mouse coordinate
-		float worldY = -((2f * mouseY) / frameHeight - 1f);
-		worldX /= frameHeight/frameWidth; 					//apply aspect ratio
-		worldX /= camera.getZoom(); 								//apply zoom
-		worldY /= camera.getZoom();
-		worldX += camera.getPositionX(); 							//apply camera position
-		worldY += camera.getPositionY();
-		int blockX = Math.round(worldX);						//convert world coordinate to block grid coordinate
-		int blockY = Math.round(worldY);
+	protected void update(Camera camera, int frameWidth, int frameHeight) {
+		int blockX = Math.round(ClientUtility.mouseHorizontalToWorld(camera, mouseX, frameWidth, frameHeight));
+		int blockY = Math.round(ClientUtility.mouseVerticalToWorld(camera, mouseY, frameHeight));
 		ClientPlayerEntity player = client.getPlayer();
-		float playerX = player.getPositionX();						//get player position
-		float playerY = player.getPositionY();
 		
-		if(Utility.withinDistance(playerX, playerY, blockX, blockY, range)) {
+		if(Utility.withinDistance(player.getPositionX(), player.getPositionY(), blockX, blockY, range)) {
 			if(primaryAction && !breakCooldownActive()) {
 				if(client.getWorld().getForeground().isBlock(blockX, blockY)) {
 					client.sendBlockBreak(blockX, blockY);
@@ -71,25 +63,25 @@ public final class InteractionController implements Controller, MouseButtonHandl
 	}
 	
 	private boolean breakCooldownActive() {
-		return System.nanoTime() - lastBreak < cooldownBreak * 1000000;
+		return Utility.nanosSince(lastBreak) < cooldownBreak;
 	}
 	
 	private boolean placeCooldownActive() {
-		return System.nanoTime() - lastPlace < cooldownPlace * 1000000;
+		return Utility.nanosSince(lastPlace) < cooldownPlace;
 	}
 
-	public void link(InputManager input) {
-		input.getCursorPosHandlers().add(this);
-		input.getFramebufferSizeHandlers().add(this);
-		input.getKeyHandlers().add(this);
-		input.getMouseButtonHandlers().add(this);
+	public void link(EventDelegator input) {
+		input.cursorPosHandlers().add(this);
+		input.framebufferSizeHandlers().add(this);
+		input.keyboardHandlers().add(this);
+		input.mouseButtonHandlers().add(this);
 	}
 	
-	public void unlink(InputManager input) {
-		input.getCursorPosHandlers().remove(this);
-		input.getFramebufferSizeHandlers().remove(this);
-		input.getKeyHandlers().remove(this);
-		input.getMouseButtonHandlers().remove(this);
+	public void unlink(EventDelegator input) {
+		input.cursorPosHandlers().remove(this);
+		input.framebufferSizeHandlers().remove(this);
+		input.keyboardHandlers().remove(this);
+		input.mouseButtonHandlers().remove(this);
 	}
 	
 	@Override

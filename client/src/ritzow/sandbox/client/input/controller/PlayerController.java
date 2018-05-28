@@ -6,7 +6,7 @@ import static org.lwjgl.glfw.GLFW.GLFW_REPEAT;
 import org.lwjgl.glfw.GLFW;
 import ritzow.sandbox.client.Client;
 import ritzow.sandbox.client.input.ControlScheme;
-import ritzow.sandbox.client.input.InputManager;
+import ritzow.sandbox.client.input.EventDelegator;
 import ritzow.sandbox.client.input.handler.KeyHandler;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
 import ritzow.sandbox.network.Protocol.PlayerAction;
@@ -18,12 +18,12 @@ public class PlayerController implements Controller, KeyHandler {
 		this.client = client;
 	}
 
-	public void link(InputManager manager) {
-		manager.getKeyHandlers().add(this);
+	public void link(EventDelegator manager) {
+		manager.keyboardHandlers().add(this);
 	}
 
-	public void unlink(InputManager manager) {
-		manager.getKeyHandlers().remove(this);
+	public void unlink(EventDelegator manager) {
+		manager.keyboardHandlers().remove(this);
 	}
 
 	@Override
