@@ -22,6 +22,14 @@ public final class Textures {
 		return new TextureAtlas(textures);
 	}
 	
+	public static TextureData[] loadTextureNames(String... names) throws IOException {
+		TextureData[] textures = new TextureData[names.length];
+		for(int i = 0; i < textures.length; i++) {
+			textures[i] = loadTextureName(names[i]);
+		}
+		return textures;
+	}
+	
 	public static TextureData loadTextureName(String name) throws IOException {
 		PNGDecoder decoder = new PNGDecoder(Files.newInputStream(Paths.get("resources/assets/textures", name + ".png")));
 		ByteBuffer pixels = BufferUtils.createByteBuffer(decoder.getWidth() * decoder.getHeight() * 4);
