@@ -20,7 +20,6 @@ import ritzow.sandbox.client.input.EventProcessor;
 import ritzow.sandbox.client.input.controller.InteractionController;
 import ritzow.sandbox.client.input.controller.PlayerController;
 import ritzow.sandbox.client.input.controller.TrackingCameraController;
-import ritzow.sandbox.client.input.handler.WindowFocusHandler;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.util.SharedConstants;
 import ritzow.sandbox.util.Utility;
@@ -44,7 +43,7 @@ public final class StartClient {
 		}
 	}
 	
-	private static volatile boolean exit;
+	private static volatile boolean exit, focused;
 	
 	private static void run(EventProcessor eventProcessor, Client client) {
 		//wait for the client to receive the world and return it
@@ -88,10 +87,6 @@ public final class StartClient {
 		var interactionController = new InteractionController(client, cameraGrip.getCamera(), 200, 300, 5);
 		interactionController.link(input);
 		
-		var world = client.getWorld();
-		var worldUpdater = new WorldUpdater(world);
-		worldUpdater.link(input);
-		
 		input.keyboardHandlers().add((key, scancode, action, mods) -> {
 			if(action == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
 				if(key == ControlScheme.KEYBIND_QUIT)
@@ -100,10 +95,15 @@ public final class StartClient {
 		            eventProcessor.getDisplay().toggleFullscreen();
 			}
 		});
+		
+		input.windowFocusHandlers().add(focused -> {
+			StartClient.focused = focused;
+		});
 
 		input.windowCloseHandlers().add(() -> exit = true);
 		client.setOnDisconnect(() -> exit = true);
 		
+		var world = client.getWorld();
 		var renderer = eventProcessor.getDisplay().getRenderManager();
 		renderer.initialize();
 		renderer.getRenderers().add(createRenderer(world, cameraGrip.getCamera()));
@@ -112,11 +112,13 @@ public final class StartClient {
 		eventProcessor.setReadyToDisplay();
 		System.out.println("Rendering started, setup took " + Utility.millisSince(startTime) + " ms");
 		
+		long previousTime = System.nanoTime();
 		while(!exit) {
 			client.onReceiveMessageTask().run();
-			worldUpdater.run();
-			cameraGrip.run();
-			interactionController.run();
+			previousTime = focused ? Utility.updateWorld(world, previousTime, 
+					SharedConstants.MAX_TIMESTEP, SharedConstants.TIME_SCALE_NANOSECONDS) : System.nanoTime();
+			cameraGrip.update();
+			interactionController.update();
 			renderer.run();
 			Utility.sleep(1);
 		}
@@ -167,35 +169,5 @@ public final class StartClient {
 	
 	private static void register(ModelRenderProgram prog, int id, int indices, int positions, TextureAtlas atlas, TextureData data) {
 		prog.register(id, new RenderData(6, indices, positions, GraphicsUtility.uploadVertexData(atlas.getCoordinates(data))));
-	}
-	
-	private static class WorldUpdater implements Runnable, WindowFocusHandler {
-		private volatile long previousTime = System.nanoTime();
-		private volatile boolean focused = true;
-		private final World world;
-		
-		public WorldUpdater(World world) {
-			this.world = world;
-		}
-		
-		public void run() {
-			if(focused) {
-				previousTime = 
-					Utility.updateWorld(world, previousTime, 
-					SharedConstants.MAX_TIMESTEP, 
-					SharedConstants.TIME_SCALE_NANOSECONDS);
-			}
-		}
-		
-		@Override
-		public void windowFocus(boolean focused) {
-			if(focused)
-				previousTime = System.nanoTime();
-			this.focused = focused;
-		}
-
-		public void link(EventDelegator m) {
-			m.windowFocusHandlers().add(this);
-		}
 	}
 }
