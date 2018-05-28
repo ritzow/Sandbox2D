@@ -120,6 +120,7 @@ public class Server {
 			PlayerAction action = PlayerAction.forCode(data[2]);
 			boolean enable = ByteUtil.getBoolean(data, 3);
 			client.player.processAction(action, enable);
+			updater.resetEntitySend(); //reset all entities when a player 'changes direction'
 		});
 	}
 	
@@ -186,6 +187,10 @@ public class Server {
 	}
 	
 	public void sendUpdateEntity(Entity e) {
+		broadcastUnreliable(buildUpdateEntity(e));
+	}
+	
+	private static byte[] buildUpdateEntity(Entity e) {
 		//protocol, id, posX, posY, velX, velY
 		byte[] update = new byte[2 + 4 + 4 + 4 + 4 + 4];
 		ByteUtil.putShort(update, 0, Protocol.SERVER_ENTITY_UPDATE);
@@ -194,7 +199,7 @@ public class Server {
 		ByteUtil.putFloat(update, 10, e.getPositionY());
 		ByteUtil.putFloat(update, 14, e.getVelocityX());
 		ByteUtil.putFloat(update, 18, e.getVelocityY());
-		broadcastUnreliable(update);
+		return update;
 	}
 	
 	private static byte[] buildServerDisconnect(String reason) {

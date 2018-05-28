@@ -13,7 +13,7 @@ public final class ServerRepeatUpdater extends RepeatUpdater {
 	private final TaskQueue tasks;
 	private long previousTime, lastSendTime;
 	
-	private static final long NETWORK_SEND_INTERVAL_NANOSECONDS = Utility.millisToNanos(5);
+	private static final long NETWORK_SEND_INTERVAL_NANOSECONDS = Utility.millisToNanos(100);
 	
 	public ServerRepeatUpdater(Server server) {
 		this.server = server;
@@ -43,6 +43,10 @@ public final class ServerRepeatUpdater extends RepeatUpdater {
 		}
 		
 		Utility.sleep(1);
+	}
+	
+	public void resetEntitySend() {
+		lastSendTime = 0;
 	}
 	
 	public void stopWorld() {
