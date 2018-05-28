@@ -1,5 +1,9 @@
 package ritzow.sandbox.client.input;
 
+import java.util.HashSet;
+import java.util.Set;
+import ritzow.sandbox.client.graphics.Display;
+
 public class ControlScheme {
 	public static final int KEYBIND_UP = 			org.lwjgl.glfw.GLFW.GLFW_KEY_UP;
 	public static final int KEYBIND_DOWN = 			org.lwjgl.glfw.GLFW.GLFW_KEY_DOWN;
@@ -11,41 +15,54 @@ public class ControlScheme {
 	public static final int KEYBIND_FULLSCREEN =	org.lwjgl.glfw.GLFW.GLFW_KEY_F11;
 	public static final int KEYBIND_ACTIVATE =		org.lwjgl.glfw.GLFW.GLFW_KEY_E;
 	
-	public static final ButtonControl KEYBIND_DIG = new GLFWMouseButtonControl();
-	
-	public ControlScheme() {
-		
+	public static Sandbox2DGameplayContext createGLFWGameplayContext(Display window) {
+		return new GLFWSandbox2DGameplayContext(window);
 	}
 	
-	public static interface Control {
+	public static class Sandbox2DGameplayContext {
+		public final AxisControl ZOOM_CONTROL;
 		
-	}
-	
-	public static interface ButtonControl extends Control {
-		public boolean pressed();
-		public void setOnPress(Runnable action);
-		public void setOnRelease(Runnable action);
-	}
-	
-	private static class GLFWMouseButtonControl implements ButtonControl {
-		
-		
-		@Override
-		public boolean pressed() {
-			//TODO implement method 'pressed'
-			return false;
+		public Sandbox2DGameplayContext(AxisControl zoom) {
+			ZOOM_CONTROL = zoom;
 		}
-
-		@Override
-		public void setOnPress(Runnable action) {
-			//TODO implement method 'setOnPress'
-			
+	}
+	
+	private static final class GLFWSandbox2DGameplayContext extends Sandbox2DGameplayContext {
+		static final class zoom extends ControlBase<AxisControlHandler> implements AxisControl {
+			public zoom(Display display) {
+				display.getInputManager().scrollHandlers().add((x, y) -> {
+					for(AxisControlHandler handler : handlers) {
+						handler.axisChangeEvent(y);
+					}
+				});
+			}
 		}
-
-		@Override
-		public void setOnRelease(Runnable action) {
-			//TODO implement method 'setOnRelease'
-			
+		
+		private GLFWSandbox2DGameplayContext(Display display) {
+			super(new zoom(display));
+		}
+	}
+	
+	public interface AxisControlHandler {
+		void axisChangeEvent(double delta);
+	}
+	
+	public interface AxisControl extends Control<AxisControlHandler> {
+		
+	}
+	
+	public interface Control<T> {
+		Set<T> handlers();
+	}
+	
+	private static abstract class ControlBase<H> implements Control<H> {
+		protected final Set<H> handlers;
+		private ControlBase() {
+			handlers = new HashSet<>();
+		}
+		
+		public Set<H> handlers() {
+			return handlers;
 		}
 	}
 }
