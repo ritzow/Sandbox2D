@@ -3,7 +3,13 @@ package ritzow.sandbox.util;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.util.Set;
 import java.util.function.BooleanSupplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import ritzow.sandbox.data.ByteUtil;
 import ritzow.sandbox.data.Deserializer;
 import ritzow.sandbox.world.BlockGrid;
@@ -19,6 +25,25 @@ public final class Utility {
 		throw new UnsupportedOperationException("Utility class cannot be instantiated");
 	}
 	
+	public static <T extends InetAddress> T getPublicAddress(Class<T> addressType) throws SocketException {
+		Set<InetAddress> addresses = NetworkInterface.networkInterfaces()
+			.filter(network -> {
+				try {
+					return network.isUp() && !network.isLoopback();
+				} catch (SocketException e) {
+					e.printStackTrace();
+					return false;
+				}
+			})
+			.map(network -> network.inetAddresses())
+			.reduce((a, b) -> Stream.concat(a, b))
+			.get().filter(address -> addressType.isInstance(address))
+			.collect(Collectors.toSet());
+		if(addresses.isEmpty())
+			throw new RuntimeException("No address of type " + addressType + " available");
+		return addressType.cast(addresses.iterator().next());
+	}
+
 	public static World loadWorld(File file, Deserializer des) {
 		try(FileInputStream in = new FileInputStream(file)) {
 			byte[] data = new byte[(int)file.length()];

@@ -4,15 +4,10 @@ import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.NetworkInterface;
-import java.net.SocketException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Paths;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import ritzow.sandbox.client.Client.ConnectionFailedException;
 import ritzow.sandbox.client.audio.ClientAudioSystem;
 import ritzow.sandbox.client.audio.Sound;
@@ -38,7 +33,7 @@ public final class StartClient {
 		
 		try {
 			System.out.print("Connecting to " + serverAddress.getHostAddress() + " on port " + serverSocket.getPort() + "... ");
-			Client client = Client.open(new InetSocketAddress(getLocalAddress(Inet4Address.class), 0), serverSocket);
+			Client client = Client.open(new InetSocketAddress(Utility.getPublicAddress(Inet4Address.class), 0), serverSocket);
 			System.out.println("connected!");
 			EventProcessor eventProcessor = new EventProcessor();
 			new Thread(() -> run(eventProcessor, client), "Game Thread").start();
@@ -50,25 +45,6 @@ public final class StartClient {
 	}
 	
 	private static volatile boolean exit;
-	
-	public static <T extends InetAddress> T getLocalAddress(Class<T> addressType) throws SocketException {
-		Set<InetAddress> addresses = NetworkInterface.networkInterfaces()
-			.filter(network -> {
-				try {
-					return network.isUp() && !network.isLoopback();
-				} catch (SocketException e) {
-					e.printStackTrace();
-					return false;
-				}
-			})
-			.map(network -> network.inetAddresses())
-			.reduce((a, b) -> Stream.concat(a, b))
-			.get().filter(address -> addressType.isInstance(address))
-			.collect(Collectors.toSet());
-		if(addresses.isEmpty())
-			throw new RuntimeException("No address of type " + addressType + " available");
-		return addressType.cast(addresses.iterator().next());
-	}
 	
 	private static void run(EventProcessor eventProcessor, Client client) {
 		//wait for the client to receive the world and return it
