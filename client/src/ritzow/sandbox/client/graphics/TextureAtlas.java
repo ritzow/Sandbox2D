@@ -24,19 +24,21 @@ public class TextureAtlas {
 	private static int generateAtlas(TextureData[] textures, Map<TextureData, float[]> coords) {
 		//TODO for now just put them all in a horizontal line
 		int bytesPerPixel = textures[0].getBytesPerPixel();
-		int atlasSize = calculateAtlasWidth(textures, bytesPerPixel);
 		
-		//create the atlas buffer
-		ByteBuffer atlas = BufferUtils.createByteBuffer(atlasSize * atlasSize * bytesPerPixel);
-		
-		//place the textures in the atlas
-		int pixelX = 0;
-		for(TextureData tex : textures) {
-			coords.put(tex, placeTexture(tex, atlas, pixelX, 0, atlasSize));
-			pixelX += tex.getWidth();
+		int totalWidth = 0, height = 0;
+		for(var tex : textures) {
+			if(tex.getBytesPerPixel() != bytesPerPixel)
+				throw new IllegalStateException("conflicting pixel formats");
+			totalWidth += tex.getWidth();
+			height = Math.max(height, tex.getHeight());
 		}
 		
-		//fill rest of texture with purple
+		
+		//create the atlas buffer
+		int dimension = Math.max(totalWidth, height);
+		ByteBuffer atlas = BufferUtils.createByteBuffer(dimension * dimension * bytesPerPixel);
+		
+		//initially fill the texture with purple
 		while(atlas.hasRemaining()) {
 			atlas.put((byte)255);
 			atlas.put((byte)0);
@@ -44,9 +46,16 @@ public class TextureAtlas {
 			atlas.put((byte)255);
 		}
 		
+		//place the textures in the atlas
+		int pixelX = 0;
+		for(TextureData tex : textures) {
+			coords.put(tex, placeTexture(tex, atlas, pixelX, 0, dimension));
+			pixelX += tex.getWidth();
+		}
+		
 		//ready the atlas data for reading and upload to gpu
 		atlas.flip();
-		return GraphicsUtility.uploadTextureData(atlas, atlasSize, atlasSize);
+		return GraphicsUtility.uploadTextureData(atlas, dimension, dimension);
 	}
 	
 	private static float[] placeTexture(TextureData texture, ByteBuffer dest, int pixelX, int pixelY, int atlasWidthPixels) {
@@ -82,15 +91,5 @@ public class TextureAtlas {
 			dest.position((drow + trow) * dwidth + dcol); //set destination position
 			dest.put(tex, trow * twidth, twidth); //put source data
 		}
-	}
-	
-	private static int calculateAtlasWidth(TextureData[] textures, int checkBytesPerPixel) {
-		int widthPixels = 0;
-		for(var tex : textures) {
-			if(tex.getBytesPerPixel() != checkBytesPerPixel)
-				throw new IllegalStateException("conflicting pixel formats");
-			widthPixels += tex.getWidth();
-		}
-		return widthPixels;
 	}
 }
