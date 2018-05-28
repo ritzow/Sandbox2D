@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.util.function.BooleanSupplier;
 import ritzow.sandbox.data.ByteUtil;
 import ritzow.sandbox.data.Deserializer;
+import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
 
 /**
@@ -26,6 +27,32 @@ public final class Utility {
 			return world;
 		} catch(IOException e) {
 			throw new RuntimeException("Error loading world from file ", e);
+		}
+	}
+	
+	public interface GridAction {
+		void perform(int x, int y);
+	}
+	
+	public static int clampLowerBound(int min, float value) {
+		return Math.max(min, (int)Math.floor(value));
+	}
+	
+	public static int clampUpperBound(int max, float value) {
+		return Math.min(max, (int)Math.ceil(value));
+	}
+	
+	public static void performAction(BlockGrid grid, float leftX, float rightX, float bottomY, float topY, GridAction action) {
+		//calculate block grid bounds TODO fix after adding chunk system, allow for negatives
+		int leftBound = 	clampLowerBound(0, leftX);
+		int rightBound = 	clampUpperBound(grid.getWidth()-1, rightX);
+		int topBound = 		clampUpperBound(grid.getHeight()-1, topY);
+		int bottomBound = 	clampLowerBound(0, bottomY);
+		
+		for(int row = bottomBound; row <= topBound; row++) {
+			for(int column = leftBound; column <= rightBound; column++) {
+				action.perform(column, row);
+			}
 		}
 	}
 	

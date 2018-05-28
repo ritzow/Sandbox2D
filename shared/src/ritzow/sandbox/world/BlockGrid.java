@@ -8,7 +8,6 @@ import ritzow.sandbox.world.block.Block;
 
 public final class BlockGrid implements Transportable {
 	private final Block[][] blocks;
-	//private final Grid<Grid<Block>> chunks;
 	
 	public BlockGrid(int width, int height) {
 		blocks = new Block[height][width];
@@ -85,8 +84,12 @@ public final class BlockGrid implements Transportable {
 	}
 	
 	public Block get(int x, int y) {
-		synchronized(blocks) {
-			return blocks[blocks.length - 1 - y][x];
+		try {
+			synchronized(blocks) {
+				return blocks[blocks.length - 1 - y][x];
+			}
+		} catch(ArrayIndexOutOfBoundsException e) {
+			throw new IllegalArgumentException("invalid coordinates " + x + ", " + y);
 		}
 	}
 	
@@ -95,26 +98,34 @@ public final class BlockGrid implements Transportable {
 	}
 	
 	public void set(int x, int y, Block block) {
-		synchronized(blocks) {
-			blocks[blocks.length - 1 - y][x] = block;
+		try {
+			synchronized(blocks) {
+				blocks[blocks.length - 1 - y][x] = block;
+			}	
+		} catch(ArrayIndexOutOfBoundsException e) {
+			throw new IllegalArgumentException("invalid coordinates " + x + ", " + y);
 		}
 	}
 	
 	public boolean destroy(World world, int x, int y) {
-		if(isBlock(x, y)) {
-			Block block = get(x, y);
-			set(x, y, null);
-			block.onBreak(world, this, x, y);
-			return true;
+		synchronized(blocks) {
+			if(isBlock(x, y)) {
+				Block block = get(x, y);
+				set(x, y, null);
+				block.onBreak(world, this, x, y);
+				return true;
+			}	
 		}
 		return false;
 	}
 	
 	public boolean place(World world, int x, int y, Block block) {
-		if(!isBlock(x, y)) {
-			set(x, y, block);
-			block.onPlace(world, this, x, y);
-			return true;
+		synchronized(blocks) {
+			if(!isBlock(x, y)) {
+				set(x, y, block);
+				block.onPlace(world, this, x, y);
+				return true;
+			}	
 		}
 		return false;
 	}
@@ -126,7 +137,7 @@ public final class BlockGrid implements Transportable {
 	 * @return whether or not there is a block at the specified block coordinates
 	 */
 	public boolean isBlock(int x, int y) {
-		return isValid(x, y) && get(x, y) != null;
+		return get(x, y) != null;
 	}
 	
 	/** Returns whether or not there is a block at the specified world coordinates **/

@@ -16,6 +16,7 @@ import ritzow.sandbox.data.ByteUtil;
 import ritzow.sandbox.data.Serializer;
 import ritzow.sandbox.data.Transportable;
 import ritzow.sandbox.data.TransportableDataReader;
+import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.block.Block;
 import ritzow.sandbox.world.entity.Entity;
 
@@ -306,24 +307,31 @@ public class World implements Transportable, Iterable<Entity> {
 
 				//Check for entity collisions with blocks
 				if(e.doBlockCollisionResolution()) {
-					int leftBound = Math.max(0, (int)Math.floor(e.getPositionX() - e.getWidth()));
-					int topBound = Math.min(foreground.getHeight(), (int)Math.ceil(e.getPositionY() + e.getHeight()));
-					int rightBound = Math.min(foreground.getWidth(), (int)Math.ceil(e.getPositionX() + e.getWidth()));
-					int bottomBound = Math.max(0, (int)Math.floor(e.getPositionY() - e.getHeight()));
+					resolveBlockCollisions(e, time);
+				}
+			}
+		}
+	}
+	
+	private void resolveBlockCollisions(Entity e, float time) {
+		int worldTop = foreground.getHeight()-1;
+		int worldRight = foreground.getWidth()-1;
+		int leftBound = Utility.clampLowerBound(0, e.getPositionX() - e.getWidth());
+		int topBound = Utility.clampUpperBound(worldTop, e.getPositionY() + e.getHeight());
+		int rightBound = Utility.clampUpperBound(worldRight, e.getPositionX() + e.getWidth());
+		int bottomBound = Utility.clampLowerBound(0, e.getPositionY() - e.getHeight());
+		
+		for(int row = bottomBound; row <= topBound; row++) {
+			for(int column = leftBound; column <= rightBound; column++) {
+				Block block = foreground.get(column, row);
+				if(foreground.isBlock(column, row) && block.isSolid()) {
+					boolean blockUp = row == worldTop ? false : foreground.isBlock(column, row + 1);
+					boolean blockDown = row == 0 ? false : foreground.isBlock(column, row - 1);
+					boolean blockLeft = column == 0 ? false : foreground.isBlock(column - 1, row);
+					boolean blockRight = column == worldRight ? false : foreground.isBlock(column + 1, row);
 					
-					for(int row = bottomBound; row < topBound; row++) {
-						for(int column = leftBound; column < rightBound; column++) {
-							Block block = foreground.get(column, row);
-							if(foreground.isBlock(column, row) && block.isSolid()) {
-								boolean blockUp = foreground.isBlock(column, row + 1);
-								boolean blockDown = foreground.isBlock(column, row - 1);
-								boolean blockLeft = foreground.isBlock(column - 1, row);
-								boolean blockRight = foreground.isBlock(column + 1, row);
-								if(!(blockUp && blockDown && blockLeft && blockRight)) {
-									resolveBlockCollision(this, e, block, column, row, time, blockUp, blockLeft, blockRight, blockDown);
-								}
-							}
-						}
+					if(!(blockUp && blockDown && blockLeft && blockRight)) {
+						resolveBlockCollision(this, e, block, column, row, time, blockUp, blockLeft, blockRight, blockDown);
 					}
 				}
 			}

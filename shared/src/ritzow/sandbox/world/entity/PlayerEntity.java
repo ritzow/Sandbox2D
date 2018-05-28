@@ -4,6 +4,7 @@ import ritzow.sandbox.data.ByteUtil;
 import ritzow.sandbox.data.Serializer;
 import ritzow.sandbox.data.TransportableDataReader;
 import ritzow.sandbox.network.Protocol.PlayerAction;
+import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.component.Inventory;
@@ -97,7 +98,10 @@ public class PlayerEntity extends Entity implements Living {
 //	}
 	
 	private static boolean blockInRectangle(BlockGrid blocks, float x1, float y1, float x2, float y2) {
-		int a1 = Math.round(x1), b1 = Math.round(y1), a2 = Math.round(x2), b2 = Math.round(y2);
+		int a1 = Utility.clampLowerBound(0, Math.round(x1)), 
+			b1 = Utility.clampLowerBound(0, Math.round(y1)), 
+			a2 = Utility.clampUpperBound(blocks.getWidth()-1, Math.round(x2)), 
+			b2 = Utility.clampUpperBound(blocks.getHeight()-1, Math.round(y2));
 		for(int x = a1; x <= a2; x++) {
 			for(int y = b1; y <= b2; y++) {
 				if(blocks.isBlock(x, y))

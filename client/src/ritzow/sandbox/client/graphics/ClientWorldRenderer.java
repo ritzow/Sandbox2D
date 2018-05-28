@@ -8,6 +8,7 @@ import static org.lwjgl.opengl.GL30.GL_COLOR_ATTACHMENT0;
 import static org.lwjgl.opengl.GL30.GL_COLOR_ATTACHMENT1;
 
 import ritzow.sandbox.client.world.block.ClientBlock;
+import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
 
@@ -59,12 +60,6 @@ public final class ClientWorldRenderer implements Renderer {
 		//cache foreground and background of world
 		final BlockGrid foreground = world.getForeground(), background = world.getBackground();
 		
-		//calculate block grid bounds TODO fix after adding chunk system, allow for negatives
-		int leftBound = 	Math.max(0, (int)Math.floor(worldLeft));
-		int rightBound = 	Math.min(foreground.getWidth(), (int)Math.ceil(worldRight));
-		int topBound = 		Math.min(foreground.getHeight(), (int)Math.ceil(worldTop));
-		int bottomBound = 	Math.max(0, (int)Math.floor(worldBottom));
-		
 		//prepare the diffuse texture for drawing
 		framebuffer.clear(1.0f, 1.0f, 1.0f, 1.0f);
 		framebuffer.setDraw();
@@ -75,15 +70,24 @@ public final class ClientWorldRenderer implements Renderer {
 		//set the blending mode to allow transparency
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		
+		//calculate block grid bounds TODO fix after adding chunk system, allow for negatives
+		int leftBound = 	Utility.clampLowerBound(0, worldLeft);
+		int rightBound = 	Utility.clampUpperBound(foreground.getWidth()-1, worldRight);
+		int topBound = 		Utility.clampUpperBound(foreground.getHeight()-1, worldTop);
+		int bottomBound =	Utility.clampLowerBound(0, worldBottom);
+		
 		//render the blocks visible in the viewport
 		for(int row = bottomBound; row <= topBound; row++) {
 			for(int column = leftBound; column <= rightBound; column++) {
-				if(foreground.isBlock(column, row)) {
-					ClientBlock block = (ClientBlock)foreground.get(column, row);
-					modelProgram.render(block.getModelIndex(), 1.0f, column, row, 1.0f, 1.0f, 0.0f);
-				} else if(background.isBlock(column, row)) {
-					ClientBlock block = (ClientBlock)background.get(column, row);
-					modelProgram.render(block.getModelIndex(), 0.5f, column, row, 1.0f, 1.0f, 0.0f); 
+				ClientBlock back = (ClientBlock)background.get(column, row);
+				ClientBlock front = (ClientBlock)foreground.get(column, row);
+				
+				if(back != null && (front == null || front.isTransparent())) {
+					modelProgram.render(back.getModelIndex(), 0.5f, column, row, 1.0f, 1.0f, 0.0f);
+				}
+				
+				if(front != null) {
+					modelProgram.render(front.getModelIndex(), 1.0f, column, row, 1.0f, 1.0f, 0.0f);
 				}
 			}
 		}
