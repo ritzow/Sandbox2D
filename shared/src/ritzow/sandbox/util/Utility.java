@@ -157,8 +157,24 @@ public final class Utility {
 		throw new UnsupportedOperationException("not implemented");
 	}
 	
+	public static long millisBetween(long startNanos, long endNanos) {
+		return nanosToMillis(endNanos - startNanos);
+	}
+	
 	public static long millisToNanos(long milliseconds) {
 		return milliseconds * 1_000_000;
+	}
+	
+	public static long nanosToMillis(long nanoseconds) {
+		return nanoseconds / 1_000_000;
+	}
+	
+	public static long nanosSince(long nanosStart) {
+		return System.nanoTime() - nanosStart;
+	}
+	
+	public static long millisSince(long nanosStart) {
+		return nanosToMillis(nanosSince(nanosStart));
 	}
 	
 	public static float addMagnitude(float number, float magnitude) {
