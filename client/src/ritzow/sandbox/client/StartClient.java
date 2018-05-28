@@ -7,6 +7,7 @@ import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Paths;
 import java.util.Map;
 import java.util.Set;
@@ -106,16 +107,16 @@ public final class StartClient {
 			
 			modelProgram.register(RenderConstants.MODEL_DIRT_BLOCK,	
 					new RenderData(6, indices, positions, 
-					GraphicsUtility.uploadVertexData(atlas.getTextureCoordinates(dirt))));
+					GraphicsUtility.uploadVertexData(atlas.getCoordinates(dirt))));
 			modelProgram.register(RenderConstants.MODEL_GRASS_BLOCK,
 					new RenderData(6, indices, positions, 
-					GraphicsUtility.uploadVertexData(atlas.getTextureCoordinates(grass))));
+					GraphicsUtility.uploadVertexData(atlas.getCoordinates(grass))));
 			modelProgram.register(RenderConstants.MODEL_GREEN_FACE,	
 					new RenderData(6, indices, positions, 
-					GraphicsUtility.uploadVertexData(atlas.getTextureCoordinates(face))));
+					GraphicsUtility.uploadVertexData(atlas.getCoordinates(face))));
 			modelProgram.register(RenderConstants.MODEL_RED_SQUARE,	
 					new RenderData(6, indices, positions, 
-					GraphicsUtility.uploadVertexData(atlas.getTextureCoordinates(red))));
+					GraphicsUtility.uploadVertexData(atlas.getCoordinates(red))));
 			GraphicsUtility.checkErrors();
 			renderManager.getRenderers().add(new ClientWorldRenderer(modelProgram, cameraGrip.getCamera(), world));
 		} catch (IOException | OpenGLException e) {
@@ -147,6 +148,8 @@ public final class StartClient {
 						WAVEDecoder.decode(
 								Files.newInputStream(Paths.get("resources/assets/audio", entry.getKey()))));
 			}
+		} catch(NoSuchFileException e) {
+			System.out.println("The file " + e.getFile() + " does not exist");
 		} catch (IOException e) {
 			e.printStackTrace();
 			System.exit(1);

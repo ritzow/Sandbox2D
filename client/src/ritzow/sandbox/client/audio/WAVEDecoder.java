@@ -119,8 +119,9 @@ public final class WAVEDecoder implements SoundInfo {
 	private void readFormat() throws IOException {
 		input.skip(4); //skip subchunk1size for now
 		
-		if(readShortLittleEndian() != 1) //read the format, 1 for PCM
-			throw new IOException("audio format is not PCM data");
+		short format = readShortLittleEndian();
+		if(format != 1) //read the format, 1 for PCM
+			throw new IOException("audio format is not PCM data, format: " + format);
 		
 		numChannels = readShortLittleEndian(); //read number of channels (1 or 2)
 		sampleRate = readIntegerLittleEndian(); //read sample rate (ie 44100 44100 Hz)

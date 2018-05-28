@@ -1,7 +1,6 @@
 package ritzow.sandbox.server;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.BindException;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
@@ -31,7 +30,7 @@ public final class StartServer {
 			
 			//if a save file exists, load it, otherwise generate a world
 			World world = Files.exists(saveFile) ? 
-					loadWorld(saveFile, SerializationProvider.getProvider()) : generateWorld(100, 100, server);
+					loadWorld(saveFile, SerializationProvider.getProvider()) : generateWorld(100, 100);
 			server.start(world);
 			
 			//read user input commands
@@ -100,19 +99,11 @@ public final class StartServer {
 		}
 	}
 	
-	public static World loadWorld(Path file, Deserializer des) {
-		try(InputStream in = Files.newInputStream(file)) {
-			byte[] data = new byte[(int)Files.size(file)];
-			in.read(data);
-			World world = des.deserialize(ByteUtil.decompress(data));
-			return world;
-		} catch(IOException e) {
-			System.out.println("Error loading world from file " + e);
-			return null;
-		}
+	public static World loadWorld(Path file, Deserializer des) throws IOException {
+		return des.deserialize(ByteUtil.decompress(Files.readAllBytes(file)));
 	}
 	
-	public static World generateWorld(int width, int height, Server server) {
+	public static World generateWorld(int width, int height) {
 		World world = new World(width, height, 0.016f);
 		for(int column = 0; column < world.getForeground().getWidth(); column++) {
 			double halfheight = world.getForeground().getHeight()/2;

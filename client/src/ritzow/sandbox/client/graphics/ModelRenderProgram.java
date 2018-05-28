@@ -101,7 +101,7 @@ public final class ModelRenderProgram extends ShaderProgram {
 	 * Renders a model using the current shader program properties
 	 * @param model the model to render
 	 */
-	public void render(int modelID) {
+	public void renderVAO(int modelID) {
 		RenderData model = models.get(modelID);
 		if(model == null)
 			throw new IllegalArgumentException("no model exists for model id " + modelID);
@@ -123,7 +123,7 @@ public final class ModelRenderProgram extends ShaderProgram {
 	public void render(int modelID, float opacity, float posX, float posY, float scaleX, float scaleY, float rotation) {
 		loadOpacity(opacity);
 		loadTransformationMatrix(posX, posY, scaleX, scaleY, rotation);
-		render(modelID);
+		renderVAO(modelID);
 	}
 	
 	public void render(Graphics g, float posX, float posY) {

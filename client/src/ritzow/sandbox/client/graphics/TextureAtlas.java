@@ -13,7 +13,7 @@ public class TextureAtlas {
 		texture = generateAtlas(textures, coordinates = new HashMap<TextureData, float[]>());
 	}
 	
-	public float[] getTextureCoordinates(TextureData texture) {
+	public float[] getCoordinates(TextureData texture) {
 		return coordinates.get(texture);
 	}
 	
