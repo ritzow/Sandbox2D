@@ -45,4 +45,9 @@ public class ClientDirtBlock extends ClientBlock {
 		return ByteUtil.EMPTY_BYTE_ARRAY;
 	}
 
+	@Override
+	public boolean isTransparent() {
+		return false;
+	}
+
 }

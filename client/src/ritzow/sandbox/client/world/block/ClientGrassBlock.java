@@ -44,4 +44,9 @@ public class ClientGrassBlock extends ClientBlock {
 	public byte[] getBytes(Serializer ser) {
 		return ByteUtil.EMPTY_BYTE_ARRAY;
 	}
+
+	@Override
+	public boolean isTransparent() {
+		return false;
+	}
 }

@@ -9,9 +9,11 @@ import ritzow.sandbox.world.block.Block;
 import ritzow.sandbox.client.audio.ClientAudioSystem;
 
 public abstract class ClientBlock extends Block {
+	
 	@Override
 	public abstract String getName();
 	public abstract int getModelIndex();
+	public abstract boolean isTransparent();
 	
 	@Override
 	public void onBreak(World world, BlockGrid grid, float x, float y) {
