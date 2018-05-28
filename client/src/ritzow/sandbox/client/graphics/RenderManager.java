@@ -52,8 +52,8 @@ public final class RenderManager implements Runnable, FramebufferSizeHandler, Wi
 	}
 	
 	public void run() {
-		if(focused) {
-			int width = framebufferWidth, height = framebufferHeight;
+		int width = framebufferWidth, height = framebufferHeight;
+		if(focused && width > 0 && height > 0) {
 			if(updateViewport) {
 				glViewport(0, 0, width, height);
 				updateViewport = false;
@@ -66,9 +66,9 @@ public final class RenderManager implements Runnable, FramebufferSizeHandler, Wi
 				glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 				glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 			}
-
-			GraphicsUtility.checkErrors();
+			
 			display.refresh();
+			GraphicsUtility.checkErrors();
 		}
 	}
 	
