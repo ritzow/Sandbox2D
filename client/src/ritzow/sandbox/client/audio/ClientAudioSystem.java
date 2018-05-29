@@ -1,13 +1,14 @@
 package ritzow.sandbox.client.audio;
 
 import static org.lwjgl.openal.AL10.*;
+import static org.lwjgl.openal.ALC10.ALC_ALL_ATTRIBUTES;
+import static org.lwjgl.openal.ALC10.ALC_ATTRIBUTES_SIZE;
 import static org.lwjgl.openal.ALC10.alcCloseDevice;
 import static org.lwjgl.openal.ALC10.alcCreateContext;
 import static org.lwjgl.openal.ALC10.alcDestroyContext;
-import static org.lwjgl.openal.ALC10.alcGetInteger;
+import static org.lwjgl.openal.ALC10.alcGetIntegerv;
 import static org.lwjgl.openal.ALC10.alcMakeContextCurrent;
 import static org.lwjgl.openal.ALC10.alcOpenDevice;
-import static org.lwjgl.openal.ALC11.ALC_MONO_SOURCES;
 
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
@@ -39,9 +40,22 @@ public final class ClientAudioSystem implements AudioSystem {
 			shutdown();
 			return null;
 		}
-		sources = new int[alcGetInteger(device, ALC_MONO_SOURCES)];
+		checkErrors();
+		sources = new int[50];
 		alGenSources(sources);
 		return new ClientAudioSystem();
+	}
+	
+	public static Map<Integer, Integer> getAttributes() {
+		int[] attributes = new int[1];
+		alcGetIntegerv(device, ALC_ATTRIBUTES_SIZE, attributes);
+		attributes = new int[attributes[0]];
+		alcGetIntegerv(device, ALC_ALL_ATTRIBUTES, attributes);
+		Map<Integer, Integer> attributePairs = new HashMap<>();
+		for(int i = 0; i < attributes.length-1; i += 2) {
+			attributePairs.put(attributes[i], attributes[i+1]);
+		}
+		return attributePairs;
 	}
 	
 	public static void shutdown() {
@@ -50,6 +64,13 @@ public final class ClientAudioSystem implements AudioSystem {
 		alcDestroyContext(alContext);
 		alcCloseDevice(device);
 		ALC.destroy();
+	}
+	
+	public static void checkErrors() {
+		int error = alGetError();
+		if(error != AL_NO_ERROR) {
+			throw new OpenALException("Last Error: " + error);
+		}
 	}
 	
 	private final Map<Integer, Integer> sounds;
