@@ -22,6 +22,7 @@ import ritzow.sandbox.client.input.controller.PlayerController;
 import ritzow.sandbox.client.input.controller.TrackingCameraController;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.util.SharedConstants;
+import ritzow.sandbox.util.TaskQueue;
 import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.World;
 
@@ -39,7 +40,7 @@ public final class StartClient {
 			Thread.currentThread().setName("GLFW Event Thread");
 			eventProcessor.run(); //run the event processor on this thread
 		} catch(ConnectionFailedException e) {
-			System.out.println("failed to connect: " + e.getMessage());
+			System.out.println(e.getMessage());
 		}
 	}
 	
@@ -112,9 +113,11 @@ public final class StartClient {
 		eventProcessor.setReadyToDisplay();
 		System.out.println("Rendering started, setup took " + Utility.millisSince(startTime) + " ms");
 		
+		TaskQueue queue = new TaskQueue();
+		client.setTaskQueue(queue);
 		long previousTime = System.nanoTime();
 		while(!exit) {
-			client.onReceiveMessageTask().run();
+			queue.run();
 			previousTime = focused ? Utility.updateWorld(world, previousTime, 
 					SharedConstants.MAX_TIMESTEP, SharedConstants.TIME_SCALE_NANOSECONDS) : System.nanoTime();
 			cameraGrip.update();
@@ -126,7 +129,8 @@ public final class StartClient {
 		System.out.print("Exiting... ");
 		renderer.shutdown();
 		eventProcessor.stop();
-		if(client.isConnected()) client.disconnect();
+		if(client.isConnected())
+			client.disconnect();
 		audio.close();
 		ClientAudioSystem.shutdown();
 		System.out.println("done!");
