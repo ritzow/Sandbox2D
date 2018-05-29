@@ -7,6 +7,7 @@ import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Map;
 import ritzow.sandbox.client.Client.ConnectionFailedException;
 import ritzow.sandbox.client.audio.ClientAudioSystem;
@@ -163,6 +164,7 @@ public final class StartClient {
 			register(modelProgram, RenderConstants.MODEL_DIRT_BLOCK, indices, positions, atlas, dirt);
 			register(modelProgram, RenderConstants.MODEL_GRASS_BLOCK, indices, positions, atlas, grass);
 			register(modelProgram, RenderConstants.MODEL_GREEN_FACE, indices, positions, atlas, face);
+			//modelProgram.register(RenderConstants.MODEL_GREEN_FACE, new RenderData(6, indices, positions, GraphicsUtility.uploadVertexData(Textures.FULL_TEXTURE_COORDS)));
 			register(modelProgram, RenderConstants.MODEL_RED_SQUARE, indices, positions, atlas, red);
 			GraphicsUtility.checkErrors();
 			return new ClientWorldRenderer(modelProgram, camera, world);

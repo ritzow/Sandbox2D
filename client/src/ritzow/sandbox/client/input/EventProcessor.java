@@ -66,7 +66,7 @@ public final class EventProcessor implements Runnable {
 	
 	public Display getDisplay() {
 		if(display == null)
-			throw new IllegalStateException("event processor is not running yet and hasn't been initialized");
+			throw new IllegalStateException("event processor is not initialized");
 		return display;
 	}
 }

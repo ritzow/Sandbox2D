@@ -33,7 +33,7 @@ public final class Textures {
 	public static TextureData loadTextureName(String name) throws IOException {
 		PNGDecoder decoder = new PNGDecoder(Files.newInputStream(Paths.get("resources/assets/textures", name + ".png")));
 		ByteBuffer pixels = BufferUtils.createByteBuffer(decoder.getWidth() * decoder.getHeight() * 4);
-		decoder.decodeFlipped(pixels, decoder.getWidth() * 4, Format.RGBA);
+		decoder.decode(pixels, decoder.getWidth() * 4, Format.RGBA);
 		pixels.flip();
 		byte[] data = new byte[pixels.remaining()];
 		pixels.get(data);
@@ -43,7 +43,7 @@ public final class Textures {
 	public static OpenGLTexture loadTexture(InputStream input) throws IOException {
 		PNGDecoder decoder = new PNGDecoder(input);
 		ByteBuffer pixels = BufferUtils.createByteBuffer(decoder.getWidth() * decoder.getHeight() * 4);
-		decoder.decodeFlipped(pixels, decoder.getWidth() * 4, Format.RGBA);
+		decoder.decode(pixels, decoder.getWidth() * 4, Format.RGBA);
 		pixels.flip();
 		return new OpenGLTexture(pixels, decoder.getWidth(), decoder.getHeight());
 	}

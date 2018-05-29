@@ -2,6 +2,7 @@ package ritzow.sandbox.client.ui;
 
 import ritzow.sandbox.client.graphics.ModelRenderProgram;
 
+//TODO update Text after creating new UI framework
 public class Text extends Element {
 	protected String text;
 	protected Font font;
@@ -16,7 +17,7 @@ public class Text extends Element {
 	}
 	
 	public void render(ModelRenderProgram renderer) { 
-		int index = 0; //TODO optimize text rendering and make text position in center
+		int index = 0;
 		float charWidth = (size * 0.02f) + (size * 0.02f * spacing);
 		for(float pos = getPositionX(); index < text.length(); pos += charWidth) {
 			renderer.render(font.getModelID(text.charAt(index)), 1.0f, pos, getPositionY(), size * 0.02f, size * 0.02f, 0.0f);
@@ -50,7 +51,7 @@ public class Text extends Element {
 	
 	@Override
 	public float getWidth() {
-		return 1; //TODO implement text width
+		return 1;
 	}
 
 	@Override

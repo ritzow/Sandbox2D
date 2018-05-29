@@ -17,7 +17,7 @@ import ritzow.sandbox.world.block.GrassBlock;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
 public final class StartServer {
-	private static final boolean SAVE_WORLD = true;
+	private static boolean SAVE_WORLD = true;
 	
 	public static void main(String... args) {
 		Thread.currentThread().setName("Console Input Main");
@@ -43,6 +43,9 @@ public final class StartServer {
 					case "exit":
 					case "quit":
 					case "stop":
+						break reader;
+					case "abort":
+						SAVE_WORLD = false;
 						break reader;
 					case "list":
 						if(server.getConnectedClients() == 0) {
@@ -70,13 +73,7 @@ public final class StartServer {
 			
 			//save world to file if enabled
 			if(SAVE_WORLD) {
-				try {
-					if(!Files.exists(saveFile))
-						Files.createFile(saveFile);
-					saveWorld(world, saveFile);
-				} catch (IOException e) {
-					System.out.println("Could not find or create file to save world: " + e.getLocalizedMessage());
-				}
+				saveWorld(world, saveFile);
 			} else {
 				System.out.println("Server stopped.");
 			}

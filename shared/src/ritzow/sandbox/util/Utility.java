@@ -182,6 +182,10 @@ public final class Utility {
 		throw new UnsupportedOperationException("not implemented");
 	}
 	
+	public static void printTimeSince(long nanoseconds) {
+		System.out.println(Thread.currentThread().getName() + " " + millisSince(nanoseconds) + " ms");
+	}
+	
 	public static double millisBetween(long startNanos, long endNanos) {
 		return nanosToMillis(endNanos - startNanos);
 	}

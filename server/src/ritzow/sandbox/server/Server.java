@@ -12,7 +12,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import ritzow.sandbox.data.ByteUtil;
-import ritzow.sandbox.data.SerializerReaderWriter;
 import ritzow.sandbox.network.NetworkController;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.network.Protocol.PlayerAction;
@@ -28,9 +27,8 @@ import ritzow.sandbox.world.item.BlockItem;
 
 public class Server {
 	private final NetworkController network;
-	private final ExecutorService worker, broadcaster;
+	private final ExecutorService receivePool, broadcastPool;
 	private final ServerRepeatUpdater updater;
-	private final SerializerReaderWriter serialRegistry;
 	private final Map<InetSocketAddress, ClientState> clients;
 	private volatile boolean canConnect;
 	
@@ -42,10 +40,9 @@ public class Server {
 		this.network = new NetworkController(bindAddress, this::process);
 		ThreadGroup processors = new ThreadGroup("Message Processors");
 		ThreadGroup senders = new ThreadGroup("Broadcaster Group");
-		this.worker = Executors.newFixedThreadPool(10, runnable -> new Thread(processors, runnable));
-		this.broadcaster = Executors.newCachedThreadPool(runnable -> new Thread(senders, runnable));
+		this.receivePool = Executors.newFixedThreadPool(10, runnable -> new Thread(processors, runnable));
+		this.broadcastPool = Executors.newCachedThreadPool(runnable -> new Thread(senders, runnable));
 		this.clients = Collections.synchronizedMap(new HashMap<InetSocketAddress, ClientState>());
-		this.serialRegistry = SerializationProvider.getProvider();
 		this.updater = new ServerRepeatUpdater(this);
 	}
 	
@@ -61,12 +58,12 @@ public class Server {
 		canConnect = false;
 		disconnectAll("server shutting down");
 		updater.stop();
-		worker.shutdown();
-		broadcaster.shutdown();
+		receivePool.shutdown();
+		broadcastPool.shutdown();
 		network.stop();
 		try {
-			broadcaster.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
-			worker.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+			receivePool.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+			broadcastPool.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
@@ -95,7 +92,7 @@ public class Server {
 	}
 	
 	private void process(InetSocketAddress sender, int messageID, byte[] data) {
-		worker.execute(() -> {
+		receivePool.execute(() -> {
 			short protocol = ByteUtil.getShort(data, 0);
 			ClientState client = clients.get(sender);
 			try {
@@ -169,7 +166,7 @@ public class Server {
 	}
 	
 	public void sendAddEntity(Entity e) {
-		byte[] entity = serialRegistry.serialize(e);
+		byte[] entity = SerializationProvider.getProvider().serialize(e);
 		boolean compress = entity.length > Protocol.MAX_MESSAGE_LENGTH - 3;
 		entity = compress ? ByteUtil.compress(entity) : entity;
 		byte[] packet = new byte[3 + entity.length];
@@ -223,17 +220,16 @@ public class Server {
 	 * Broadcasts {@code data} to each client connected to this Server and returns once all clients have received the data or
 	 * become unresponsive
 	 * @param data the packet of data to send.
-	 * @param sendTest specify which clients the message should be sent to and which should not
 	 * @param removeUnresponsive whether or not to remove clients that do not respond from the server
+	 * @param sendTest specify which clients the message should be sent to and which should not
 	 */
 	private void broadcastReliable(byte[] data, boolean removeUnresponsive, Predicate<ClientState> sendTest) {
-
 		//TODO need alternative to synchronizing over all clients (separate lock to disallow add during broadcast?
 		if(clients.size() > 1) {
 			CountDownLatch barrier = new CountDownLatch(clients.size());
 			clients.forEach((address, client) -> {
 				if(sendTest.test(client)) {
-					broadcaster.execute(() -> {
+					broadcastPool.execute(() -> {
 						try {
 							sendReliable(client, data, removeUnresponsive);
 						} finally {
@@ -285,6 +281,7 @@ public class Server {
 		} catch(TimeoutException e) {
 			if(removeUnresponsive && isConnected(client.address)) {
 				removeClient(client);
+				System.out.println(getForcefulDisconnectMessage(client, "client unresponsive"));
 			}
 		}
 	}
@@ -310,19 +307,9 @@ public class Server {
 	private void disconnect(ClientState client, String reason) {
 		sendReliable(client, buildServerDisconnect(reason), false);
 		removeClient(client);
-		System.out.println(getForcibleDisconnectMessage(client, reason));
+		System.out.println(getForcefulDisconnectMessage(client, reason));
 	}
 	
-	private String getForcibleDisconnectMessage(ClientState client, String reason) {
-		return client.username + " was disconnected ("
-				+ (reason != null && reason.length() > 0 ? "reason: " + reason + ", ": "") 
-				+ clients.size() + " players connected)";
-	}
-	
-	private String getClientDisconnectMessage(ClientState client) {
-		return client.username + " disconnected (" + clients.size() + " players connected)";
-	}
-
 	/**
 	 * Removes all of a client's state from the server.
 	 * @param client the client to remove from the server.
@@ -331,8 +318,23 @@ public class Server {
 		if(clients.remove(client.address) == null)
 			throw new IllegalStateException(client + " is not connected to the server");
 		network.removeConnection(client.address);
-		if(client.player != null)
-			removePlayer(client.player);
+		if(client.player != null) updater.submitTask(() -> {
+			updater.getWorld().remove(client.player);
+			byte[] packet = new byte[2 + 4];
+			ByteUtil.putShort(packet, 0, Protocol.SERVER_REMOVE_ENTITY);
+			ByteUtil.putInteger(packet, 2, client.player.getID());
+			broadcastReliable(packet, true, c -> !c.equals(client));
+		});
+	}
+	
+	private String getForcefulDisconnectMessage(ClientState client, String reason) {
+		return client.getAddressString() + " was disconnected ("
+				+ (reason != null && reason.length() > 0 ? "reason: " + reason + ", ": "") 
+				+ clients.size() + " players connected)";
+	}
+	
+	private String getClientDisconnectMessage(ClientState client) {
+		return client.getAddressString() + " disconnected (" + clients.size() + " players connected)";
 	}
 	
 	private void removePlayer(Entity player) {
@@ -402,7 +404,7 @@ public class Server {
 					
 					clients.put(address, newClient);
 					sendPlayerID(player, newClient); //send id of player entity (which was sent in world data)
-					System.out.println(newClient.address.getAddress().getHostAddress()
+					System.out.println(newClient.getAddressString()
 							+ " joined (" + clients.size() + " players connected)");
 				});
 			}
@@ -413,7 +415,7 @@ public class Server {
 	
 	public byte[][] buildWorldPackets(World world) {
 		//serialize the world for transfer
-		byte[] worldBytes = ByteUtil.compress(serialRegistry.serialize(world));
+		byte[] worldBytes = ByteUtil.compress(SerializationProvider.getProvider().serialize(world));
 		
 		//build packets
 		byte[][] packets = ByteUtil.split(worldBytes, Protocol.MAX_MESSAGE_LENGTH - 2, 2, 1);
@@ -454,6 +456,10 @@ public class Server {
 			if(o instanceof ClientState)
 				return address.equals(((ClientState)o).address);
 			return false;
+		}
+		
+		public String getAddressString() {
+			return address.getAddress().getHostAddress();
 		}
 		
 		@Override
