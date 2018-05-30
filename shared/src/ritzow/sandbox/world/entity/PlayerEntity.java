@@ -21,7 +21,7 @@ public class PlayerEntity extends Entity implements Living {
 	protected boolean left, right, up, down;
 	
 	protected static final boolean 
-			JETPACK_MODE = false;
+			JETPACK_MODE = true;
 	protected static final float 
 			SIZE_SCALE = 1.0f,
 			MOVEMENT_SPEED = SIZE_SCALE / 5,
@@ -66,12 +66,10 @@ public class PlayerEntity extends Entity implements Living {
 			if(!JETPACK_MODE && up) {
 				velocityY = JUMP_SPEED;
 			}
-		} else if(left ^ right) { //only one is down
-			if(left) {
-				velocityX = Math.max(-MOVEMENT_SPEED, velocityX - AIR_MOVEMENT / 10);
-			} else if(right) {
-				velocityX = Math.min(MOVEMENT_SPEED, velocityX + AIR_MOVEMENT / 10);
-			}
+		} else if(left && !right) {
+			velocityX = Math.max(-MOVEMENT_SPEED, velocityX - AIR_MOVEMENT / 10);
+		} else if(right && !left) {
+			velocityX = Math.min(MOVEMENT_SPEED, velocityX + AIR_MOVEMENT / 10);
 		}
 		
 		if(JETPACK_MODE && up) {
@@ -111,6 +109,16 @@ public class PlayerEntity extends Entity implements Living {
 		return false;
 	}
 	
+//	@Override
+//	public void onCollision(World world, Entity e, float time) {
+//		super.onCollision(world, e, time);
+//		if(e instanceof ItemEntity && e.getVelocityY() > -0.05f) {
+//			float vx = Utility.randomFloat(-0.15f, 0.15f);
+//			e.setVelocityX(vx);
+//			e.setVelocityY(Utility.maxComponentInRadius(vx, 0.5f));
+//		}
+//	}
+
 	public void processAction(PlayerAction action, boolean enabled) {
 		switch(action) {
 			case MOVE_LEFT:

@@ -40,26 +40,28 @@ public final class InteractionController implements Controller, MouseButtonHandl
 	}
 	
 	protected void update(Camera camera, int frameWidth, int frameHeight) {
-		int blockX = Math.round(ClientUtility.mouseHorizontalToWorld(camera, mouseX, frameWidth, frameHeight));
-		int blockY = Math.round(ClientUtility.mouseVerticalToWorld(camera, mouseY, frameHeight));
+		int blockX = Math.round(ClientUtility.pixelHorizontalToWorld(camera, mouseX, frameWidth, frameHeight));
+		int blockY = Math.round(ClientUtility.pixelVerticalToWorld(camera, mouseY, frameWidth, frameHeight));
 		ClientPlayerEntity player = client.getPlayer();
 		
-		if(Utility.withinDistance(player.getPositionX(), player.getPositionY(), blockX, blockY, range)) {
-			if(primaryAction && !breakCooldownActive()) {
-				if(client.getWorld().getForeground().isBlock(blockX, blockY)) {
-					client.sendBlockBreak(blockX, blockY);
-					lastBreak = System.nanoTime();
-				}
-			} else if(secondaryAction && !placeCooldownActive()) {
-				Item item = player.getSelectedItem();
-				if((item instanceof ClientBlockItem) && client.getWorld().getForeground().isValid(blockX, blockY) && 
-					(client.getWorld().getBackground().place(client.getWorld(), blockX, blockY, ((ClientBlockItem)item).getBlock()) || 
-					client.getWorld().getForeground().place(client.getWorld(), blockX, blockY, ((ClientBlockItem)item).getBlock()))) {
-					player.removeSelectedItem();
-					lastPlace = System.nanoTime();
-				}
+		if(primaryAction && !breakCooldownActive() && inRange(player, blockX, blockY)) {
+			if(client.getWorld().getForeground().isBlock(blockX, blockY)) {
+				client.sendBlockBreak(blockX, blockY);
+				lastBreak = System.nanoTime();
+			}
+		} else if(secondaryAction && !placeCooldownActive() && inRange(player, blockX, blockY)) {
+			Item item = player.getSelectedItem();
+			if((item instanceof ClientBlockItem) && client.getWorld().getForeground().isValid(blockX, blockY) && 
+				(client.getWorld().getBackground().place(client.getWorld(), blockX, blockY, ((ClientBlockItem)item).getBlock()) || 
+				client.getWorld().getForeground().place(client.getWorld(), blockX, blockY, ((ClientBlockItem)item).getBlock()))) {
+				player.removeSelectedItem();
+				lastPlace = System.nanoTime();
 			}
 		}
+	}
+	
+	private boolean inRange(ClientPlayerEntity player, int blockX, int blockY) {
+		return Utility.withinDistance(player.getPositionX(), player.getPositionY(), blockX, blockY, range);
 	}
 	
 	private boolean breakCooldownActive() {

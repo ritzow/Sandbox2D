@@ -4,12 +4,12 @@ import static org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_MIDDLE;
 import static org.lwjgl.glfw.GLFW.GLFW_PRESS;
 import static org.lwjgl.glfw.GLFW.GLFW_RELEASE;
 
-import ritzow.sandbox.client.audio.ClientAudioSystem;
+import ritzow.sandbox.client.audio.AudioSystem;
 import ritzow.sandbox.client.graphics.Camera;
 import ritzow.sandbox.client.input.ControlScheme;
 
 public final class PanningCameraController extends CameraController {
-	protected final ClientAudioSystem audio;
+	protected final AudioSystem audio;
 	protected final float panSpeed;
 	protected final float zoomSpeed;
 	protected final float minZoom;
@@ -24,7 +24,7 @@ public final class PanningCameraController extends CameraController {
 	protected boolean left;
 	protected boolean right;
 	
-	public PanningCameraController(Camera camera, ClientAudioSystem audio, float panSpeed, float minZoom, float maxZoom) {
+	public PanningCameraController(Camera camera, AudioSystem audio, float panSpeed, float minZoom, float maxZoom) {
 		super(camera);
 		this.audio = audio;
 		this.panSpeed = panSpeed;

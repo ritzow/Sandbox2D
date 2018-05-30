@@ -7,6 +7,7 @@ import static org.lwjgl.opengl.GL20.glDrawBuffers;
 import static org.lwjgl.opengl.GL30.GL_COLOR_ATTACHMENT0;
 import static org.lwjgl.opengl.GL30.GL_COLOR_ATTACHMENT1;
 
+import ritzow.sandbox.client.util.ClientUtility;
 import ritzow.sandbox.client.world.block.ClientBlock;
 import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.BlockGrid;
@@ -45,6 +46,9 @@ public final class ClientWorldRenderer implements Renderer {
 			previousWidth = currentWidth; previousHeight = currentHeight;
 		}
 		
+		//cache on thread
+		Camera camera = this.camera;
+		
 		//set the current shader program
 		modelProgram.setCurrent();
 		
@@ -52,10 +56,11 @@ public final class ClientWorldRenderer implements Renderer {
 		modelProgram.loadViewMatrix(camera);
 		
 		//get visible world coordinates
-		final float worldLeft = modelProgram.getWorldViewportLeftBound(camera),
-					worldRight = modelProgram.getWorldViewportRightBound(camera),
-					worldTop = modelProgram.getWorldViewportTopBound(camera),
-					worldBottom = modelProgram.getWorldViewportBottomBound(camera);
+		int width = modelProgram.getFrameBufferWidth(), height = modelProgram.getFrameBufferHeight();
+		final float worldLeft = ClientUtility.getViewLeftBound(camera, width, height),
+					worldRight = ClientUtility.getViewRightBound(camera, width, height),
+					worldTop = ClientUtility.getViewTopBound(camera, width, height),
+					worldBottom = ClientUtility.getViewBottomBound(camera, width, height);
 		
 		//cache foreground and background of world
 		final BlockGrid foreground = world.getForeground(), background = world.getBackground();
@@ -106,36 +111,6 @@ public final class ClientWorldRenderer implements Renderer {
 				graphics.render(modelProgram);
 			}
 		});
-		
-		/* Need to "erase" blackness of shadowTexture where there is lighting.
-		 * render to shadow texture, sample from diffuse, blend diffuse and light value with shadow texture
-		 * of pixel to determine shadow texture pixel color, but remember that there can be more than 1 light 
-		 * and they need to blend well, no complete overwriting of values
-		 * http://www.soolstyle.com/2010/02/15/2d-deferred-lightning/
-		 */
-		
-//		lightProgram.setCurrent();
-//		glDrawBuffers(GL_COLOR_ATTACHMENT1);
-//		framebuffer.clear(0, 0, 0, 1);
-//		glClear(GL_COLOR_BUFFER_BIT);
-//		glBlendFunc(GL_SRC_ALPHA, GL_ZERO);
-//		world.forEach(e -> {
-//			if(e instanceof Luminous) {
-//				//pre-compute variables
-//				Luminous light = (Luminous)e;
-//				float posX = e.getPositionX();
-//				float posY = e.getPositionY();
-//				float halfWidth = light.getLightRadius();
-//				float halfHeight = halfWidth;
-//				
-//				//check if the entity is visible inside the viewport and render it
-//				if(posX < worldRight + halfWidth && posX > worldLeft - halfWidth && posY < worldTop + halfHeight && posY > worldBottom - halfHeight) {
-//					lightProgram.render(light, posX, posY, currentWidth, currentHeight);
-//				}
-//			}
-//		});
-//		
-//		glDrawBuffers(GL_COLOR_ATTACHMENT0);
 	    return framebuffer;
 	}
 }

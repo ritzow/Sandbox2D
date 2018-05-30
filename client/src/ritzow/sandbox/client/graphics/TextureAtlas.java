@@ -69,12 +69,15 @@ public class TextureAtlas {
 		return GraphicsUtility.uploadTextureData(atlas, dimension, dimension);
 	}
 	
+	private static final float OFFSET = 0.000005f;
+	
+	//TODO fix having to add small offsets to fix texture bleeding
 	private static float[] convertCoordinates(TextureData tex, int pixelX, int pixelY, int atlasWidthPixels) {
 		float size = atlasWidthPixels;
-		float leftX = (pixelX)/size;
-		float rightX = (pixelX + tex.getWidth())/size;
-		float bottomY =  (size - pixelY - tex.getHeight())/size;
-		float topY = (size - pixelY)/size;
+		float leftX = (pixelX)/size + OFFSET;
+		float rightX = (pixelX + tex.getWidth())/size - OFFSET;
+		float bottomY =  (size - pixelY - tex.getHeight())/size + OFFSET;
+		float topY = (size - pixelY)/size - OFFSET;
 		
 		return new float[] {
 				leftX, topY, //top left

@@ -4,7 +4,7 @@ import static org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_MIDDLE;
 import static org.lwjgl.glfw.GLFW.GLFW_PRESS;
 import static org.lwjgl.glfw.GLFW.GLFW_RELEASE;
 
-import ritzow.sandbox.client.audio.ClientAudioSystem;
+import ritzow.sandbox.client.audio.AudioSystem;
 import ritzow.sandbox.client.graphics.Camera;
 import ritzow.sandbox.client.input.ControlScheme;
 import ritzow.sandbox.util.Utility;
@@ -12,7 +12,7 @@ import ritzow.sandbox.world.entity.Entity;
 
 public final class TrackingCameraController extends CameraController {
 	protected final Entity target;
-	protected final ClientAudioSystem audio;
+	protected final AudioSystem audio;
 	protected float zoomSpeed;
 	protected final float soundFalloff;
 	protected float velocityZ;
@@ -20,7 +20,7 @@ public final class TrackingCameraController extends CameraController {
 	protected final float maxZoom;
 	protected long previousTime;
 	
-	public TrackingCameraController(Camera camera, ClientAudioSystem audio, Entity target, float zoomSpeed, float minZoom, float maxZoom) {
+	public TrackingCameraController(Camera camera, AudioSystem audio, Entity target, float zoomSpeed, float minZoom, float maxZoom) {
 		super(camera);
 		this.zoomSpeed = zoomSpeed;
 		this.target = target;

@@ -161,41 +161,19 @@ public final class ModelRenderProgram extends ShaderProgram {
 		setMatrix(uniform_view, viewMatrix);
 	}
 	
+	public int getFrameBufferWidth() {
+		return (int)framebufferWidth;
+	}
+	
+	public int getFrameBufferHeight() {
+		return (int)framebufferHeight;
+	}
+	
 	private static void loadCameraMatrix(float[] matrix, Camera camera) {
 		matrix[0] = camera.getZoom();
 		matrix[3] = -camera.getPositionX() * camera.getZoom();
 		matrix[5] = camera.getZoom();
 		matrix[7] = -camera.getPositionY() * camera.getZoom();
-	}
-	
-	public float getWorldViewportLeftBound(Camera camera) {
-		float worldX = -framebufferWidth/framebufferHeight; //far left of screen after accounting for aspect ratio, in world coordinates
-		worldX /= camera.getZoom();
-		worldX += camera.getPositionX();
-		return worldX;
-	}
-	
-	public float getWorldViewportRightBound(Camera camera) {
-		float worldX = framebufferWidth/framebufferHeight; //far right of screen, after accounting for aspect ratio, in world coordinates
-		worldX /= camera.getZoom();
-		worldX += camera.getPositionX();
-		return worldX;
-	}
-	
-	@SuppressWarnings("static-method")
-	public float getWorldViewportTopBound(Camera camera) {
-		float worldY = 1;
-		worldY /= camera.getZoom();
-		worldY += camera.getPositionY();
-		return worldY;
-	}
-	
-	@SuppressWarnings("static-method")
-	public float getWorldViewportBottomBound(Camera camera) {
-		float worldY = -1;
-		worldY /= camera.getZoom();
-		worldY += camera.getPositionY();
-		return worldY;
 	}
 
 	public void setResolution(float framebufferWidth, float framebufferHeight) {
