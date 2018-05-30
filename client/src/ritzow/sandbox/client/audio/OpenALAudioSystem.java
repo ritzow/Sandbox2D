@@ -19,17 +19,17 @@ import org.lwjgl.openal.AL;
 import org.lwjgl.openal.ALC;
 import org.lwjgl.openal.ALCCapabilities;
 
-public final class ClientAudioSystem implements AudioSystem {
+public final class OpenALAudioSystem implements AudioSystem {
 	private static long alContext;
 	private static long device;
 	private static int[] sources;
-	private static ClientAudioSystem audio;
+	private static OpenALAudioSystem audio;
 	
-	public static ClientAudioSystem getAudioSystem() {
+	public static OpenALAudioSystem getAudioSystem() {
 		return audio == null ? audio = initialize() : audio;
 	}
 	
-	private static ClientAudioSystem initialize() {
+	private static OpenALAudioSystem initialize() {
 		device = alcOpenDevice((ByteBuffer)null);
 		alContext = alcCreateContext(device, (IntBuffer)null);
 		ALCCapabilities alcCaps = ALC.createCapabilities(device);
@@ -43,7 +43,7 @@ public final class ClientAudioSystem implements AudioSystem {
 		checkErrors();
 		sources = new int[50];
 		alGenSources(sources);
-		return new ClientAudioSystem();
+		return new OpenALAudioSystem();
 	}
 	
 	public static Map<Integer, Integer> getAttributes() {
@@ -75,7 +75,7 @@ public final class ClientAudioSystem implements AudioSystem {
 	
 	private final Map<Integer, Integer> sounds;
 	
-	public ClientAudioSystem() {
+	public OpenALAudioSystem() {
 		sounds = new HashMap<>();
 	}
 	
@@ -83,6 +83,7 @@ public final class ClientAudioSystem implements AudioSystem {
 		for(int buffer : sounds.values()) {
 			alDeleteBuffers(buffer);
 		}
+		OpenALAudioSystem.shutdown();
 	}
 	
 	public void registerSound(int id, SoundInfo data) {

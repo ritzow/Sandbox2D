@@ -151,4 +151,9 @@ public final class WAVEDecoder implements SoundInfo {
 		byte[] data = new byte[4]; input.read(data);
 		return (((data[3] & 0xff) << 24) | ((data[2] & 0xff) << 16) | ((data[1] & 0xff) << 8) | (data[0] & 0xff));
 	}
+
+	@Override
+	public boolean isSigned() {
+		return getBitsPerSample() == 16;
+	}
 }

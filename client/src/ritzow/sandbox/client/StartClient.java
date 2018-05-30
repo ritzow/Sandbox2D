@@ -7,11 +7,13 @@ import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.Map;
 import ritzow.sandbox.client.Client.ConnectionFailedException;
-import ritzow.sandbox.client.audio.ClientAudioSystem;
+import ritzow.sandbox.client.audio.AudioSystem;
+import ritzow.sandbox.client.audio.DefaultAudioSystem;
+import ritzow.sandbox.client.audio.JavaxAudioSystem;
 import ritzow.sandbox.client.audio.Sound;
+import ritzow.sandbox.client.audio.SoundInfo;
 import ritzow.sandbox.client.audio.WAVEDecoder;
 import ritzow.sandbox.client.graphics.*;
 import ritzow.sandbox.client.graphics.Shader.ShaderType;
@@ -51,8 +53,6 @@ public final class StartClient {
 		//wait for the client to receive the world and return it
 		long startTime = System.nanoTime();
 		
-		var audio = ClientAudioSystem.getAudioSystem();
-		
 		var soundFiles = Map.ofEntries(
 			Map.entry("dig.wav", Sound.BLOCK_BREAK),
 			Map.entry("place.wav", Sound.BLOCK_PLACE),
@@ -61,24 +61,33 @@ public final class StartClient {
 			Map.entry("snap.wav", Sound.SNAP)
 		);
 		
+		AudioSystem audio;
+		try {
+			audio = JavaxAudioSystem.create(WAVEDecoder.decode(
+					Files.newInputStream(Paths.get("resources/assets/audio/place.wav"))));
+		} catch (IOException e1) {
+			audio = null;
+			e1.printStackTrace();
+		}
 		for(var entry : soundFiles.entrySet()) {
 			try {
-				audio.registerSound(entry.getValue().code(), 
-					WAVEDecoder.decode(Files.newInputStream(Paths.get("resources/assets/audio", entry.getKey()))));
+				SoundInfo info = WAVEDecoder.decode(
+						Files.newInputStream(Paths.get("resources/assets/audio", entry.getKey())));
+				audio.registerSound(entry.getValue().code(), info);
 			} catch(NoSuchFileException e) {
 				System.out.println("The file " + e.getFile() + " does not exist");
 			} catch (IOException e) {
 				System.out.println(e.getMessage());
 			}
 		}
-	
+		DefaultAudioSystem.setDefault(audio);
 		audio.setVolume(1.0f);
 		
 		eventProcessor.waitForSetup();
 		EventDelegator input = eventProcessor.getDisplay().getInputManager();
 		
 		//mute audio in background
-		input.windowFocusHandlers().add(focused -> audio.setVolume(focused ? 1.0f : 0.0f));
+		//input.windowFocusHandlers().add(focused -> audio.setVolume(focused ? 1.0f : 0.0f));
 		
 		var cameraGrip = new TrackingCameraController(new Camera(0, 0, 1), audio, client.getPlayer(), 0.005f, 0.05f, 0.6f);
 		cameraGrip.link(input);
@@ -118,13 +127,15 @@ public final class StartClient {
 		client.setTaskQueue(queue);
 		long previousTime = System.nanoTime();
 		while(!exit) {
-			queue.run();
-			previousTime = focused ? Utility.updateWorld(world, previousTime, 
-					SharedConstants.MAX_TIMESTEP, SharedConstants.TIME_SCALE_NANOSECONDS) : System.nanoTime();
-			cameraGrip.update();
-			interactionController.update();
-			renderer.run();
-			Utility.sleep(1);
+			queue.run(); //process received packets
+			if(client.isConnected()) {
+				previousTime = focused ? Utility.updateWorld(world, previousTime, 
+						SharedConstants.MAX_TIMESTEP, SharedConstants.TIME_SCALE_NANOSECONDS) : System.nanoTime();
+				cameraGrip.update();
+				interactionController.update();
+				renderer.run();
+				Utility.sleep(1);
+			}
 		}
 		
 		System.out.print("Exiting... ");
@@ -133,7 +144,6 @@ public final class StartClient {
 		if(client.isConnected())
 			client.disconnect();
 		audio.close();
-		ClientAudioSystem.shutdown();
 		System.out.println("done!");
 	}
 	
@@ -168,7 +178,7 @@ public final class StartClient {
 			register(modelProgram, RenderConstants.MODEL_RED_SQUARE, indices, positions, atlas, red);
 			GraphicsUtility.checkErrors();
 			return new ClientWorldRenderer(modelProgram, camera, world);
-		} catch (IOException | OpenGLException e) {
+		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
 	}
