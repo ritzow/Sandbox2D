@@ -40,8 +40,11 @@ public class Server {
 		this.network = new NetworkController(bindAddress, this::process);
 		ThreadGroup processors = new ThreadGroup("Message Processors");
 		ThreadGroup senders = new ThreadGroup("Broadcaster Group");
-		this.receivePool = Executors.newFixedThreadPool(10, runnable -> new Thread(processors, runnable));
-		this.broadcastPool = Executors.newCachedThreadPool(runnable -> new Thread(senders, runnable));
+		this.receivePool = Executors.newFixedThreadPool(10, 
+				runnable -> new Thread(processors, runnable, "Processor"));
+		AtomicInteger id = new AtomicInteger();
+		this.broadcastPool = Executors.newCachedThreadPool(
+				runnable -> new Thread(senders, runnable, "Broadcaster " + id.incrementAndGet()));
 		this.clients = Collections.synchronizedMap(new HashMap<InetSocketAddress, ClientState>());
 		this.updater = new ServerRepeatUpdater(this);
 	}
@@ -70,8 +73,7 @@ public class Server {
 	}
 	
 	public ClientState[] listClients() {
-		ClientState[] list = new ClientState[clients.size()];
-		return clients.values().toArray(list);
+		return clients.values().toArray(new ClientState[clients.size()]);
 	}
 	
 	private void onReceive(ClientState client, short protocol, byte[] data) {
