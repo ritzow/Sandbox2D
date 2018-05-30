@@ -177,13 +177,65 @@ public final class Utility {
 		return (((value - oldMin) * (newMax - newMin)) / (oldMax - oldMin)) + newMin;
 	}
 	
-	//TODO implement rotateAround
-	public static float rotateAround(float radians, float radius, float centerX, float centerY) {
-		throw new UnsupportedOperationException("not implemented");
+	/** Returns an rotation in radians that represents the change in angle after rotating around a point **/
+	public static float rotateAround(float x, float y, float centerX, float centerY) {
+		return (float)Math.atan2(x-centerX, y-centerY);
+	}
+	
+	public static float rotateCoordX(float x, float y, float centerX, float centerY, float angle) {
+		return (float)((x - centerX)*Math.cos(angle) - (y - centerY)*Math.sin(angle)) + x;
+	}
+	
+	public static float rotateCoordY(float x, float y, float centerX, float centerY, float angle) {
+		return (float)((y - centerY)*Math.cos(angle) + (x - centerX)*Math.sin(angle)) + y;
+	}
+	
+	public static void printUsedMemory() {
+		String prefix;
+		double value;
+		long used = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+		if(used < 1000) {
+			prefix = "B";
+			value = used;
+		} else if(used/1000 < 1000) {
+			prefix = "KB";
+			value = used/1000f;
+		} else if(used/1_000_000 < 1000) {
+			prefix = "MB";
+			value = used/1_000_000f;
+		} else {
+			prefix = "GB";
+			value = used/1_000_000_000f;
+		}
+		System.out.println(format(value, prefix));
 	}
 	
 	public static void printTimeSince(long nanoseconds) {
-		System.out.println(Thread.currentThread().getName() + " " + millisSince(nanoseconds) + " ms");
+		String units;
+		double value;
+		nanoseconds = System.nanoTime() - nanoseconds;
+		if(nanoseconds < 1000) {
+			units = "ns";
+			value = nanoseconds;
+		} else if(nanoseconds/1000 < 1000) {
+			units = "μs";
+			value = nanoseconds/1000f;
+		} else if(nanoseconds/1_000_000 < 1000) {
+			units = "ms";
+			value = nanoseconds/1_000_000f;
+		} else {
+			units = "s";
+			value = nanoseconds/1_000_000_000f;
+		}
+		System.out.println(format(value, units));
+		
+	}
+	
+	private static String format(double value, String units) {
+		String number = Double.toString(value);
+		return 	Thread.currentThread().getName() + " " + 
+		number.substring(0, Math.min(number.length(), 
+			number.indexOf('.') + 3)) + " " + units;
 	}
 	
 	public static double millisBetween(long startNanos, long endNanos) {
@@ -249,5 +301,10 @@ public final class Utility {
 	
 	private static float distanceSquared(float x1, float y1, float x2, float y2) {
 		return (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2);
+	}
+	
+	/** Returns the maximum value of the component opposite the one passed in (x if y given) within a given radius **/
+	public static float maxComponentInRadius(float otherComp, float radius) {
+		return (float)Math.sqrt(radius * radius - otherComp * otherComp);
 	}
 }
