@@ -14,6 +14,8 @@ public final class Display {
 	private int windowedWidth;
 	private int windowedHeight;
 	
+	private volatile boolean focused;
+	
 	public Display(String title) {
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
@@ -29,6 +31,8 @@ public final class Display {
 		
 		input = new EventDelegator(displayID);
 		render = new RenderManager(this);
+		
+		input.windowFocusHandlers().add(focused -> this.focused = focused);
 	}
 	
 	public void setCursor(long cursor) {
@@ -79,7 +83,7 @@ public final class Display {
 	}
 	
 	public boolean focused() {
-		return glfwGetWindowAttrib(displayID, GLFW_FOCUSED) == GLFW_TRUE;
+		return focused || true;
 	}
 	
 	public void toggleFullscreen() {

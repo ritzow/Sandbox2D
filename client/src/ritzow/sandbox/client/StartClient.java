@@ -129,7 +129,7 @@ public final class StartClient {
 		while(!exit) {
 			queue.run(); //process received packets
 			if(client.isConnected()) {
-				previousTime = focused ? Utility.updateWorld(world, previousTime, 
+				previousTime = eventProcessor.getDisplay().focused() ? Utility.updateWorld(world, previousTime, 
 						SharedConstants.MAX_TIMESTEP, SharedConstants.TIME_SCALE_NANOSECONDS) : System.nanoTime();
 				cameraGrip.update();
 				interactionController.update();

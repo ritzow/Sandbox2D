@@ -24,7 +24,7 @@ import ritzow.sandbox.client.input.handler.WindowFocusHandler;
 
 /** Initializes OpenGL and loads data to the GPU, then renders any Renderable objects added to the List returned by getUpdatables() **/
 public final class RenderManager implements Runnable, FramebufferSizeHandler, WindowFocusHandler {
-	private volatile boolean updateViewport, focused;
+	private volatile boolean updateViewport;
 	private volatile int framebufferWidth, framebufferHeight;
 	private final Display display;
 	private final List<Renderer> renderers;
@@ -53,7 +53,7 @@ public final class RenderManager implements Runnable, FramebufferSizeHandler, Wi
 	
 	public void run() {
 		int width = framebufferWidth, height = framebufferHeight;
-		if(focused && width > 0 && height > 0) {
+		if(display.focused() && width > 0 && height > 0) {
 			if(updateViewport) {
 				glViewport(0, 0, width, height);
 				updateViewport = false;
@@ -85,7 +85,6 @@ public final class RenderManager implements Runnable, FramebufferSizeHandler, Wi
 
 	@Override
 	public void windowFocus(boolean focused) {
-		this.focused = focused;
 	}
 
 	public void link(EventDelegator manager) {
