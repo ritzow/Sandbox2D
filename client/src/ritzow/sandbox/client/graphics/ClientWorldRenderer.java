@@ -8,7 +8,7 @@ import static org.lwjgl.opengl.GL30.GL_COLOR_ATTACHMENT0;
 import static org.lwjgl.opengl.GL30.GL_COLOR_ATTACHMENT1;
 
 import ritzow.sandbox.client.util.ClientUtility;
-import ritzow.sandbox.client.world.block.ClientBlock;
+import ritzow.sandbox.client.world.block.ClientBlockProperties;
 import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
@@ -84,8 +84,8 @@ public final class ClientWorldRenderer implements Renderer {
 		//render the blocks visible in the viewport
 		for(int row = bottomBound; row <= topBound; row++) {
 			for(int column = leftBound; column <= rightBound; column++) {
-				ClientBlock back = (ClientBlock)background.get(column, row);
-				ClientBlock front = (ClientBlock)foreground.get(column, row);
+				ClientBlockProperties back = (ClientBlockProperties)background.get(column, row),
+						front = (ClientBlockProperties)foreground.get(column, row);
 				
 				if(back != null && (front == null || front.isTransparent())) {
 					modelProgram.render(back.getModelIndex(), 0.5f, column, row, 1.0f, 1.0f, 0.0f);

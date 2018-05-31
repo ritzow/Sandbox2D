@@ -282,7 +282,9 @@ public class World implements Transportable, Iterable<Entity> {
 			if(e.doCollision()) {
 				//check for entity vs. entity collisions with all entities that have not already been 
 				//collision checked with (for first element, all entites, for last, no entities)
-				for(int j = i + 1; j < entities.size(); j++) {
+				var entities = this.entities;
+				int size = entities.size();
+				for(int j = i + 1; j < size; j++) {
 					Entity o = entities.get(j);
 					if(o.doCollision()) {
 						boolean collision;

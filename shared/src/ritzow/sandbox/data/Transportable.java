@@ -9,5 +9,5 @@ package ritzow.sandbox.data;
  */
 public interface Transportable {
 	/** @return a byte array representing the object, which can be restored exactly by calling the byte array constructor of the object **/
-	public byte[] getBytes(Serializer ser);
+	public byte[] getBytes(Serializer ser); //TODO add TransportableDataWriter parameter
 }

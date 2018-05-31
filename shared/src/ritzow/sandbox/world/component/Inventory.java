@@ -6,8 +6,8 @@ import ritzow.sandbox.data.Transportable;
 import ritzow.sandbox.data.TransportableDataReader;
 import ritzow.sandbox.world.item.Item;
 
-public class Inventory<T extends Transportable> implements Transportable {
-	protected final Transportable[] items;
+public class Inventory<T extends Item> implements Transportable {
+	protected final Item[] items;
 	
 	public Inventory(int capacity) {
 		this.items = new Item[capacity];
