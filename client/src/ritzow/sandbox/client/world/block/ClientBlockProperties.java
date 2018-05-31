@@ -6,25 +6,18 @@ import ritzow.sandbox.client.audio.DefaultAudioSystem;
 import ritzow.sandbox.client.audio.Sound;
 import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
-import ritzow.sandbox.world.block.Block;
 
-public abstract class ClientBlock extends Block {
+public interface ClientBlockProperties {
+	int getModelIndex();
+	boolean isTransparent();
 	
-	@Override
-	public abstract String getName();
-	public abstract int getModelIndex();
-	public abstract boolean isTransparent();
-	
-	@Override
-	public void onBreak(World world, BlockGrid grid, float x, float y) {
+	public default void onBreak(World world, BlockGrid grid, float x, float y) {
 		DefaultAudioSystem.getDefault()
 			.playSound(Sound.BLOCK_BREAK.code(), x, y, 0, 0, randomFloat(0.75f, 1.5f), randomFloat(0.75f, 1.5f));
 	}
 
-	@Override
-	public void onPlace(World world, BlockGrid grid, float x, float y) {
+	public default void onPlace(World world, BlockGrid grid, float x, float y) {
 		DefaultAudioSystem.getDefault()
 			.playSound(Sound.BLOCK_PLACE.code(), x, y, 0, 0, 1, randomFloat(0.9f, 1.1f));
 	}
-
 }
