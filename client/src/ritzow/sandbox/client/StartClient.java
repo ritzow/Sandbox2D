@@ -6,12 +6,12 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
-import java.nio.file.Paths;
+import java.nio.file.Path;
 import java.util.Map;
 import ritzow.sandbox.client.Client.ConnectionFailedException;
 import ritzow.sandbox.client.audio.AudioSystem;
 import ritzow.sandbox.client.audio.DefaultAudioSystem;
-import ritzow.sandbox.client.audio.JavaxAudioSystem;
+import ritzow.sandbox.client.audio.OpenALAudioSystem;
 import ritzow.sandbox.client.audio.Sound;
 import ritzow.sandbox.client.audio.SoundInfo;
 import ritzow.sandbox.client.audio.WAVEDecoder;
@@ -47,11 +47,14 @@ public final class StartClient {
 		}
 	}
 	
-	private static volatile boolean exit, focused;
+	private static volatile boolean exit;
 	
 	private static void run(EventProcessor eventProcessor, Client client) {
 		//wait for the client to receive the world and return it
 		long startTime = System.nanoTime();
+		
+		AudioSystem audio = OpenALAudioSystem.getAudioSystem();
+		DefaultAudioSystem.setDefault(audio);
 		
 		var soundFiles = Map.ofEntries(
 			Map.entry("dig.wav", Sound.BLOCK_BREAK),
@@ -61,18 +64,10 @@ public final class StartClient {
 			Map.entry("snap.wav", Sound.SNAP)
 		);
 		
-		AudioSystem audio;
-		try {
-			audio = JavaxAudioSystem.create(WAVEDecoder.decode(
-					Files.newInputStream(Paths.get("resources/assets/audio/place.wav"))));
-		} catch (IOException e1) {
-			audio = null;
-			e1.printStackTrace();
-		}
 		for(var entry : soundFiles.entrySet()) {
 			try {
 				SoundInfo info = WAVEDecoder.decode(
-						Files.newInputStream(Paths.get("resources/assets/audio", entry.getKey())));
+						Files.newInputStream(Path.of("resources/assets/audio", entry.getKey())));
 				audio.registerSound(entry.getValue().code(), info);
 			} catch(NoSuchFileException e) {
 				System.out.println("The file " + e.getFile() + " does not exist");
@@ -80,7 +75,7 @@ public final class StartClient {
 				System.out.println(e.getMessage());
 			}
 		}
-		DefaultAudioSystem.setDefault(audio);
+		
 		audio.setVolume(1.0f);
 		
 		eventProcessor.waitForSetup();
@@ -105,10 +100,6 @@ public final class StartClient {
 				else if(key == ControlScheme.KEYBIND_FULLSCREEN)
 		            eventProcessor.getDisplay().toggleFullscreen();
 			}
-		});
-		
-		input.windowFocusHandlers().add(focused -> {
-			StartClient.focused = focused;
 		});
 
 		input.windowCloseHandlers().add(() -> exit = true);
@@ -166,15 +157,14 @@ public final class StartClient {
 			TextureAtlas atlas = Textures.buildAtlas(grass, dirt, face, red);
 			
 			ModelRenderProgram modelProgram = new ModelRenderProgram(
-					new Shader(Files.newInputStream(Paths.get("resources/shaders/modelVertexShader")), ShaderType.VERTEX),
-					new Shader(Files.newInputStream(Paths.get("resources/shaders/modelFragmentShader")), ShaderType.FRAGMENT), 
+					new Shader(Files.newInputStream(Path.of("resources/shaders/modelVertexShader")), ShaderType.VERTEX),
+					new Shader(Files.newInputStream(Path.of("resources/shaders/modelFragmentShader")), ShaderType.FRAGMENT), 
 					atlas.texture()
 			);
 			
 			register(modelProgram, RenderConstants.MODEL_DIRT_BLOCK, indices, positions, atlas, dirt);
 			register(modelProgram, RenderConstants.MODEL_GRASS_BLOCK, indices, positions, atlas, grass);
 			register(modelProgram, RenderConstants.MODEL_GREEN_FACE, indices, positions, atlas, face);
-			//modelProgram.register(RenderConstants.MODEL_GREEN_FACE, new RenderData(6, indices, positions, GraphicsUtility.uploadVertexData(Textures.FULL_TEXTURE_COORDS)));
 			register(modelProgram, RenderConstants.MODEL_RED_SQUARE, indices, positions, atlas, red);
 			GraphicsUtility.checkErrors();
 			return new ClientWorldRenderer(modelProgram, camera, world);

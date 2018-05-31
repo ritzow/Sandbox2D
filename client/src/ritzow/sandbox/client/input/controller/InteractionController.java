@@ -12,7 +12,7 @@ import ritzow.sandbox.client.util.ClientUtility;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
 import ritzow.sandbox.client.world.item.ClientBlockItem;
 import ritzow.sandbox.util.Utility;
-import ritzow.sandbox.world.item.Item;
+import ritzow.sandbox.world.BlockGrid;
 
 public final class InteractionController implements Controller, MouseButtonHandler, CursorPosHandler, FramebufferSizeHandler, KeyHandler {
 	private volatile boolean primaryAction, secondaryAction;
@@ -43,20 +43,24 @@ public final class InteractionController implements Controller, MouseButtonHandl
 		int blockX = Math.round(ClientUtility.pixelHorizontalToWorld(camera, mouseX, frameWidth, frameHeight));
 		int blockY = Math.round(ClientUtility.pixelVerticalToWorld(camera, mouseY, frameWidth, frameHeight));
 		ClientPlayerEntity player = client.getPlayer();
-		
-		if(primaryAction && !breakCooldownActive() && inRange(player, blockX, blockY)) {
-			if(client.getWorld().getForeground().isBlock(blockX, blockY)) {
-				client.sendBlockBreak(blockX, blockY);
-				lastBreak = System.nanoTime();
-			}
-		} else if(secondaryAction && !placeCooldownActive() && inRange(player, blockX, blockY)) {
-			Item item = player.getSelectedItem();
-			if((item instanceof ClientBlockItem) && client.getWorld().getForeground().isValid(blockX, blockY) && 
-				(client.getWorld().getBackground().place(client.getWorld(), blockX, blockY, ((ClientBlockItem)item).getBlock()) || 
-				client.getWorld().getForeground().place(client.getWorld(), blockX, blockY, ((ClientBlockItem)item).getBlock()))) {
-				player.removeSelectedItem();
-				lastPlace = System.nanoTime();
-			}
+		BlockGrid front = client.getWorld().getForeground();
+		BlockGrid back = client.getWorld().getBackground();
+		if(front.isValid(blockX, blockY)) {
+			if(primaryAction && !breakCooldownActive() && inRange(player, blockX, blockY)) {
+				if(front.isBlock(blockX, blockY)) {
+					client.sendBlockBreak(blockX, blockY);
+					lastBreak = System.nanoTime();
+				}
+			} else if(secondaryAction && !placeCooldownActive() && inRange(player, blockX, blockY)) {
+				if(player.getSelectedItem() instanceof ClientBlockItem) {
+					ClientBlockItem item = (ClientBlockItem)player.getSelectedItem();
+					if((back.place(client.getWorld(), blockX, blockY, item.getBlock()) || 
+						front.place(client.getWorld(), blockX, blockY, item.getBlock()))) {
+						player.removeSelectedItem();
+						lastPlace = System.nanoTime();
+					}
+				}
+			}	
 		}
 	}
 	
