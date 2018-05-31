@@ -119,8 +119,18 @@ public class Server {
 			PlayerAction action = PlayerAction.forCode(data[2]);
 			boolean enable = ByteUtil.getBoolean(data, 3);
 			client.player.processAction(action, enable);
-			updater.resetEntitySend(); //reset all entities when a player 'changes direction'
+			sendPlayerAction(client.player, action, enable);
+			lastEntitySendTime = 0;
 		});
+	}
+	
+	private void sendPlayerAction(PlayerEntity player, PlayerAction action, boolean isEnabled) {
+		byte[] packet = new byte[8];
+		ByteUtil.putShort(packet, 0, Protocol.SERVER_PLAYER_ACTION);
+		ByteUtil.putInteger(packet, 2, player.getID());
+		packet[6] = action.getCode();
+		ByteUtil.putBoolean(packet, 7, isEnabled);
+		broadcastReliable(packet, true);
 	}
 	
 	private void processClientBreakBlock(ClientState client, byte[] data) {

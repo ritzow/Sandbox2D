@@ -31,7 +31,8 @@ public final class Protocol {
 		CLIENT_DISCONNECT = 11,
 		CLIENT_PLAYER_ACTION = 12,
 		CLIENT_BREAK_BLOCK = 13,
-		PING = 14;
+		PING = 14,
+		SERVER_PLAYER_ACTION = 15;
 	
 	/** Serialization Type ID **/
 	public static final short

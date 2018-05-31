@@ -16,15 +16,16 @@ import ritzow.sandbox.util.TaskQueue;
 import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.Entity;
+import ritzow.sandbox.world.entity.PlayerEntity;
 
 public class Client {
 	private final InetSocketAddress serverAddress;
 	private final NetworkController network;
 	private final Object worldLock, playerLock, connectionLock;
-	private TaskQueue taskQueue;
 	private volatile byte connectionStatus;
 	private volatile ConnectionState state;
 	private Runnable disconnectAction;
+	private TaskQueue taskQueue;
 	
 	private static final byte STATUS_NOT_CONNECTED = 0, STATUS_REJECTED = 1, STATUS_CONNECTED = 2;
 	
@@ -83,11 +84,12 @@ public class Client {
 			disconnect(false);
 			throw new ConnectionFailedException("connection rejected");
 		} else {
+			disconnect(false);
 			throw new ConnectionFailedException("request timed out");
 		}
 	}
 	
-	private void process(InetSocketAddress sender, int messageID, byte[] data) {
+	private void process(InetSocketAddress sender, byte[] data) {
 		try {
 			if(!sender.equals(serverAddress))
 				return;
@@ -140,6 +142,10 @@ public class Client {
 				processServerRemoveBlock(data);
 				break;
 			case Protocol.PING:
+				break;
+			case Protocol.SERVER_PLAYER_ACTION:
+				PlayerEntity e = getEntityFromID(data.readInteger());
+				e.processAction(PlayerAction.forCode(data.readByte()), data.readBoolean());
 				break;
 			default:
 				throw new IllegalArgumentException("Client received message of unknown protocol " + type);
@@ -234,6 +240,15 @@ public class Client {
 	
 	//Game Functionality and Processing
 	
+	private <T extends Entity> T getEntityFromID(int ID) {
+		for(Entity e : getWorld()) {
+			if(e.getID() == ID) {
+				return (T)e;
+			}
+		}
+		throw new IllegalStateException("no entity with ID " + ID + " exists");
+	}
+	
 	private void processServerRemoveBlock(DataReader data) {
 		state.world.getForeground().destroy(state.world, data.readInteger(), data.readInteger());
 	}
@@ -252,14 +267,8 @@ public class Client {
 	
 	private void processReceivePlayerEntityID(DataReader data) {
 		int id = data.readInteger();
-		for(Entity e : getWorld()) {
-			if(e.getID() == id) {
-				state.player = (ClientPlayerEntity)e;
-				Utility.notify(playerLock);
-				return;
-			}
-		}
-		throw new IllegalStateException("no entity with ID " + id + " exists");
+		state.player = getEntityFromID(id);
+		Utility.notify(playerLock);
 	}
 	
 	private void processRemoveEntity(DataReader data) {
