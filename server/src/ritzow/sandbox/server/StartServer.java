@@ -8,21 +8,21 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Scanner;
 import ritzow.sandbox.data.ByteUtil;
-import ritzow.sandbox.data.Deserializer;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.server.Server.ClientState;
+import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.block.DirtBlock;
 import ritzow.sandbox.world.block.GrassBlock;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
 public final class StartServer {
-	private static boolean SAVE_WORLD = true;
+	private static volatile boolean exit, save;
 	
 	public static void main(String... args) {
-		Thread.currentThread().setName("Console Input Main");
 		
 		try {
+			Thread.currentThread().setName("Update and Process");
 			Server server = Server.open(new InetSocketAddress(Protocol.DEFAULT_SERVER_UDP_PORT));
 
 			//the save file to try to load the world from
@@ -30,49 +30,22 @@ public final class StartServer {
 			
 			//if a save file exists, load it, otherwise generate a world
 			World world = Files.exists(saveFile) ? 
-					loadWorld(saveFile, SerializationProvider.getProvider()) : generateWorld(100, 100);
+					loadWorld(saveFile) : generateWorld(100, 100);
 			server.start(world);
 			
 			//read user input commands
 			System.out.println("Startup Complete.");
 			System.out.println("Type 'exit' to stop server or 'list' to list connected clients");
-			try(Scanner scanner = new Scanner(System.in)) {
-				String next;
-				reader: while(true) {
-					switch(next = scanner.nextLine()) {
-					case "exit":
-					case "quit":
-					case "stop":
-						break reader;
-					case "abort":
-						SAVE_WORLD = false;
-						break reader;
-					case "list":
-						if(server.getConnectedClients() == 0) {
-							System.out.println("No connected clients.");
-						} else {
-							System.out.println("Connected clients:");
-							for(ClientState client : server.listClients()) {
-								System.out.print("\t - ");
-								System.out.println(client);
-							}
-						}
-						break;
-					case "disconnect":
-						server.disconnectAll("server manual disconnect");
-						break;
-					default:
-						server.broadcastConsoleMessage(next);
-						System.out.println("Sent message '" + next + "' to " + 
-						server.getConnectedClients() + " connected client(s).");
-					}
-				}
-			}
+			new Thread(() -> runConsoleReader(server), "Console Input").start();
 			
+			while(!exit) {
+				server.update();
+				Utility.sleep(1);
+			}
 			server.stop();
 			
 			//save world to file if enabled
-			if(SAVE_WORLD) {
+			if(save) {
 				saveWorld(world, saveFile);
 			} else {
 				System.out.println("Server stopped.");
@@ -81,6 +54,44 @@ public final class StartServer {
 			System.out.println("Could not start server: '" + e.getMessage() + "'");
 		} catch (IOException e) {
 			e.printStackTrace();
+		}
+	}
+	
+	private static void runConsoleReader(Server server) {
+		try(Scanner scanner = new Scanner(System.in)) {
+			String next;
+			reader: while(true) {
+				switch(next = scanner.nextLine()) {
+				case "exit":
+				case "quit":
+				case "stop":
+					exit = true;
+					save = true;
+					break reader;
+				case "abort":
+					exit = true;
+					save = false;
+					break reader;
+				case "list":
+					if(server.getConnectedClients() == 0) {
+						System.out.println("No connected clients.");
+					} else {
+						System.out.println("Connected clients:");
+						for(ClientState client : server.listClients()) {
+							System.out.print("\t - ");
+							System.out.println(client);
+						}
+					}
+					break;
+				case "disconnect":
+					server.disconnectAll("server manual disconnect");
+					break;
+				default:
+					server.broadcastConsoleMessage(next);
+					System.out.println("Sent message '" + next + "' to " + 
+					server.getConnectedClients() + " connected client(s).");
+				}
+			}
 		}
 	}
 	
@@ -96,8 +107,8 @@ public final class StartServer {
 		}
 	}
 	
-	public static World loadWorld(Path file, Deserializer des) throws IOException {
-		return des.deserialize(ByteUtil.decompress(Files.readAllBytes(file)));
+	public static World loadWorld(Path file) throws IOException {
+		return SerializationProvider.getProvider().deserialize(ByteUtil.decompress(Files.readAllBytes(file)));
 	}
 	
 	public static World generateWorld(int width, int height) {
