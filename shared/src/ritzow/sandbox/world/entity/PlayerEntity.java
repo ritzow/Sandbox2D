@@ -20,14 +20,6 @@ public class PlayerEntity extends Entity implements Living {
 	protected int selected, health;
 	protected boolean left, right, up, down;
 	
-	protected static final boolean 
-			JETPACK_MODE = true;
-	protected static final float 
-			SIZE_SCALE = 1.0f,
-			MOVEMENT_SPEED = SIZE_SCALE / 5,
-			JUMP_SPEED = MOVEMENT_SPEED * 1.5f,
-			AIR_MOVEMENT = MOVEMENT_SPEED / 7;
-	
 	public PlayerEntity(int entityID) {
 		super(entityID);
 		this.inventory = new Inventory<>(9);
@@ -52,7 +44,13 @@ public class PlayerEntity extends Entity implements Living {
 		return bytes;
 	}
 	
-	@SuppressWarnings("unused")
+	
+	protected static boolean JETPACK_MODE = false;
+	protected static final float SIZE_SCALE 	= 1.0f,
+								 MOVEMENT_SPEED = SIZE_SCALE/5f,
+								 JUMP_SPEED 	= MOVEMENT_SPEED * 1.5f,
+								 AIR_MOVEMENT = MOVEMENT_SPEED / 10f;
+	
 	@Override
 	public void update(World world, float time) {
 		if(blockBelow(world.getForeground())) {
@@ -67,13 +65,13 @@ public class PlayerEntity extends Entity implements Living {
 				velocityY = JUMP_SPEED;
 			}
 		} else if(left && !right) {
-			velocityX = Math.max(-MOVEMENT_SPEED, velocityX - AIR_MOVEMENT / 10);
+			velocityX = Math.max(-MOVEMENT_SPEED, velocityX - time * AIR_MOVEMENT);
 		} else if(right && !left) {
-			velocityX = Math.min(MOVEMENT_SPEED, velocityX + AIR_MOVEMENT / 10);
+			velocityX = Math.min(MOVEMENT_SPEED, velocityX + time * AIR_MOVEMENT);
 		}
 		
 		if(JETPACK_MODE && up) {
-			velocityY = Math.min(JUMP_SPEED, velocityY + AIR_MOVEMENT / 3);
+			velocityY += MOVEMENT_SPEED * AIR_MOVEMENT * time;
 		}
 		
 		super.update(world, time);
@@ -86,14 +84,6 @@ public class PlayerEntity extends Entity implements Living {
 				positionX + getWidth()/2 - 0.1f, 	//x2
 				positionY - getHeight()/2); 		//y2
 	}
-	
-//	private boolean blockAbove(BlockGrid blocks) {
-//		return blockInRectangle(blocks, 
-//				positionX - getWidth()/2 + 0.1f, 	//x1
-//				positionY + getHeight()/2 - 0.1f, 	//y1
-//				positionX + getWidth()/2 - 0.1f, 	//x2
-//				positionY + getHeight()/2); 		//y2
-//	}
 	
 	private static boolean blockInRectangle(BlockGrid blocks, float x1, float y1, float x2, float y2) {
 		int a1 = Utility.clampLowerBound(0, Math.round(x1)), 
@@ -109,30 +99,32 @@ public class PlayerEntity extends Entity implements Living {
 		return false;
 	}
 	
-//	@Override
-//	public void onCollision(World world, Entity e, float time) {
-//		super.onCollision(world, e, time);
-//		if(e instanceof ItemEntity && e.getVelocityY() > -0.05f) {
-//			float vx = Utility.randomFloat(-0.15f, 0.15f);
-//			e.setVelocityX(vx);
-//			e.setVelocityY(Utility.maxComponentInRadius(vx, 0.5f));
-//		}
-//	}
+	@Override
+	public void onCollision(World world, Entity e, float time) {
+		super.onCollision(world, e, time);
+		if(e instanceof ItemEntity && e.getVelocityY() > -0.05f) {
+			float vx = Utility.randomFloat(-0.15f, 0.15f);
+			e.setVelocityX(vx);
+			e.setVelocityY(Utility.maxComponentInRadius(vx, 0.5f));
+		}
+	}
 
-	public void processAction(PlayerAction action, boolean enabled) {
+	public void processAction(PlayerAction action, boolean isEnabled) {
 		switch(action) {
 			case MOVE_LEFT:
-				left = enabled; break;
+				left = isEnabled; break;
 			case MOVE_RIGHT:
-				right = enabled; break;
+				right = isEnabled; break;
 			case MOVE_UP:
-				up = enabled; break;
+				up = isEnabled; break;
 			case MOVE_DOWN:
-				if(enabled)
+				if(isEnabled) {
 					positionY -= SIZE_SCALE/2;
-				else
+				} else {
 					positionY += SIZE_SCALE/2;
-				down = enabled; break;
+				}
+				down = isEnabled;
+				break;
 		}
 	}
 	
@@ -176,7 +168,7 @@ public class PlayerEntity extends Entity implements Living {
 
 	@Override
 	public float getFriction() {
-		return 0.02f;
+		return down ? 0.005f : 0.02f;
 	}
 
 	@Override
