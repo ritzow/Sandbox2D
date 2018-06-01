@@ -275,6 +275,9 @@ public class World implements Transportable, Iterable<Entity> {
 			//update entity position and velocity, and anything else specific to an entity
 			e.update(this, time);
 			
+			//TODO use air resistance?
+			//float surfaceArea = 2*e.getWidth() + 2*e.getHeight();
+			
 			//apply gravity
 			e.setVelocityY(e.getVelocityY() - gravity * time);
 			

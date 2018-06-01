@@ -4,7 +4,7 @@ import ritzow.sandbox.data.ByteUtil;
 import ritzow.sandbox.data.DataReader;
 import ritzow.sandbox.data.Serializer;
 
-public class DirtBlock extends Block {
+public class DirtBlock implements Block {
 	
 	public DirtBlock() {
 		
@@ -12,11 +12,6 @@ public class DirtBlock extends Block {
 	
 	public DirtBlock(DataReader data) {
 		
-	}
-
-	@Override
-	public int getHardness() {
-		return 5;
 	}
 
 	@Override

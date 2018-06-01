@@ -4,7 +4,7 @@ import ritzow.sandbox.data.ByteUtil;
 import ritzow.sandbox.data.DataReader;
 import ritzow.sandbox.data.Serializer;
 
-public class GrassBlock extends Block {
+public class GrassBlock implements Block {
 	
 	public GrassBlock() {
 		
@@ -12,11 +12,6 @@ public class GrassBlock extends Block {
 	
 	public GrassBlock(DataReader input) {
 		
-	}
-	
-	@Override
-	public int getHardness() {
-		return 5;
 	}
 
 	@Override

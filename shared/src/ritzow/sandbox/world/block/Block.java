@@ -4,30 +4,31 @@ import ritzow.sandbox.data.Transportable;
 import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
 
-public abstract class Block implements Transportable {
-	public abstract int getHardness();
-	public abstract float getFriction();
-	public abstract boolean isSolid();
-	/**
-	 * Called by BlockGrid when a block is broken
-	 * @param world the World the block is part of
-	 * @param grid the BlockGrid the block was part of
-	 * @param x the x position of the block was broken at
-	 * @param y the y position the block was broken at
-	 */
-	public void onBreak(World world, BlockGrid grid, float x, float y) {/* optional */}
-	/**
-	 * Called by BlockGrid when a block is placed
-	 * @param world the World the block is part of
-	 * @param grid the BlockGrid the block is part of
-	 * @param x the x position of the block was placed at
-	 * @param y the y position the block was placed at
-	 */
-	public void onPlace(World world, BlockGrid grid, float x, float y) {/* optional */}
+public interface Block extends Transportable {
+	
+	/** @return the decceleration applied to an entity that comes in contact with the block */
+	float getFriction();
+	
+	/** @return whether or not entities can pass through the block */
+	boolean isSolid();
+	
+	/** @return a human readable name for the Block type */
+	String getName();
 	
 	/**
-	 * Returns a human readable name for the Block type
-	 * @return a human readable name for the Block type
+	 * Called when a block is broken
+	 * @param world the World that contained the block
+	 * @param grid the BlockGrid that contained the block
+	 * @param x the x position at which the block was broken
+	 * @param y the y position at which the block was broken
 	 */
-	public abstract String getName();
+	default void onBreak(World world, BlockGrid grid, float x, float y) {/* optional */}
+	/**
+	 * Called when a block is placed
+	 * @param world the World that contains the block
+	 * @param grid the BlockGrid that contains the block
+	 * @param x the x position at which the block was placed
+	 * @param y the y position at which the block was placed
+	 */
+	default void onPlace(World world, BlockGrid grid, float x, float y) {/* optional */}
 }

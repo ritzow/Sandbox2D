@@ -6,8 +6,9 @@ import ritzow.sandbox.client.audio.DefaultAudioSystem;
 import ritzow.sandbox.client.audio.Sound;
 import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
+import ritzow.sandbox.world.block.Block;
 
-public interface ClientBlockProperties {
+public interface ClientBlockProperties extends Block {
 	int getModelIndex();
 	boolean isTransparent();
 	
