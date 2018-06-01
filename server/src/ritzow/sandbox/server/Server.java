@@ -35,7 +35,8 @@ public class Server {
 	private World world;
 	private final TaskQueue processQueue;
 	
-	private long NETWORK_SEND_INTERVAL_NANOSECONDS = Utility.millisToNanos(100);
+	private static final long NETWORK_SEND_INTERVAL_NANOSECONDS = Utility.millisToNanos(150);
+	private static final int TIMEOUT_DISCONNECT = 1000;
 	
 	public static Server open(InetSocketAddress bindAddress) throws IOException {
 		return new Server(bindAddress);
@@ -144,7 +145,7 @@ public class Server {
 			boolean enable = ByteUtil.getBoolean(data, 3);
 			client.player.processAction(action, enable);
 			sendPlayerAction(client.player, action, enable);
-			lastEntitySendTime = 0;
+			//lastEntitySendTime = 0;
 		});
 	}
 	
@@ -438,7 +439,7 @@ public class Server {
 	private void sendReliable(ClientState client, byte[] data, boolean removeUnresponsive) {
 		try {
 			long time = System.nanoTime();
-			network.sendReliable(client.address, data, 10, 100);
+			network.sendReliable(client.address, data, 10, (int)Math.floor(TIMEOUT_DISCONNECT/10D));
 			client.ping = (int)Utility.millisSince(time); //update client ping
 		} catch(TimeoutException e) {
 			if(removeUnresponsive && isConnected(client.address)) {
