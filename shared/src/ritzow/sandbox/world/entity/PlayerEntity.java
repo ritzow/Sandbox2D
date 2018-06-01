@@ -20,6 +20,12 @@ public class PlayerEntity extends Entity implements Living {
 	protected int selected, health;
 	protected boolean left, right, up, down;
 	
+	protected static boolean JETPACK_MODE = false;
+	protected static final float SIZE_SCALE 	= 1f,
+								 MOVEMENT_SPEED = 0.2f * SIZE_SCALE,
+								 JUMP_VELOCITY 	= 0.2f * 1.5f * SIZE_SCALE,
+								 AIR_MOVEMENT = MOVEMENT_SPEED / 10f;
+	
 	public PlayerEntity(int entityID) {
 		super(entityID);
 		this.inventory = new Inventory<>(9);
@@ -44,13 +50,6 @@ public class PlayerEntity extends Entity implements Living {
 		return bytes;
 	}
 	
-	
-	protected static boolean JETPACK_MODE = false;
-	protected static final float SIZE_SCALE 	= 1.0f,
-								 MOVEMENT_SPEED = SIZE_SCALE/5f,
-								 JUMP_SPEED 	= MOVEMENT_SPEED * 1.5f,
-								 AIR_MOVEMENT = MOVEMENT_SPEED / 10f;
-	
 	@Override
 	public void update(World world, float time) {
 		if(blockBelow(world.getForeground())) {
@@ -62,7 +61,7 @@ public class PlayerEntity extends Entity implements Living {
 				velocityX = MOVEMENT_SPEED;
 			}
 			if(!JETPACK_MODE && up) {
-				velocityY = JUMP_SPEED;
+				velocityY = JUMP_VELOCITY;
 			}
 		} else if(left && !right) {
 			velocityX = Math.max(-MOVEMENT_SPEED, velocityX - time * AIR_MOVEMENT);
@@ -118,12 +117,12 @@ public class PlayerEntity extends Entity implements Living {
 			case MOVE_UP:
 				up = isEnabled; break;
 			case MOVE_DOWN:
+				down = isEnabled;
 				if(isEnabled) {
 					positionY -= SIZE_SCALE/2;
 				} else {
 					positionY += SIZE_SCALE/2;
 				}
-				down = isEnabled;
 				break;
 		}
 	}
@@ -168,7 +167,7 @@ public class PlayerEntity extends Entity implements Living {
 
 	@Override
 	public float getFriction() {
-		return down ? 0.005f : 0.02f;
+		return (down ? 0.0075f : 0.02f);
 	}
 
 	@Override
