@@ -112,7 +112,7 @@ public final class StartClient {
 		
 		//display the window now that everything is set up.
 		eventProcessor.setReadyToDisplay();
-		System.out.println("Rendering started, setup took " + Utility.millisSince(startTime) + " ms");
+		System.out.println("Rendering started, setup took " + Utility.formatTime(startTime) + ".");
 		
 		TaskQueue queue = new TaskQueue();
 		client.setTaskQueue(queue);

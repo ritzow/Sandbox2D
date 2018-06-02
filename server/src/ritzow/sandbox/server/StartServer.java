@@ -101,7 +101,7 @@ public final class StartServer {
 			world.removeIf(e -> e instanceof PlayerEntity); //remove players before saving to file
 			byte[] serialized = ByteUtil.compress(SerializationProvider.getProvider().serialize(world));
 			Files.write(file, serialized);
-			System.out.println("world saved to " + serialized.length + " bytes.");
+			System.out.println("world saved to " + Utility.formatSize(serialized.length) + ".");
 		} catch (IOException e) {
 			System.out.println("Error while saving world to file: " + e.getMessage());
 		}

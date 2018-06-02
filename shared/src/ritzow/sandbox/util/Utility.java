@@ -191,28 +191,33 @@ public final class Utility {
 	}
 	
 	public static void printUsedMemory() {
-		String prefix;
-		double value;
-		long used = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
-		if(used < 1000) {
-			prefix = "B";
-			value = used;
-		} else if(used/1000 < 1000) {
-			prefix = "KB";
-			value = used/1000f;
-		} else if(used/1_000_000 < 1000) {
-			prefix = "MB";
-			value = used/1_000_000f;
-		} else {
-			prefix = "GB";
-			value = used/1_000_000_000f;
-		}
-		System.out.println(format(value, prefix));
+		System.out.println(formatSize(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()));
 	}
 	
 	public static void printTimeSince(long nanoseconds) {
-		String units;
-		double value;
+		System.out.println(formatTime(nanoseconds));
+	}
+	
+	public static String formatSize(long bytes) {
+		String prefix; double value;
+		if(bytes < 1000) {
+			prefix = "B";
+			value = bytes;
+		} else if(bytes/1000 < 1000) {
+			prefix = "KB";
+			value = bytes/1000d;
+		} else if(bytes/1_000_000 < 1000) {
+			prefix = "MB";
+			value = bytes/1_000_000d;
+		} else {
+			prefix = "GB";
+			value = bytes/1_000_000_000d;
+		}
+		return format(value, prefix, 2);
+	}
+	
+	public static String formatTime(long nanoseconds) {
+		String units; double value;
 		nanoseconds = System.nanoTime() - nanoseconds;
 		if(nanoseconds < 1000) {
 			units = "ns";
@@ -227,15 +232,13 @@ public final class Utility {
 			units = "s";
 			value = nanoseconds/1_000_000_000f;
 		}
-		System.out.println(format(value, units));
-		
+		return format(value, units, 2);
 	}
 	
-	private static String format(double value, String units) {
+	private static String format(double value, String units, int decimals) {
 		String number = Double.toString(value);
-		return 	Thread.currentThread().getName() + " " + 
-		number.substring(0, Math.min(number.length(), 
-			number.indexOf('.') + 3)) + " " + units;
+		return (decimals > 0 ? number.substring(0, Math.min(number.length(), 
+			number.indexOf('.') + decimals) + 1) : ("~" + Math.round(value))) + " " + units;
 	}
 	
 	public static double millisBetween(long startNanos, long endNanos) {
