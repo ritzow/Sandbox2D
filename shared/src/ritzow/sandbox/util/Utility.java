@@ -238,7 +238,7 @@ public final class Utility {
 	private static String format(double value, String units, int decimals) {
 		String number = Double.toString(value);
 		return (decimals > 0 ? number.substring(0, Math.min(number.length(), 
-			number.indexOf('.') + decimals) + 1) : ("~" + Math.round(value))) + " " + units;
+			number.indexOf('.') + decimals)) : ("~" + Math.round(value))) + " " + units;
 	}
 	
 	public static double millisBetween(long startNanos, long endNanos) {
