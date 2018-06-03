@@ -7,7 +7,7 @@
  */
 module ritzow.sandbox.client {
 	requires ritzow.sandbox.shared;
-	requires java.desktop;
+	requires static java.desktop;
 	requires PNGDecoder;
 	requires org.lwjgl;
 	requires org.lwjgl.glfw;
