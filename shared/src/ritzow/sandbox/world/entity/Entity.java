@@ -48,20 +48,23 @@ public abstract class Entity implements Transportable {
 		 return entityID;
 	}
 	
-	public void onCollision(World world, Entity e, float time) {/* optional implementation */}
+	public void onCollision(World world, Entity e, float time) {
+		/* optional implementation */
+		throw new UnsupportedOperationException(this.getClass().getTypeName() + " does not implement onCollision for entities");
+	}
 	public void onCollision(World world, Block block, float blockX, float blockY, float time) {/* optional implementation */}
 
 	/** @return true if the entity should be removed from the world **/
 	public abstract boolean getShouldDelete();
 	
 	/** @return true if the entity has any form of collision **/
-	public abstract boolean doCollision();
+	public abstract boolean hasEntityCollisionLogic();
 	
 	/** @return true if the entity should collide with solid blocks rather than fall through them **/
-	public abstract boolean doBlockCollisionResolution();
+	public abstract boolean collidesWithBlocks();
 	
 	/** @return true if the entity should collide with other entities rather than passing through them **/
-	public abstract boolean doEntityCollisionResolution();
+	public abstract boolean collidesWithEntities();
 	
 	/** @return the roughness of the surface of the entity **/
 	public abstract float getFriction();

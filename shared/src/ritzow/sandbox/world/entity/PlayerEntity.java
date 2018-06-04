@@ -21,10 +21,11 @@ public class PlayerEntity extends Entity implements Living {
 	protected boolean left, right, up, down;
 	
 	protected static boolean JETPACK_MODE = false;
-	protected static final float SIZE_SCALE 	= 1f,
-								 MOVEMENT_SPEED = 0.2f * SIZE_SCALE,
-								 JUMP_VELOCITY 	= 0.2f * 1.5f * SIZE_SCALE,
-								 AIR_MOVEMENT = MOVEMENT_SPEED / 10f;
+	protected static final float 
+			SIZE_SCALE		= 1f,
+			MOVEMENT_SPEED	= 0.2f * SIZE_SCALE,
+			JUMP_VELOCITY	= MOVEMENT_SPEED * 1.5f,
+			AIR_MOVEMENT	= MOVEMENT_SPEED / 7.5f;
 	
 	public PlayerEntity(int entityID) {
 		super(entityID);
@@ -70,7 +71,7 @@ public class PlayerEntity extends Entity implements Living {
 		}
 		
 		if(JETPACK_MODE && up) {
-			velocityY += MOVEMENT_SPEED * AIR_MOVEMENT * time;
+			velocityY += AIR_MOVEMENT * time;
 		}
 		
 		super.update(world, time);
@@ -100,8 +101,7 @@ public class PlayerEntity extends Entity implements Living {
 	
 	@Override
 	public void onCollision(World world, Entity e, float time) {
-		super.onCollision(world, e, time);
-		if(e instanceof ItemEntity && e.getVelocityY() > -0.05f) {
+		if(e instanceof ItemEntity && e.getVelocityY() > -0.05f && e.getVelocityY() <= 0) {
 			float vx = Utility.randomFloat(-0.15f, 0.15f);
 			e.setVelocityX(vx);
 			e.setVelocityY(Utility.maxComponentInRadius(vx, 0.5f));
@@ -151,17 +151,17 @@ public class PlayerEntity extends Entity implements Living {
 	}
 
 	@Override
-	public boolean doCollision() {
+	public final boolean hasEntityCollisionLogic() {
 		return true;
 	}
 
 	@Override
-	public boolean doBlockCollisionResolution() {
+	public boolean collidesWithBlocks() {
 		return true;
 	}
 
 	@Override
-	public boolean doEntityCollisionResolution() {
+	public boolean collidesWithEntities() {
 		return true;
 	}
 

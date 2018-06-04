@@ -226,12 +226,20 @@ public class World implements Transportable, Iterable<Entity> {
 		return col == null ? Collections.emptyList() : col;
 	}
 	
+	private boolean isEntitiesModifiable = true;
+	
+	private void checkEntitiesModifiable() {
+		if(!isEntitiesModifiable)
+			throw new IllegalStateException("cannot add/remove from world: world is being updated");
+	}
+	
 	/**
 	 * Adds the provided non-null Entity to the world.
 	 * @param e the entity to add.
 	 */
 	public final void add(Entity e) {
 		Objects.requireNonNull(e);
+		checkEntitiesModifiable();	
 		entities.add(e);
 	}
 
@@ -240,6 +248,7 @@ public class World implements Transportable, Iterable<Entity> {
 	 * @param e the entity to remove.
 	 */
 	public final void remove(Entity e) {
+		checkEntitiesModifiable();
 		entities.remove(e);
 	}
 	
@@ -260,7 +269,10 @@ public class World implements Transportable, Iterable<Entity> {
 	 * @param time the amount of time to simulate.
 	 */
 	public final void update(float time) {
-		for(int i = 0; i < entities.size(); i++) {
+		isEntitiesModifiable = false;
+		var entities = this.entities;
+		int size = entities.size();
+		for(int i = 0; i < size; i++) {
 			Entity e = entities.get(i);
 			
 			//remove entities that are below the world or are flagged for deletion
@@ -282,40 +294,35 @@ public class World implements Transportable, Iterable<Entity> {
 			e.setVelocityY(e.getVelocityY() - gravity * time);
 			
 			//check if collision checking is enabled
-			if(e.doCollision()) {
-				//check for entity vs. entity collisions with all entities that have not already been 
-				//collision checked with (for first element, all entites, for last, no entities)
-				var entities = this.entities;
-				int size = entities.size();
-				for(int j = i + 1; j < size; j++) {
-					Entity o = entities.get(j);
-					if(o.doCollision()) {
-						boolean collision;
-						
-						if(e.doEntityCollisionResolution() && o.doEntityCollisionResolution()) {
-							if(e.getMass() < o.getMass())
-								collision = resolveCollision(e, o, time);
-							else if(e.getMass() > o.getMass())
-								collision = resolveCollision(o, e, time);
-							else
-								collision = false; //TODO what do I do when entities have same mass?
-						} else {
-							collision = checkCollision(e, o);
-						}
-						
-						if(collision) {
-							e.onCollision(this, o, time);
-							o.onCollision(this, e, time);
-						}
-					}
-				}
-
-				//Check for entity collisions with blocks
-				if(e.doBlockCollisionResolution()) {
-					resolveBlockCollisions(e, time);
-				}
+			boolean hasLogic = e.hasEntityCollisionLogic();
+			boolean collidesEntities = e.collidesWithEntities();
+			//check for entity vs. entity collisions with all entities that have not already been 
+			//collision checked with (for first element, all entites, for last, no entities)
+			for(int j = i + 1; j < size; j++) {
+				Entity o = entities.get(j);
+				boolean otherHasLogic = o.hasEntityCollisionLogic();
+				boolean isPhysicsCollision = collidesEntities && o.collidesWithEntities() && runPhysicsCollision(e, o, time);
+				boolean isCheckedCollision = (hasLogic || otherHasLogic) && (isPhysicsCollision || checkCollision(e, o));
+				if(hasLogic && isCheckedCollision)
+					e.onCollision(this, o, time);
+				if(otherHasLogic && isCheckedCollision)
+					o.onCollision(this, e, time);
+			}
+			
+			//Check for entity collisions with blocks
+			if(e.collidesWithBlocks()) {
+				resolveBlockCollisions(e, time);
 			}
 		}
+		isEntitiesModifiable = true;
+	}
+	
+	private static boolean runPhysicsCollision(Entity e, Entity o, float time) {
+		if(e.getMass() < o.getMass())
+			return resolveCollision(e, o, time);
+		else if(e.getMass() > o.getMass())
+			return resolveCollision(o, e, time);
+		return false; //TODO what do I do when entities have same mass?
 	}
 	
 	private void resolveBlockCollisions(Entity e, float time) {

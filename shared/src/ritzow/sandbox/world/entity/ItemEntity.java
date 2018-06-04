@@ -40,17 +40,17 @@ public class ItemEntity<I extends Item> extends Entity {
 	}
 
 	@Override
-	public boolean doCollision() {
+	public boolean hasEntityCollisionLogic() {
+		return false;
+	}
+
+	@Override
+	public boolean collidesWithBlocks() {
 		return true;
 	}
 
 	@Override
-	public boolean doBlockCollisionResolution() {
-		return true;
-	}
-
-	@Override
-	public boolean doEntityCollisionResolution() {
+	public boolean collidesWithEntities() {
 		return false;
 	}
 
