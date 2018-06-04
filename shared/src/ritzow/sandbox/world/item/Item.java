@@ -11,7 +11,6 @@ public abstract class Item implements Transportable {
 	 * @return whether or not the two items are the same
 	 */
 	public abstract boolean canStack(Item item);
-	public abstract String getName();
 	
 	@Override
 	public boolean equals(Object object) {

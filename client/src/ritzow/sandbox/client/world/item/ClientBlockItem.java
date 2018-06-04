@@ -8,7 +8,6 @@ import ritzow.sandbox.data.Serializer;
 import ritzow.sandbox.data.TransportableDataReader;
 import ritzow.sandbox.world.block.Block;
 import ritzow.sandbox.world.item.BlockItem;
-import ritzow.sandbox.world.item.Item;
 
 public final class ClientBlockItem extends BlockItem implements Graphical {
 	protected final Graphics graphics;
@@ -34,21 +33,5 @@ public final class ClientBlockItem extends BlockItem implements Graphical {
 
 	public Graphics getGraphics() {
 		return graphics;
-	}
-
-	@Override
-	public String getName() {
-		return block.getName() + " block";
-	}
-
-	@Override
-	public boolean canStack(Item item) {
-		if(this == item) {
-			return true;
-		} else if(item instanceof ClientBlockItem) {
-			throw new UnsupportedOperationException("not implemented");
-		} else {
-			return false;
-		}
 	}
 }
