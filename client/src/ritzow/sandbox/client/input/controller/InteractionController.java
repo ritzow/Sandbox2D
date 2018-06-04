@@ -52,11 +52,11 @@ public final class InteractionController implements Controller, MouseButtonHandl
 					lastBreak = System.nanoTime();
 				}
 			} else if(secondaryAction && !placeCooldownActive() && inRange(player, blockX, blockY)) {
-				if(player.getSelectedItem() instanceof ClientBlockItem) {
-					ClientBlockItem item = (ClientBlockItem)player.getSelectedItem();
+				if(player.getSelected() instanceof ClientBlockItem) {
+					ClientBlockItem item = (ClientBlockItem)player.getSelected();
 					if((back.place(client.getWorld(), blockX, blockY, item.getBlock()) || 
 						front.place(client.getWorld(), blockX, blockY, item.getBlock()))) {
-						player.removeSelectedItem();
+						player.removeSelected();
 						lastPlace = System.nanoTime();
 					}
 				}

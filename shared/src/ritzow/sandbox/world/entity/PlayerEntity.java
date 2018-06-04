@@ -127,15 +127,15 @@ public class PlayerEntity extends Entity implements Living {
 		}
 	}
 	
-	public Inventory<Item> getInventory() {
+	public Inventory<Item> inventory() {
 		return inventory;
 	}
 	
-	public Item removeSelectedItem() {
+	public Item removeSelected() {
 		return inventory.remove(selected);
 	}
 	
-	public Item getSelectedItem() {
+	public Item getSelected() {
 		return inventory.get(selected);
 	}
 	
