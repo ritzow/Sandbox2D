@@ -24,18 +24,13 @@ public class BlockItem extends Item {
 	public Block getBlock() {
 		return block;
 	}
-	
-	@Override
-	public String getName() {
-		return block.getName() + " block";
-	}
 
 	@Override
 	public boolean canStack(Item item) {
 		if(this == item) {
 			return true;
 		} else if(item instanceof BlockItem) {
-			throw new UnsupportedOperationException("not implemented");
+			return block.equals(((BlockItem)item).block);
 		} else {
 			return false;
 		}
