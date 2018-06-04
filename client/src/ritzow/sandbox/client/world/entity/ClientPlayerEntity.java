@@ -20,6 +20,14 @@ public class ClientPlayerEntity extends PlayerEntity implements Renderable {
 	public ClientPlayerEntity(TransportableDataReader input) {
 		super(input);
 	}
+	
+//	@Override
+//	public void onCollision(World world, Entity e, float time) {
+//		if(e instanceof ItemEntity && e.getVelocityY() > -0.05f && e.getVelocityY() <= 0) {
+//			DefaultAudioSystem.getDefault().playSound(Sound.THROW.code(), positionX, positionY, 0, 0, 0.025f, 0.75f);
+//		}
+//		super.onCollision(world, e, time);
+//	}
 
 	@Override
 	public void render(ModelRenderProgram renderer) {

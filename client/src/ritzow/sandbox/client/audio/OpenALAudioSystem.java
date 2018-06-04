@@ -113,6 +113,7 @@ public final class OpenALAudioSystem implements AudioSystem {
     	if(sounds.containsKey(id))
     		throw new UnsupportedOperationException("already a sound associated with id " + id);
 		sounds.put(id, buffer);
+		checkErrors();
 	}
 
 	@Override
@@ -139,12 +140,10 @@ public final class OpenALAudioSystem implements AudioSystem {
 		throw new UnsupportedOperationException("global playback not supported");
 	}
 
-	@SuppressWarnings("static-method")
 	public void setVolume(float gain) {
 		alListenerf(AL_GAIN, gain);
 	}
 
-	@SuppressWarnings("static-method")
 	public void setPosition(float x, float y) {
 		alListener3f(AL_POSITION, x, y, 0);
 	}

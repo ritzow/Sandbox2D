@@ -201,7 +201,7 @@ public final class Utility {
 	public static String formatSize(long bytes) {
 		String prefix; double value;
 		if(bytes < 1000) {
-			prefix = "B";
+			prefix = "bytes";
 			value = bytes;
 		} else if(bytes/1000 < 1000) {
 			prefix = "KB";
@@ -236,9 +236,11 @@ public final class Utility {
 	}
 	
 	private static String format(double value, String units, int decimals) {
+		long asInteger = Math.round(value);
+		boolean matches = asInteger == value;
 		String number = Double.toString(value);
-		return (decimals > 0 ? number.substring(0, Math.min(number.length(), 
-			number.indexOf('.') + decimals)) : ("~" + Math.round(value))) + " " + units;
+		return (matches ? Long.toString(asInteger) : (decimals > 0 ? number.substring(0, Math.min(number.length(), 
+			number.indexOf('.') + decimals)) : ("~" + asInteger))) + " " + units;
 	}
 	
 	public static double millisBetween(long startNanos, long endNanos) {

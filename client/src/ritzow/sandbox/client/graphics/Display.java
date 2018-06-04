@@ -83,7 +83,7 @@ public final class Display {
 	}
 	
 	public boolean focused() {
-		return focused || true;
+		return focused;
 	}
 	
 	public void toggleFullscreen() {

@@ -82,7 +82,7 @@ public final class StartClient {
 		EventDelegator input = eventProcessor.getDisplay().getInputManager();
 		
 		//mute audio in background
-		//input.windowFocusHandlers().add(focused -> audio.setVolume(focused ? 1.0f : 0.0f));
+		input.windowFocusHandlers().add(focused -> audio.setVolume(focused ? 1.0f : 0.0f));
 		
 		var cameraGrip = new TrackingCameraController(new Camera(0, 0, 1), audio, client.getPlayer(), 0.005f, 0.05f, 0.6f);
 		cameraGrip.link(input);

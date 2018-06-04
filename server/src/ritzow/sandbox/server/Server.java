@@ -122,8 +122,8 @@ public class Server {
 				SharedConstants.MAX_TIMESTEP, SharedConstants.TIME_SCALE_NANOSECONDS);
 		if(Utility.nanosSince(lastEntitySendTime) > NETWORK_SEND_INTERVAL_NANOSECONDS) {
 			byte[] update = new byte[2 + 4 + 4 + 4 + 4 + 4]; //protocol, id, posX, posY, velX, velY
+			ByteUtil.putShort(update, 0, Protocol.SERVER_ENTITY_UPDATE);
 			for(Entity e : world) {
-				ByteUtil.putShort(update, 0, Protocol.SERVER_ENTITY_UPDATE);
 				ByteUtil.putInteger(update, 2, e.getID());
 				ByteUtil.putFloat(update, 6, e.getPositionX());
 				ByteUtil.putFloat(update, 10, e.getPositionY());
@@ -131,12 +131,11 @@ public class Server {
 				ByteUtil.putFloat(update, 18, e.getVelocityY());
 				broadcastUnreliable(update);
 			}
-			broadcastPing(); //send a reliable packet to make sure clients are connected
+			pingClients(); //send a reliable packet to make sure clients are connected
 			lastEntitySendTime = System.nanoTime();
 		}
 	}
 	
-	//TODO send player actions to all other clients
 	private void processPlayerAction(ClientState client, byte[] data) {
 		if(client.player == null)
 			throw new ClientBadDataException("client has no associated player to perform an action");
@@ -144,12 +143,11 @@ public class Server {
 			PlayerAction action = PlayerAction.forCode(data[2]);
 			boolean enable = ByteUtil.getBoolean(data, 3);
 			client.player.processAction(action, enable);
-			sendPlayerAction(client.player, action, enable);
-			//lastEntitySendTime = 0;
+			broadcastPlayerAction(client.player, action, enable);
 		});
 	}
 	
-	private void sendPlayerAction(PlayerEntity player, PlayerAction action, boolean isEnabled) {
+	private void broadcastPlayerAction(PlayerEntity player, PlayerAction action, boolean isEnabled) {
 		byte[] packet = new byte[8];
 		ByteUtil.putShort(packet, 0, Protocol.SERVER_PLAYER_ACTION);
 		ByteUtil.putInteger(packet, 2, player.getID());
@@ -167,8 +165,7 @@ public class Server {
 			Block block = world.getForeground().get(x, y);
 			if(world.getForeground().destroy(world, x, y)) {
 				//TODO block data needs to be reset on drop
-				ItemEntity<BlockItem> drop = 
-						new ItemEntity<>(world.nextEntityID(), new BlockItem(block), x, y);
+				var drop = new ItemEntity<BlockItem>(world.nextEntityID(), new BlockItem(block), x, y);
 				drop.setVelocityX(-0.2f + ((float) Math.random() * (0.4f)));
 				drop.setVelocityY((float) Math.random() * (0.35f));
 				world.add(drop);
@@ -178,10 +175,18 @@ public class Server {
 		});
 	}
 	
-	public void broadcastPing() {
-		byte[] packet = new byte[2];
-		ByteUtil.putShort(packet, 0, Protocol.PING);
-		broadcastReliable(packet, true);
+	private static byte[] PING = new byte[2];
+	
+	static {
+		ByteUtil.putShort(PING, 0, Protocol.PING);
+	}
+	
+	public void pingClients() {
+		broadcastReliable(PING, true);
+	}
+	
+	public void broadcastConsoleMessage(String message) {
+		broadcastReliable(Protocol.buildConsoleMessage(message), true);
 	}
 	
 	public void sendRemoveBlock(int x, int y) {
@@ -246,6 +251,27 @@ public class Server {
 	}
 	
 	/**
+	 * Gracefully notifies and disconnects all connected clients.
+	 * @param reason the reason for the disconnection
+	 */
+	public void disconnectAll(String reason) {
+		int count = clients.size();
+		synchronized(clients) {
+			broadcastReliable(buildServerDisconnect(reason), false);
+			for(ClientState client : clients.values()) {
+				network.removeConnection(client.address);
+				if(client.player != null) {
+					world.remove(client.player);
+					sendRemoveEntity(client.player);
+				}
+			}
+			clients.clear();
+		}
+		if(count > 0)
+			System.out.println("Disconnected " + count + " remaining clients");
+	}
+	
+	/**
 	 * Removes all of a client's state from the server.
 	 * @param client the client to remove from the server.
 	 */
@@ -273,23 +299,6 @@ public class Server {
 	
 	private String getClientDisconnectMessage(ClientState client) {
 		return client.getAddressString() + " disconnected (" + clients.size() + " players connected)";
-	}
-	
-	public void disconnectAll(String reason) {
-		int count = clients.size();
-		synchronized(clients) {
-			broadcastReliable(buildServerDisconnect(reason), false);
-			for(ClientState client : clients.values()) {
-				network.removeConnection(client.address);
-				if(client.player != null) {
-					world.remove(client.player);
-					sendRemoveEntity(client.player);
-				}
-			}
-			clients.clear();
-		}
-		if(count > 0)
-			System.out.println("Disconnected " + count + " remaining clients");
 	}
 	
 	private void sendClientConnectReply(InetSocketAddress client, boolean connected) {
@@ -356,10 +365,6 @@ public class Server {
 		packets[0] = head;
 		
 		return packets;
-	}
-	
-	public void broadcastConsoleMessage(String message) {
-		broadcastReliable(Protocol.buildConsoleMessage(message), true);
 	}
 	
 	private void broadcastReliable(byte[] data, boolean removeUnresponsive) {
