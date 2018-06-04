@@ -280,6 +280,7 @@ public class World implements Transportable, Iterable<Entity> {
 				if(e.getPositionY() < 0 || e.getShouldDelete()) {
 					onRemove.accept(entities.remove(i));
 					i = Math.max(0, i - 1);
+					size--;
 					continue;
 				}
 			}
