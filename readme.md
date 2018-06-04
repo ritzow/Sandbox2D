@@ -1,3 +1,5 @@
+![Sandbox2D](https://i.imgur.com/le6qo26.png)
+
 # Sandbox2D
 A 2D block building and destruction platformer game written in Java that uses OpenGL for graphics, OpenAL for audio, GLFW for cross-platform windowing and input, and LWJGL for bindings to the afformentioned libraries and APIs.   
 
