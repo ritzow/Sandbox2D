@@ -16,9 +16,10 @@ public final class Display {
 	
 	private volatile boolean focused;
 	
-	public Display(String title) {
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+	public Display(String title, int GLVersionMajor, int GLVersionMinor) {
+		glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, GLVersionMajor);
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, GLVersionMinor);
 		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 		glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);	
 		glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
@@ -108,10 +109,11 @@ public final class Display {
 			}
 			
 			//make the window fullscreen
-			int width = glfwGetVideoMode(glfwGetPrimaryMonitor()).width();
-			int height = glfwGetVideoMode(glfwGetPrimaryMonitor()).height();
-			int refreshRate = glfwGetVideoMode(glfwGetPrimaryMonitor()).refreshRate();
-			glfwSetWindowMonitor(displayID, glfwGetPrimaryMonitor(), 0, 0, width, height, refreshRate);
+			long monitor = glfwGetPrimaryMonitor();
+			int width = glfwGetVideoMode(monitor).width();
+			int height = glfwGetVideoMode(monitor).height();
+			int refreshRate = glfwGetVideoMode(monitor).refreshRate();
+			glfwSetWindowMonitor(displayID, monitor, 0, 0, width, height, refreshRate);
 			focus();
 		} else {
 			glfwSetWindowMonitor(displayID, 0, windowedX, windowedY, windowedWidth, windowedHeight, GLFW_DONT_CARE);

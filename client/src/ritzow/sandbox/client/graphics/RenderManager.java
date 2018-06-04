@@ -20,22 +20,20 @@ import java.util.List;
 import org.lwjgl.glfw.GLFW;
 import ritzow.sandbox.client.input.EventDelegator;
 import ritzow.sandbox.client.input.handler.FramebufferSizeHandler;
-import ritzow.sandbox.client.input.handler.WindowFocusHandler;
 
 /** Initializes OpenGL and loads data to the GPU, then renders any Renderable objects added to the List returned by getUpdatables() **/
-public final class RenderManager implements Runnable, FramebufferSizeHandler, WindowFocusHandler {
+public final class RenderManager implements FramebufferSizeHandler {
 	private volatile boolean updateViewport;
 	private volatile int framebufferWidth, framebufferHeight;
-	private final Display display;
 	private final List<Renderer> renderers;
 	
 	public RenderManager(Display display) {
-		this.display = display;
 		this.link(display.getInputManager());
 		this.renderers = new ArrayList<>();
 	}
 	
-	public void initialize() {
+	@SuppressWarnings("static-method")
+	public void initialize(Display display) {
 		display.setGraphicsContextOnThread();
 		org.lwjgl.opengl.GL.createCapabilities();
 		glfwSwapInterval(0);
@@ -44,14 +42,15 @@ public final class RenderManager implements Runnable, FramebufferSizeHandler, Wi
 		GraphicsUtility.checkErrors();
 	}
 
-	public void shutdown() {
+	public void close(Display display) {
 		renderers.clear();
 		GraphicsUtility.checkErrors();
 		GLFW.glfwMakeContextCurrent(0);
 		org.lwjgl.opengl.GL.destroy();
+		unlink(display.getInputManager());
 	}
 	
-	public void run() {
+	public void run(Display display) {
 		int width = framebufferWidth, height = framebufferHeight;
 		if(display.focused() && width > 0 && height > 0) {
 			if(updateViewport) {
@@ -83,17 +82,11 @@ public final class RenderManager implements Runnable, FramebufferSizeHandler, Wi
 		updateViewport = true;
 	}
 
-	@Override
-	public void windowFocus(boolean focused) {
-	}
-
 	public void link(EventDelegator manager) {
 		manager.framebufferSizeHandlers().add(this);
-		manager.windowFocusHandlers().add(this);
 	}
 
 	public void unlink(EventDelegator manager) {
 		manager.framebufferSizeHandlers().remove(this);
-		manager.windowFocusHandlers().remove(this);
 	}
 }

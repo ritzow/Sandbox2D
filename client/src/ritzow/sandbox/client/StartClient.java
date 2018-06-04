@@ -1,5 +1,10 @@
 package ritzow.sandbox.client;
 
+import static org.lwjgl.glfw.GLFW.glfwInit;
+import static org.lwjgl.glfw.GLFW.glfwPostEmptyEvent;
+import static org.lwjgl.glfw.GLFW.glfwTerminate;
+import static org.lwjgl.glfw.GLFW.glfwWaitEvents;
+
 import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
@@ -8,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.Map;
+import org.lwjgl.glfw.GLFWErrorCallback;
 import ritzow.sandbox.client.Client.ConnectionFailedException;
 import ritzow.sandbox.client.audio.AudioSystem;
 import ritzow.sandbox.client.audio.DefaultAudioSystem;
@@ -19,10 +25,10 @@ import ritzow.sandbox.client.graphics.*;
 import ritzow.sandbox.client.graphics.Shader.ShaderType;
 import ritzow.sandbox.client.input.ControlScheme;
 import ritzow.sandbox.client.input.EventDelegator;
-import ritzow.sandbox.client.input.EventProcessor;
 import ritzow.sandbox.client.input.controller.InteractionController;
 import ritzow.sandbox.client.input.controller.PlayerController;
 import ritzow.sandbox.client.input.controller.TrackingCameraController;
+import ritzow.sandbox.client.ui.Cursors;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.util.SharedConstants;
 import ritzow.sandbox.util.TaskQueue;
@@ -38,18 +44,57 @@ public final class StartClient {
 			System.out.print("Connecting to " + serverAddress.getHostAddress() + " on port " + serverSocket.getPort() + "... ");
 			Client client = Client.open(new InetSocketAddress(Utility.getPublicAddress(Inet4Address.class), 0), serverSocket);
 			System.out.println("connected!");
-			EventProcessor eventProcessor = new EventProcessor();
-			new Thread(() -> run(eventProcessor, client), "Game Thread").start();
-			Thread.currentThread().setName("GLFW Event Thread");
-			eventProcessor.run(); //run the event processor on this thread
+			new Thread(() -> run(client), "Game Thread").start();
+			runEventProcessor();
 		} catch(ConnectionFailedException e) {
 			System.out.println(e.getMessage());
 		}
 	}
 	
-	private static volatile boolean exit;
+	private static volatile boolean setupComplete, shouldDisplay, eventExit, gameExit;
+	private static final Object eventLock = new Object();
+	private static volatile Display display;
 	
-	private static void run(EventProcessor eventProcessor, Client client) {
+	private static void waitForEventThread() {
+		Utility.waitOnCondition(eventLock, () -> setupComplete);
+	}
+	
+	private static void signalShowDisplay() {
+		shouldDisplay = true;
+		Utility.notify(eventLock);
+	}
+	
+	private static void stopEventThread() {
+		eventExit = true;
+		glfwPostEmptyEvent();
+	}
+	
+	private static void runEventProcessor() throws IOException {
+		Thread.currentThread().setName("GLFW Event Thread");
+		if(!glfwInit())
+			throw new UnsupportedOperationException("GLFW failed to initialize");
+		GLFWErrorCallback.createPrint(System.err).set();
+		
+		Cursors.loadAll();
+		
+		display = new Display("Sandbox2D", 4, 5);
+		display.setCursor(Cursors.PICKAXE);
+
+		setupComplete = true;
+		Utility.notify(eventLock);
+		
+		Utility.waitOnCondition(eventLock, () -> shouldDisplay);
+		display.setFullscreen(true);
+		
+		while(!eventExit) {
+			glfwWaitEvents();
+		}
+		
+		display.destroy();
+		glfwTerminate();
+	}
+	
+	private static void run(Client client) {
 		//wait for the client to receive the world and return it
 		long startTime = System.nanoTime();
 		
@@ -78,8 +123,9 @@ public final class StartClient {
 		
 		audio.setVolume(1.0f);
 		
-		eventProcessor.waitForSetup();
-		EventDelegator input = eventProcessor.getDisplay().getInputManager();
+		waitForEventThread();
+		Display display = StartClient.display;
+		EventDelegator input = display.getInputManager();
 		
 		//mute audio in background
 		input.windowFocusHandlers().add(focused -> audio.setVolume(focused ? 1.0f : 0.0f));
@@ -96,44 +142,44 @@ public final class StartClient {
 		input.keyboardHandlers().add((key, scancode, action, mods) -> {
 			if(action == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
 				if(key == ControlScheme.KEYBIND_QUIT)
-					exit = true;
+					gameExit = true;
 				else if(key == ControlScheme.KEYBIND_FULLSCREEN)
-		            eventProcessor.getDisplay().toggleFullscreen();
+		            display.toggleFullscreen();
 			}
 		});
 
-		input.windowCloseHandlers().add(() -> exit = true);
-		client.setOnDisconnect(() -> exit = true);
+		input.windowCloseHandlers().add(() -> gameExit = true);
+		client.setOnDisconnect(() -> gameExit = true);
 		
 		var world = client.getWorld();
-		var renderer = eventProcessor.getDisplay().getRenderManager();
-		renderer.initialize();
+		var renderer = display.getRenderManager();
+		renderer.initialize(display);
 		renderer.getRenderers().add(createRenderer(world, cameraGrip.getCamera()));
 		
 		//display the window now that everything is set up.
-		eventProcessor.setReadyToDisplay();
+		signalShowDisplay();
 		System.out.println("Rendering started, setup took " + Utility.formatTime(startTime) + ".");
 		
 		TaskQueue queue = new TaskQueue();
 		client.setTaskQueue(queue);
 		long previousTime = System.nanoTime();
-		while(!exit) {
+		while(!gameExit) {
 			queue.run(); //process received packets
 			if(client.isConnected()) {
-				previousTime = eventProcessor.getDisplay().focused() ? Utility.updateWorld(world, previousTime, 
+				previousTime = display.focused() ? Utility.updateWorld(world, previousTime, 
 						SharedConstants.MAX_TIMESTEP, SharedConstants.TIME_SCALE_NANOSECONDS) : System.nanoTime();
 				cameraGrip.update();
 				interactionController.update();
-				renderer.run();
+				renderer.run(display);
 				Utility.sleep(1);
 			}
 		}
 		
 		System.out.print("Exiting... ");
-		renderer.shutdown();
-		eventProcessor.stop();
 		if(client.isConnected())
 			client.disconnect();
+		renderer.close(display);
+		stopEventThread();
 		audio.close();
 		System.out.println("done!");
 	}
