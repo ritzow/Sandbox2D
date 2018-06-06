@@ -7,33 +7,26 @@ import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.DatagramChannel;
 import java.util.Map;
-import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import ritzow.sandbox.util.Utility;
 
 /** Provides common functionality of the client and server. Manages incoming and outgoing packets. **/
 public class NetworkController {
 	private final DatagramChannel channel;
-	private final Queue<MessageAddressPair> reliableQueue;
 	private final Map<InetSocketAddress, ConnectionState> connections;
 	private final ThreadLocal<ByteBuffer> packets;
 	private final MessageProcessor messageProcessor;
 	private volatile boolean started, exit;
 	
 	private static final int STARTING_SEND_ID = 0;
-	
 	private static final int HEADER_SIZE = 5, MAX_PACKET_SIZE = HEADER_SIZE + Protocol.MAX_MESSAGE_LENGTH;
-	
-	/** Message Type **/
 	private static final byte RESPONSE_TYPE = 1, RELIABLE_TYPE = 2, UNRELIABLE_TYPE = 3;
 	
 	public NetworkController(InetSocketAddress bindAddress, MessageProcessor processor) throws IOException {
 		messageProcessor = processor;
 		channel = DatagramChannel.open().bind(bindAddress)
 				.setOption(StandardSocketOptions.SO_SNDBUF, MAX_PACKET_SIZE);
-		reliableQueue = new ConcurrentLinkedQueue<MessageAddressPair>();
 		connections = new ConcurrentHashMap<>();
 		packets = ThreadLocal.withInitial(() -> ByteBuffer.allocate(MAX_PACKET_SIZE));
 	}
@@ -46,6 +39,8 @@ public class NetworkController {
 	}
 	
 	public void stop() {
+		if(!started)
+			throw new IllegalStateException("network controller has not been started");
 		try {
 			exit = true;
 			channel.close();
@@ -95,23 +90,24 @@ public class NetworkController {
 			throw new IllegalArgumentException("attempts must be greater than 0");
 		if(resendInterval < 0)
 			throw new IllegalArgumentException("resendInterval must be greater than or equal to zero");
-		int messageID = getState(recipient).nextReliableSendID();
-		MessageAddressPair pair = new MessageAddressPair(recipient, messageID);
-		ByteBuffer buffer = getBuffer(RELIABLE_TYPE, messageID, data);
-		synchronized(pair) {
-			reliableQueue.add(pair);
+		ConnectionState state = getState(recipient);
+		synchronized(state) { //prevent other sendReliable calls from immediately queuing the next message
+			var pair = state.queue();
+			ByteBuffer buffer = getBuffer(RELIABLE_TYPE, pair.messageID, data);
 			int attemptsRemaining = attempts;
-			while(attemptsRemaining > 0 && !pair.received && channel.isOpen()) {
-				try {
-					channel.send(buffer, recipient);
-					attemptsRemaining--;
-					pair.wait(resendInterval); //wait for ack to be received by network controller receiver
-				} catch (InterruptedException | IOException e) {
-					throw new RuntimeException(e);
-				}
+			synchronized(pair) {
+				while(attemptsRemaining > 0 && !pair.received && channel.isOpen()) {
+					try {
+						if(attemptsRemaining < attempts)
+							System.err.println(attemptsRemaining + " attempts remaining");
+						channel.send(buffer, recipient);
+						attemptsRemaining--;
+						pair.wait(resendInterval); //wait for ack to be received by network controller receiver	
+					} catch(InterruptedException | IOException e) {
+						throw new RuntimeException(e);
+					}	
+				}	
 			}
-			
-			reliableQueue.remove(pair);
 			if(!pair.received)
 				throw new TimeoutException();
 		}
@@ -182,68 +178,62 @@ public class NetworkController {
 			throw new IllegalArgumentException("sender is null");
 		//ignore received packets that are not large enough to contain the full header
 		if(buffer.position() >= HEADER_SIZE) {
-			//type of message (RESPONSE, RELIABLE, UNRELIABLE)
-			byte type = buffer.get(0);
-			
-			//received ID or messageID for ack.
-			int messageID = buffer.getInt(1);
-			
+			byte type = buffer.get(0); //type of message (RESPONSE, RELIABLE, UNRELIABLE)
+			int messageID = buffer.getInt(1); //received ID or messageID for ack.
+			ConnectionState state = getState(sender); //messageIDs and send queue
 			switch(type) {
 			case RESPONSE_TYPE:
-				synchronized(reliableQueue) {
-					for(MessageAddressPair pair : reliableQueue) {
-						if(pair.recipient.equals(sender)) { //find first message addressed to the sender of the ack
-							if(pair.messageID == messageID) { //if the ack is for the correct message (oldest awaiting ack)
-								pair.received = true;
-								Utility.notify(pair); //notify waiting send method
-							} break;
-						}
-					}
-				} break;
+				state.process(messageID);
+				break; //else drop the response
 			case RELIABLE_TYPE:
-				ConnectionState reliableState = getState(sender);
-				if(messageID == reliableState.nextReliableReceiveID) {
+				if(messageID == state.nextReliableReceiveID) {
 					//if the message is the next one, process it and update last message
 					sendResponse(sender, sendBuffer, messageID);
-					reliableState.nextReliableReceiveID++;
+					state.nextReliableReceiveID++;
 					messageProcessor.process(sender, getDataCopy(buffer));
-				} else if(messageID < reliableState.nextReliableReceiveID) { //message already received
+				} else if(messageID < state.nextReliableReceiveID) { //message already received
 					sendResponse(sender, sendBuffer, messageID);
 				} break; //else: message received too early
 			case UNRELIABLE_TYPE:
-				ConnectionState unreliableState = getState(sender);
-				if(messageID >= unreliableState.nextUnreliableReceiveID) {
-					unreliableState.nextUnreliableReceiveID = messageID + 1;
+				if(messageID >= state.nextUnreliableReceiveID) {
+					state.nextUnreliableReceiveID = messageID + 1;
 					messageProcessor.process(sender, getDataCopy(buffer));
 				} break; //else: message is outdated
 			}
 		}
 	}
 	
-	private static final class MessageAddressPair {
-		private final InetSocketAddress recipient;
-		private final int messageID;
-		private volatile boolean received;
+	private static final class PacketSendEntry {
+		public final int messageID;
+		public volatile boolean received;
 		
-		public MessageAddressPair(InetSocketAddress recipient, int messageID) {
+		public PacketSendEntry(int messageID) {
 			this.messageID = messageID;
-			this.recipient = recipient;
 		}
 	}
 	
 	private static final class ConnectionState {
-	    private int nextReliableReceiveID, nextUnreliableReceiveID;
-	    private final AtomicInteger reliableSendID, unreliableSendID;
+	    public int nextReliableReceiveID, nextUnreliableReceiveID;
+	    private final AtomicInteger unreliableSendID;
+	    private volatile PacketSendEntry current;
 	    
 	    public ConnectionState() {
 	        this.nextReliableReceiveID = STARTING_SEND_ID;
 	        this.nextUnreliableReceiveID = STARTING_SEND_ID;
-	        this.reliableSendID = new AtomicInteger(STARTING_SEND_ID);
 	        this.unreliableSendID = new AtomicInteger(STARTING_SEND_ID);
+	        this.current = new PacketSendEntry(STARTING_SEND_ID - 1);
 	    }
 	    
-	    public int nextReliableSendID() {
-	    	return reliableSendID.getAndIncrement();
+	    public PacketSendEntry queue() {
+	    	return current = new PacketSendEntry(current.messageID + 1);
+	    }
+	    
+	    public void process(int messageID) {
+	    	var pair = current;
+			if(!pair.received && pair.messageID == messageID) {
+				pair.received = true;
+				Utility.notify(pair);
+			} 
 	    }
 	    
 	    public int nextUnreliableSendID() {
