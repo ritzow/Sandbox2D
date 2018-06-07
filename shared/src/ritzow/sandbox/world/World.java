@@ -314,6 +314,15 @@ public class World implements Transportable, Iterable<Entity> {
 			if(e.collidesWithBlocks()) {
 				resolveBlockCollisions(e, time);
 			}
+			
+			//again remove entities that are below the world or are flagged for deletion
+			if(onRemove != null) {
+				if(e.getPositionY() < 0 || e.getShouldDelete()) {
+					onRemove.accept(entities.remove(i));
+					i = Math.max(0, i - 1);
+					size--;
+				}
+			}
 		}
 		isEntitiesModifiable = true;
 	}
@@ -484,7 +493,7 @@ public class World implements Transportable, Iterable<Entity> {
 		        	}
 		        }
 		    }
-			e.onCollision(world, block, blockX, blockY, time);
+			e.onCollision(world, block, Math.round(blockX), Math.round(blockY), time);
 		    return true;
 		}
 		return false;

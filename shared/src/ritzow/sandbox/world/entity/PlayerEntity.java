@@ -92,7 +92,7 @@ public class PlayerEntity extends Entity implements Living {
 			b2 = Utility.clampUpperBound(blocks.getHeight()-1, Math.round(y2));
 		for(int x = a1; x <= a2; x++) {
 			for(int y = b1; y <= b2; y++) {
-				if(blocks.isBlock(x, y))
+				if(blocks.isBlock(x, y) && blocks.get(x, y).isSolid())
 					return true;
 			}
 		}

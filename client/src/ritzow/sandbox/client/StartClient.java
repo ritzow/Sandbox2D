@@ -42,7 +42,7 @@ public final class StartClient {
 		
 		try {
 			System.out.print("Connecting to " + serverAddress.getHostAddress() + " on port " + serverSocket.getPort() + "... ");
-			Client client = Client.open(new InetSocketAddress(Utility.getPublicAddress(Inet4Address.class), 0), serverSocket);
+			Client client = Client.connect(new InetSocketAddress(Utility.getPublicAddress(Inet4Address.class), 0), serverSocket);
 			System.out.println("connected!");
 			new Thread(() -> run(client), "Game Thread").start();
 			runEventProcessor();
@@ -101,7 +101,7 @@ public final class StartClient {
 		AudioSystem audio = OpenALAudioSystem.getAudioSystem();
 		DefaultAudioSystem.setDefault(audio);
 		
-		var soundFiles = Map.ofEntries(
+		var sounds = Map.ofEntries(
 			Map.entry("dig.wav", Sound.BLOCK_BREAK),
 			Map.entry("place.wav", Sound.BLOCK_PLACE),
 			Map.entry("pop.wav", Sound.POP),
@@ -109,10 +109,11 @@ public final class StartClient {
 			Map.entry("snap.wav", Sound.SNAP)
 		);
 		
-		for(var entry : soundFiles.entrySet()) {
+		Path directory = Path.of("resources/assets/audio");
+		
+		for(var entry : sounds.entrySet()) {
 			try {
-				SoundInfo info = WAVEDecoder.decode(
-						Files.newInputStream(Path.of("resources/assets/audio", entry.getKey())));
+				SoundInfo info = WAVEDecoder.decode(Files.newInputStream(directory.resolve(entry.getKey())));
 				audio.registerSound(entry.getValue().code(), info);
 			} catch(NoSuchFileException e) {
 				System.out.println("The file " + e.getFile() + " does not exist");
@@ -136,7 +137,7 @@ public final class StartClient {
 		var playerController = new PlayerController(client);
 		playerController.link(input);
 		
-		var interactionController = new InteractionController(client, cameraGrip.getCamera(), 200, 300, 5);
+		var interactionController = new InteractionController(client, cameraGrip.getCamera(), 5);
 		interactionController.link(input);
 		
 		input.keyboardHandlers().add((key, scancode, action, mods) -> {
@@ -158,10 +159,12 @@ public final class StartClient {
 		
 		//display the window now that everything is set up.
 		signalShowDisplay();
-		System.out.println("Rendering started, setup took " + Utility.formatTime(startTime) + ".");
+		System.out.println("Rendering started, setup took " + Utility.formatTime(Utility.nanosSince(startTime)) + ".");
 		
 		TaskQueue queue = new TaskQueue();
-		client.setTaskQueue(queue);
+		client.setExecutor(runnable -> { //lambda is called from receiving thread
+			queue.add(runnable);
+		});
 		long previousTime = System.nanoTime();
 		while(!gameExit) {
 			queue.run(); //process received packets
