@@ -2,13 +2,11 @@ package ritzow.sandbox.server;
 
 public class ClientBadDataException extends RuntimeException {
 
-	private static final long serialVersionUID = 1L;
-
 	public ClientBadDataException() {
-		super();
+		super(null, null, false, false);
 	}
 	
 	public ClientBadDataException(String reason) {
-		super(reason);
+		super(reason, null, false, false);
 	}
 }

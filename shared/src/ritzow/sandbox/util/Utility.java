@@ -55,10 +55,6 @@ public final class Utility {
 		}
 	}
 	
-	public interface GridAction {
-		void perform(int x, int y);
-	}
-	
 	public static int clampLowerBound(int min, float value) {
 		return Math.max(min, (int)Math.floor(value));
 	}
@@ -67,7 +63,11 @@ public final class Utility {
 		return Math.min(max, (int)Math.ceil(value));
 	}
 	
-	public static void performAction(BlockGrid grid, float leftX, float rightX, float bottomY, float topY, GridAction action) {
+	public interface GridAction {
+		void perform(int x, int y);
+	}
+	
+	public static void forEachBlock(BlockGrid grid, float leftX, float rightX, float bottomY, float topY, GridAction action) {
 		//calculate block grid bounds TODO fix after adding chunk system, allow for negatives
 		int leftBound = 	clampLowerBound(0, leftX);
 		int rightBound = 	clampUpperBound(grid.getWidth()-1, rightX);
@@ -218,7 +218,6 @@ public final class Utility {
 	
 	public static String formatTime(long nanoseconds) {
 		String units; double value;
-		nanoseconds = System.nanoTime() - nanoseconds;
 		if(nanoseconds < 1000) {
 			units = "ns";
 			value = nanoseconds;

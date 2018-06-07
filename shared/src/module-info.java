@@ -14,5 +14,4 @@ module ritzow.sandbox.shared {
 	exports ritzow.sandbox.world.entity;
 	exports ritzow.sandbox.world.block;
 	exports ritzow.sandbox.data;
-	requires java.base;
 }

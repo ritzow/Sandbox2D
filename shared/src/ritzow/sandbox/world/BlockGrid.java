@@ -107,6 +107,10 @@ public final class BlockGrid implements Transportable {
 		}
 	}
 	
+	public boolean destroy(World world, float x, float y) {
+		return destroy(world, Math.round(x), Math.round(y));
+	}
+	
 	public boolean destroy(World world, int x, int y) {
 		synchronized(blocks) {
 			if(isBlock(x, y)) {
@@ -117,6 +121,10 @@ public final class BlockGrid implements Transportable {
 			}	
 		}
 		return false;
+	}
+	
+	public boolean place(World world, float x, float y, Block block) {
+		return place(world, Math.round(x), Math.round(y), block);
 	}
 	
 	public boolean place(World world, int x, int y, Block block) {
