@@ -10,7 +10,6 @@ import ritzow.sandbox.client.input.handler.KeyHandler;
 import ritzow.sandbox.client.input.handler.MouseButtonHandler;
 import ritzow.sandbox.client.util.ClientUtility;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
-import ritzow.sandbox.client.world.item.ClientBlockItem;
 import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.BlockGrid;
 
@@ -18,19 +17,16 @@ public final class InteractionController implements Controller, MouseButtonHandl
 	private volatile boolean primaryAction, secondaryAction;
 	private volatile int frameWidth, frameHeight;
 	private volatile int mouseX, mouseY;
-	
-	private long cooldownPlace, cooldownBreak;
 	private long lastPlace, lastBreak;
 	private float range;
-	
 	private final Camera camera;
 	private final Client client;
 	
-	public InteractionController(Client client, Camera camera, long breakCooldownMillis, long placeCooldownMillis, float range) {
+	private static final long COOLDOWN_THROW = Utility.millisToNanos(50), COOLDOWN_BREAK = Utility.millisToNanos(200);
+	
+	public InteractionController(Client client, Camera camera, float range) {
 		this.client = client;
 		this.camera = camera;
-		this.cooldownBreak = Utility.millisToNanos(breakCooldownMillis);
-		this.cooldownPlace = Utility.millisToNanos(placeCooldownMillis);
 		this.range = range;
 	}
 	
@@ -40,28 +36,34 @@ public final class InteractionController implements Controller, MouseButtonHandl
 	}
 	
 	protected void update(Camera camera, int frameWidth, int frameHeight) {
-		int blockX = Math.round(ClientUtility.pixelHorizontalToWorld(camera, mouseX, frameWidth, frameHeight));
-		int blockY = Math.round(ClientUtility.pixelVerticalToWorld(camera, mouseY, frameWidth, frameHeight));
-		ClientPlayerEntity player = client.getPlayer();
-		BlockGrid front = client.getWorld().getForeground();
-		BlockGrid back = client.getWorld().getBackground();
-		if(front.isValid(blockX, blockY)) {
-			if(primaryAction && !breakCooldownActive() && inRange(player, blockX, blockY)) {
-				if(front.isBlock(blockX, blockY)) {
-					client.sendBlockBreak(blockX, blockY);
-					lastBreak = System.nanoTime();
-				}
-			} else if(secondaryAction && !placeCooldownActive() && inRange(player, blockX, blockY)) {
-				if(player.getSelected() instanceof ClientBlockItem) {
-					ClientBlockItem item = (ClientBlockItem)player.getSelected();
-					if((back.place(client.getWorld(), blockX, blockY, item.getBlock()) || 
-						front.place(client.getWorld(), blockX, blockY, item.getBlock()))) {
-						player.removeSelected();
-						lastPlace = System.nanoTime();
-					}
-				}
-			}	
+		if(primaryAction && !breakCooldownActive()) {
+			int blockX = Math.round(ClientUtility.pixelHorizontalToWorld(camera, mouseX, frameWidth, frameHeight));
+			int blockY = Math.round(ClientUtility.pixelVerticalToWorld(camera, mouseY, frameWidth, frameHeight));
+			ClientPlayerEntity player = client.getPlayer();
+			BlockGrid front = client.getWorld().getForeground();
+			if(front.isValid(blockX, blockY) && inRange(player, blockX, blockY) && front.isBlock(blockX, blockY)) {
+				client.sendBlockBreak(blockX, blockY);
+				lastBreak = System.nanoTime();
+			}
+		} else if(secondaryAction && !throwCooldownActive()) {
+			float worldX = ClientUtility.pixelHorizontalToWorld(camera, mouseX, frameWidth, frameHeight);
+			float worldY = ClientUtility.pixelVerticalToWorld(camera, mouseY, frameWidth, frameHeight);
+			ClientPlayerEntity player = client.getPlayer();
+			client.sendBombThrow((float)Math.atan2(worldY - player.getPositionY(), worldX - player.getPositionX()));
+			//lastPlace = System.nanoTime();
 		}
+		
+//		else if(secondaryAction && !placeCooldownActive() && inRange(player, blockX, blockY)) {
+//		BlockGrid back = client.getWorld().getBackground();
+//		if(player.getSelected() instanceof ClientBlockItem) {
+//			ClientBlockItem item = (ClientBlockItem)player.getSelected();
+//			if((back.place(client.getWorld(), blockX, blockY, item.getBlock()) || 
+//				front.place(client.getWorld(), blockX, blockY, item.getBlock()))) {
+//				player.removeSelected();
+//				lastPlace = System.nanoTime();
+//			}
+//		}
+//	}	
 	}
 	
 	private boolean inRange(ClientPlayerEntity player, int blockX, int blockY) {
@@ -69,11 +71,11 @@ public final class InteractionController implements Controller, MouseButtonHandl
 	}
 	
 	private boolean breakCooldownActive() {
-		return Utility.nanosSince(lastBreak) < cooldownBreak;
+		return Utility.nanosSince(lastBreak) < COOLDOWN_BREAK;
 	}
 	
-	private boolean placeCooldownActive() {
-		return Utility.nanosSince(lastPlace) < cooldownPlace;
+	private boolean throwCooldownActive() {
+		return Utility.nanosSince(lastPlace) < COOLDOWN_THROW;
 	}
 
 	public void link(EventDelegator input) {

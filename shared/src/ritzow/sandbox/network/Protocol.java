@@ -10,6 +10,11 @@ public final class Protocol {
 	/** The Charset for text encoding used by the client and server **/
 	public static final Charset CHARSET = Charset.forName("UTF-8");
 	
+	public static final int 
+			TIMEOUT_DISCONNECT = 2000,
+			RESEND_COUNT = 10,
+			RESEND_INTERVAL = TIMEOUT_DISCONNECT/RESEND_COUNT;
+	
 	public static final int DEFAULT_SERVER_UDP_PORT = 50000;
 	
 	/** The maximum length a sent message can be in bytes **/
@@ -32,7 +37,9 @@ public final class Protocol {
 		CLIENT_PLAYER_ACTION = 12,
 		CLIENT_BREAK_BLOCK = 13,
 		PING = 14,
-		SERVER_PLAYER_ACTION = 15;
+		SERVER_PLAYER_ACTION = 15,
+		CLIENT_BOMB_THROW = 16,
+		CLIENT_WORLD_BUILT = 17;
 	
 	/** Serialization Type ID **/
 	public static final short
@@ -45,7 +52,8 @@ public final class Protocol {
 		INVENTORY = 7,
 		DIRT_BLOCK = 8,
 		GRASS_BLOCK = 9,
-		RED_BLOCK = 10;
+		RED_BLOCK = 10,
+		BOMB_ENTITY = 11;
 	
 	public static byte[] buildConsoleMessage(String message) {
 		byte[] msg = message.getBytes(Protocol.CHARSET);

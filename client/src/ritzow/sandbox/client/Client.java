@@ -3,6 +3,9 @@ package ritzow.sandbox.client;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import ritzow.sandbox.client.util.SerializationProvider;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
 import ritzow.sandbox.data.ByteArrayDataReader;
@@ -12,7 +15,6 @@ import ritzow.sandbox.network.NetworkController;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.network.Protocol.PlayerAction;
 import ritzow.sandbox.network.TimeoutException;
-import ritzow.sandbox.util.TaskQueue;
 import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.Entity;
@@ -25,7 +27,7 @@ public class Client {
 	private volatile byte connectionStatus;
 	private volatile ConnectionState state;
 	private Runnable disconnectAction;
-	private TaskQueue taskQueue;
+	private Executor runner;
 	
 	private static final byte STATUS_NOT_CONNECTED = 0, STATUS_REJECTED = 1, STATUS_CONNECTED = 2;
 	
@@ -36,7 +38,7 @@ public class Client {
 		volatile int worldBytesRemaining;
 	}
 	
-	public static final class ConnectionFailedException extends RuntimeException {
+	public static final class ConnectionFailedException extends IOException {
 		public ConnectionFailedException(String message) {
 			super(message);
 		}
@@ -49,30 +51,52 @@ public class Client {
 	 * @throws SocketException if the local address could not be bound to.
 	 * @throws ConnectionFailedException if the client could not connect to the specified server
 	 */
-	public static Client open(InetSocketAddress bindAddress, InetSocketAddress serverAddress) 
+	public static Client connect(InetSocketAddress bindAddress, InetSocketAddress serverAddress) 
 			throws IOException, ConnectionFailedException {
 		return new Client(bindAddress, serverAddress);
 	}
 	
-	private Client(InetSocketAddress bindAddress, InetSocketAddress serverAddress) throws IOException, ConnectionFailedException {
+	private Client(InetSocketAddress bindAddress, InetSocketAddress serverAddress) throws IOException {
 		network = new NetworkController(bindAddress, this::process);
 		worldLock = new Object();
 		playerLock = new Object();
 		connectionLock = new Object();
 		this.serverAddress = serverAddress;
+		this.runner = Executors.newSingleThreadExecutor();
 		connect();
 	}
 	
-	private void connect() {
+	/** Redirect all received message processing to the provided TaskQueue **/
+	public void setExecutor(Executor processor) {
+		if(runner instanceof ExecutorService)
+			((ExecutorService)runner).shutdownNow().forEach(processor::execute); //transfer remaining tasks
+		this.runner = processor;
+	}
+	
+	public void setOnDisconnect(Runnable task) {
+		disconnectAction = task;
+	}
+	
+	public InetSocketAddress getServerAddress() {
+		return serverAddress;
+	}
+	
+	public boolean isConnected() {
+		return connectionStatus == STATUS_CONNECTED;
+	}
+	
+	private void connect() throws ConnectionFailedException {
 		network.start();
 		synchronized(serverAddress) {
 			try {
 				byte[] packet = new byte[2];
 				ByteUtil.putShort(packet, 0, Protocol.CLIENT_CONNECT_REQUEST);
-				network.sendReliable(serverAddress, packet, 10, 100);
+				network.sendReliable(serverAddress, packet, Protocol.RESEND_COUNT, Protocol.RESEND_INTERVAL);
 			} catch(TimeoutException e) { //if client receives no ack, disconnect and throw
 				disconnect(false);
 				throw new ConnectionFailedException("request timed out");
+			} catch(IOException e) {
+				e.printStackTrace();
 			}
 			//received ack on request packet, wait one second for response
 			Utility.waitOnCondition(serverAddress, 1000, () -> connectionStatus != STATUS_NOT_CONNECTED);
@@ -93,11 +117,12 @@ public class Client {
 		try {
 			if(!sender.equals(serverAddress))
 				return;
-			DataReader reader = new ByteArrayDataReader(data);
-			short type = reader.readShort();
-			if(taskQueue == null)
+			runner.execute(() -> {
+				//TODO use a single byte array data reader, with switching backing arrays, for no var capture?
+				DataReader reader = new ByteArrayDataReader(data); //variable capture byte array
+				short type = reader.readShort();
 				onReceive(type, reader);
-			else taskQueue.add(() -> onReceive(type, reader));
+			});
 		} catch(RuntimeException e) {
 			e.printStackTrace();
 			disconnect(false);
@@ -152,39 +177,29 @@ public class Client {
 		}
 	}
 	
-	public void setOnDisconnect(Runnable task) {
-		disconnectAction = task;
-	}
-	
-	public InetSocketAddress getServerAddress() {
-		return serverAddress;
-	}
-	
-	public boolean isConnected() {
-		return connectionStatus == STATUS_CONNECTED;
-	}
-	
 	public void disconnect() {
 		checkConnected();
 		disconnect(true);
 	}
 	
-	/** Redirect all received message processing to the provided TaskQueue **/
-	public void setTaskQueue(TaskQueue processor) {
-		taskQueue = processor;
-	}
-	
 	private void disconnect(boolean notifyServer) {
 		connectionStatus = STATUS_NOT_CONNECTED;
-		if(notifyServer) {
-			byte[] packet = new byte[2];
-			ByteUtil.putShort(packet, 0, Protocol.CLIENT_DISCONNECT);
-			network.sendReliable(serverAddress, packet, 10, 100);
+		try {
+			if(notifyServer) {
+				byte[] packet = new byte[2];
+				ByteUtil.putShort(packet, 0, Protocol.CLIENT_DISCONNECT);
+				network.sendReliable(serverAddress, packet, Protocol.RESEND_COUNT, Protocol.RESEND_INTERVAL);	
+			}
+		} catch(TimeoutException e) {
+			//do nothing
+		} catch(IOException e) {
+			e.printStackTrace();
+		} finally {
+			network.stop();
+			if(disconnectAction != null)
+				disconnectAction.run();
+			state = null;	
 		}
-		network.stop();
-		if(disconnectAction != null)
-			disconnectAction.run();
-		state = null;
 	}
 	
 	public World getWorld() {
@@ -206,18 +221,31 @@ public class Client {
 	
 	private void sendReliable(byte[] data) {
 		try{
-			network.sendReliable(serverAddress, data, 10, 100);
+			network.sendReliable(serverAddress, data, Protocol.RESEND_COUNT, Protocol.RESEND_INTERVAL);
 		} catch(TimeoutException e) {
 			disconnect(false);
-		}		
+		} catch(IOException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	@SuppressWarnings("unused")
 	private void sendUnreliable(byte[] data) {
 		checkConnected();
-		network.sendUnreliable(serverAddress, data);
+		try {
+			network.sendUnreliable(serverAddress, data);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
-
+	
+	public void sendBombThrow(float angle) {
+		byte[] packet = new byte[2 + 4];
+		ByteUtil.putShort(packet, 0, Protocol.CLIENT_BOMB_THROW);
+		ByteUtil.putFloat(packet, 2, angle);
+		sendReliable(packet);
+	}
+	
 	public void sendBlockBreak(int x, int y) {
 		byte[] packet = new byte[10];
 		ByteUtil.putShort(packet, 0, Protocol.CLIENT_BREAK_BLOCK);
@@ -238,10 +266,17 @@ public class Client {
 		}
 	}
 	
+	private void sendWorldBuilt() {
+		byte[] packet = new byte[2];
+		ByteUtil.putShort(packet, 0, Protocol.CLIENT_WORLD_BUILT);
+		sendReliable(packet);
+	}
+	
 	//Game Functionality and Processing
 	
+	@SuppressWarnings("unchecked")
 	private <T extends Entity> T getEntityFromID(int ID) {
-		for(Entity e : getWorld()) {
+		for(Entity e : getWorld()) { //block until world is received so no NPEs happen
 			if(e.getID() == ID) {
 				return (T)e;
 			}
@@ -313,9 +348,16 @@ public class Client {
 			int remaining = data.remaining();
 			ByteUtil.copy(data.readBytes(remaining), state.worldData, state.worldData.length - state.worldBytesRemaining);
 			if((state.worldBytesRemaining -= remaining) == 0) {
+//				new Thread(() -> {
+//					
+//				}, "World Builder").start();
+				System.out.print("Building world... ");
+				long start = System.nanoTime();
 				state.world = SerializationProvider.getProvider().deserialize(ByteUtil.decompress(state.worldData));
 				state.worldData = null; //release the raw data to the garbage collector!
+				sendWorldBuilt(); //notify server that world has been set up. TODO causing stall because running in receive thread
 				Utility.notify(worldLock);
+				System.out.println("took " + Utility.formatTime(Utility.nanosSince(start)) + ".");
 			}
 		}
 	}
