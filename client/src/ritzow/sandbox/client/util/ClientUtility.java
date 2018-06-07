@@ -25,7 +25,7 @@ public class ClientUtility {
 	
 	public static float getViewLeftBound(Camera camera, int framebufferWidth, int framebufferHeight) {
 		//far left of screen after accounting for aspect ratio, in world coordinates
-		return -getViewRightBound(camera, framebufferWidth, framebufferHeight);
+		return getViewRightBound(camera, -framebufferWidth, framebufferHeight);
 	}
 	
 	//width and height for any future need
@@ -35,6 +35,6 @@ public class ClientUtility {
 	
 	//width and height for any future need
 	public static float getViewBottomBound(Camera camera, int framebufferWidth, int framebufferHeight) {
-		return -getViewTopBound(camera, framebufferWidth, framebufferHeight);
+		return -1/camera.getZoom() + camera.getPositionY();
 	}
 }
