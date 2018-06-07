@@ -508,9 +508,11 @@ public class Server {
 		try {
 			sendReliableThrow(client, data);
 		} catch(TimeoutException e) {
-			if(removeUnresponsive && isConnected(client.address)) {
-				removeClient(client);
-				System.out.println(getForcefulDisconnectMessage(client, "client unresponsive"));
+			synchronized(client) { //prevent other threads from disconnecting client at the same time
+				if(removeUnresponsive && isConnected(client.address)) {
+					removeClient(client);
+					System.out.println(getForcefulDisconnectMessage(client, "client unresponsive"));
+				}	
 			}
 		}
 	}

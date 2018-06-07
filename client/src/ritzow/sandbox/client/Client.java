@@ -20,6 +20,7 @@ import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.Entity;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
+//TODO run message sending in its own thread, optimize message sending for single thread
 public class Client {
 	private final InetSocketAddress serverAddress;
 	private final NetworkController network;

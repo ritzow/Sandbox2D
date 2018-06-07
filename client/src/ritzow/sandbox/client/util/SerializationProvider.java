@@ -17,7 +17,7 @@ public final class SerializationProvider {
 			.register(Protocol.BLOCK_GRID, BlockGrid.class, BlockGrid::new)
 			.register(Protocol.WORLD, World.class, World::new)
 			.register(Protocol.BLOCK_ITEM, ClientBlockItem.class, ClientBlockItem::new)
-			.register(Protocol.DIRT_BLOCK, ClientDirtBlock.class, ClientDirtBlock::new)
+			.register(Protocol.DIRT_BLOCK, ClientDirtBlock.class, ClientDirtBlock::getSingleton)
 			.register(Protocol.GRASS_BLOCK, ClientGrassBlock.class, ClientGrassBlock::new)
 			.register(Protocol.PLAYER_ENTITY, ClientPlayerEntity.class, ClientPlayerEntity::new)
 			.register(Protocol.INVENTORY, Inventory.class, Inventory::new)
