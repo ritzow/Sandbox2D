@@ -122,7 +122,12 @@ public class Client {
 				//TODO use a single byte array data reader, with switching backing arrays, for no var capture?
 				DataReader reader = new ByteArrayDataReader(data); //variable capture byte array
 				short type = reader.readShort();
-				onReceive(type, reader);
+				try {
+					onReceive(type, reader);	
+				} catch(RuntimeException e) {
+					System.err.println("Exception thrown by onReceive: " + e);
+					disconnect();
+				}
 			});
 		} catch(RuntimeException e) {
 			e.printStackTrace();
