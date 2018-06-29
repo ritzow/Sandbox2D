@@ -22,7 +22,7 @@ public final class InteractionController implements Controller, MouseButtonHandl
 	private final Camera camera;
 	private final Client client;
 	
-	private static final long COOLDOWN_THROW = Utility.millisToNanos(50), COOLDOWN_BREAK = Utility.millisToNanos(200);
+	private static final long COOLDOWN_THROW = Utility.millisToNanos(200), COOLDOWN_BREAK = Utility.millisToNanos(200);
 	
 	public InteractionController(Client client, Camera camera, float range) {
 		this.client = client;
@@ -36,7 +36,7 @@ public final class InteractionController implements Controller, MouseButtonHandl
 	}
 	
 	protected void update(Camera camera, int frameWidth, int frameHeight) {
-		if(primaryAction && !breakCooldownActive()) {
+		if(primaryAction && breakAllowed()) {
 			int blockX = Math.round(ClientUtility.pixelHorizontalToWorld(camera, mouseX, frameWidth, frameHeight));
 			int blockY = Math.round(ClientUtility.pixelVerticalToWorld(camera, mouseY, frameWidth, frameHeight));
 			ClientPlayerEntity player = client.getPlayer();
@@ -45,12 +45,12 @@ public final class InteractionController implements Controller, MouseButtonHandl
 				client.sendBlockBreak(blockX, blockY);
 				lastBreak = System.nanoTime();
 			}
-		} else if(secondaryAction && !throwCooldownActive()) {
+		} else if(secondaryAction && throwAllowed()) {
 			float worldX = ClientUtility.pixelHorizontalToWorld(camera, mouseX, frameWidth, frameHeight);
 			float worldY = ClientUtility.pixelVerticalToWorld(camera, mouseY, frameWidth, frameHeight);
 			ClientPlayerEntity player = client.getPlayer();
 			client.sendBombThrow((float)Math.atan2(worldY - player.getPositionY(), worldX - player.getPositionX()));
-			//lastPlace = System.nanoTime();
+			lastPlace = System.nanoTime();
 		}
 		
 //		else if(secondaryAction && !placeCooldownActive() && inRange(player, blockX, blockY)) {
@@ -70,12 +70,12 @@ public final class InteractionController implements Controller, MouseButtonHandl
 		return Utility.withinDistance(player.getPositionX(), player.getPositionY(), blockX, blockY, range);
 	}
 	
-	private boolean breakCooldownActive() {
-		return Utility.nanosSince(lastBreak) < COOLDOWN_BREAK;
+	private boolean breakAllowed() {
+		return Utility.nanosSince(lastBreak) > COOLDOWN_BREAK;
 	}
 	
-	private boolean throwCooldownActive() {
-		return Utility.nanosSince(lastPlace) < COOLDOWN_THROW;
+	private boolean throwAllowed() {
+		return Utility.nanosSince(lastPlace) > COOLDOWN_THROW;
 	}
 
 	public void link(EventDelegator input) {

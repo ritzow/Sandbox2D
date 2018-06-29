@@ -30,7 +30,7 @@ public final class StartServer {
 			
 			//if a save file exists, load it, otherwise generate a world
 			World world = Files.exists(saveFile) ? 
-					loadWorld(saveFile) : generateWorld(100, 50);
+					loadWorld(saveFile) : generateWorld(100, 100);
 			server.start(world);
 			
 			//read user input commands

@@ -44,7 +44,14 @@ public final class StartClient {
 			System.out.print("Connecting to " + serverAddress.getHostAddress() + " on port " + serverSocket.getPort() + "... ");
 			Client client = Client.connect(new InetSocketAddress(Utility.getPublicAddress(Inet4Address.class), 0), serverSocket);
 			System.out.println("connected!");
-			new Thread(() -> run(client), "Game Thread").start();
+			new Thread(() -> {
+				try {
+					runGame(client);
+				} catch (IOException e) {
+					stopEventThread();
+					e.printStackTrace();
+				}
+			}, "Game Thread").start();
 			runEventProcessor();
 		} catch(ConnectionFailedException e) {
 			System.out.println(e.getMessage());
@@ -94,11 +101,11 @@ public final class StartClient {
 		glfwTerminate();
 	}
 	
-	private static void run(Client client) {
-		//wait for the client to receive the world and return it
+	private static void runGame(Client client) throws IOException {
 		long startTime = System.nanoTime();
 		
 		AudioSystem audio = OpenALAudioSystem.getAudioSystem();
+		audio.setVolume(1.0f);
 		DefaultAudioSystem.setDefault(audio);
 		
 		var sounds = Map.ofEntries(
@@ -122,16 +129,14 @@ public final class StartClient {
 			}
 		}
 		
-		audio.setVolume(1.0f);
-		
 		waitForEventThread();
 		Display display = StartClient.display;
-		EventDelegator input = display.getInputManager();
+		EventDelegator input = display.getEventDelegator();
 		
 		//mute audio in background
 		input.windowFocusHandlers().add(focused -> audio.setVolume(focused ? 1.0f : 0.0f));
 		
-		var cameraGrip = new TrackingCameraController(new Camera(0, 0, 1), audio, client.getPlayer(), 0.005f, 0.001f, 0.6f);
+		var cameraGrip = new TrackingCameraController(new Camera(0, 0, 1), audio, client.getPlayer(), 0.005f, 0.05f, 0.6f);
 		cameraGrip.link(input);
 		
 		var playerController = new PlayerController(client);
@@ -162,9 +167,8 @@ public final class StartClient {
 		System.out.println("Rendering started, setup took " + Utility.formatTime(Utility.nanosSince(startTime)) + ".");
 		
 		TaskQueue queue = new TaskQueue();
-		client.setExecutor(runnable -> { //lambda is called from receiving thread
-			queue.add(runnable);
-		});
+		 //lambda is called from receiving thread
+		client.setExecutor(queue::add);
 		long previousTime = System.nanoTime();
 		while(!gameExit) {
 			queue.run(); //process received packets
@@ -188,38 +192,36 @@ public final class StartClient {
 	}
 	
 	//to be run on game update thread (rendering thread)
-	private static ClientWorldRenderer createRenderer(World world, Camera camera) {
-		try {
-			int indices = GraphicsUtility.uploadIndexData(0, 1, 2, 0, 2, 3);
-			
-			int positions = GraphicsUtility.uploadVertexData(
-					-0.5f,	 0.5f,
-					-0.5f,	-0.5f,
-					0.5f,	-0.5f,
-					0.5f,	 0.5f
-			);
-			
-			TextureData dirt = Textures.loadTextureName("dirt"),
-						grass = Textures.loadTextureName("grass"),
-						face = Textures.loadTextureName("greenFace"),
-						red = Textures.loadTextureName("redSquare");
-			TextureAtlas atlas = Textures.buildAtlas(grass, dirt, face, red);
-			
-			ModelRenderProgram modelProgram = new ModelRenderProgram(
-					new Shader(Files.newInputStream(Path.of("resources/shaders/modelVertexShader")), ShaderType.VERTEX),
-					new Shader(Files.newInputStream(Path.of("resources/shaders/modelFragmentShader")), ShaderType.FRAGMENT), 
-					atlas.texture()
-			);
-			
-			register(modelProgram, RenderConstants.MODEL_DIRT_BLOCK, indices, positions, atlas, dirt);
-			register(modelProgram, RenderConstants.MODEL_GRASS_BLOCK, indices, positions, atlas, grass);
-			register(modelProgram, RenderConstants.MODEL_GREEN_FACE, indices, positions, atlas, face);
-			register(modelProgram, RenderConstants.MODEL_RED_SQUARE, indices, positions, atlas, red);
-			GraphicsUtility.checkErrors();
-			return new ClientWorldRenderer(modelProgram, camera, world);
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		}
+	private static ClientWorldRenderer createRenderer(World world, Camera camera) throws IOException {
+
+		int indices = GraphicsUtility.uploadIndexData(0, 1, 2, 0, 2, 3);
+		
+		int positions = GraphicsUtility.uploadVertexData(
+				-0.5f,	 0.5f,
+				-0.5f,	-0.5f,
+				0.5f,	-0.5f,
+				0.5f,	 0.5f
+		);
+		
+		TextureData dirt = Textures.loadTextureName("dirt"),
+					grass = Textures.loadTextureName("grass"),
+					face = Textures.loadTextureName("greenFace"),
+					red = Textures.loadTextureName("redSquare");
+		TextureAtlas atlas = Textures.buildAtlas(grass, dirt, face, red);
+		
+		ModelRenderProgram modelProgram = new ModelRenderProgram(
+				new Shader(Files.newInputStream(Path.of("resources/shaders/modelVertexShader")), ShaderType.VERTEX),
+				new Shader(Files.newInputStream(Path.of("resources/shaders/modelFragmentShader")), ShaderType.FRAGMENT), 
+				atlas.texture()
+		);
+		
+		register(modelProgram, RenderConstants.MODEL_DIRT_BLOCK, indices, positions, atlas, dirt);
+		register(modelProgram, RenderConstants.MODEL_GRASS_BLOCK, indices, positions, atlas, grass);
+		register(modelProgram, RenderConstants.MODEL_GREEN_FACE, indices, positions, atlas, face);
+		register(modelProgram, RenderConstants.MODEL_RED_SQUARE, indices, positions, atlas, red);
+		GraphicsUtility.checkErrors();
+		return new ClientWorldRenderer(modelProgram, camera, world);
+	
 	}
 	
 	private static void register(ModelRenderProgram prog, int id, int indices, int positions, TextureAtlas atlas, TextureData data) {

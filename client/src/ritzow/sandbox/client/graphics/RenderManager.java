@@ -21,14 +21,14 @@ import org.lwjgl.glfw.GLFW;
 import ritzow.sandbox.client.input.EventDelegator;
 import ritzow.sandbox.client.input.handler.FramebufferSizeHandler;
 
-/** Initializes OpenGL and loads data to the GPU, then renders any Renderable objects added to the List returned by getUpdatables() **/
+/** Contains instance methods for initializing and destroying OpenGL, and rendering and updating the display**/
 public final class RenderManager implements FramebufferSizeHandler {
 	private volatile boolean updateViewport;
 	private volatile int framebufferWidth, framebufferHeight;
 	private final List<Renderer> renderers;
 	
 	public RenderManager(Display display) {
-		this.link(display.getInputManager());
+		this.link(display.getEventDelegator());
 		this.renderers = new ArrayList<>();
 	}
 	
@@ -47,7 +47,7 @@ public final class RenderManager implements FramebufferSizeHandler {
 		GraphicsUtility.checkErrors();
 		GLFW.glfwMakeContextCurrent(0);
 		org.lwjgl.opengl.GL.destroy();
-		unlink(display.getInputManager());
+		unlink(display.getEventDelegator());
 	}
 	
 	public void run(Display display) {

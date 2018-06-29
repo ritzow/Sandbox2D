@@ -2,20 +2,22 @@ package ritzow.sandbox.network;
 
 public class TimeoutException extends RuntimeException {
 	private static final long serialVersionUID = 1L;
+	
+	private static final boolean STACK_TRACE = true;
 
 	public TimeoutException() {
-		super(null, null, false, false);
+		super(null, null, false, STACK_TRACE);
 	}
 
 	public TimeoutException(String message, Throwable cause) {
-		super(message, cause, false, false);
+		super(message, cause, false, STACK_TRACE);
 	}
 
 	public TimeoutException(String message) {
-		super(message, null, false, false);
+		super(message, null, false, STACK_TRACE);
 	}
 
 	public TimeoutException(Throwable cause) {
-		super(null, cause, false, false);
+		super(null, cause, false, STACK_TRACE);
 	}
 }

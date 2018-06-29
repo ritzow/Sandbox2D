@@ -59,7 +59,7 @@ public final class Display {
 		return glfwGetWindowMonitor(displayID) != 0;
 	}
 	
-	public EventDelegator getInputManager() {
+	public EventDelegator getEventDelegator() {
 		return input;
 	}
 	

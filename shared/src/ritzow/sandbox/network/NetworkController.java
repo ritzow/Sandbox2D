@@ -116,7 +116,7 @@ public class NetworkController {
 			
 			}
 			packet.clear();
-			if(!pair.received)
+			if(!pair.received && channel.isOpen())
 				throw new TimeoutException();
 		}
 	}
@@ -171,6 +171,7 @@ public class NetworkController {
 		if(sender == null)
 			throw new IllegalArgumentException("sender is null");
 		buffer.flip(); //flip to set limit and prepare to read packet data
+		//Utility.sleep((long) (Math.random() * 200));
 		if(buffer.limit() >= HEADER_SIZE) {
 			byte type = buffer.get(); //type of message (RESPONSE, RELIABLE, UNRELIABLE)
 			int messageID = buffer.getInt(); //received ID or messageID for ack.

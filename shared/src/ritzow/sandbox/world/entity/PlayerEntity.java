@@ -117,14 +117,13 @@ public class PlayerEntity extends Entity implements Living {
 			case MOVE_UP:
 				up = isEnabled; break;
 			case MOVE_DOWN:
-				down = isEnabled;
-				if(isEnabled) {
-					positionY -= SIZE_SCALE/2;
-				} else {
-					positionY += SIZE_SCALE/2;
-				}
+				onCrouch(down = isEnabled);
 				break;
 		}
+	}
+	
+	protected void onCrouch(boolean isCrouched) {
+		positionY += isCrouched ? -SIZE_SCALE/2 : SIZE_SCALE/2;
 	}
 	
 	public Inventory<Item> inventory() {

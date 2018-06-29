@@ -348,9 +348,7 @@ public class Server {
 	
 	private void connectClient(InetSocketAddress address) {
 		try {
-			System.out.println("sending connect reply");
 			sendClientConnectReply(address, canConnect);
-			System.out.println("reply received by client");
 			if(canConnect) {
 				processQueue.add(()->{
 					//construct a new player for the client
@@ -397,7 +395,7 @@ public class Server {
 	
 	private static byte[][] buildWorldPackets(World world) {
 		//serialize the world for transfer
-		byte[] worldBytes = ByteUtil.compress(SerializationProvider.getProvider().serialize(world));
+		byte[] worldBytes = Protocol.COMPRESS_WORLD_DATA ? ByteUtil.compress(SerializationProvider.getProvider().serialize(world)) : SerializationProvider.getProvider().serialize(world);
 		
 		//build packets
 		byte[][] packets = ByteUtil.split(worldBytes, Protocol.MAX_MESSAGE_LENGTH - 2, 2, 1);
@@ -410,7 +408,7 @@ public class Server {
 		ByteUtil.putShort(head, 0, Protocol.SERVER_WORLD_HEAD);
 		ByteUtil.putInteger(head, 2, worldBytes.length);
 		packets[0] = head;
-		
+		//System.out.println("World packets " + packets.length + ", " + worldBytes.length);
 		return packets;
 	}
 	

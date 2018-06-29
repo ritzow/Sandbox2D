@@ -354,12 +354,9 @@ public class Client {
 			int remaining = data.remaining();
 			ByteUtil.copy(data.readBytes(remaining), state.worldData, state.worldData.length - state.worldBytesRemaining);
 			if((state.worldBytesRemaining -= remaining) == 0) {
-//				new Thread(() -> {
-//					
-//				}, "World Builder").start();
 				System.out.print("Building world... ");
 				long start = System.nanoTime();
-				state.world = SerializationProvider.getProvider().deserialize(ByteUtil.decompress(state.worldData));
+				state.world = SerializationProvider.getProvider().deserialize(Protocol.COMPRESS_WORLD_DATA ? ByteUtil.decompress(state.worldData) : state.worldData);
 				state.worldData = null; //release the raw data to the garbage collector!
 				sendWorldBuilt(); //notify server that world has been set up. TODO causing stall because running in receive thread
 				Utility.notify(worldLock);

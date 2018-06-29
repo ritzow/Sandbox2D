@@ -30,7 +30,7 @@ public class ControlScheme {
 	private static final class GLFWSandbox2DGameplayContext extends Sandbox2DGameplayContext {
 		static final class zoom extends ControlBase<AxisControlHandler> implements AxisControl {
 			public zoom(Display display) {
-				display.getInputManager().scrollHandlers().add((x, y) -> {
+				display.getEventDelegator().scrollHandlers().add((x, y) -> {
 					for(AxisControlHandler handler : handlers) {
 						handler.axisChangeEvent(y);
 					}

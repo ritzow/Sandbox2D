@@ -20,6 +20,12 @@ public class ClientPlayerEntity extends PlayerEntity implements Renderable {
 	public ClientPlayerEntity(TransportableDataReader input) {
 		super(input);
 	}
+	
+	@Override
+	protected void onCrouch(boolean isCrouched) {
+		if(isCrouched)
+			positionY -= SIZE_SCALE/2;
+	}
 
 	@Override
 	public void render(ModelRenderProgram renderer) {
