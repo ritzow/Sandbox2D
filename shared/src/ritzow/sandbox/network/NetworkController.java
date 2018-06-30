@@ -102,8 +102,8 @@ public class NetworkController {
 			synchronized(pair) {
 				int attemptsRemaining = attempts;
 				while(attemptsRemaining > 0 && !pair.received && channel.isOpen()) {
-					if(attemptsRemaining < attempts)
-						System.err.println(attemptsRemaining + " attempts remaining message " + pair.messageID);
+//					if(attemptsRemaining < attempts)
+//						System.err.println(attemptsRemaining + " attempts remaining message " + pair.messageID);
 					channel.send(packet, recipient);
 					packet.rewind();
 					attemptsRemaining--;
@@ -171,8 +171,7 @@ public class NetworkController {
 		if(sender == null)
 			throw new IllegalArgumentException("sender is null");
 		buffer.flip(); //flip to set limit and prepare to read packet data
-		//Utility.sleep((long) (Math.random() * 200));
-		if(buffer.limit() >= HEADER_SIZE) {
+		if(buffer.limit() >= HEADER_SIZE && Math.random() < 0.75) {
 			byte type = buffer.get(); //type of message (RESPONSE, RELIABLE, UNRELIABLE)
 			int messageID = buffer.getInt(); //received ID or messageID for ack.
 			ConnectionState state = getState(sender); //messageIDs and send queue

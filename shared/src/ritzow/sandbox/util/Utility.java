@@ -199,21 +199,21 @@ public final class Utility {
 	}
 	
 	public static String formatSize(long bytes) {
-		String prefix; double value;
+		String units; double value;
 		if(bytes < 1000) {
-			prefix = "bytes";
+			units = "bytes";
 			value = bytes;
 		} else if(bytes/1000 < 1000) {
-			prefix = "KB";
+			units = "KB";
 			value = bytes/1000d;
 		} else if(bytes/1_000_000 < 1000) {
-			prefix = "MB";
+			units = "MB";
 			value = bytes/1_000_000d;
 		} else {
-			prefix = "GB";
+			units = "GB";
 			value = bytes/1_000_000_000d;
 		}
-		return format(value, prefix, 2);
+		return formatNumber(value, 2) + " " + units;
 	}
 	
 	public static String formatTime(long nanoseconds) {
@@ -231,15 +231,14 @@ public final class Utility {
 			units = "s";
 			value = nanoseconds/1_000_000_000f;
 		}
-		return format(value, units, 2);
+		return formatNumber(value, 2) + " " + units;
 	}
 	
-	private static String format(double value, String units, int decimals) {
+	public static String formatNumber(double value, int decimals) {
 		long asInteger = Math.round(value);
-		boolean matches = asInteger == value;
 		String number = Double.toString(value);
-		return (matches ? Long.toString(asInteger) : (decimals > 0 ? number.substring(0, Math.min(number.length(), 
-			number.indexOf('.') + decimals)) : ("~" + asInteger))) + " " + units;
+		return asInteger == value ? Long.toString(asInteger) : (decimals > 0 ? number.substring(0, Math.min(number.length(), 
+			number.indexOf('.') + decimals)) : ("~" + asInteger));
 	}
 	
 	public static double millisBetween(long startNanos, long endNanos) {

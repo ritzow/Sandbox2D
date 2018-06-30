@@ -38,6 +38,7 @@ public class StartClientSingleThreaded {
 	private static boolean triggerExit;
 	
 	public static void main(String[] args) throws SocketException, IOException {
+		Thread.currentThread().setName("Game Thread");
 		InetAddress serverAddress = args.length > 0 ? InetAddress.getByName(args[0]) : InetAddress.getLocalHost();
 		InetSocketAddress serverSocket = new InetSocketAddress(serverAddress, Protocol.DEFAULT_SERVER_UDP_PORT);
 		
@@ -45,42 +46,11 @@ public class StartClientSingleThreaded {
 			//Client setup
 			System.out.print("Connecting to " + serverAddress.getHostAddress() + " on port " + serverSocket.getPort() + "... ");
 			Client client = Client.connect(new InetSocketAddress(Utility.getPublicAddress(Inet4Address.class), 0), serverSocket);
+			System.out.println("connected!");
 			long startTime = System.nanoTime();
 			
-			//Sound system setup
-			AudioSystem audio = OpenALAudioSystem.getAudioSystem();
-			audio.setVolume(1.0f);
-			DefaultAudioSystem.setDefault(audio);
-			
-			var sounds = Map.ofEntries(
-				Map.entry("dig.wav", Sound.BLOCK_BREAK),
-				Map.entry("place.wav", Sound.BLOCK_PLACE),
-				Map.entry("pop.wav", Sound.POP),
-				Map.entry("throw.wav", Sound.THROW),
-				Map.entry("snap.wav", Sound.SNAP)
-			);
-			
-			Path directory = Path.of("resources/assets/audio");
-			
-			for(var entry : sounds.entrySet()) {
-				try {
-					SoundInfo info = WAVEDecoder.decode(Files.newInputStream(directory.resolve(entry.getKey())));
-					audio.registerSound(entry.getValue().code(), info);
-				} catch(NoSuchFileException e) {
-					System.out.println("The file " + e.getFile() + " does not exist");
-				} catch (IOException e) {
-					System.out.println(e.getMessage());
-				}
-			}
-			
-			//Windowing and input events setup
-			Thread.currentThread().setName("GLFW Event Thread");
-			if(!glfwInit())
-				throw new UnsupportedOperationException("GLFW failed to initialize");
-			GLFWErrorCallback.createPrint(System.err).set();
-			Cursors.loadAll();
-			Display display = new Display("Sandbox2D", 4, 5);
-			display.setCursor(Cursors.PICKAXE);
+			AudioSystem audio = setupAudio();
+			Display display = setupGLFW();
 			EventDelegator input = display.getEventDelegator();
 			
 			//mute audio when window is in background
@@ -118,17 +88,19 @@ public class StartClientSingleThreaded {
 			
 			//display the window now that everything is set up.
 			System.out.println("Rendering started, setup took " + Utility.formatTime(Utility.nanosSince(startTime)) + ".");
-			display.setFullscreen(true);
-			long previousTime = System.nanoTime();
+			display.show();
+			
+			long lastUpdate = System.nanoTime();
 			while(!triggerExit && client.isConnected()) {
-				glfwPollEvents();
+				//long frameStart = System.nanoTime();
+				glfwPollEvents(); //process input/windowing events
 				queue.run(); //process received packets
-				previousTime = display.focused() ? Utility.updateWorld(world, previousTime, 
+				lastUpdate = display.focused() ? Utility.updateWorld(world, lastUpdate, 
 						SharedConstants.MAX_TIMESTEP, SharedConstants.TIME_SCALE_NANOSECONDS) : System.nanoTime();
 				cameraGrip.update();
 				interactionController.update();
 				renderer.run(display);
-				Utility.sleep(1);
+				//System.out.print((long)(1/(0.000000001 * Utility.nanosSince(frameStart)))); System.out.println(" FPS");
 			}
 			
 			System.out.print("Exiting... ");
@@ -142,6 +114,44 @@ public class StartClientSingleThreaded {
 		} catch(ConnectionFailedException e) {
 			System.out.println(e.getMessage());
 		}
+	}
+	
+	private static Display setupGLFW() throws IOException {
+		if(!glfwInit())
+			throw new UnsupportedOperationException("GLFW failed to initialize");
+		GLFWErrorCallback.createPrint(System.err).set();
+		Cursors.loadAll();
+		Display display = new Display("Sandbox2D", 4, 5);
+		display.setCursor(Cursors.PICKAXE);
+		return display;
+	}
+	
+	private static AudioSystem setupAudio() {
+		AudioSystem audio = OpenALAudioSystem.getAudioSystem();
+		audio.setVolume(1.0f);
+		DefaultAudioSystem.setDefault(audio);
+		
+		var sounds = Map.ofEntries(
+			Map.entry("dig.wav", Sound.BLOCK_BREAK),
+			Map.entry("place.wav", Sound.BLOCK_PLACE),
+			Map.entry("pop.wav", Sound.POP),
+			Map.entry("throw.wav", Sound.THROW),
+			Map.entry("snap.wav", Sound.SNAP)
+		);
+		
+		Path directory = Path.of("resources/assets/audio");
+		
+		for(var entry : sounds.entrySet()) {
+			try {
+				SoundInfo info = WAVEDecoder.decode(Files.newInputStream(directory.resolve(entry.getKey())));
+				audio.registerSound(entry.getValue().code(), info);
+			} catch(NoSuchFileException e) {
+				System.out.println("The file " + e.getFile() + " does not exist");
+			} catch (IOException e) {
+				System.out.println(e.getMessage());
+			}
+		}
+		return audio;
 	}
 	
 	private static ClientWorldRenderer createRenderer(World world, Camera camera) throws IOException {

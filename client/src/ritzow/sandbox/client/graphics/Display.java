@@ -2,6 +2,8 @@ package ritzow.sandbox.client.graphics;
 
 import static org.lwjgl.glfw.GLFW.*;
 
+import java.nio.IntBuffer;
+import org.lwjgl.system.MemoryStack;
 import ritzow.sandbox.client.input.EventDelegator;
 
 public final class Display {
@@ -13,8 +15,6 @@ public final class Display {
 	private int windowedY;
 	private int windowedWidth;
 	private int windowedHeight;
-	
-	private volatile boolean focused;
 	
 	public Display(String title, int GLVersionMajor, int GLVersionMinor) {
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
@@ -33,7 +33,7 @@ public final class Display {
 		input = new EventDelegator(displayID);
 		render = new RenderManager(this);
 		
-		input.windowFocusHandlers().add(focused -> this.focused = focused);
+		//input.windowFocusHandlers().add(focused -> this.focused = focused);
 	}
 	
 	public void setCursor(long cursor) {
@@ -79,12 +79,32 @@ public final class Display {
 		glfwSetWindowSize(displayID, width, height);
 	}
 	
+	public void show() {
+		glfwShowWindow(displayID);
+	}
+	
 	public void focus() {
 		glfwFocusWindow(displayID);
 	}
 	
 	public boolean focused() {
-		return focused;
+		return glfwGetWindowAttrib(displayID, GLFW_FOCUSED) == GLFW_TRUE;
+	}
+	
+	public int width() {
+		try(MemoryStack stack = org.lwjgl.system.MemoryStack.stackPush()) {
+			IntBuffer buffer = stack.mallocInt(1);
+			glfwGetFramebufferSize(displayID, buffer, null);
+			return buffer.get(0);
+		}
+	}
+	
+	public int height() {
+		try(MemoryStack stack = org.lwjgl.system.MemoryStack.stackPush()) {
+			IntBuffer buffer = stack.mallocInt(1);
+			glfwGetFramebufferSize(displayID, null, buffer);
+			return buffer.get(0);
+		}
 	}
 	
 	public void toggleFullscreen() {
@@ -93,19 +113,16 @@ public final class Display {
 
 	public void setFullscreen(boolean fullscreen) {
 		if(fullscreen) {
-			if(glfwGetWindowMonitor(displayID) == 0) {
-				//create buffers to store window properties
-				int[] storeH = new int[1], storeV = new int[1];
-				
-				//store window size in storeH and storeV
-				glfwGetWindowSize(displayID, storeH, storeV);
-				
-				//store storeH and storeV into fields
-				windowedWidth = storeH[0]; 	windowedHeight = storeV[0];
-				
-				//repeat with window position
-				glfwGetWindowPos(displayID, storeH, storeV);
-				windowedX = storeH[0]; 		windowedY = storeV[0];
+			if(glfwGetWindowMonitor(displayID) == 0) { //on fullscreen, store windowed information
+				try(MemoryStack stack = org.lwjgl.system.MemoryStack.stackPush()) {
+					IntBuffer first = stack.mallocInt(1), second = stack.mallocInt(1);
+					glfwGetWindowSize(displayID, first, second);
+					windowedWidth = first.get(0);
+					windowedHeight = second.get(0);
+					glfwGetWindowPos(displayID, first, second);
+					windowedX = first.get(0);
+					windowedY = second.get(0);
+				}
 			}
 			
 			//make the window fullscreen
