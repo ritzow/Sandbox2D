@@ -1,6 +1,7 @@
 package ritzow.sandbox.client.util;
 
 import ritzow.sandbox.client.graphics.Camera;
+import ritzow.sandbox.util.Utility;
 
 public class ClientUtility {
 	public static float pixelHorizontalToWorld(Camera camera, int mouseX, int frameWidth, int frameHeight) {
@@ -36,5 +37,9 @@ public class ClientUtility {
 	//width and height for any future need
 	public static float getViewBottomBound(Camera camera, int framebufferWidth, int framebufferHeight) {
 		return -1/camera.getZoom() + camera.getPositionY();
+	}
+	
+	public static void printFrameRate(long frameStart) {
+		System.out.print((long)(1/(0.000000001 * Utility.nanosSince(frameStart)))); System.out.println(" FPS");
 	}
 }
