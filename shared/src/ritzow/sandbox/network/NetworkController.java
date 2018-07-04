@@ -2,6 +2,7 @@ package ritzow.sandbox.network;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.net.StandardSocketOptions;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousCloseException;
@@ -13,7 +14,7 @@ import ritzow.sandbox.util.Utility;
 
 /** Provides common functionality of the client and server. Manages incoming and outgoing packets. **/
 public class NetworkController {
-	private final DatagramChannel channel;
+	private volatile DatagramChannel channel;
 	private final Map<InetSocketAddress, ConnectionState> connections;
 	private final ThreadLocal<ByteBuffer> packets;
 	private final MessageProcessor messageProcessor;
@@ -31,10 +32,15 @@ public class NetworkController {
 		packets = ThreadLocal.withInitial(() -> ByteBuffer.allocate(MAX_PACKET_SIZE));
 	}
 	
+	private static DatagramChannel createSocket(SocketAddress bind) throws IOException {
+		return DatagramChannel.open().bind(bind)
+				.setOption(StandardSocketOptions.SO_SNDBUF, MAX_PACKET_SIZE);
+	}
+	
 	public void start() {
 		if(started)
 			throw new IllegalStateException("network controller already started");
-		new Thread(this::runAsyncReceiving, "Network Controller").start();
+		new Thread(this::runAsyncReceiving, "Network Controller Receiving").start();
 		started = true;
 	}
 	
@@ -88,11 +94,13 @@ public class NetworkController {
 	 * @throws TimeoutException if all send attempts have occurred but no message was received, 
 	 * or the previous call to sendReliable timed out.
 	 */
-	public void sendReliable(InetSocketAddress recipient, byte[] data, int attempts, int resendInterval) throws IOException {
+	public void sendReliable(InetSocketAddress recipient, byte[] data, int attempts, int resendInterval) throws TimeoutException, IOException {
 		if(attempts < 1)
 			throw new IllegalArgumentException("attempts must be greater than 0");
 		if(resendInterval < 0)
 			throw new IllegalArgumentException("resendInterval must be greater than or equal to zero");
+		if(exit || !channel.isOpen())
+			throw new IllegalStateException("NetworkController is closed");
 		ConnectionState state = getState(recipient);
 		synchronized(state) { //prevents other sendReliable calls from immediately queuing the next message
 			if(!state.previousReceived())
@@ -102,16 +110,18 @@ public class NetworkController {
 			synchronized(pair) {
 				int attemptsRemaining = attempts;
 				while(attemptsRemaining > 0 && !pair.received && channel.isOpen()) {
-//					if(attemptsRemaining < attempts)
-//						System.err.println(attemptsRemaining + " attempts remaining message " + pair.messageID);
 					channel.send(packet, recipient);
 					packet.rewind();
 					attemptsRemaining--;
 					try {
 						pair.wait(resendInterval); //wait for ack to be received by network controller receiver
 					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}	
+						if(exit || !(connections.containsKey(recipient) && channel.isOpen())) {
+							return;
+						} else {
+							e.printStackTrace();
+						}
+					}
 				}
 			
 			}
@@ -125,7 +135,7 @@ public class NetworkController {
 	 * Sends a message without ensuring it is received by the recipient.
 	 * @param recipient the address that should receive the message.
 	 * @param data the message data.
-	 * @throws IOException 
+	 * @throws IOException if a socket error occurs
 	 */
 	public void sendUnreliable(InetSocketAddress recipient, byte[] data) throws IOException {
 		ByteBuffer packet = packets.get();
@@ -151,13 +161,36 @@ public class NetworkController {
 		return state;
 	}
 	
+	public void setManualReceivingMode() throws IOException {
+		if(!channel.isBlocking())
+			throw new IllegalStateException("already in manual receiving mode");
+		var address = channel.getLocalAddress();
+		channel.close();
+		channel = createSocket(address);
+		channel.configureBlocking(false);
+	}
+	
+	private final ByteBuffer receiveBuffer = ByteBuffer.allocateDirect(MAX_PACKET_SIZE);
+	private final ByteBuffer responseSendBuffer = ByteBuffer.allocateDirect(HEADER_SIZE);
+	
+	public void receive() {
+		if(channel.isBlocking())
+			throw new IllegalStateException("NetworkController is in blocking mode");
+		try {
+			InetSocketAddress address;
+			while((address = (InetSocketAddress)channel.receive(receiveBuffer)) != null) {
+				processPacket(address, receiveBuffer, responseSendBuffer, messageProcessor);				
+			}
+		} catch (IOException e) {
+			e.printStackTrace(); //print exception and continue
+			stop();
+		}
+	}
+	
 	private void runAsyncReceiving() {
-		ByteBuffer buffer = ByteBuffer.allocateDirect(MAX_PACKET_SIZE);
-		ByteBuffer sendBuffer = ByteBuffer.allocateDirect(HEADER_SIZE);
-		
 		try {
 			while(!exit) {
-				processPacket((InetSocketAddress)channel.receive(buffer), buffer, sendBuffer);
+				processPacket((InetSocketAddress)channel.receive(receiveBuffer), receiveBuffer, responseSendBuffer, messageProcessor);
 			}
 		} catch(AsynchronousCloseException e) {
 			//socket has been closed, do nothing
@@ -167,11 +200,11 @@ public class NetworkController {
 		}
 	}
 	
-	private void processPacket(InetSocketAddress sender, ByteBuffer buffer, ByteBuffer sendBuffer) throws IOException {
+	private void processPacket(InetSocketAddress sender, ByteBuffer buffer, ByteBuffer sendBuffer, MessageProcessor messageProcessor) throws IOException {
 		if(sender == null)
 			throw new IllegalArgumentException("sender is null");
 		buffer.flip(); //flip to set limit and prepare to read packet data
-		if(buffer.limit() >= HEADER_SIZE && Math.random() < 0.75) {
+		if(buffer.limit() >= HEADER_SIZE) {
 			byte type = buffer.get(); //type of message (RESPONSE, RELIABLE, UNRELIABLE)
 			int messageID = buffer.getInt(); //received ID or messageID for ack.
 			ConnectionState state = getState(sender); //messageIDs and send queue
