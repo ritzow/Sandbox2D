@@ -52,7 +52,7 @@ public final class RenderManager implements FramebufferSizeHandler {
 	
 	public void run(Display display) {
 		int width = framebufferWidth, height = framebufferHeight;
-		if(display.focused() && width > 0 && height > 0) {
+		if(width > 0 && height > 0) {
 			if(updateViewport) {
 				glViewport(0, 0, width, height);
 				updateViewport = false;

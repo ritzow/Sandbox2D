@@ -99,6 +99,7 @@ public class StartClientSingleThreaded {
 						SharedConstants.MAX_TIMESTEP, SharedConstants.TIME_SCALE_NANOSECONDS) : System.nanoTime();
 				cameraGrip.update();
 				interactionController.update();
+					if(display.focused())
 				renderer.run(display);
 				//System.out.print((long)(1/(0.000000001 * Utility.nanosSince(frameStart)))); System.out.println(" FPS");
 			}
