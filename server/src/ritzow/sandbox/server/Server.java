@@ -352,7 +352,7 @@ public class Server {
 			if(canConnect) {
 				processQueue.add(()->{
 					//construct a new player for the client
-					PlayerEntity player = new PlayerEntity(world.nextEntityID());
+					PlayerEntity player = new ServerPlayerEntity(world.nextEntityID());
 					
 					//set the player's position to directly above the ground in the center of the world
 					BlockGrid grid = world.getForeground();

@@ -98,15 +98,6 @@ public class PlayerEntity extends Entity implements Living {
 		}
 		return false;
 	}
-	
-	@Override
-	public void onCollision(World world, Entity e, float time) {
-		if(e instanceof ItemEntity && e.getVelocityY() > -0.05f && e.getVelocityY() <= 0) {
-			float vx = Utility.randomFloat(-0.15f, 0.15f);
-			e.setVelocityX(vx);
-			e.setVelocityY(Utility.maxComponentInRadius(vx, 0.5f));
-		}
-	}
 
 	public void processAction(PlayerAction action, boolean isEnabled) {
 		switch(action) {
@@ -150,8 +141,8 @@ public class PlayerEntity extends Entity implements Living {
 	}
 
 	@Override
-	public final boolean hasEntityCollisionLogic() {
-		return true;
+	public boolean hasEntityCollisionLogic() {
+		return false;
 	}
 
 	@Override
@@ -161,7 +152,7 @@ public class PlayerEntity extends Entity implements Living {
 
 	@Override
 	public boolean collidesWithEntities() {
-		return true;
+		return false;
 	}
 
 	@Override
