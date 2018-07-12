@@ -3,7 +3,7 @@ package ritzow.sandbox.client.ui;
 import ritzow.sandbox.client.graphics.ModelRenderProgram;
 
 //TODO update Text after creating new UI framework
-public class Text extends Element {
+public class Text {
 	protected String text;
 	protected Font font;
 	protected int size;
@@ -23,6 +23,14 @@ public class Text extends Element {
 			renderer.render(font.getModelID(text.charAt(index)), 1.0f, pos, getPositionY(), size * 0.02f, size * 0.02f, 0.0f);
 			index++;
 		}
+	}
+
+	public float getPositionY() {
+		return 0;
+	}
+
+	public float getPositionX() {
+		return 0;
 	}
 
 	public final String getText() {
@@ -49,12 +57,10 @@ public class Text extends Element {
 		this.spacing = spacing;
 	}
 	
-	@Override
 	public float getWidth() {
 		return 1;
 	}
 
-	@Override
 	public float getHeight() {
 		return size * 0.02f;
 	}
