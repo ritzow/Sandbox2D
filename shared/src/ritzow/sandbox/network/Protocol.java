@@ -13,7 +13,7 @@ public final class Protocol {
 	public static final boolean COMPRESS_WORLD_DATA = false;
 	
 	public static final int 
-			TIMEOUT_DISCONNECT = 2000,
+			TIMEOUT_DISCONNECT = 1000,
 			RESEND_COUNT = 10,
 			RESEND_INTERVAL = TIMEOUT_DISCONNECT/RESEND_COUNT;
 	
@@ -29,8 +29,8 @@ public final class Protocol {
 		SERVER_WORLD_HEAD = 2,
 		SERVER_WORLD_DATA = 3,
 		SERVER_ENTITY_UPDATE = 4,
-		SERVER_ADD_ENTITY = 5,
-		SERVER_REMOVE_ENTITY = 6,
+		SERVER_ADD_ENTITY = 5, //TODO separate receiving entity and adding to world
+		SERVER_REMOVE_ENTITY = 6,  //TODO separate removing entity from world and deleting entity
 		SERVER_CLIENT_DISCONNECT = 7,
 		SERVER_PLAYER_ID = 8,
 		SERVER_REMOVE_BLOCK = 9,
