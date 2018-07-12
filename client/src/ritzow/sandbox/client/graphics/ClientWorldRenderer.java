@@ -5,7 +5,6 @@ import static org.lwjgl.opengl.GL11.GL_SRC_ALPHA;
 import static org.lwjgl.opengl.GL11.glBlendFunc;
 import static org.lwjgl.opengl.GL20.glDrawBuffers;
 import static org.lwjgl.opengl.GL30.GL_COLOR_ATTACHMENT0;
-import static org.lwjgl.opengl.GL30.GL_COLOR_ATTACHMENT1;
 
 import ritzow.sandbox.client.util.ClientUtility;
 import ritzow.sandbox.client.world.block.ClientBlockProperties;
@@ -16,7 +15,7 @@ import ritzow.sandbox.world.World;
 public final class ClientWorldRenderer implements Renderer {
 	private final ModelRenderProgram modelProgram;
 	private final Framebuffer framebuffer;
-	private final OpenGLTexture diffuseTexture, finalTexture;
+	private final OpenGLTexture diffuseTexture;
 	private int previousWidth, previousHeight;
 	private final World world;
 	private final Camera camera;
@@ -27,9 +26,7 @@ public final class ClientWorldRenderer implements Renderer {
 		this.world = world;
 		this.framebuffer = new Framebuffer();
 		this.diffuseTexture = new OpenGLTexture(100, 100);
-		this.finalTexture = new OpenGLTexture(100, 100);
 		framebuffer.attachTexture(diffuseTexture, GL_COLOR_ATTACHMENT0);
-		framebuffer.attachTexture(finalTexture, GL_COLOR_ATTACHMENT1);
 		GraphicsUtility.checkErrors();
 	}
 	
@@ -42,7 +39,7 @@ public final class ClientWorldRenderer implements Renderer {
 		if(previousWidth != currentWidth || previousHeight != currentHeight) {
 			modelProgram.setResolution(currentWidth, currentHeight);
 			diffuseTexture.setSize(currentWidth, currentHeight);
-			finalTexture.setSize(currentWidth, currentHeight);
+			//finalTexture.setSize(currentWidth, currentHeight);
 			previousWidth = currentWidth; previousHeight = currentHeight;
 		}
 		
