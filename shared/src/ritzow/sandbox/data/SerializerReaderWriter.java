@@ -44,13 +44,13 @@ public class SerializerReaderWriter implements Serializer, Deserializer {
 		byte[] data = new byte[4 + 2 + objectBytes.length];
 		
 		//first four bytes are the length of the rest of the data (INCLUDING THE TYPE)
-		ByteUtil.putInteger(data, 0, 2 + objectBytes.length);
+		Bytes.putInteger(data, 0, 2 + objectBytes.length);
 		
 		//put the short value representing the type of object serialized after the data length
-		ByteUtil.putShort(data, 4, typeID);
+		Bytes.putShort(data, 4, typeID);
 		
 		//put the object data into the final byte array
-		ByteUtil.copy(objectBytes, data, 6);
+		Bytes.copy(objectBytes, data, 6);
 		
 		return data;
 	}
@@ -59,14 +59,14 @@ public class SerializerReaderWriter implements Serializer, Deserializer {
 	@SuppressWarnings("unchecked")
 	public <T> T deserialize(byte[] object) throws ClassNotRegisteredException {
 		//if the object length is 0, the object is null
-		int length = ByteUtil.getInteger(object, 0);
+		int length = Bytes.getInteger(object, 0);
 		
 		if(length == 0) {
 			return null;	
 		}
 		
 		//get type, associated with a method to deserialize the object
-		short type = ByteUtil.getShort(object, 4);
+		short type = Bytes.getShort(object, 4);
 		
 		//get the concrete class of the object
 		Function<TransportableDataReader, ? extends Transportable> func = deserializeLookup.get(type);
@@ -82,7 +82,7 @@ public class SerializerReaderWriter implements Serializer, Deserializer {
 			private int index = 6; //skip past object size and type
 			
 			public int remaining() {
-				return ByteUtil.getInteger(bytes, index - 4) - index + 4; //TODO is this implemented correctly?
+				return Bytes.getInteger(bytes, index - 4) - index + 4; //TODO is this implemented correctly?
 			}
 			
 			public void skip(int bytes) {

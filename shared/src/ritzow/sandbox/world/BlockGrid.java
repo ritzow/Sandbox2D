@@ -1,6 +1,6 @@
 package ritzow.sandbox.world;
 
-import ritzow.sandbox.data.ByteUtil;
+import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.data.Serializer;
 import ritzow.sandbox.data.Transportable;
 import ritzow.sandbox.data.TransportableDataReader;
@@ -39,9 +39,9 @@ public final class BlockGrid implements Transportable {
 			}
 		}
 		
-		byte[] data = ByteUtil.concatenate(8, blockData);
-		ByteUtil.putInteger(data, 0, width);
-		ByteUtil.putInteger(data, 4, height);
+		byte[] data = Bytes.concatenate(8, blockData);
+		Bytes.putInteger(data, 0, width);
+		Bytes.putInteger(data, 4, height);
 		return data;
 	}
 	

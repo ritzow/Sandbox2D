@@ -12,7 +12,7 @@ import java.util.Objects;
 import java.util.Spliterator;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import ritzow.sandbox.data.ByteUtil;
+import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.data.Serializer;
 import ritzow.sandbox.data.Transportable;
 import ritzow.sandbox.data.TransportableDataReader;
@@ -109,27 +109,27 @@ public class World implements Transportable, Iterable<Entity> {
 		int index = 0;
 		
 		//write gravity
-		ByteUtil.putFloat(bytes, index, gravity);
+		Bytes.putFloat(bytes, index, gravity);
 		index += 4;
 		
 		//write foreground data
-		ByteUtil.copy(foregroundBytes, bytes, index);
+		Bytes.copy(foregroundBytes, bytes, index);
 		index += foregroundBytes.length;
 		
 		//write background data
-		ByteUtil.copy(backgroundBytes, bytes, index);
+		Bytes.copy(backgroundBytes, bytes, index);
 		index += backgroundBytes.length;
 		
 		//write number of entities
-		ByteUtil.putInteger(bytes, index, numEntities);
+		Bytes.putInteger(bytes, index, numEntities);
 		index += 4;
 		
 		//append entity data to the end of the serialized array
-		int entityByteData = ByteUtil.concatenate(bytes, index, entityBytes);
+		int entityByteData = Bytes.concatenate(bytes, index, entityBytes);
 		index += entityByteData;
 		
 		//write last entity id
-		ByteUtil.putInteger(bytes, index, entityIDCounter);
+		Bytes.putInteger(bytes, index, entityIDCounter);
 		
 		return bytes;
 	

@@ -11,7 +11,7 @@ import java.util.zip.InflaterOutputStream;
  * Contains various utility methods for reading and writing primitive and non-primitive types from and to byte arrays.
  * @author Solomon Ritzow
  */
-public final class ByteUtil {
+public final class Bytes {
 	public static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
 	
 	public static void checkCapacity(byte[] dest, int offset, int count) {
@@ -127,7 +127,7 @@ public final class ByteUtil {
 	/* bytes to values */
 	
 	public static double getDouble(byte[] array, int index) {
-		return Double.longBitsToDouble(ByteUtil.getLong(array, index));
+		return Double.longBitsToDouble(Bytes.getLong(array, index));
 	}
 	
 	public static float getFloat(byte[] array, int index) {
@@ -220,5 +220,35 @@ public final class ByteUtil {
 	
 	public static byte[] decompress(byte[] data) {
 		return decompress(data, 0, data.length);
+	}
+	
+	public static byte[] of(short value) {
+		byte[] packet = new byte[2];
+		Bytes.putShort(packet, 0, value);
+		return packet;
+	}
+	
+	public static byte[] of(int value) {
+		byte[] packet = new byte[4];
+		Bytes.putInteger(packet, 0, value);
+		return packet;
+	}
+	
+	public static byte[] of(long value) {
+		byte[] packet = new byte[8];
+		Bytes.putLong(packet, 0, value);
+		return packet;
+	}	
+	
+	public static byte[] of(float value) {
+		byte[] packet = new byte[4];
+		Bytes.putFloat(packet, 0, value);
+		return packet;
+	}
+	
+	public static byte[] of(double value) {
+		byte[] packet = new byte[8];
+		Bytes.putDouble(packet, 0, value);
+		return packet;
 	}
 }

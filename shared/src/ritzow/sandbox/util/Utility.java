@@ -10,7 +10,7 @@ import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import ritzow.sandbox.data.ByteUtil;
+import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.data.Deserializer;
 import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
@@ -48,7 +48,7 @@ public final class Utility {
 		try(FileInputStream in = new FileInputStream(file)) {
 			byte[] data = new byte[(int)file.length()];
 			in.read(data);
-			World world = des.deserialize(ByteUtil.decompress(data));
+			World world = des.deserialize(Bytes.decompress(data));
 			return world;
 		} catch(IOException e) {
 			throw new RuntimeException("Error loading world from file ", e);

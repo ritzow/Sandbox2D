@@ -1,6 +1,6 @@
 package ritzow.sandbox.world.entity;
 
-import ritzow.sandbox.data.ByteUtil;
+import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.data.Serializer;
 import ritzow.sandbox.data.TransportableDataReader;
 import ritzow.sandbox.network.Protocol.PlayerAction;
@@ -44,10 +44,10 @@ public class PlayerEntity extends Entity implements Living {
 		byte[] superBytes = super.getBytes(ser);
 		byte[] invBytes = ser.serialize(inventory);
 		byte[] bytes = new byte[superBytes.length + invBytes.length + 4 + 4];
-		ByteUtil.copy(superBytes, bytes, 0);
-		ByteUtil.copy(invBytes, bytes, superBytes.length);
-		ByteUtil.putInteger(bytes, superBytes.length + invBytes.length, health);
-		ByteUtil.putInteger(bytes, superBytes.length + invBytes.length + 4, selected);
+		Bytes.copy(superBytes, bytes, 0);
+		Bytes.copy(invBytes, bytes, superBytes.length);
+		Bytes.putInteger(bytes, superBytes.length + invBytes.length, health);
+		Bytes.putInteger(bytes, superBytes.length + invBytes.length + 4, selected);
 		return bytes;
 	}
 	

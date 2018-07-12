@@ -1,6 +1,6 @@
 package ritzow.sandbox.world.block;
 
-import ritzow.sandbox.data.ByteUtil;
+import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.data.DataReader;
 import ritzow.sandbox.data.Serializer;
 
@@ -31,6 +31,6 @@ public class DirtBlock implements Block {
 
 	@Override
 	public byte[] getBytes(Serializer ser) {
-		return ByteUtil.EMPTY_BYTE_ARRAY;
+		return Bytes.EMPTY_BYTE_ARRAY;
 	}
 }

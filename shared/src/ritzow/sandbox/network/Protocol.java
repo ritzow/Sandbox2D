@@ -1,7 +1,7 @@
 package ritzow.sandbox.network;
 
 import java.nio.charset.Charset;
-import ritzow.sandbox.data.ByteUtil;
+import ritzow.sandbox.data.Bytes;
 
 public final class Protocol {
 	
@@ -60,8 +60,8 @@ public final class Protocol {
 	public static byte[] buildConsoleMessage(String message) {
 		byte[] msg = message.getBytes(Protocol.CHARSET);
 		byte[] packet = new byte[2 + msg.length];
-		ByteUtil.putShort(packet, 0, Protocol.CONSOLE_MESSAGE);
-		ByteUtil.copy(msg, packet, 2);
+		Bytes.putShort(packet, 0, Protocol.CONSOLE_MESSAGE);
+		Bytes.copy(msg, packet, 2);
 		return packet;
 	}
 	

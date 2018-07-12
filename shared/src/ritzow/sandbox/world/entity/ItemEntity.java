@@ -1,6 +1,6 @@
 package ritzow.sandbox.world.entity;
 
-import ritzow.sandbox.data.ByteUtil;
+import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.data.Serializer;
 import ritzow.sandbox.data.TransportableDataReader;
 import ritzow.sandbox.world.item.Item;
@@ -27,7 +27,7 @@ public class ItemEntity<I extends Item> extends Entity {
 	
 	@Override
 	public byte[] getBytes(Serializer ser) {
-		return ByteUtil.concatenate(super.getBytes(ser), ser.serialize(item));
+		return Bytes.concatenate(super.getBytes(ser), ser.serialize(item));
 	}
 	
 	public I getItem() {

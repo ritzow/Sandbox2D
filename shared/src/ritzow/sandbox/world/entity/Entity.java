@@ -1,6 +1,6 @@
 package ritzow.sandbox.world.entity;
 
-import ritzow.sandbox.data.ByteUtil;
+import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.data.DataReader;
 import ritzow.sandbox.data.Serializer;
 import ritzow.sandbox.data.Transportable;
@@ -36,11 +36,11 @@ public abstract class Entity implements Transportable {
 	@Override
 	public byte[] getBytes(Serializer ser) {
 		byte[] data = new byte[20];
-		ByteUtil.putInteger(data, 0, entityID);
-		ByteUtil.putFloat(data, 4, positionX);
-		ByteUtil.putFloat(data, 8, positionY);
-		ByteUtil.putFloat(data, 12, velocityX);
-		ByteUtil.putFloat(data, 16, velocityY);
+		Bytes.putInteger(data, 0, entityID);
+		Bytes.putFloat(data, 4, positionX);
+		Bytes.putFloat(data, 8, positionY);
+		Bytes.putFloat(data, 12, velocityX);
+		Bytes.putFloat(data, 16, velocityY);
 		return data;
 	}
 	

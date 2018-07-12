@@ -15,37 +15,37 @@ public class UncheckedByteArrayDataWriter implements DataWriter {
 
 	@Override
 	public void writeDouble(double value) {
-		ByteUtil.putDouble(dest, index, value);
+		Bytes.putDouble(dest, index, value);
 		index += 8;
 	}
 
 	@Override
 	public void writeFloat(float value) {
-		ByteUtil.putFloat(dest, index, value);
+		Bytes.putFloat(dest, index, value);
 		index += 4;
 	}
 
 	@Override
 	public void writeLong(long value) {
-		ByteUtil.putLong(dest, index, value);
+		Bytes.putLong(dest, index, value);
 		index += 8;
 	}
 
 	@Override
 	public void writeInteger(int value) {
-		ByteUtil.putInteger(dest, index, value);
+		Bytes.putInteger(dest, index, value);
 		index += 4;
 	}
 
 	@Override
 	public void writeShort(short value) {
-		ByteUtil.putShort(dest, index, value);
+		Bytes.putShort(dest, index, value);
 		index += 2;
 	}
 
 	@Override
 	public void writeBoolean(boolean value) {
-		ByteUtil.putBoolean(dest, index, value);
+		Bytes.putBoolean(dest, index, value);
 		index++;
 	}
 

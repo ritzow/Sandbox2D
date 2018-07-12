@@ -1,6 +1,6 @@
 package ritzow.sandbox.world.component;
 
-import ritzow.sandbox.data.ByteUtil;
+import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.data.Serializer;
 import ritzow.sandbox.data.Transportable;
 import ritzow.sandbox.data.TransportableDataReader;
@@ -22,7 +22,7 @@ public class Inventory<T extends Item> implements Transportable {
 	
 	@Override
 	public byte[] getBytes(Serializer ser) {
-		return ByteUtil.serializeArray(items, ser);
+		return Bytes.serializeArray(items, ser);
 	}
 	
 	@Override
