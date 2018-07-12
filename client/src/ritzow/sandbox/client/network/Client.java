@@ -1,4 +1,4 @@
-package ritzow.sandbox.client;
+package ritzow.sandbox.client.network;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -9,7 +9,7 @@ import java.util.concurrent.Executors;
 import ritzow.sandbox.client.util.SerializationProvider;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
 import ritzow.sandbox.data.ByteArrayDataReader;
-import ritzow.sandbox.data.ByteUtil;
+import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.data.DataReader;
 import ritzow.sandbox.network.NetworkController;
 import ritzow.sandbox.network.Protocol;
@@ -30,7 +30,7 @@ public class Client {
 	private Runnable disconnectAction;
 	private Executor runner;
 	
-	private static final byte STATUS_NOT_CONNECTED = 0, STATUS_REJECTED = 1, STATUS_CONNECTED = 2;
+	private static final byte STATUS_NOT_CONNECTED = 0, STATUS_REJECTED = 1, STATUS_CONNECTED = 2, STATUS_DISCONNECTED = 3;
 	
 	private static final class ConnectionState {
 		volatile World world;
@@ -91,7 +91,7 @@ public class Client {
 		synchronized(serverAddress) {
 			try {
 				byte[] packet = new byte[2];
-				ByteUtil.putShort(packet, 0, Protocol.CLIENT_CONNECT_REQUEST);
+				Bytes.putShort(packet, 0, Protocol.CLIENT_CONNECT_REQUEST);
 				network.sendReliable(serverAddress, packet, Protocol.RESEND_COUNT, Protocol.RESEND_INTERVAL);
 			} catch(TimeoutException e) { //if client receives no ack, disconnect and throw
 				disconnect(false);
@@ -99,6 +99,7 @@ public class Client {
 			} catch(IOException e) {
 				e.printStackTrace();
 			}
+			
 			//received ack on request packet, wait one second for response
 			Utility.waitOnCondition(serverAddress, 1000, () -> connectionStatus != STATUS_NOT_CONNECTED);
 		}
@@ -119,13 +120,15 @@ public class Client {
 			if(!sender.equals(serverAddress))
 				return;
 			runner.execute(() -> {
-				//TODO use a single byte array data reader, with switching backing arrays, for no var capture?
+				if(connectionStatus == STATUS_DISCONNECTED)
+					throw new NotConnectedException();
 				DataReader reader = new ByteArrayDataReader(data); //variable capture byte array
 				short type = reader.readShort();
 				try {
-					onReceive(type, reader);	
+					onReceive(type, reader);
 				} catch(RuntimeException e) {
-					System.err.println("Exception thrown by onReceive: " + e);
+					System.err.println("Exception thrown by onReceive:");
+					e.printStackTrace();
 					disconnect();
 				}
 			});
@@ -133,6 +136,18 @@ public class Client {
 			e.printStackTrace();
 			disconnect(false);
 		}
+	}
+	
+	public void setLoopMode() {
+		try {
+			network.setManualReceivingMode();
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+	}
+	
+	public void receive() {
+		network.receive();
 	}
 	
 	private void onReceive(short type, DataReader data) {
@@ -148,22 +163,22 @@ public class Client {
 				System.out.println("[Server Message] " + new String(data.readBytes(data.remaining()), 0, length, Protocol.CHARSET));
 				break;
 			case Protocol.SERVER_WORLD_HEAD:
-				state.worldBytesRemaining = data.readInteger();
-				state.worldData = new byte[state.worldBytesRemaining];
+				processReceiveWorldHead(data);
 				break;
 			case Protocol.SERVER_WORLD_DATA:
 				processReceiveWorldData(data);
 				break;
 			case Protocol.SERVER_ENTITY_UPDATE:
-				processGenericEntityUpdate(data);
+				processUpdateEntity(data);
 				break;
-			case Protocol.SERVER_ADD_ENTITY: //TODO separate receiving entity and adding to world
+			case Protocol.SERVER_ADD_ENTITY:
 				processAddEntity(data);
 				break;
-			case Protocol.SERVER_REMOVE_ENTITY: //TODO separate removing entity from world and deleting entity
+			case Protocol.SERVER_REMOVE_ENTITY:
 				processRemoveEntity(data);
 				break;
 			case Protocol.SERVER_CLIENT_DISCONNECT:
+				System.out.println("disconnected by server?");
 				processServerDisconnect(data);
 				break;
 			case Protocol.SERVER_PLAYER_ID:
@@ -189,11 +204,11 @@ public class Client {
 	}
 	
 	private void disconnect(boolean notifyServer) {
-		connectionStatus = STATUS_NOT_CONNECTED;
+		connectionStatus = STATUS_DISCONNECTED;
 		try {
 			if(notifyServer) {
 				byte[] packet = new byte[2];
-				ByteUtil.putShort(packet, 0, Protocol.CLIENT_DISCONNECT);
+				Bytes.putShort(packet, 0, Protocol.CLIENT_DISCONNECT);
 				network.sendReliable(serverAddress, packet, Protocol.RESEND_COUNT, Protocol.RESEND_INTERVAL);	
 			}
 		} catch(TimeoutException e) {
@@ -247,38 +262,30 @@ public class Client {
 	
 	public void sendBombThrow(float angle) {
 		byte[] packet = new byte[2 + 4];
-		ByteUtil.putShort(packet, 0, Protocol.CLIENT_BOMB_THROW);
-		ByteUtil.putFloat(packet, 2, angle);
+		Bytes.putShort(packet, 0, Protocol.CLIENT_BOMB_THROW);
+		Bytes.putFloat(packet, 2, angle);
 		sendReliable(packet);
 	}
 	
 	public void sendBlockBreak(int x, int y) {
 		byte[] packet = new byte[10];
-		ByteUtil.putShort(packet, 0, Protocol.CLIENT_BREAK_BLOCK);
-		ByteUtil.putInteger(packet, 2, x);
-		ByteUtil.putInteger(packet, 6, y);
+		Bytes.putShort(packet, 0, Protocol.CLIENT_BREAK_BLOCK);
+		Bytes.putInteger(packet, 2, x);
+		Bytes.putInteger(packet, 6, y);
 		sendReliable(packet);
 	}
 	
 	public void sendPlayerAction(PlayerAction action, boolean enable) {
 		if(isConnected()) {
 			byte[] packet = new byte[4];
-			ByteUtil.putShort(packet, 0, Protocol.CLIENT_PLAYER_ACTION);
+			Bytes.putShort(packet, 0, Protocol.CLIENT_PLAYER_ACTION);
 			packet[2] = action.getCode();
-			ByteUtil.putBoolean(packet, 3, enable);
+			Bytes.putBoolean(packet, 3, enable);
 			sendReliable(packet);
 		} else {
 			throw new IllegalStateException("Client not connected to a server");
 		}
 	}
-	
-	private void sendWorldBuilt() {
-		byte[] packet = new byte[2];
-		ByteUtil.putShort(packet, 0, Protocol.CLIENT_WORLD_BUILT);
-		sendReliable(packet);
-	}
-	
-	//Game Functionality and Processing
 	
 	@SuppressWarnings("unchecked")
 	private <T extends Entity> T getEntityFromID(int ID) {
@@ -287,7 +294,7 @@ public class Client {
 				return (T)e;
 			}
 		}
-		throw new IllegalStateException("no entity with ID " + ID + " exists");
+		throw new IllegalStateException("No entity with ID " + ID + " exists");
 	}
 	
 	private void processServerRemoveBlock(DataReader data) {
@@ -321,7 +328,7 @@ public class Client {
 		try {
 			boolean compressed = data.readBoolean();
 			byte[] entity = data.readBytes(data.remaining());
-			Entity e = SerializationProvider.getProvider().deserialize(compressed ? ByteUtil.decompress(entity) : entity);
+			Entity e = SerializationProvider.getProvider().deserialize(compressed ? Bytes.decompress(entity) : entity);
 			state.world.forEach(o -> {
 				if(o.getID() == e.getID())
 					throw new IllegalStateException("cannot have two entities with the same ID");
@@ -332,7 +339,7 @@ public class Client {
 		}
 	}
 	
-	private void processGenericEntityUpdate(DataReader data) {
+	private void processUpdateEntity(DataReader data) {
 		int id = data.readInteger();
 		for(Entity e : state.world) {
 			if(e.getID() == id) {
@@ -343,7 +350,12 @@ public class Client {
 				return;
 			}
 		}
-		throw new RuntimeException("no entity with id " + id + " found to update");
+	}
+	
+	private void processReceiveWorldHead(DataReader data) {
+		int remaining = data.readInteger();
+		state.worldBytesRemaining = remaining;
+		state.worldData = new byte[remaining];
 	}
 	
 	private void processReceiveWorldData(DataReader data) {
@@ -352,16 +364,20 @@ public class Client {
 			throw new IllegalStateException("world head packet has not been received");
 		synchronized(state.worldData) {
 			int remaining = data.remaining();
-			ByteUtil.copy(data.readBytes(remaining), state.worldData, state.worldData.length - state.worldBytesRemaining);
+			Bytes.copy(data.readBytes(remaining), state.worldData, state.worldData.length - state.worldBytesRemaining);
 			if((state.worldBytesRemaining -= remaining) == 0) {
-				System.out.print("Building world... ");
-				long start = System.nanoTime();
-				state.world = SerializationProvider.getProvider().deserialize(Protocol.COMPRESS_WORLD_DATA ? ByteUtil.decompress(state.worldData) : state.worldData);
-				state.worldData = null; //release the raw data to the garbage collector!
-				sendWorldBuilt(); //notify server that world has been set up. TODO causing stall because running in receive thread
-				Utility.notify(worldLock);
-				System.out.println("took " + Utility.formatTime(Utility.nanosSince(start)) + ".");
+				new Thread(this::buildWorld, "World Build Task").start();
 			}
 		}
+	}
+	
+	private void buildWorld() {
+		System.out.print("Building world... ");
+		long start = System.nanoTime();
+		state.world = SerializationProvider.getProvider().deserialize(Protocol.COMPRESS_WORLD_DATA ? Bytes.decompress(state.worldData) : state.worldData);
+		state.worldData = null; //release the raw data to the garbage collector
+		sendReliable(Bytes.of(Protocol.CLIENT_WORLD_BUILT));
+		Utility.notify(worldLock);
+		System.out.println("took " + Utility.formatTime(Utility.nanosSince(start)) + ".");
 	}
 }
