@@ -1,7 +1,7 @@
 package ritzow.sandbox.server.world.entity;
 
 import ritzow.sandbox.data.DataReader;
-import ritzow.sandbox.server.Server;
+import ritzow.sandbox.server.network.Server;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.block.Block;
 import ritzow.sandbox.world.entity.BombEntity;

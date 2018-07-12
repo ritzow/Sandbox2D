@@ -1,4 +1,4 @@
-package ritzow.sandbox.server;
+package ritzow.sandbox.server.network;
 
 public class ClientBadDataException extends RuntimeException {
 
