@@ -1,13 +1,13 @@
 package ritzow.sandbox.client.input.controller;
 
 import org.lwjgl.glfw.GLFW;
-import ritzow.sandbox.client.Client;
 import ritzow.sandbox.client.graphics.Camera;
 import ritzow.sandbox.client.input.EventDelegator;
 import ritzow.sandbox.client.input.handler.CursorPosHandler;
 import ritzow.sandbox.client.input.handler.FramebufferSizeHandler;
 import ritzow.sandbox.client.input.handler.KeyHandler;
 import ritzow.sandbox.client.input.handler.MouseButtonHandler;
+import ritzow.sandbox.client.network.Client;
 import ritzow.sandbox.client.util.ClientUtility;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
 import ritzow.sandbox.util.Utility;
@@ -22,7 +22,7 @@ public final class InteractionController implements Controller, MouseButtonHandl
 	private final Camera camera;
 	private final Client client;
 	
-	private static final long COOLDOWN_THROW = Utility.millisToNanos(200), COOLDOWN_BREAK = Utility.millisToNanos(200);
+	private static final long COOLDOWN_THROW = Utility.millisToNanos(0), COOLDOWN_BREAK = Utility.millisToNanos(200);
 	
 	public InteractionController(Client client, Camera camera, float range) {
 		this.client = client;
@@ -49,21 +49,9 @@ public final class InteractionController implements Controller, MouseButtonHandl
 			float worldX = ClientUtility.pixelHorizontalToWorld(camera, mouseX, frameWidth, frameHeight);
 			float worldY = ClientUtility.pixelVerticalToWorld(camera, mouseY, frameWidth, frameHeight);
 			ClientPlayerEntity player = client.getPlayer();
-			client.sendBombThrow((float)Math.atan2(worldY - player.getPositionY(), worldX - player.getPositionX()));
+			client.sendBombThrow((float)Math.atan2(worldY - player.getPositionY(), worldX - player.getPositionX()) + Utility.randomFloat(-(float)Math.PI/8, (float)Math.PI/8));
 			lastPlace = System.nanoTime();
 		}
-		
-//		else if(secondaryAction && !placeCooldownActive() && inRange(player, blockX, blockY)) {
-//		BlockGrid back = client.getWorld().getBackground();
-//		if(player.getSelected() instanceof ClientBlockItem) {
-//			ClientBlockItem item = (ClientBlockItem)player.getSelected();
-//			if((back.place(client.getWorld(), blockX, blockY, item.getBlock()) || 
-//				front.place(client.getWorld(), blockX, blockY, item.getBlock()))) {
-//				player.removeSelected();
-//				lastPlace = System.nanoTime();
-//			}
-//		}
-//	}	
 	}
 	
 	private boolean inRange(ClientPlayerEntity player, int blockX, int blockY) {

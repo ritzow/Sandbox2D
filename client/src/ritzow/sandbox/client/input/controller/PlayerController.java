@@ -4,10 +4,10 @@ import static org.lwjgl.glfw.GLFW.GLFW_PRESS;
 import static org.lwjgl.glfw.GLFW.GLFW_REPEAT;
 
 import org.lwjgl.glfw.GLFW;
-import ritzow.sandbox.client.Client;
 import ritzow.sandbox.client.input.ControlScheme;
 import ritzow.sandbox.client.input.EventDelegator;
 import ritzow.sandbox.client.input.handler.KeyHandler;
+import ritzow.sandbox.client.network.Client;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
 import ritzow.sandbox.network.Protocol.PlayerAction;
 
