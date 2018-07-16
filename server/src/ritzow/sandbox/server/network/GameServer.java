@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ProtocolFamily;
 import java.nio.ByteBuffer;
-import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.DatagramChannel;
 import java.util.HashMap;
 import java.util.Map;
@@ -189,7 +188,7 @@ public class GameServer {
 			sendAddEntity(player); //send entity to already connected players
 			
 			for(byte[] packet : buildConnectAcknowledgementPacketsWorld(world)) {
-				sendReliable(client, packet);
+				sendUnsafe(client, packet, true);
 			}
 			
 			sendPlayerID(player, client); //send id of player entity (which was sent in world data)
@@ -280,28 +279,6 @@ public class GameServer {
 		return packets;
 	}
 	
-	public void broadcastUnreliable(byte[] data) throws IOException {
-		for(ClientState client : clients.values()) {
-			sendUnreliable(client, data);
-		}
-	}
-	
-	public void broadcastReliable(byte[] data) throws IOException {
-		for(ClientState client : clients.values()) {
-			sendReliable(client, data);
-		}
-	}
-	
-	public void sendReliable(ClientState client, byte[] data) throws IOException { //TODO race conditions, keeping println causes less bugginess (but still broken)
-		System.out.println(client.sendQueue.size());
-		client.sendQueue.add(new ReliableSendPacket(data));
-	}
-	
-	public void sendUnreliable(ClientState client, byte[] data) throws IOException {
-		System.out.println(client.sendQueue.size());
-		client.sendQueue.add(new BasicSendPacket(data));
-	}
-	
 	private static final byte[] PING; static {
 		PING = new byte[2];
 		Bytes.putShort(PING, 0, Protocol.PING);
@@ -332,12 +309,13 @@ public class GameServer {
 		if(buffer.limit() >= HEADER_SIZE) {
 			byte type = buffer.get(); //type of message (RESPONSE, RELIABLE, UNRELIABLE)
 			int messageID = buffer.getInt(); //received ID or messageID for ack.
+			//System.out.println("received message type " + type + " id " + messageID);
 			ClientState state = getState(sender);
 			switch(type) {
 			case RESPONSE_TYPE:
-				synchronized(state.reliableSendLock) {
-					if(state.sendReliableID == messageID) {
-						state.receivedByClient = true;
+				if(state.sendReliableID == messageID) {
+					state.receivedByClient = true;
+					synchronized(state.reliableSendLock) {
 						state.reliableSendLock.notifyAll();
 					}
 				} break; //else drop the response
@@ -365,12 +343,38 @@ public class GameServer {
 		sendBuffer.clear();
 	}
 	
+	public void broadcastReliable(byte[] data) throws IOException {
+		broadcastUnsafe(data.clone(), true);
+	}
+	
+	public void broadcastUnreliable(byte[] data) throws IOException {
+		broadcastUnsafe(data.clone(), false);
+	}
+	
+	public void broadcastUnsafe(byte[] data, boolean reliable) {
+		SendPacket packet = new SendPacket(data, reliable);
+		for(ClientState client : clients.values()) { //TODO won't necessarily work properly if a client connects or disconnects during iteration
+			client.sendQueue.add(packet);
+		}
+	}
+	
+	public void sendReliable(ClientState client, byte[] data) throws IOException {
+		sendUnsafe(client, data.clone(), true);
+	}
+	
+	public void sendUnreliable(ClientState client, byte[] data) throws IOException {
+		sendUnsafe(client, data.clone(), false);
+	}
+	
+	public void sendUnsafe(ClientState client, byte[] data, boolean reliable) {
+		client.sendQueue.add(new SendPacket(data, reliable));
+	}
+	
 	private final class ClientState {
 		int receiveReliableID, receiveUnreliableID, sendReliableID, sendUnreliableID;
 		final Thread sendThread;
 		final InetSocketAddress address;
-		final ByteBuffer sendBuffer;
-		final BlockingQueue<BasicSendPacket> sendQueue;
+		final BlockingQueue<SendPacket> sendQueue;
 		final Object reliableSendLock;
 		volatile boolean receivedByClient;
 		volatile boolean exit;
@@ -381,109 +385,91 @@ public class GameServer {
 		
 		ClientState(InetSocketAddress address) {
 			this.address = address;
-			sendBuffer = ByteBuffer.allocateDirect(MAX_PACKET_SIZE);
 			sendQueue = new LinkedBlockingQueue<>();
 			reliableSendLock = new Object();
 			sendThread = new Thread(senderGroup, this::sender, Utility.formatAddress(address) + " Packet Sender");
 			sendThread.start();
 		}
 		
-		void disconnect() { //TODO add more
+		void disconnect() {
 			exit = true;
 			//TODO what happens if the client is sending when interrupted, a ClosedByInterruptException will be thrown, dont want that!
 			//may need a volatile boolean that is set to true whenever the method can be interrupted and false when sending using channel
 			sendThread.interrupt();
 			if(player != null)
-				world.remove(player);
-			clients.remove(address); //TODO need to maintain a separate list of actually connected clients to prevent from being reregistered by a client sending a response or something
-			sendQueue.clear();
+				world.remove(player); //TODO causes illegalstateexception when world is being updated
+			//TODO need to maintain a separate list of actually connected clients to prevent from being reregistered by a client sending a response or something
+			clients.remove(address);
 		}
 		
 		private void sender() {
 			try {
+				ByteBuffer sendBuffer = ByteBuffer.allocateDirect(MAX_PACKET_SIZE);
 				while(!exit) {
-					BasicSendPacket packet = sendQueue.take();
-					if(packet instanceof ReliableSendPacket) {
-						if(!sendReliable((ReliableSendPacket)packet, Protocol.RESEND_COUNT, Protocol.RESEND_INTERVAL)) {
+					SendPacket packet = sendQueue.take();
+					if(packet.reliable) {
+						int attempts = Protocol.RESEND_COUNT;
+						setupSendBuffer(sendBuffer, RELIABLE_TYPE, sendReliableID, packet.data);
+						long startTime = System.nanoTime();
+						while(attempts > 0 && !receivedByClient) {
+							channel.send(sendBuffer, address);
+							sendBuffer.rewind();
+							attempts--;
+							synchronized(reliableSendLock) {
+								reliableSendLock.wait(Protocol.RESEND_INTERVAL); //wait for ack to be received by processReceive	
+							}
+						}
+						
+						if(receivedByClient) {
+							pingNanos = Utility.nanosSince(startTime);
+							receivedByClient = false;
+							sendReliableID++;
+						} else {
 							disconnect();
 							broadcastAndPrint(getForcefulDisconnectMessage(this, "connection timed out"));
 							break;
 						}
-						receivedByClient = false;
-						sendReliableID++;
-						sendBuffer.clear();
 					} else {
-						sendUnreliable(packet);
-						sendUnreliableID++;
-						sendBuffer.clear();
+						setupSendBuffer(sendBuffer, UNRELIABLE_TYPE, sendUnreliableID++, packet.data);
+						channel.send(sendBuffer, address);
 					}
+					sendBuffer.clear();
 				}
-			} catch (InterruptedException | ClosedByInterruptException e) {
+			} catch (InterruptedException e) {
 				if(exit != true) {
 					e.printStackTrace();
 				}
-			} catch (IOException e) { //most ClosedChannelExceptions shouldn't occur because clients should be gracefull disconnected
+			} catch (IOException e) { //most ClosedChannelExceptions shouldn't occur because clients should be gracefull disconnected, ClosedByInterruptException could still happen
 				e.printStackTrace();
 			}
 		}
 		
-		private boolean sendReliable(ReliableSendPacket packet, int attempts, int resendInterval) throws IOException, InterruptedException {
-			long time = System.nanoTime();
-			synchronized(reliableSendLock) {
-				ByteBuffer buffer = setupBuffer(RELIABLE_TYPE, sendReliableID, packet.data);
-				while(attempts > 0 && !packet.received) {
-					channel.send(buffer, address);
-					sendBuffer.rewind();
-					--attempts;
-					reliableSendLock.wait(resendInterval); //wait for ack to be received by processReceive
-				}
-			}
-			
-			if(receivedByClient)
-				pingNanos = Utility.nanosSince(time);
-			return receivedByClient;
-		}
-		
-		private ByteBuffer setupBuffer(byte type, int id, byte[] data) {
-			return sendBuffer.put(type).putInt(id).put(data).flip();
-		}
-		
-		private void sendUnreliable(BasicSendPacket packet) throws IOException {
-			channel.send(setupBuffer(UNRELIABLE_TYPE, sendUnreliableID, packet.data), address);
+		private void setupSendBuffer(ByteBuffer sendBuffer, byte type, int id, byte[] data) {
+			sendBuffer.put(type).putInt(id).put(data).flip();
 		}
 		
 		@Override
 		public String toString() {
 			return "ClientState[address:" 
 					+ Utility.formatAddress(address)
-					+ ",rSend:" + sendReliableID
-					+ ",rReceive:" + receiveReliableID
-					+ ",ping:" + Utility.formatTime(pingNanos) 
+					+ " rSend:" + sendReliableID
+					+ " rReceive:" + receiveReliableID
+					+ " ping:" + Utility.formatTime(pingNanos) 
 					+ ']';
 		}
 	}
 	
-	private static class BasicSendPacket { //TODO add status byte (UNRELIABLE, RELIABLE, RELIABLE_RECEIVED) to this and remove ReliableSendPacket
+	private static class SendPacket {
 		final byte[] data;
+		final boolean reliable;
 		
-		public BasicSendPacket(byte[] data) {
+		public SendPacket(byte[] data, boolean reliable) {
 			this.data = data;
+			this.reliable = reliable;
 		}
 		
 		public String toString() {
-			return "Unreliable[size:" + data.length + "]";
-		}
-	}
-	
-	private static class ReliableSendPacket extends BasicSendPacket {
-		volatile boolean received;
-
-		public ReliableSendPacket(byte[] data) {
-			super(data);
-		}
-		
-		public String toString() {
-			return "Reliable[size:" + data.length + "]";
+			return "SendPacket[reliable: " + reliable + " size:" + data.length + "]";
 		}
 	}
 }

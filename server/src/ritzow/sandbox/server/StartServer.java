@@ -44,6 +44,7 @@ public final class StartServer {
 		
 		byte[] update = new byte[2 + 4 + 4 + 4 + 4 + 4]; //protocol, id, posX, posY, velX, velY
 		Bytes.putShort(update, 0, Protocol.SERVER_ENTITY_UPDATE);
+		
 		long lastWorldUpdateTime = System.nanoTime(), lastEntitySendTime = 0;
 		while(server.isOpen()) {
 			server.receive();
