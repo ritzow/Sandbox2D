@@ -1,12 +1,12 @@
 package ritzow.sandbox.client;
 
 import static org.lwjgl.glfw.GLFW.glfwInit;
-import static org.lwjgl.glfw.GLFW.*;
+import static org.lwjgl.glfw.GLFW.glfwPollEvents;
+import static org.lwjgl.glfw.GLFW.glfwTerminate;
 
 import java.io.IOException;
-import java.net.Inet4Address;
+import java.net.Inet6Address;
 import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -41,12 +41,11 @@ public class StartClient {
 		Thread.currentThread().setName("Game Thread");
 		
 		try {
-			//Client setup
-			InetAddress serverAddress = args.length > 0 ? InetAddress.getByName(args[0]) : InetAddress.getLocalHost();
-			InetSocketAddress serverSocket = new InetSocketAddress(serverAddress, Protocol.DEFAULT_SERVER_UDP_PORT);
+			var serverSocket = Utility.getAddressOrDefault(args, 0, InetAddress.getLocalHost(), Protocol.DEFAULT_SERVER_UDP_PORT);
+			var localSocket = Utility.getAddressOrDefault(args, 2, Inet6Address.getLocalHost(), 0);
 			
-			System.out.print("Connecting to " + serverAddress.getHostAddress() + " on port " + serverSocket.getPort() + "... ");
-			Client client = Client.connect(new InetSocketAddress(Utility.getPublicAddress(Inet4Address.class), 0), serverSocket);
+			System.out.print("Connecting to " + Utility.formatAddress(serverSocket) + " from " + Utility.formatAddress(localSocket) + "... ");
+			Client client = Client.connect(localSocket, serverSocket);
 			System.out.println("connected!");
 			
 			AudioSystem audio = setupAudio();
@@ -56,13 +55,15 @@ public class StartClient {
 			//mute audio when window is in background
 			input.windowFocusHandlers().add(focused -> audio.setVolume(focused ? 1.0f : 0.0f));
 			
-			var cameraGrip = new TrackingCameraController(new Camera(0, 0, 1), audio, client.getPlayer(), 0.005f, 0.05f, 0.6f);
+			Camera camera = new Camera(0, 0, 1);
+			
+			var cameraGrip = new TrackingCameraController(camera, audio, client.getPlayer(), 0.005f, 0.05f, 0.6f);
 			cameraGrip.link(input);
 			
 			var playerController = new PlayerController(client);
 			playerController.link(input);
 			
-			var interactionController = new InteractionController(client, cameraGrip.getCamera(), 5);
+			var interactionController = new InteractionController(client, 5);
 			interactionController.link(input);
 			
 			input.keyboardHandlers().add((key, scancode, action, mods) -> {
@@ -75,7 +76,6 @@ public class StartClient {
 			});
 
 			input.windowCloseHandlers().add(() -> triggerExit = true);
-			client.setOnDisconnect(() -> triggerExit = true);
 			
 			var world = client.getWorld();
 			var renderer = display.getRenderManager();
@@ -126,7 +126,7 @@ public class StartClient {
 					lastUpdate = display.focused() ? Utility.updateWorld(world, lastUpdate, 
 							SharedConstants.MAX_TIMESTEP, SharedConstants.TIME_SCALE_NANOSECONDS) : System.nanoTime();
 					cameraGrip.update();
-					interactionController.update();
+					interactionController.update(camera, display.width(), display.height());
 					if(display.focused()) {
 						ui.update();
 						renderer.run(display);
@@ -141,10 +141,10 @@ public class StartClient {
 					client.disconnect();
 				audio.close();
 				glfwTerminate();
-				System.out.println("done!");	
+				System.out.println("done!");
 			}
 		} catch(ConnectionFailedException e) {
-			System.out.println(e.getMessage());
+			System.out.println(e.getMessage() + ".");
 		}
 	}
 	

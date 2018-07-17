@@ -1,17 +1,18 @@
 package ritzow.sandbox.util;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.net.Inet4Address;
+import java.net.Inet6Address;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
+import java.net.ProtocolFamily;
 import java.net.SocketException;
+import java.net.StandardProtocolFamily;
+import java.net.UnknownHostException;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import ritzow.sandbox.data.Bytes;
-import ritzow.sandbox.data.Deserializer;
 import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
 
@@ -23,6 +24,26 @@ import ritzow.sandbox.world.World;
 public final class Utility {
 	private Utility() {
 		throw new UnsupportedOperationException("Utility class cannot be instantiated");
+	}
+	
+	public static String formatAddress(InetSocketAddress address) {
+		return "[" + address.getAddress().getHostAddress() + "]:" + (address.getPort() == 0 ? "any" : address.getPort());
+	}
+	
+	public static ProtocolFamily getProtocolFamily(InetAddress address) {
+		Class<? extends InetAddress> addressClass = address.getClass();
+		if(addressClass.equals(Inet6Address.class)) {
+			return StandardProtocolFamily.INET6;
+		} else if(addressClass.equals(Inet4Address.class)) {
+			return StandardProtocolFamily.INET;
+		} else {
+			throw new IllegalArgumentException("InetAddress of unknown protocol");
+		}
+	}
+	
+	public static InetSocketAddress getAddressOrDefault(String[] args, int index, InetAddress defaultAddress, int defaultPort) throws NumberFormatException, UnknownHostException {
+		return new InetSocketAddress(args.length > index ? InetAddress.getByName(args[index]) : defaultAddress, 
+				args.length > 1 ? Integer.parseInt(args[index + 1]) : defaultPort);
 	}
 	
 	public static <T extends InetAddress> T getPublicAddress(Class<T> addressType) throws SocketException {
@@ -42,17 +63,6 @@ public final class Utility {
 		if(addresses.isEmpty())
 			throw new RuntimeException("No address of type " + addressType + " available");
 		return addressType.cast(addresses.iterator().next());
-	}
-
-	public static World loadWorld(File file, Deserializer des) {
-		try(FileInputStream in = new FileInputStream(file)) {
-			byte[] data = new byte[(int)file.length()];
-			in.read(data);
-			World world = des.deserialize(Bytes.decompress(data));
-			return world;
-		} catch(IOException e) {
-			throw new RuntimeException("Error loading world from file ", e);
-		}
 	}
 	
 	public static int clampLowerBound(int min, float value) {

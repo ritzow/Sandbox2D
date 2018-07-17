@@ -15,7 +15,7 @@ import ritzow.sandbox.world.item.Item;
  * Represents a player controlled by a human
  * @author Solomon Ritzow
  */
-public class PlayerEntity extends Entity implements Living {
+public abstract class PlayerEntity extends Entity implements Living {
 	protected final Inventory<Item> inventory;
 	protected int selected, health;
 	protected boolean left, right, up, down;

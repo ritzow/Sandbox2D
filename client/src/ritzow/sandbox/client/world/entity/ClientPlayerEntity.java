@@ -21,11 +21,11 @@ public class ClientPlayerEntity extends PlayerEntity implements Renderable {
 		super(input);
 	}
 	
-	@Override
-	protected void onCrouch(boolean isCrouched) {
-		if(isCrouched)
-			positionY -= SIZE_SCALE/2;
-	}
+//	@Override
+//	protected void onCrouch(boolean isCrouched) {
+//		if(isCrouched)
+//			positionY -= SIZE_SCALE/2;
+//	}
 
 	@Override
 	public void render(ModelRenderProgram renderer) {

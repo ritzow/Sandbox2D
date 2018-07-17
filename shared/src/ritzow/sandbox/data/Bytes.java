@@ -2,6 +2,7 @@ package ritzow.sandbox.data;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.zip.DeflaterOutputStream;
@@ -154,6 +155,14 @@ public final class Bytes {
 		return array[index] == 1 ? true : false;
 	}
 	
+	public static String getString(byte[] array, int index, Charset charset) {
+		return new String(array, index + 4, getInteger(array, index), charset);
+	}
+	
+	public static int getStringLength(byte[] array, int index) {
+		return getInteger(array, index) + 4;
+	}
+	
 	/* values to bytes */
 	
 	public static void putDouble(byte[] array, int index, double value) {
@@ -185,6 +194,16 @@ public final class Bytes {
 	
 	public static void putBoolean(byte[] array, int index, boolean b) {
 		array[index] = (byte)(b ? 1 : 0);
+	}
+	
+	public static int putBytesWithLength(byte[] array, int index, byte[] bytes) {
+		putInteger(array, index, bytes.length);
+		copy(bytes, array, index + 4);
+		return bytes.length + 4;
+	}
+	
+	public static int putString(byte[] array, int index, String str, Charset charset) {
+		return putBytesWithLength(array, index, str.getBytes(charset));
 	}
 	
 	/**

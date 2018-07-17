@@ -4,7 +4,6 @@ import org.lwjgl.glfw.GLFW;
 import ritzow.sandbox.client.graphics.Camera;
 import ritzow.sandbox.client.input.EventDelegator;
 import ritzow.sandbox.client.input.handler.CursorPosHandler;
-import ritzow.sandbox.client.input.handler.FramebufferSizeHandler;
 import ritzow.sandbox.client.input.handler.KeyHandler;
 import ritzow.sandbox.client.input.handler.MouseButtonHandler;
 import ritzow.sandbox.client.network.Client;
@@ -13,29 +12,21 @@ import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
 import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.BlockGrid;
 
-public final class InteractionController implements Controller, MouseButtonHandler, CursorPosHandler, FramebufferSizeHandler, KeyHandler {
+public final class InteractionController implements MouseButtonHandler, CursorPosHandler, KeyHandler {
 	private volatile boolean primaryAction, secondaryAction;
-	private volatile int frameWidth, frameHeight;
 	private volatile int mouseX, mouseY;
 	private long lastPlace, lastBreak;
 	private float range;
-	private final Camera camera;
 	private final Client client;
 	
 	private static final long COOLDOWN_THROW = Utility.millisToNanos(0), COOLDOWN_BREAK = Utility.millisToNanos(200);
 	
-	public InteractionController(Client client, Camera camera, float range) {
+	public InteractionController(Client client, float range) {
 		this.client = client;
-		this.camera = camera;
 		this.range = range;
 	}
 	
-	@Override
-	public void update() {
-		update(camera, frameWidth, frameHeight);
-	}
-	
-	protected void update(Camera camera, int frameWidth, int frameHeight) {
+	public void update(Camera camera, int frameWidth, int frameHeight) {
 		if(primaryAction && breakAllowed()) {
 			int blockX = Math.round(ClientUtility.pixelHorizontalToWorld(camera, mouseX, frameWidth, frameHeight));
 			int blockY = Math.round(ClientUtility.pixelVerticalToWorld(camera, mouseY, frameWidth, frameHeight));
@@ -68,14 +59,12 @@ public final class InteractionController implements Controller, MouseButtonHandl
 
 	public void link(EventDelegator input) {
 		input.cursorPosHandlers().add(this);
-		input.framebufferSizeHandlers().add(this);
 		input.keyboardHandlers().add(this);
 		input.mouseButtonHandlers().add(this);
 	}
 	
 	public void unlink(EventDelegator input) {
 		input.cursorPosHandlers().remove(this);
-		input.framebufferSizeHandlers().remove(this);
 		input.keyboardHandlers().remove(this);
 		input.mouseButtonHandlers().remove(this);
 	}
@@ -90,12 +79,6 @@ public final class InteractionController implements Controller, MouseButtonHandl
 	public void cursorPos(double xpos, double ypos) {
 		mouseX = (int) xpos;
 		mouseY = (int) ypos;
-	}
-
-	@Override
-	public void framebufferSize(int width, int height) {
-		frameWidth = width;
-		frameHeight = height;
 	}
 
 	@Override
