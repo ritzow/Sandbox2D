@@ -18,7 +18,6 @@ import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.network.Protocol.PlayerAction;
 import ritzow.sandbox.network.TimeoutException;
 import ritzow.sandbox.server.SerializationProvider;
-import ritzow.sandbox.server.world.entity.ServerBombEntity;
 import ritzow.sandbox.server.world.entity.ServerPlayerEntity;
 import ritzow.sandbox.util.SharedConstants;
 import ritzow.sandbox.util.TaskQueue;
@@ -26,7 +25,6 @@ import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.block.Block;
-import ritzow.sandbox.world.entity.BombEntity;
 import ritzow.sandbox.world.entity.Entity;
 import ritzow.sandbox.world.entity.ItemEntity;
 import ritzow.sandbox.world.entity.PlayerEntity;
@@ -48,7 +46,7 @@ public class Server {
 	}
 	
 	private Server(InetSocketAddress bindAddress) throws IOException {
-		this.network = new NetworkController(bindAddress, this::receive);
+		this.network = new NetworkController(Utility.getProtocolFamily(bindAddress.getAddress()), bindAddress, this::receive);
 		ThreadGroup processors = new ThreadGroup(this + " Server Workers");
 		this.workerPool = Executors.newCachedThreadPool(
 				runnable -> new Thread(processors, runnable, "Worker"));
@@ -57,7 +55,7 @@ public class Server {
 	}
 	
 	public ClientState[] listClients() {
-		return clients.values().toArray(new ClientState[clients.size()]);
+		return clients.values().toArray(size -> new ClientState[size]);
 	}
 	
 	public void start(World world) {
@@ -68,6 +66,10 @@ public class Server {
 		network.start();
 		canConnect = true;
 		running = true;
+	}
+	
+	public InetSocketAddress getBindAddress() {
+		return network.getBindAddress();
 	}
 	
 	public boolean isRunning() {
@@ -91,9 +93,9 @@ public class Server {
 		short type = Bytes.getShort(data, 0);
 		ClientState client = clients.get(sender);
 
-		if(client == null && type == Protocol.CLIENT_CONNECT_REQUEST) {
+		if(client == null && type == Protocol.TYPE_CLIENT_CONNECT_REQUEST) {
 			workerPool.execute(() -> connectClient(sender));
-		} else if(client != null && type != Protocol.CLIENT_CONNECT_REQUEST) {
+		} else if(client != null && type != Protocol.TYPE_CLIENT_CONNECT_REQUEST) {
 			workerPool.execute(() -> process(client, type, data));
 		}
 	}
@@ -101,20 +103,20 @@ public class Server {
 	private void process(ClientState client, short type, byte[] data) {
 		try {
 			switch(type) {
-				case Protocol.CLIENT_DISCONNECT:
+				case Protocol.TYPE_CLIENT_DISCONNECT:
 					client.disconnect();
 					broadcastAndPrint(getClientDisconnectMessage(client));
 					break;
-				case Protocol.CLIENT_PLAYER_ACTION:
+				case Protocol.TYPE_CLIENT_PLAYER_ACTION:
 					processPlayerAction(client, data);
 					break;
-				case Protocol.CLIENT_BREAK_BLOCK:
+				case Protocol.TYPE_CLIENT_BREAK_BLOCK:
 					processClientBreakBlock(client, data);
 					break;
-				case Protocol.CLIENT_BOMB_THROW:
-					processClientThrowBomb(client, data);
+				case Protocol.TYPE_CLIENT_BOMB_THROW:
+//					processClientThrowBomb(client, data);
 					break;
-				case Protocol.CLIENT_WORLD_BUILT:
+				case Protocol.TYPE_CLIENT_WORLD_BUILT:
 					client.worldSetupComplete = true;
 					break;
 				default:
@@ -125,24 +127,24 @@ public class Server {
 		}
 	}
 	
-	private static final float BOMB_THROW_VELOCITY = 0.8f;
-	
-	private void processClientThrowBomb(ClientState client, byte[] data) {
-		processQueue.add(() -> {
-			BombEntity bomb = new ServerBombEntity(this, world.nextEntityID());
-			bomb.setPositionX(client.player.getPositionX());
-			bomb.setPositionY(client.player.getPositionY());
-			float angle = Bytes.getFloat(data, 2);
-			bomb.setVelocityX((float) (Math.cos(angle) * BOMB_THROW_VELOCITY));
-			bomb.setVelocityY((float) (Math.sin(angle) * BOMB_THROW_VELOCITY));
-			world.add(bomb);
-			sendAddEntity(bomb);
-		});
-	}
+//	private static final float BOMB_THROW_VELOCITY = 0.8f;
+//	
+//	private void processClientThrowBomb(ClientState client, byte[] data) {
+//		processQueue.add(() -> {
+//			BombEntity bomb = new ServerBombEntity(this, world.nextEntityID());
+//			bomb.setPositionX(client.player.getPositionX());
+//			bomb.setPositionY(client.player.getPositionY());
+//			float angle = Bytes.getFloat(data, 2);
+//			bomb.setVelocityX((float) (Math.cos(angle) * BOMB_THROW_VELOCITY));
+//			bomb.setVelocityY((float) (Math.sin(angle) * BOMB_THROW_VELOCITY));
+//			world.add(bomb);
+//			sendAddEntity(bomb);
+//		});
+//	}
 	
 	private final byte[] update; {
 		update = new byte[2 + 4 + 4 + 4 + 4 + 4]; //protocol, id, posX, posY, velX, velY
-		Bytes.putShort(update, 0, Protocol.SERVER_ENTITY_UPDATE);
+		Bytes.putShort(update, 0, Protocol.TYPE_SERVER_ENTITY_UPDATE);
 	}
 
 	public void update() {
@@ -177,7 +179,7 @@ public class Server {
 	
 	private void broadcastPlayerAction(PlayerEntity player, PlayerAction action, boolean isEnabled) {
 		byte[] packet = new byte[8];
-		Bytes.putShort(packet, 0, Protocol.SERVER_PLAYER_ACTION);
+		Bytes.putShort(packet, 0, Protocol.TYPE_SERVER_PLAYER_ACTION);
 		Bytes.putInteger(packet, 2, player.getID());
 		packet[6] = action.getCode();
 		Bytes.putBoolean(packet, 7, isEnabled);
@@ -203,11 +205,9 @@ public class Server {
 		});
 	}
 	
-	private static final byte[] PING;
-	
-	static {
+	private static final byte[] PING; static {
 		PING = new byte[2];
-		Bytes.putShort(PING, 0, Protocol.PING);
+		Bytes.putShort(PING, 0, Protocol.TYPE_SERVER_PING);
 	}
 	
 	public void pingClients() {
@@ -220,7 +220,7 @@ public class Server {
 	
 	public void sendRemoveBlock(int x, int y) {
 		byte[] packet = new byte[10];
-		Bytes.putShort(packet, 0, Protocol.SERVER_REMOVE_BLOCK);
+		Bytes.putShort(packet, 0, Protocol.TYPE_SERVER_REMOVE_BLOCK);
 		Bytes.putInteger(packet, 2, x);
 		Bytes.putInteger(packet, 6, y);
 		broadcastReliable(packet, client -> true, null);
@@ -228,7 +228,7 @@ public class Server {
 	
 	private static void sendPlayerID(PlayerEntity player, ClientState client) {
 		byte[] packet = new byte[6];
-		Bytes.putShort(packet, 0, Protocol.SERVER_PLAYER_ID);
+		Bytes.putShort(packet, 0, Protocol.TYPE_SERVER_PLAYER_ID);
 		Bytes.putInteger(packet, 2, player.getID());
 		client.send(packet, true, null, null);
 	}
@@ -238,7 +238,7 @@ public class Server {
 		boolean compress = entity.length > Protocol.MAX_MESSAGE_LENGTH - 3;
 		entity = compress ? Bytes.compress(entity) : entity;
 		byte[] packet = new byte[3 + entity.length];
-		Bytes.putShort(packet, 0, Protocol.SERVER_ADD_ENTITY);
+		Bytes.putShort(packet, 0, Protocol.TYPE_SERVER_ADD_ENTITY);
 		Bytes.putBoolean(packet, 2, compress);
 		Bytes.copy(entity, packet, 3);
 		broadcastReliable(packet, client -> true, null);
@@ -246,7 +246,7 @@ public class Server {
 	
 	public void sendRemoveEntity(Entity e) {
 		byte[] packet = new byte[2 + 4];
-		Bytes.putShort(packet, 0, Protocol.SERVER_REMOVE_ENTITY);
+		Bytes.putShort(packet, 0, Protocol.TYPE_SERVER_REMOVE_ENTITY);
 		Bytes.putInteger(packet, 2, e.getID());
 		broadcastReliable(packet, client -> true, null);
 	}
@@ -254,7 +254,7 @@ public class Server {
 	private static byte[] buildServerDisconnect(String reason) {
 		byte[] message = reason.getBytes(Protocol.CHARSET);
 		byte[] packet = new byte[message.length + 6];
-		Bytes.putShort(packet, 0, Protocol.SERVER_CLIENT_DISCONNECT);
+		Bytes.putShort(packet, 0, Protocol.TYPE_SERVER_CLIENT_DISCONNECT);
 		Bytes.putInteger(packet, 2, message.length);
 		Bytes.copy(message, packet, 6);
 		return packet;
@@ -291,33 +291,21 @@ public class Server {
 	 * @param reason the reason for the disconnection
 	 * @return the number of clients disconnected
 	 */
-	public int disconnectAll(String reason) { //TODO lel very broked
-		broadcastReliable(buildServerDisconnect(reason), client -> true, null);
-//		int count = clients.size();
-//		synchronized(clients) {
-//			broadcastReliable(buildServerDisconnect(reason), false);
-//			for(ClientState client : clients.values()) {
-//				network.removeConnection(client.address);
-//				if(client.player != null) {
-//					world.remove(client.player);
-//					sendRemoveEntity(client.player);
-//				}
-//			}
-//			clients.clear();
-//		}
-//		if(count > 0)
-//			System.out.println("Disconnected " + count + " remaining clients");
-		return 0;
+	public int disconnectAll(String reason) {
+		throw new UnsupportedOperationException("not implemented");
+		//broadcastReliable(buildServerDisconnect(reason), client -> true, null);
+		//TODO remove all client state after waiting for broadcast to complete
+		//return 0;
 	}
 	
 	private String getForcefulDisconnectMessage(ClientState client, String reason) {
-		return client.getAddressString() + " was disconnected ("
+		return Utility.formatAddress(client.address) + " was disconnected ("
 				+ (reason != null && reason.length() > 0 ? "reason: " + reason + ", ": "") 
 				+ clients.size() + " players connected)";
 	}
 	
 	private String getClientDisconnectMessage(ClientState client) {
-		return client.getAddressString() + " disconnected (" + clients.size() + " players connected)";
+		return Utility.formatAddress(client.address) + " disconnected (" + clients.size() + " players connected)";
 	}
 	
 	private void broadcastAndPrint(String consoleMessage) {
@@ -325,13 +313,13 @@ public class Server {
 		System.out.println(consoleMessage);
 	}
 	
-	private void sendClientConnectReply(InetSocketAddress client, boolean connected) {
+	private void sendClientConnectReply(InetSocketAddress client, boolean connected) throws TimeoutException {
 		byte[] response = new byte[3];
-		Bytes.putShort(response, 0, Protocol.SERVER_CONNECT_ACKNOWLEDGMENT);
+		Bytes.putShort(response, 0, Protocol.TYPE_SERVER_CONNECT_ACKNOWLEDGMENT);
 		Bytes.putBoolean(response, 2, connected);
 		try {
 			network.sendReliable(client, response, 10, 100);
-		} catch (TimeoutException | IOException e) {
+		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
@@ -340,20 +328,9 @@ public class Server {
 		try {
 			sendClientConnectReply(address, canConnect);
 			if(canConnect) {
-				processQueue.add(()->{
+				processQueue.add(() -> {
 					//construct a new player for the client
 					PlayerEntity player = new ServerPlayerEntity(world.nextEntityID());
-					
-					//set the player's position to directly above the ground in the center of the world
-					BlockGrid grid = world.getForeground();
-					float posX = world.getForeground().getWidth()/2;
-					player.setPositionX(posX);
-					for(int i = grid.getHeight() - 2; i > 1; i--) {
-						if(grid.get(posX, i) == null && grid.get(posX, i + 1) == null && grid.get(posX, i - 1) != null) {
-							player.setPositionY(i);
-							break;
-						}
-					}
 					
 					world.add(player);
 					sendAddEntity(player); //send entity to already connected players
@@ -361,24 +338,32 @@ public class Server {
 					//create the client's ClientState object to track their information
 					ClientState client = new ClientState(address, player);
 					
+					//set the player's position to directly above the ground in the center of the world
+					placePlayerInCenter(player, world.getForeground());
+					
 					//send the world to the client
-					try {
-						for(byte[] packet : buildWorldPackets(world)) {
-							client.send(packet, true, null, null);
-						}
-						
-						clients.put(address, client);
-						sendPlayerID(player, client); //send id of player entity (which was sent in world data)
-						System.out.println(client.getAddressString() + " joined (" + clients.size() + " players connected)");
-					} catch(TimeoutException e) {
-						world.remove(player);
-						sendRemoveEntity(player);
-						System.out.println(client.getAddressString() + " timed out while connecting");
+					for(byte[] packet : buildWorldPackets(world)) {
+						client.send(packet, true, null, null);
 					}
+					
+					clients.put(address, client);
+					sendPlayerID(player, client); //send id of player entity (which was sent in world data)
+					System.out.println(Utility.formatAddress(address) + " joined (" + getConnectedClients() + " players connected)");
 				});
 			}
 		} catch(TimeoutException e) {
-			System.out.println(address + " attempted to connect, but timed out");
+			System.out.println(Utility.formatAddress(address) + " attempted to connect, but timed out");
+		}
+	}
+	
+	private static void placePlayerInCenter(PlayerEntity player, BlockGrid grid) {
+		float posX = grid.getWidth()/2;
+		player.setPositionX(posX);
+		for(int i = grid.getHeight() - 2; i > 1; i--) {
+			if(grid.get(posX, i) == null && grid.get(posX, i + 1) == null && grid.get(posX, i - 1) != null) {
+				player.setPositionY(i);
+				break;
+			}
 		}
 	}
 	
@@ -389,15 +374,14 @@ public class Server {
 		//build packets
 		byte[][] packets = Bytes.split(worldBytes, Protocol.MAX_MESSAGE_LENGTH - 2, 2, 1);
 		for(int i = 1; i < packets.length; i++) {
-			Bytes.putShort(packets[i], 0, Protocol.SERVER_WORLD_DATA);
+			Bytes.putShort(packets[i], 0, Protocol.TYPE_SERVER_WORLD_DATA);
 		}
 	
 		//create the first packet to send, which contains the number of subsequent packets
 		byte[] head = new byte[6];
-		Bytes.putShort(head, 0, Protocol.SERVER_WORLD_HEAD);
+		Bytes.putShort(head, 0, Protocol.TYPE_SERVER_WORLD_HEAD);
 		Bytes.putInteger(head, 2, worldBytes.length);
 		packets[0] = head;
-		//System.out.println("World packets " + packets.length + ", " + worldBytes.length);
 		return packets;
 	}
 	
@@ -457,10 +441,6 @@ public class Server {
 			(sendQueueThread = new Thread(this::runSender, address + " Client Sender")).start();
 		}
 		
-		public String getAddressString() {
-			return address.getAddress().getHostAddress();
-		}
-		
 		public void disconnect() {
 			//stop the send thread
 			exit = true;
@@ -468,7 +448,7 @@ public class Server {
 			
 			//remove from the client list
 			if(clients.remove(address) == null)
-				throw new IllegalArgumentException(getAddressString() + " is not connected to the server");
+				throw new IllegalArgumentException(Utility.formatAddress(address) + " is not connected to the server");
 			
 			//remove from the network controller
 			network.removeConnection(address);
@@ -478,7 +458,7 @@ public class Server {
 				processQueue.add(() -> {
 					world.remove(player);
 					byte[] packet = new byte[2 + 4];
-					Bytes.putShort(packet, 0, Protocol.SERVER_REMOVE_ENTITY);
+					Bytes.putShort(packet, 0, Protocol.TYPE_SERVER_REMOVE_ENTITY);
 					Bytes.putInteger(packet, 2, player.getID());
 					broadcastReliable(packet, client -> !equals(client), null);
 				});
@@ -523,7 +503,6 @@ public class Server {
 						packet.sync.countDown();
 				} catch (InterruptedException e) {
 					if(exit) break;
-				} catch (TimeoutException e) {
 					e.printStackTrace();
 				} catch (IOException e) {
 					e.printStackTrace();

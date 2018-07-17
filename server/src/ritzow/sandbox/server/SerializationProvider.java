@@ -14,15 +14,15 @@ import ritzow.sandbox.world.item.BlockItem;
 
 public class SerializationProvider {
 	private static final SerializerReaderWriter provider = new SerializerReaderWriter()
-			.register(Protocol.BLOCK_GRID, BlockGrid.class, BlockGrid::new)
-			.register(Protocol.WORLD, World.class, World::new)
-			.register(Protocol.BLOCK_ITEM, BlockItem.class, BlockItem::new)
-			.register(Protocol.DIRT_BLOCK, DirtBlock.class, DirtBlock::new)
-			.register(Protocol.GRASS_BLOCK, GrassBlock.class, GrassBlock::new)
-			.register(Protocol.PLAYER_ENTITY, ServerPlayerEntity.class, ServerPlayerEntity::new)
-			.register(Protocol.INVENTORY, Inventory.class, Inventory::new)
-			.register(Protocol.ITEM_ENTITY, ItemEntity.class, ItemEntity::new)
-			.register(Protocol.BOMB_ENTITY, ServerBombEntity.class, ServerBombEntity::new);
+			.register(Protocol.DATA_BLOCK_GRID, BlockGrid.class, BlockGrid::new)
+			.register(Protocol.DATA_WORLD, World.class, World::new)
+			.register(Protocol.DATA_BLOCK_ITEM, BlockItem.class, BlockItem::new)
+			.register(Protocol.DATA_DIRT_BLOCK, DirtBlock.class, DirtBlock::new)
+			.register(Protocol.DATA_GRASS_BLOCK, GrassBlock.class, GrassBlock::new)
+			.register(Protocol.DATA_PLAYER_ENTITY, ServerPlayerEntity.class, ServerPlayerEntity::new)
+			.register(Protocol.DATA_INVENTORY, Inventory.class, Inventory::new)
+			.register(Protocol.DATA_ITEM_ENTITY, ItemEntity.class, ItemEntity::new)
+			.register(Protocol.DATA_BOMB_ENTITY, ServerBombEntity.class, ServerBombEntity::new);
 	
 	public static SerializerReaderWriter getProvider() {
 		return provider;

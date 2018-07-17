@@ -2,6 +2,7 @@ package ritzow.sandbox.network;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.ProtocolFamily;
 import java.net.SocketAddress;
 import java.net.StandardSocketOptions;
 import java.nio.ByteBuffer;
@@ -12,6 +13,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import ritzow.sandbox.util.Utility;
 
+import static ritzow.sandbox.network.Protocol.*;
+
 /** Provides common functionality of the client and server. Manages incoming and outgoing packets. **/
 public class NetworkController {
 	private volatile DatagramChannel channel;
@@ -20,13 +23,9 @@ public class NetworkController {
 	private final MessageProcessor messageProcessor;
 	private volatile boolean started, exit;
 	
-	private static final int STARTING_SEND_ID = 0;
-	private static final int HEADER_SIZE = 5, MAX_PACKET_SIZE = HEADER_SIZE + Protocol.MAX_MESSAGE_LENGTH;
-	private static final byte RESPONSE_TYPE = 1, RELIABLE_TYPE = 2, UNRELIABLE_TYPE = 3;
-	
-	public NetworkController(InetSocketAddress bindAddress, MessageProcessor processor) throws IOException {
+	public NetworkController(ProtocolFamily family, InetSocketAddress bindAddress, MessageProcessor processor) throws IOException {
 		messageProcessor = processor;
-		channel = DatagramChannel.open().bind(bindAddress)
+		channel = DatagramChannel.open(family).bind(bindAddress)
 				.setOption(StandardSocketOptions.SO_SNDBUF, MAX_PACKET_SIZE);
 		connections = new ConcurrentHashMap<>();
 		packets = ThreadLocal.withInitial(() -> ByteBuffer.allocate(MAX_PACKET_SIZE));
