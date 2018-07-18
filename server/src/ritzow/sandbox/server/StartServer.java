@@ -1,20 +1,20 @@
 package ritzow.sandbox.server;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.BindException;
 import java.net.InetAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Scanner;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.server.network.GameServer;
-import ritzow.sandbox.server.network.GameServer.ClientState;
 import ritzow.sandbox.util.SharedConstants;
 import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.World;
@@ -27,6 +27,8 @@ public final class StartServer {
 	private static volatile boolean save = true;
 	private static final Path saveFile = Path.of("data/worlds/world.dat");
 	private static GameServer server;
+	private static final Map<String, Consumer<String>> commands = new HashMap<>();
+	private static final Queue<Runnable> commandQueue = new ConcurrentLinkedQueue<>();
 	
 	private static final long NETWORK_SEND_INTERVAL_NANOSECONDS = Utility.millisToNanos(100);
 	
@@ -39,36 +41,49 @@ public final class StartServer {
 			World world = getWorld();
 			server.setCurrentWorld(world);
 			
-			new Thread(() -> runCommandParser(System.in)).start();
+			new Thread(StartServer::runCommandParser, "Command Parser").start();
 			
 			byte[] update = new byte[2 + 4 + 4 + 4 + 4 + 4]; //protocol, id, posX, posY, velX, velY
 			Bytes.putShort(update, 0, Protocol.TYPE_SERVER_ENTITY_UPDATE);
-			
-			long lastWorldUpdateTime = System.nanoTime(), lastEntitySendTime = 0;
-			while(server.isOpen()) { //TODO non-blocking command line processing on game thread
+
+			long lastWorldUpdateTime = System.nanoTime(), lastNetworkSendTime = 0;
+			while(server.isOpen()) {
+				server.removeDisconnectedClients();
 				server.receive();
 				lastWorldUpdateTime = Utility.updateWorld(world, lastWorldUpdateTime, 
 						SharedConstants.MAX_TIMESTEP, SharedConstants.TIME_SCALE_NANOSECONDS);
-				if(Utility.nanosSince(lastEntitySendTime) > NETWORK_SEND_INTERVAL_NANOSECONDS) {
+				if(Utility.nanosSince(lastNetworkSendTime) > NETWORK_SEND_INTERVAL_NANOSECONDS) {
 					for(Entity e : world) {
-						Bytes.putInteger(update, 2, e.getID());
-						Bytes.putFloat(update, 6, e.getPositionX());
-						Bytes.putFloat(update, 10, e.getPositionY());
-						Bytes.putFloat(update, 14, e.getVelocityX());
-						Bytes.putFloat(update, 18, e.getVelocityY());
-						server.broadcastUnreliable(update);
+						populateEntityUpdate(update, e);
+						server.broadcastUnreliable(update); //TODO optimize entity packet format and sending (batch entity updates)
 					}
 					server.broadcastPing();
-					lastEntitySendTime = System.nanoTime();
+					lastNetworkSendTime = System.nanoTime();
+				}
+				
+				while(!commandQueue.isEmpty()) {
+					commandQueue.remove().run();
 				}
 				Utility.sleep(1);
 			}
-			
-			if(save) saveWorld(world, saveFile);	
+
+			if(save) {
+				saveWorld(world, saveFile);
+			} else {
+				System.out.println("Server stopped without saving to file.");
+			}
 		} catch(BindException e) {
 			System.out.println("Could not start server: '" + e.getMessage() + "'");
 		}
 	
+	}
+	
+	private static void populateEntityUpdate(byte[] packet, Entity e) {
+		Bytes.putInteger(packet, 2, e.getID());
+		Bytes.putFloat(packet, 6, e.getPositionX());
+		Bytes.putFloat(packet, 10, e.getPositionY());
+		Bytes.putFloat(packet, 14, e.getVelocityX());
+		Bytes.putFloat(packet, 18, e.getVelocityY());
 	}
 	
 	public static World getWorld() throws IOException {
@@ -79,7 +94,7 @@ public final class StartServer {
 		return SerializationProvider.getProvider().deserialize(Bytes.decompress(Files.readAllBytes(file)));
 	}
 	
-	public static void saveWorld(World world, Path file) {
+	private static void saveWorld(World world, Path file) {
 		try {
 			System.out.print("Saving world... ");
 			world.removeIf(e -> e instanceof PlayerEntity); //remove players before saving to file
@@ -91,7 +106,7 @@ public final class StartServer {
 		}
 	}
 	
-	public static World generateWorld(int width, int height) {
+	private static World generateWorld(int width, int height) {
 		World world = new World(width, height, 0.016f);
 		for(int column = 0; column < world.getForeground().getWidth(); column++) {
 			double halfheight = world.getForeground().getHeight()/2;
@@ -125,11 +140,7 @@ public final class StartServer {
 	}
 	
 	private static void stopCommand(String args) {
-		try {
-			server.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		server.close();
 	}
 
 	private static void sayCommand(String args) {
@@ -139,12 +150,7 @@ public final class StartServer {
 	
 	private static void abortCommand(String args) {
 		save = false;
-		try {
-			server.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		System.out.println("Server stopped without saving to file.");
+		server.close();
 	}
 	
 	private static void listCommmand(String args) {
@@ -152,31 +158,35 @@ public final class StartServer {
 			System.out.println("No connected clients.");
 		} else {
 			System.out.println("Connected clients:");
-			for(ClientState client : server.listClients()) {
-				System.out.print("\t - ");
-				System.out.println(client);
-			}
-		}
-	}
-	
-	private static Map<String, Consumer<String>> commands = new HashMap<>();
-	
-	private static void register(String name, Consumer<String> action) {
-		if(commands.putIfAbsent(name, action) != null)
-			throw new IllegalArgumentException(name + " already registered");	
-	}
-	
-	private static void runCommandParser(InputStream in) {
-		registerCommands();
-		System.out.println("Enter commands (" + commands.keySet().stream().collect(Collectors.joining(", ")) + "): ");
-		try(Scanner scan = new Scanner(in)) {
-			while(server.isOpen()) {
-				commands.getOrDefault(scan.next(), StartServer::unknownCommand).accept(scan.nextLine().trim());
+			for(var address : server.listClients()) {
+				System.out.print("    - ");
+				System.out.println(Utility.formatAddress(address));
 			}
 		}
 	}
 	
 	private static void unknownCommand(String args) {
 		System.out.println("Unknown command.");
+	}
+	
+	private static void register(String name, Consumer<String> action) {
+		if(commands.putIfAbsent(name, action) != null)
+			throw new IllegalArgumentException(name + " already registered");	
+	}
+	
+	private static void runCommandParser() { //TODO fix command parser thread staying alive after server exit
+		registerCommands();
+		System.out.println("Enter commands (" + commands.keySet().stream().collect(Collectors.joining(", ")) + "): ");
+		try(var scan = new Scanner(System.in)) {
+			while(server.isOpen()) {
+				var command = getCommand(scan.next());
+				String args = scan.nextLine().stripLeading();
+				commandQueue.add(() -> command.accept(args));
+			}
+		}
+	}
+	
+	private static Consumer<String> getCommand(String name) {
+		return commands.getOrDefault(name, StartServer::unknownCommand);
 	}
 }
