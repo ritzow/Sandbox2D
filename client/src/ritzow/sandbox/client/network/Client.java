@@ -26,7 +26,7 @@ public class Client {
 	private final NetworkController network;
 	private final Object worldLock, playerLock, connectionLock;
 	private volatile Status status;
-	private volatile ConnectionState state;
+	private volatile WorldState worldState;
 	private Executor runner;
 	
 	private static enum Status {
@@ -36,14 +36,14 @@ public class Client {
 		DISCONNECTED
 	}
 	
-	private static final class ConnectionState {
+	private static final class WorldState {
 		volatile World world;
 		volatile ClientPlayerEntity player;
 		volatile byte[] worldData;
 		volatile int worldBytesRemaining;
 	}
 	
-	public static final class ConnectionFailedException extends IOException {
+	public static final class ConnectionFailedException extends Exception {
 		public ConnectionFailedException(String message) {
 			super(message);
 		}
@@ -61,73 +61,28 @@ public class Client {
 		return new Client(bindAddress, serverAddress);
 	}
 	
-	private Client(InetSocketAddress bindAddress, InetSocketAddress serverAddress) throws IOException {
+	private Client(InetSocketAddress bindAddress, InetSocketAddress serverAddress) throws ConnectionFailedException, IOException {
+		this.status = Status.NOT_CONNECTED;
+		this.serverAddress = serverAddress;
 		network = new NetworkController(Utility.getProtocolFamily(bindAddress.getAddress()), bindAddress, this::process);
 		worldLock = new Object();
 		playerLock = new Object();
 		connectionLock = new Object();
-		this.serverAddress = serverAddress;
-		this.runner = Executors.newSingleThreadExecutor();
+		runner = Executors.newSingleThreadExecutor();
 		connect();
-	}
-	
-	/** Redirect all received message processing to the provided TaskQueue **/
-	public void setExecutor(Executor processor) {
-		if(runner instanceof ExecutorService)
-			((ExecutorService)runner).shutdownNow().forEach(processor::execute); //transfer remaining tasks
-		this.runner = processor;
-	}
-	
-	public InetSocketAddress getServerAddress() {
-		return serverAddress;
-	}
-	
-	public InetSocketAddress getAddress() {
-		return network.getBindAddress();
-	}
-	
-	private void connect() throws ConnectionFailedException {
-		network.start();
-		try {
-			byte[] packet = new byte[2];
-			Bytes.putShort(packet, 0, Protocol.TYPE_CLIENT_CONNECT_REQUEST);
-			network.sendReliable(serverAddress, packet, Protocol.RESEND_COUNT, Protocol.RESEND_INTERVAL);
-		} catch(TimeoutException e) { //if client receives no ack, disconnect and throw
-			disconnect(false);
-			throw new ConnectionFailedException("request timed out");
-		} catch(IOException e) {
-			e.printStackTrace();
-		}
-		
-		//received ack on request packet, wait one second for response
-		Utility.waitOnCondition(serverAddress, 1000, () -> status != Status.NOT_CONNECTED);
-		
-		if(status == Status.REJECTED) {
-			disconnect(false);
-			throw new ConnectionFailedException("connection rejected");
-		} else if(status == Status.CONNECTED) {
-			disconnect(false);
-			throw new ConnectionFailedException("request timed out");
-		}
 	}
 	
 	private void process(InetSocketAddress sender, byte[] data) {
 		if(sender.equals(serverAddress)) {
-			if(status == Status.DISCONNECTED)
-				throw new NotConnectedException();
-			runner.execute(() -> {
-				DataReader reader = new ByteArrayDataReader(data);
-				onReceive(reader.readShort(), reader);
-			});	
+			runner.execute(() -> onReceive(new ByteArrayDataReader(data)));
 		}
 	}
 	
-	private void onReceive(short type, DataReader data) {
+	private void onReceive(DataReader data) {
+		short type = data.readShort();
 		if(type == Protocol.TYPE_SERVER_CONNECT_ACKNOWLEDGMENT) {
 			processServerConnectAcknowledgement(data);
 		} else if(status == Status.CONNECTED) {
-			Utility.waitOnCondition(connectionLock, () -> state != null);
-			
 			switch(type) {
 			case Protocol.TYPE_CONSOLE_MESSAGE:
 				System.out.println("[Server Message] " + new String(data.readBytes(data.remaining()), Protocol.CHARSET));
@@ -156,12 +111,13 @@ public class Client {
 			case Protocol.TYPE_SERVER_PING:
 				break;
 			case Protocol.TYPE_SERVER_PLAYER_ACTION:
-				PlayerEntity e = getEntityFromID(data.readInteger());
-				e.processAction(PlayerAction.forCode(data.readByte()), data.readBoolean());
+				processServerPlayerAction(data);
 				break;
 			default:
 				throw new IllegalArgumentException("Client received message of unknown protocol " + type);
 			}
+		} else {
+			throw new IllegalStateException("Received irrelevant message");
 		}
 	}
 	
@@ -173,14 +129,14 @@ public class Client {
 			break;
 		case Protocol.CONNECT_STATUS_WORLD:
 			status = Status.CONNECTED;
-			state = new ConnectionState();
+			var state = new WorldState();
 			int remaining = data.readInteger();
 			state.worldBytesRemaining = remaining;
 			state.worldData = new byte[remaining];
+			this.worldState = state;
 			Utility.notify(connectionLock);
 			break;
 		case Protocol.CONNECT_STATUS_LOBBY:
-			status = Status.REJECTED;
 			throw new UnsupportedOperationException("CONNECT_STATUS_LOBBY not supported");
 		default:
 			throw new RuntimeException("unknown connect ack type " + response);
@@ -189,21 +145,53 @@ public class Client {
 		Utility.notify(serverAddress);
 	}
 	
+	private void connect() throws ConnectionFailedException, IOException {
+		try {
+			network.start();
+			sendConnectRequest();
+			//received ack on request packet, wait one second for response
+			Utility.waitOnCondition(serverAddress, 1000, () -> status != Status.NOT_CONNECTED);
+			if(status == Status.REJECTED) {
+				disconnectWithoutNotify();
+				throw new ConnectionFailedException("connection rejected");
+			} else if(status == Status.NOT_CONNECTED) {
+				disconnectWithoutNotify();
+				throw new ConnectionFailedException("no connect acknowledgement received");
+			}
+		} catch(TimeoutException e) { //if client receives no ack, disconnect and throw
+			disconnectWithoutNotify();
+			throw new ConnectionFailedException("request timed out");
+		}
+	}
+	
+	private void sendConnectRequest() throws TimeoutException, IOException {
+		network.sendReliable(serverAddress, Bytes.of(Protocol.TYPE_CLIENT_CONNECT_REQUEST), Protocol.RESEND_COUNT, Protocol.RESEND_INTERVAL);
+	}
+	
+	/** Redirect all received message processing to the provided TaskQueue **/
+	public void setExecutor(Executor processor) {
+		if(runner instanceof ExecutorService)
+			((ExecutorService)runner).shutdownNow().forEach(processor::execute); //transfer remaining tasks
+		this.runner = processor;
+	}
+	
+	public InetSocketAddress getServerAddress() {
+		return serverAddress;
+	}
+	
+	public InetSocketAddress getAddress() {
+		return network.getBindAddress();
+	}
+	
 	public boolean isConnected() {
 		return status == Status.CONNECTED;
 	}
 	
-	public void disconnect() {
-		checkConnected();
-		disconnect(true);
-	}
-	
-	private void disconnect(boolean notifyServer) {
+	public void disconnectNotifyServer() {
 		try {
+			checkConnected();
 			status = Status.DISCONNECTED;
-			if(notifyServer) {
-				network.sendReliable(serverAddress, Bytes.of(Protocol.TYPE_CLIENT_DISCONNECT), Protocol.RESEND_COUNT, Protocol.RESEND_INTERVAL);	
-			}
+			network.sendReliable(serverAddress, Bytes.of(Protocol.TYPE_CLIENT_DISCONNECT), Protocol.RESEND_COUNT, Protocol.RESEND_INTERVAL);
 		} catch(TimeoutException e) {
 			//do nothing
 		} catch(IOException e) {
@@ -214,16 +202,22 @@ public class Client {
 		}
 	}
 	
+	private void disconnectWithoutNotify() {
+		status = Status.DISCONNECTED;
+		network.stop();
+		Utility.notify(connectionLock);
+	}
+	
 	public World getWorld() {
 		checkConnected();
-		Utility.waitOnCondition(worldLock, () -> state.world != null);
-		return state.world;
+		Utility.waitOnCondition(worldLock, () -> worldState.world != null);
+		return worldState.world;
 	}
 	
 	public ClientPlayerEntity getPlayer() {
 		checkConnected();
-		Utility.waitOnCondition(playerLock, () -> state.player != null);
-		return state.player;
+		Utility.waitOnCondition(playerLock, () -> worldState.player != null);
+		return worldState.player;
 	}
 	
 	private void checkConnected() {
@@ -232,10 +226,11 @@ public class Client {
 	}
 	
 	private void sendReliable(byte[] data) {
+		checkConnected();
 		try{
 			network.sendReliable(serverAddress, data, Protocol.RESEND_COUNT, Protocol.RESEND_INTERVAL);
 		} catch(TimeoutException e) {
-			disconnect(false);
+			disconnectWithoutNotify();
 		} catch(IOException e) {
 			e.printStackTrace();
 		}
@@ -287,12 +282,17 @@ public class Client {
 		throw new IllegalStateException("No entity with ID " + ID + " exists");
 	}
 	
+	private void processServerPlayerAction(DataReader data) {
+		PlayerEntity e = getEntityFromID(data.readInteger());
+		e.processAction(PlayerAction.forCode(data.readByte()), data.readBoolean());
+	}
+	
 	private void processServerRemoveBlock(DataReader data) {
-		state.world.getForeground().destroy(state.world, data.readInteger(), data.readInteger());
+		worldState.world.getForeground().destroy(worldState.world, data.readInteger(), data.readInteger());
 	}
 	
 	private void processServerDisconnect(DataReader data) {
-		disconnect(false);
+		disconnectWithoutNotify();
 		int length = data.readInteger();
 		System.out.println("Disconnected from server: " + 
 				new String(data.readBytes(data.remaining()), 0, length, Protocol.CHARSET));
@@ -300,37 +300,26 @@ public class Client {
 	
 	private void processReceivePlayerEntityID(DataReader data) {
 		int id = data.readInteger();
-		state.player = getEntityFromID(id);
+		worldState.player = getEntityFromID(id);
 		Utility.notify(playerLock);
 	}
 	
 	private void processRemoveEntity(DataReader data) {
 		int id = data.readInteger();
-		state.world.removeIf(e -> e.getID() == id);
+		worldState.world.removeIf(e -> e.getID() == id);
 	}
 	
-	private static <T> T deserialize(byte[] data, boolean compress) {
+	private static <T> T deserialize(boolean compress, byte[] data) {
 		return SerializationProvider.getProvider().deserialize(compress ? Bytes.decompress(data) : data);
 	}
 	
 	private void processAddEntity(DataReader data) {
-		try {
-			boolean compressed = data.readBoolean();
-			byte[] entity = data.readBytes(data.remaining());
-			Entity e = deserialize(entity, compressed);
-			state.world.forEach(o -> {
-				if(o.getID() == e.getID())
-					throw new IllegalStateException("cannot have two entities with the same ID");
-			});
-			state.world.add(e);
-		} catch(ClassCastException e) {
-			System.err.println("Error while deserializing received entity");
-		}
+		worldState.world.add(deserialize(data.readBoolean(), data.readBytes(data.remaining())));
 	}
 	
 	private void processUpdateEntity(DataReader data) {
 		int id = data.readInteger();
-		World world = state.world;
+		World world = worldState.world;
 		for(Entity e : world) {
 			if(e.getID() == id) {
 				e.setPositionX(data.readFloat());
@@ -343,16 +332,16 @@ public class Client {
 	}
 	
 	private void processReceiveWorldData(DataReader data) {
-		ConnectionState state = this.state;
+		WorldState state = this.worldState;
 		if(state.worldData == null)
 			throw new IllegalStateException("world head packet has not been received");
 		synchronized(state.worldData) {
 			int dataSize = data.remaining();
 			Bytes.copy(data.readBytes(dataSize), state.worldData, state.worldData.length - state.worldBytesRemaining);
 			boolean receivedAll = (state.worldBytesRemaining -= dataSize) == 0;
-			System.out.println(Utility.formatSize(state.worldBytesRemaining) + " remaining of " + Utility.formatSize(state.worldData.length) + " of world data.");
+			//System.out.println(Utility.formatSize(state.worldBytesRemaining) + " remaining of " + Utility.formatSize(state.worldData.length) + " of world data.");
 			if(receivedAll) {
-				new Thread(this::buildWorld, "World Build Task").start();
+				buildWorld();
 			}
 		}
 	}
@@ -360,9 +349,9 @@ public class Client {
 	private void buildWorld() {
 		System.out.print("Building world... ");
 		long start = System.nanoTime();
-		state.world = deserialize(state.worldData, Protocol.COMPRESS_WORLD_DATA);
+		worldState.world = deserialize(Protocol.COMPRESS_WORLD_DATA, worldState.worldData);
 		System.out.println("took " + Utility.formatTime(Utility.nanosSince(start)) + ".");
-		state.worldData = null; //release the raw data to the garbage collector
+		worldState.worldData = null; //release the raw data to the garbage collector
 		sendReliable(Bytes.of(Protocol.TYPE_CLIENT_WORLD_BUILT));
 		Utility.notify(worldLock);
 	}

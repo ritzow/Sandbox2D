@@ -11,7 +11,7 @@ import ritzow.sandbox.client.network.Client;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
 import ritzow.sandbox.network.Protocol.PlayerAction;
 
-public class PlayerController implements Controller, KeyHandler {
+public class PlayerController implements KeyHandler {
 	protected final Client client;
 	
 	public PlayerController(Client client) {
@@ -27,38 +27,31 @@ public class PlayerController implements Controller, KeyHandler {
 	}
 
 	@Override
-	public void update() {
-		
-	}
-
-	@Override
 	public void keyboardButton(int key, int scancode, int action, int mods) {
 		if(action == GLFW_REPEAT)
 			return;
 		boolean enabled = action == GLFW_PRESS;
-		if(client.isConnected()) { //TODO this isn't safe, the client could disconnect after this check
-			ClientPlayerEntity player = client.getPlayer();
-			PlayerAction playerAction;
-			
-			switch(key) {
-			case GLFW.GLFW_KEY_W:
-			case ControlScheme.KEYBIND_UP:
-				playerAction = PlayerAction.MOVE_UP; break;
-			case GLFW.GLFW_KEY_D:
-			case ControlScheme.KEYBIND_RIGHT:
-				playerAction = PlayerAction.MOVE_RIGHT; break;
-			case GLFW.GLFW_KEY_A:
-			case ControlScheme.KEYBIND_LEFT:
-				playerAction = PlayerAction.MOVE_LEFT; break;
-			case GLFW.GLFW_KEY_S:
-			case ControlScheme.KEYBIND_DOWN:
-				playerAction = PlayerAction.MOVE_DOWN; break;
-			default:
-				return;
-			}
-			
-			client.sendPlayerAction(playerAction, enabled);
-			player.processAction(playerAction, enabled);	
+		ClientPlayerEntity player = client.getPlayer();
+		PlayerAction playerAction;
+		
+		switch(key) {
+		case GLFW.GLFW_KEY_W:
+		case ControlScheme.KEYBIND_UP:
+			playerAction = PlayerAction.MOVE_UP; break;
+		case GLFW.GLFW_KEY_D:
+		case ControlScheme.KEYBIND_RIGHT:
+			playerAction = PlayerAction.MOVE_RIGHT; break;
+		case GLFW.GLFW_KEY_A:
+		case ControlScheme.KEYBIND_LEFT:
+			playerAction = PlayerAction.MOVE_LEFT; break;
+		case GLFW.GLFW_KEY_S:
+		case ControlScheme.KEYBIND_DOWN:
+			playerAction = PlayerAction.MOVE_DOWN; break;
+		default:
+			return;
 		}
+		
+		client.sendPlayerAction(playerAction, enabled);
+		player.processAction(playerAction, enabled);
 	}
 }

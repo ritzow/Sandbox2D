@@ -113,32 +113,36 @@ public class StartClient {
 			var ui = new UserInterfaceRenderer(modelProgram);
 			//renderer.getRenderers().add(ui);
 			
+			//set up synchronous packet processing structures
+			TaskQueue packetQueue = new TaskQueue();
+			client.setExecutor(packetQueue::add);
+			
 			//display the window now that everything is set up.
 			display.show();
 			
-			TaskQueue queue = new TaskQueue();
-			client.setExecutor(queue::add);
-			long lastUpdate = System.nanoTime();
+			long lastWorldUpdate = System.nanoTime();
 			try {
 				while(!triggerExit && client.isConnected()) {
 					glfwPollEvents(); //process input/windowing events
-					queue.run();
-					lastUpdate = display.focused() ? Utility.updateWorld(world, lastUpdate, 
+					packetQueue.run(); //processing packets received from server
+					
+					//simulate world so it looks smooth
+					lastWorldUpdate = display.focused() ? Utility.updateWorld(world, lastWorldUpdate, 
 							SharedConstants.MAX_TIMESTEP, SharedConstants.TIME_SCALE_NANOSECONDS) : System.nanoTime();
-					cameraGrip.update();
-					interactionController.update(camera, display.width(), display.height());
+					cameraGrip.update(); //update camera position
+					interactionController.update(camera, display.width(), display.height()); //block breaking/"bomb throwing"
 					if(display.focused()) {
 						ui.update();
 						renderer.run(display);
 					}
-					Utility.sleep(1);
+					Utility.sleep(1); //reduce CPU usage
 				}
 			} finally {
 				System.out.print("Exiting... ");
 				renderer.close(display);
 				display.destroy();
 				if(client.isConnected())
-					client.disconnect();
+					client.disconnectNotifyServer();
 				audio.close();
 				glfwTerminate();
 				System.out.println("done!");
