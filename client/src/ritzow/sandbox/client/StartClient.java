@@ -42,7 +42,7 @@ public class StartClient {
 		
 		try {
 			var serverSocket = Utility.getAddressOrDefault(args, 0, InetAddress.getLocalHost(), Protocol.DEFAULT_SERVER_UDP_PORT);
-			var localSocket = Utility.getAddressOrDefault(args, 2, Inet6Address.getLocalHost(), 0);
+			var localSocket = Utility.getAddressOrDefault(args, 2, Utility.getPublicAddress(Inet6Address.class), 0);
 			
 			System.out.print("Connecting to " + Utility.formatAddress(serverSocket) + " from " + Utility.formatAddress(localSocket) + "... ");
 			Client client = Client.connect(localSocket, serverSocket);

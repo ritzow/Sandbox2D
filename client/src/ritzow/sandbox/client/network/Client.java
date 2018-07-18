@@ -6,6 +6,7 @@ import java.net.SocketException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import ritzow.sandbox.client.util.SerializationProvider;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
 import ritzow.sandbox.data.ByteArrayDataReader;
@@ -170,8 +171,15 @@ public class Client {
 	
 	/** Redirect all received message processing to the provided TaskQueue **/
 	public void setExecutor(Executor processor) {
-		if(runner instanceof ExecutorService)
-			((ExecutorService)runner).shutdownNow().forEach(processor::execute); //transfer remaining tasks
+		if(runner instanceof ExecutorService) {
+			try {
+				ExecutorService service = ((ExecutorService)runner);
+				service.shutdownNow().forEach(processor::execute); //transfer remaining tasks
+				service.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);	
+			} catch(InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
 		this.runner = processor;
 	}
 	
