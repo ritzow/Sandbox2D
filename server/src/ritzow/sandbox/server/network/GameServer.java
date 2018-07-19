@@ -56,7 +56,11 @@ public class GameServer {
 	
 	public void close() {
 		try {
-			clients.forEach((address, client) -> client.connected = false);
+			clients.forEach((address, client) -> {
+				client.status = ClientState.STATUS_REMOVED; 
+				client.disconnectReason = "server shutdown";
+			});
+			removeDisconnectedClients();
 			channel.close();
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -118,17 +122,17 @@ public class GameServer {
 		System.out.println(consoleMessage);
 	}
 	
-	private String getClientDisconnectMessage(ClientState client) {
-		return Utility.formatAddress(client.address) + " disconnected (" + clients.size() + " players connected)";
+	private void manualDisconnect(ClientState client, String reason) {
+		client.status = ClientState.STATUS_REMOVED;
+		client.disconnectReason = reason;
+		sendReliable(client, buildManualDisconnect(reason));
 	}
 	
-	private String getForcefulDisconnectMessage(ClientState client, String reason) {
-		return Utility.formatAddress(client.address) + " was disconnected ("
-				+ (reason != null && reason.length() > 0 ? "reason: " + reason + ", ": "") 
-				+ clients.size() + " players connected)";
+	private String getDisconnectMessage(ClientState client) {
+		return Utility.formatAddress(client.address) + " disconnected (reason: '" + client.disconnectReason + "', " + clients.size() + " players connected)";
 	}
 	
-	private static byte[] buildForceDisconnect(String reason) {
+	private static byte[] buildManualDisconnect(String reason) {
 		byte[] message = reason.getBytes(Protocol.CHARSET);
 		byte[] packet = new byte[message.length + 6];
 		Bytes.putShort(packet, 0, Protocol.TYPE_SERVER_CLIENT_DISCONNECT);
@@ -156,19 +160,24 @@ public class GameServer {
 	}
 	
 	private static void processClientDisconnect(ClientState client) {
-		client.connected = false;
+		client.status = ClientState.STATUS_DISCONNECTED;
+		client.disconnectReason = "self disconnect";
 	}
 	
 	public void removeDisconnectedClients() { //TODO need to interrupt sendQueue.take()
 		var iterator = clients.values().iterator();
 		while(iterator.hasNext()) {
 			ClientState client = iterator.next();
-			if(!client.connected) {
+			if(client.status != ClientState.STATUS_CONNECTED) { //TODO handle manual disconnect case
 				iterator.remove();
 				if(client.player != null) {
 					world.remove(client.player);
+					sendRemoveEntity(client.player);
 				}
-				broadcastAndPrint(getClientDisconnectMessage(client));
+				
+				if(client.status != ClientState.STATUS_REJECTED) {
+					broadcastAndPrint(getDisconnectMessage(client));	
+				}
 			}
 		}
 	}
@@ -178,9 +187,8 @@ public class GameServer {
 		int y = data.getInt();
 		if(!world.getForeground().isValid(x, y))
 			throw new ClientBadDataException("client sent bad x and y block coordinates");
-		Block block = world.getForeground().get(x, y);
-		if(world.getForeground().destroy(world, x, y)) {
-			//TODO block data needs to be reset on drop
+		Block block = world.getForeground().destroy(world, x, y);
+		if(block != null) {
 			ItemEntity<BlockItem> drop = new ItemEntity<>(world.nextEntityID(), new BlockItem(block), x, y);
 			drop.setVelocityX(-0.2f + ((float) Math.random() * (0.4f)));
 			drop.setVelocityY((float) Math.random() * (0.35f));
@@ -227,8 +235,8 @@ public class GameServer {
 			Bytes.putShort(response, 0, Protocol.TYPE_SERVER_CONNECT_ACKNOWLEDGMENT);
 			response[2] = Protocol.CONNECT_STATUS_REJECTED;
 			sendReliable(client, response);
-			client.connected = false;
-			//TODO ClientState needs to be disconnected here
+			client.status = ClientState.STATUS_REJECTED;
+			client.disconnectReason = "client rejected";
 		}
 	}
 	
@@ -268,7 +276,7 @@ public class GameServer {
 		return serialized;
 	}
 	
-	private void sendPlayerID(ClientState client, PlayerEntity player) {
+	private static void sendPlayerID(ClientState client, PlayerEntity player) {
 		byte[] packet = new byte[6];
 		Bytes.putShort(packet, 0, Protocol.TYPE_SERVER_PLAYER_ID);
 		Bytes.putInteger(packet, 2, player.getID());
@@ -381,15 +389,23 @@ public class GameServer {
 		final BlockingQueue<SendPacket> sendQueue;
 		final Object reliableSendLock;
 		volatile boolean receivedByClient;
-		volatile boolean connected;
+		volatile byte status;
+		
+		private static final byte 
+			STATUS_CONNECTED = 0, 
+			STATUS_TIMED_OUT = 1, 
+			STATUS_REMOVED = 2, 
+			STATUS_DISCONNECTED = 3, 
+			STATUS_REJECTED = 4;
 		
 		volatile long pingNanos;
 		PlayerEntity player;
+		volatile String disconnectReason;
 		
 		ClientState(InetSocketAddress address, ThreadGroup sendGroup, DatagramChannel channel) {
 			this.address = address;
 			this.channel = channel;
-			connected = true;
+			status = STATUS_CONNECTED;
 			sendQueue = new LinkedBlockingQueue<>();
 			reliableSendLock = new Object();
 			sendThread = new Thread(sendGroup, this::sender, Utility.formatAddress(address) + " Packet Sender");
@@ -401,13 +417,15 @@ public class GameServer {
 				ByteBuffer sendBuffer = ByteBuffer.allocateDirect(Protocol.MAX_PACKET_SIZE);
 				
 				//send packets until it's time to exit and there are none left to send
-				while(connected) {
-					SendPacket packet = sendQueue.take();
+				while(status == STATUS_CONNECTED) {
+					SendPacket packet = sendQueue.take(); //TODO deal with blocking when disconnecting
 					sendNext(sendBuffer, packet);
 				}
 			} catch (TimeoutException e) {
-				connected = false;
-				//TODO disconnect client on timeout
+				if(status == ClientState.STATUS_CONNECTED) {
+					status = STATUS_TIMED_OUT;
+					disconnectReason = "client timed out";	
+				}
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			} catch(IOException e) {
@@ -431,10 +449,6 @@ public class GameServer {
 						attempts--;
 						reliableSendLock.wait(Protocol.RESEND_INTERVAL);
 					} while(!receivedByClient && attempts > 0);	
-				}
-				
-				if(attempts < Protocol.RESEND_COUNT - 1) {
-					System.err.println("Took " + (Protocol.RESEND_COUNT - attempts) + " to send packet.");
 				}
 				
 				if(receivedByClient) {
