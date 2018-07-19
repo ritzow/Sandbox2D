@@ -5,7 +5,6 @@ import static org.lwjgl.glfw.GLFW.glfwPollEvents;
 import static org.lwjgl.glfw.GLFW.glfwTerminate;
 
 import java.io.IOException;
-import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -42,7 +41,7 @@ public class StartClient {
 		
 		try {
 			var serverSocket = Utility.getAddressOrDefault(args, 0, InetAddress.getLocalHost(), Protocol.DEFAULT_SERVER_UDP_PORT);
-			var localSocket = Utility.getAddressOrDefault(args, 2, Utility.getPublicAddress(Inet6Address.class), 0);
+			var localSocket = Utility.getAddressOrDefault(args, 2, serverSocket.getAddress(), 0);
 			
 			System.out.print("Connecting to " + Utility.formatAddress(serverSocket) + " from " + Utility.formatAddress(localSocket) + "... ");
 			Client client = Client.connect(localSocket, serverSocket);

@@ -213,6 +213,9 @@ public class Client {
 	private void disconnectWithoutNotify() {
 		status = Status.DISCONNECTED;
 		network.stop();
+		if(runner instanceof ExecutorService) {
+			((ExecutorService)runner).shutdownNow();
+		}
 		Utility.notify(connectionLock);
 	}
 	
