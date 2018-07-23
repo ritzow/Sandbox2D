@@ -9,6 +9,7 @@ import ritzow.sandbox.client.input.handler.MouseButtonHandler;
 import ritzow.sandbox.client.network.Client;
 import ritzow.sandbox.client.util.ClientUtility;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
+import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.BlockGrid;
 
@@ -18,8 +19,6 @@ public final class InteractionController implements MouseButtonHandler, CursorPo
 	private long lastPlace, lastBreak;
 	private float range;
 	private final Client client;
-	
-	private static final long COOLDOWN_THROW = Utility.millisToNanos(0), COOLDOWN_BREAK = Utility.millisToNanos(200);
 	
 	public InteractionController(Client client, float range) {
 		this.client = client;
@@ -50,11 +49,11 @@ public final class InteractionController implements MouseButtonHandler, CursorPo
 	}
 	
 	private boolean breakAllowed() {
-		return Utility.nanosSince(lastBreak) > COOLDOWN_BREAK;
+		return Utility.nanosSince(lastBreak) > Protocol.BLOCK_BREAK_COOLDOWN_NANOSECONDS;
 	}
 	
 	private boolean throwAllowed() {
-		return Utility.nanosSince(lastPlace) > COOLDOWN_THROW;
+		return Utility.nanosSince(lastPlace) > Protocol.THROW_COOLDOWN_NANOSECONDS;
 	}
 
 	public void link(EventDelegator input) {

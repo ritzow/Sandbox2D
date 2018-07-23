@@ -2,6 +2,7 @@ package ritzow.sandbox.network;
 
 import java.nio.charset.Charset;
 import ritzow.sandbox.data.Bytes;
+import ritzow.sandbox.util.Utility;
 
 public final class Protocol {
 	
@@ -71,6 +72,9 @@ public final class Protocol {
 		CONNECT_STATUS_LOBBY = 2;
 	
 	public static final float BLOCK_BREAK_RANGE = 100;
+	public static final long 
+		BLOCK_BREAK_COOLDOWN_NANOSECONDS = Utility.millisToNanos(200),
+		THROW_COOLDOWN_NANOSECONDS = Utility.millisToNanos(0);
 	
 	public static byte[] buildConsoleMessage(String message) {
 		byte[] msg = message.getBytes(Protocol.CHARSET);

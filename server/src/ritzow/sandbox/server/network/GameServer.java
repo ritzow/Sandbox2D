@@ -230,9 +230,15 @@ public class GameServer {
 		int y = data.getInt();
 		if(!world.getForeground().isValid(x, y))
 			throw new ClientBadDataException("client sent bad x and y block coordinates");
-		if(Utility.withinDistance(client.player.getPositionX(), client.player.getPositionY(), x, y, Protocol.BLOCK_BREAK_RANGE)) {
+		if(canBreakBlock(client, x, y)) {
 			breakBlock(x, y);	
+			client.lastBlockBreak = System.nanoTime();
 		}
+		}
+	
+	private static boolean canBreakBlock(ClientState client, int x, int y) {
+		return Utility.nanosSince(client.lastBlockBreak) > Protocol.BLOCK_BREAK_COOLDOWN_NANOSECONDS &&
+			   Utility.withinDistance(client.player.getPositionX(), client.player.getPositionY(), x, y, Protocol.BLOCK_BREAK_RANGE);
 	}
 	
 	public void broadcastRemoveBlock(int x, int y) {
