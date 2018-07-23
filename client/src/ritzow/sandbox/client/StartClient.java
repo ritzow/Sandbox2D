@@ -12,6 +12,9 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import ritzow.sandbox.client.audio.AudioSystem;
 import ritzow.sandbox.client.audio.DefaultAudioSystem;
@@ -46,8 +49,9 @@ public class StartClient {
 			InetSocketAddress localSocket = new InetSocketAddress(Utility.getPublicAddress(Inet4Address.class), 0);
 					//Utility.getAddressOrDefault(args, 2, serverSocket.getAddress(), 0);
 			
+			ExecutorService runner = Executors.newSingleThreadExecutor();
 			System.out.print("Connecting to " + Utility.formatAddress(serverSocket) + " from " + Utility.formatAddress(localSocket) + "... ");
-			Client client = Client.connect(localSocket, serverSocket);
+			Client client = Client.connect(localSocket, serverSocket, runner);
 			System.out.println("connected!");
 			
 			AudioSystem audio = setupAudio();
@@ -117,6 +121,12 @@ public class StartClient {
 			
 			//set up synchronous packet processing structures
 			TaskQueue packetQueue = new TaskQueue();
+			try {
+				runner.shutdownNow().forEach(packetQueue::add); //transfer remaining tasks
+				runner.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);	
+			} catch(InterruptedException e) {
+				e.printStackTrace();
+			}
 			client.setExecutor(packetQueue::add);
 			
 			//display the window now that everything is set up.

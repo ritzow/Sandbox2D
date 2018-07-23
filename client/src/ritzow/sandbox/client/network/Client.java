@@ -3,16 +3,18 @@ package ritzow.sandbox.client.network;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
+import java.nio.ByteBuffer;
+import java.nio.channels.DatagramChannel;
+//import java.util.EnumMap;
+//import java.util.Map;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.LinkedBlockingQueue;
 import ritzow.sandbox.client.util.SerializationProvider;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
 import ritzow.sandbox.data.ByteArrayDataReader;
 import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.data.DataReader;
-import ritzow.sandbox.network.NetworkController;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.network.Protocol.PlayerAction;
 import ritzow.sandbox.network.TimeoutException;
@@ -21,20 +23,45 @@ import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.Entity;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
-//TODO optimize message sending for single thread by integrating NetworkController features
 public class Client {
-	private final InetSocketAddress serverAddress;
-	private final NetworkController network;
-	private final Object worldLock, playerLock, connectionLock;
+	private final DatagramChannel channel;
+	private final BlockingQueue<SendPacket> sendQueue;
+	private int receiveReliableID, receiveUnreliableID, sendUnreliableID; //only accessed by one thread
+	private volatile int sendReliableID; //accessed by both threads
+	private volatile boolean receivedByServer;
+	private final Object connectLock, worldLock, playerLock, worldStateLock, reliableSendLock;
+	private final ByteBuffer messageBuffer, responseBuffer;
 	private volatile Status status;
 	private volatile WorldState worldState;
-	private Executor runner;
+	private volatile Executor runner;
+	private volatile long pingNanos;
+	
+	//private final Map<SendChannel, BlockingQueue<SendPacket>> sendQueues;
 	
 	private static enum Status {
 		NOT_CONNECTED,
 		REJECTED,
 		CONNECTED,
 		DISCONNECTED
+	}
+	
+//	private static enum SendChannel {
+//		MOVEMENT,
+//		ACTION
+//	}
+	
+	private static class SendPacket {
+		final byte[] data;
+		final boolean reliable;
+		
+		public SendPacket(byte[] data, boolean reliable) {
+			this.data = data;
+			this.reliable = reliable;
+		}
+		
+		public String toString() {
+			return "SendPacket[reliable: " + reliable + " size:" + data.length + "]";
+		}
 	}
 	
 	private static final class WorldState {
@@ -57,24 +84,161 @@ public class Client {
 	 * @throws SocketException if the local address could not be bound to.
 	 * @throws ConnectionFailedException if the client could not connect to the specified server
 	 */
-	public static Client connect(InetSocketAddress bindAddress, InetSocketAddress serverAddress) 
+	public static Client connect(InetSocketAddress bindAddress, InetSocketAddress serverAddress, Executor runner) 
 			throws IOException, ConnectionFailedException {
-		return new Client(bindAddress, serverAddress);
+		return new Client(bindAddress, serverAddress, runner);
 	}
 	
-	private Client(InetSocketAddress bindAddress, InetSocketAddress serverAddress) throws ConnectionFailedException, IOException {
+	private Client(InetSocketAddress bindAddress, InetSocketAddress serverAddress, Executor runner) throws ConnectionFailedException, IOException {
+		this.runner = runner;
 		this.status = Status.NOT_CONNECTED;
-		this.serverAddress = serverAddress;
-		network = new NetworkController(Utility.getProtocolFamily(bindAddress.getAddress()), bindAddress, this::process);
+		this.channel = DatagramChannel.open(Utility.getProtocolFamily(bindAddress.getAddress())).bind(bindAddress).connect(serverAddress);
+		messageBuffer = ByteBuffer.allocateDirect(Protocol.MAX_PACKET_SIZE);
+		responseBuffer = ByteBuffer.allocateDirect(Protocol.HEADER_SIZE);
+		sendQueue = new LinkedBlockingQueue<>();
+		connectLock = new Object();
 		worldLock = new Object();
 		playerLock = new Object();
-		connectionLock = new Object();
-		runner = Executors.newSingleThreadExecutor();
+		worldStateLock = new Object();
+		reliableSendLock = new Object();
+//		sendQueues = new EnumMap<>(SendChannel.class);
+//		for(SendChannel channel : SendChannel.values()) {
+//			sendQueues.put(channel, new LinkedBlockingQueue<SendPacket>());
+//		}
+		new Thread(this::sender, "Packet Sender").start();
+		new Thread(this::receiver, "Packet Receiver").start();
 		connect();
 	}
 	
-	private void process(InetSocketAddress sender, byte[] data) {
-		if(sender.equals(serverAddress) && status == Status.CONNECTED || status == Status.NOT_CONNECTED) {
+	private void connect() throws ConnectionFailedException {
+		sendConnectRequest();
+		//received ack on request packet, wait one second for response
+		Utility.waitOnCondition(connectLock, 1000, () -> status != Status.NOT_CONNECTED);
+		if(status == Status.REJECTED) {
+			disconnectWithoutNotify();
+			throw new ConnectionFailedException("connection rejected");
+		} else if(status == Status.NOT_CONNECTED) {
+			disconnectWithoutNotify();
+			throw new ConnectionFailedException("no connect acknowledgement received");
+		}
+	}
+	
+	private void sendConnectRequest() {
+		sendQueue.add(new SendPacket(Bytes.of(Protocol.TYPE_CLIENT_CONNECT_REQUEST), true));
+	}
+	
+	public InetSocketAddress getServerAddress() { 
+		try {
+			return (InetSocketAddress)channel.getRemoteAddress();
+		} catch(IOException e) {
+			throw new RuntimeException(e);
+		}
+	}
+	
+	private void sender() {
+		try {
+			ByteBuffer sendBuffer = ByteBuffer.allocateDirect(Protocol.MAX_PACKET_SIZE);
+			while(status == Status.NOT_CONNECTED || status == Status.CONNECTED) {
+				SendPacket packet = sendQueue.take(); //TODO deal with blocking when disconnecting
+				sendNext(sendBuffer, packet);
+			}
+		} catch (TimeoutException e) {
+			//TODO handle timeout with server
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		} catch(IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	private void receiver() {
+		try {
+			while(status == Status.NOT_CONNECTED || status == Status.CONNECTED) {
+				channel.receive(messageBuffer);
+				processPacket(messageBuffer, responseBuffer);
+			}
+		} catch(IOException e) {
+			//TODO handle?
+		}
+	}
+	
+	private static void setupSendBuffer(ByteBuffer sendBuffer, byte type, int id, byte[] data) {
+		sendBuffer.put(type).putInt(id).put(data).flip();
+	}
+	
+	private void sendNext(ByteBuffer sendBuffer, SendPacket packet) throws InterruptedException, IOException, TimeoutException {
+		if(packet.reliable) {
+			setupSendBuffer(sendBuffer, Protocol.RELIABLE_TYPE, sendReliableID, packet.data);
+			int attempts = 0;
+			long startTime = System.nanoTime();
+			do {
+				channel.write(sendBuffer);
+				sendBuffer.rewind();
+				synchronized(reliableSendLock) {
+					reliableSendLock.wait(Protocol.RESEND_INTERVAL);
+				}
+				attempts++;
+			} while(!receivedByServer && attempts < Protocol.RESEND_COUNT);
+			
+			if(receivedByServer) {
+				pingNanos = Utility.nanosSince(startTime);
+				receivedByServer = false;
+				sendReliableID++;
+			} else {
+				throw new TimeoutException("reliable message " + packet + " , id: " + sendReliableID + " timed out.");
+			}
+		} else {
+			setupSendBuffer(sendBuffer, Protocol.UNRELIABLE_TYPE, sendUnreliableID++, packet.data);
+			channel.write(sendBuffer);
+		}
+		sendBuffer.clear();
+	}
+	
+//	public void receive() throws IOException {
+//		while(channel.read(messageBuffer) > 0) {
+//			processPacket(messageBuffer, responseBuffer);
+//		}
+//	}
+	
+	private void processPacket(ByteBuffer buffer, ByteBuffer sendBuffer) throws IOException {
+		buffer.flip(); //flip to set limit and prepare to read packet data
+		if(buffer.limit() >= Protocol.HEADER_SIZE) {
+			byte type = buffer.get(); //type of message (RESPONSE, RELIABLE, UNRELIABLE)
+			int messageID = buffer.getInt(); //received ID or messageID for ack.
+			switch(type) {
+			case Protocol.RESPONSE_TYPE:
+				if(sendReliableID == messageID) {
+					receivedByServer = true;
+					Utility.notify(reliableSendLock);
+				} break; //else drop the response
+			case Protocol.RELIABLE_TYPE:
+				if(messageID == receiveReliableID) {
+					//if the message is the next one, process it and update last message
+					sendResponse(sendBuffer, messageID);
+					receiveReliableID++;
+					process(buffer.position(Protocol.HEADER_SIZE).slice());
+				} else if(messageID < receiveReliableID) { //message already received
+					sendResponse(sendBuffer, messageID);
+				} break; //else: message received too early
+			case Protocol.UNRELIABLE_TYPE:
+				if(messageID >= receiveUnreliableID) {
+					receiveUnreliableID = messageID + 1;
+					process(buffer.position(Protocol.HEADER_SIZE).slice());
+				} break; //else: message is outdated
+			}
+		}
+		buffer.clear(); //clear to prepare for next receive
+	}
+	
+	private void sendResponse(ByteBuffer sendBuffer, int receivedMessageID) throws IOException {
+		channel.write(sendBuffer.put(Protocol.RESPONSE_TYPE).putInt(receivedMessageID).flip());
+		sendBuffer.clear();
+	}
+	
+	private void process(ByteBuffer buffer) {
+		byte[] data = new byte[buffer.remaining()];
+		buffer.get(data);
+		if(status == Status.CONNECTED || status == Status.NOT_CONNECTED) {
 			runner.execute(() -> onReceive(new ByteArrayDataReader(data)));
 		}
 	}
@@ -135,7 +299,7 @@ public class Client {
 			state.worldBytesRemaining = remaining;
 			state.worldData = new byte[remaining];
 			this.worldState = state;
-			Utility.notify(connectionLock);
+			Utility.notify(worldStateLock);
 			break;
 		case Protocol.CONNECT_STATUS_LOBBY:
 			throw new UnsupportedOperationException("CONNECT_STATUS_LOBBY not supported");
@@ -143,52 +307,24 @@ public class Client {
 			throw new RuntimeException("unknown connect ack type " + response);
 		}
 		
-		Utility.notify(serverAddress);
-	}
-	
-	private void connect() throws ConnectionFailedException, IOException {
-		try {
-			network.start();
-			sendConnectRequest();
-			//received ack on request packet, wait one second for response
-			Utility.waitOnCondition(serverAddress, 1000, () -> status != Status.NOT_CONNECTED);
-			if(status == Status.REJECTED) {
-				disconnectWithoutNotify();
-				throw new ConnectionFailedException("connection rejected");
-			} else if(status == Status.NOT_CONNECTED) {
-				disconnectWithoutNotify();
-				throw new ConnectionFailedException("no connect acknowledgement received");
-			}
-		} catch(TimeoutException e) { //if client receives no ack, disconnect and throw
-			disconnectWithoutNotify();
-			throw new ConnectionFailedException("request timed out");
-		}
-	}
-	
-	private void sendConnectRequest() throws TimeoutException, IOException {
-		network.sendReliable(serverAddress, Bytes.of(Protocol.TYPE_CLIENT_CONNECT_REQUEST), Protocol.RESEND_COUNT, Protocol.RESEND_INTERVAL);
+		Utility.notify(connectLock);
 	}
 	
 	/** Redirect all received message processing to the provided TaskQueue **/
 	public void setExecutor(Executor processor) {
-		if(runner instanceof ExecutorService) {
-			try {
-				ExecutorService service = ((ExecutorService)runner);
-				service.shutdownNow().forEach(processor::execute); //transfer remaining tasks
-				service.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);	
-			} catch(InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
 		this.runner = processor;
 	}
 	
-	public InetSocketAddress getServerAddress() {
-		return serverAddress;
+	public InetSocketAddress getAddress() {
+		try {
+			return (InetSocketAddress)channel.getLocalAddress();
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 	}
 	
-	public InetSocketAddress getAddress() {
-		return network.getBindAddress();
+	public long getPing() {
+		return pingNanos;
 	}
 	
 	public boolean isConnected() {
@@ -199,24 +335,25 @@ public class Client {
 		try {
 			checkConnected();
 			status = Status.DISCONNECTED;
-			network.sendReliable(serverAddress, Bytes.of(Protocol.TYPE_CLIENT_DISCONNECT), Protocol.RESEND_COUNT, Protocol.RESEND_INTERVAL);
-		} catch(TimeoutException e) {
-			//do nothing
-		} catch(IOException e) {
-			e.printStackTrace();
+			sendReliable(Bytes.of(Protocol.TYPE_CLIENT_DISCONNECT));
 		} finally {
-			network.stop();
-			Utility.notify(connectionLock);
+			try {
+				channel.close(); //TODO wait for sending and receiving threads to finish
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			Utility.notify(worldStateLock);
 		}
 	}
 	
 	private void disconnectWithoutNotify() {
 		status = Status.DISCONNECTED;
-		network.stop();
-		if(runner instanceof ExecutorService) {
-			((ExecutorService)runner).shutdownNow();
+		try {
+			channel.close();
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
-		Utility.notify(connectionLock);
+		Utility.notify(worldStateLock);
 	}
 	
 	public World getWorld() {
@@ -237,24 +374,12 @@ public class Client {
 	}
 	
 	private void sendReliable(byte[] data) {
-		checkConnected();
-		try{
-			network.sendReliable(serverAddress, data, Protocol.RESEND_COUNT, Protocol.RESEND_INTERVAL);
-		} catch(TimeoutException e) {
-			disconnectWithoutNotify();
-		} catch(IOException e) {
-			e.printStackTrace();
-		}
+		sendQueue.add(new SendPacket(data.clone(), true));
 	}
 	
 	@SuppressWarnings("unused")
 	private void sendUnreliable(byte[] data) {
-		checkConnected();
-		try {
-			network.sendUnreliable(serverAddress, data);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		sendQueue.add(new SendPacket(data.clone(), false));
 	}
 	
 	public void sendBombThrow(float angle) {
