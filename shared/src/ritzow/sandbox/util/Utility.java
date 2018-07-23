@@ -205,7 +205,7 @@ public final class Utility {
 	}
 	
 	public static void printTimeSince(long nanoseconds) {
-		System.out.println(formatTime(nanoseconds));
+		System.out.println(formatTime(System.nanoTime() - nanoseconds));
 	}
 	
 	public static String formatSize(long bytes) {
