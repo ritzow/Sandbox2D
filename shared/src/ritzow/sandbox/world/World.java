@@ -190,6 +190,10 @@ public class World implements Transportable, Iterable<Entity> {
 		}
 	}
 	
+	public boolean contains(Entity e) {
+		return entities.contains(e);
+	}
+	
 	@Override
 	public Iterator<Entity> iterator() {
 		return entities.iterator();

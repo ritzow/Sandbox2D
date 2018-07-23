@@ -20,47 +20,34 @@ import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.block.DirtBlock;
 import ritzow.sandbox.world.block.GrassBlock;
-import ritzow.sandbox.world.entity.Entity;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
 public final class StartServer {
+	private static GameServer server;
 	private static volatile boolean save = true;
 	private static final Path saveFile = Path.of("data/worlds/world.dat");
-	private static GameServer server;
 	private static final Map<String, Consumer<String>> commands = new HashMap<>();
 	private static final Queue<Runnable> commandQueue = new ConcurrentLinkedQueue<>();
 	
-	private static final long NETWORK_SEND_INTERVAL_NANOSECONDS = Utility.millisToNanos(100);
-	
 	public static void main(String[] args) throws IOException {
-
 		try {
 			Thread.currentThread().setName("Server Main");
 			server = GameServer.start(Utility.getAddressOrDefault(args, 0, InetAddress.getLocalHost(), Protocol.DEFAULT_SERVER_UDP_PORT));
 			System.out.println("Started server on " + Utility.formatAddress(server.getAddress()) + ".");
+			System.out.print("Loading world... ");
+			long time = System.nanoTime();
 			World world = getWorld();
+			System.out.println("took " + Utility.formatTime(Utility.nanosSince(time)) + ".");
 			server.setCurrentWorld(world);
 			
 			new Thread(StartServer::runCommandParser, "Command Parser").start();
 			
-			byte[] update = new byte[2 + 4 + 4 + 4 + 4 + 4]; //protocol, id, posX, posY, velX, velY
-			Bytes.putShort(update, 0, Protocol.TYPE_SERVER_ENTITY_UPDATE);
-
-			long lastWorldUpdateTime = System.nanoTime(), lastNetworkSendTime = 0;
+			long lastWorldUpdateTime = System.nanoTime();
 			while(server.isOpen()) {
-				server.removeDisconnectedClients();
-				server.receive();
+				server.updateServer();
 				lastWorldUpdateTime = Utility.updateWorld(world, lastWorldUpdateTime, 
 						SharedConstants.MAX_TIMESTEP, SharedConstants.TIME_SCALE_NANOSECONDS);
-				if(Utility.nanosSince(lastNetworkSendTime) > NETWORK_SEND_INTERVAL_NANOSECONDS) {
-					for(Entity e : world) {
-						populateEntityUpdate(update, e);
-						server.broadcastUnreliable(update); //TODO optimize entity packet format and sending (batch entity updates)
-					}
-					server.broadcastPing();
-					lastNetworkSendTime = System.nanoTime();
-				}
-				
+				server.updateClients();
 				while(!commandQueue.isEmpty()) {
 					commandQueue.remove().run();
 				}
@@ -72,22 +59,16 @@ public final class StartServer {
 			} else {
 				System.out.println("Server stopped without saving to file.");
 			}
+			
+			System.exit(0);
 		} catch(BindException e) {
 			System.out.println("Could not start server: '" + e.getMessage() + "'");
 		}
 	
 	}
 	
-	private static void populateEntityUpdate(byte[] packet, Entity e) {
-		Bytes.putInteger(packet, 2, e.getID());
-		Bytes.putFloat(packet, 6, e.getPositionX());
-		Bytes.putFloat(packet, 10, e.getPositionY());
-		Bytes.putFloat(packet, 14, e.getVelocityX());
-		Bytes.putFloat(packet, 18, e.getVelocityY());
-	}
-	
 	public static World getWorld() throws IOException {
-		return Files.exists(saveFile) ? loadWorld(saveFile) : generateWorld(1000, 1000);
+		return Files.exists(saveFile) ? loadWorld(saveFile) : generateWorld(100, 100);
 	}
 	
 	public static World loadWorld(Path file) throws IOException {
@@ -102,7 +83,7 @@ public final class StartServer {
 			Files.write(file, serialized);
 			System.out.println("world saved to " + Utility.formatSize(serialized.length) + ".");
 		} catch (IOException e) {
-			System.out.println("Error while saving world to file: " + e.getMessage());
+			System.out.println("Error while saving world to file '" + saveFile + "':" + e.getClass().getTypeName() + ":" + e.getMessage());
 		}
 	}
 	
@@ -127,6 +108,11 @@ public final class StartServer {
 		register("list", 	StartServer::listCommmand);
 		register("say", 	StartServer::sayCommand);
 		register("reset", 	StartServer::resetCommand);
+		register("debug", StartServer::debugCommand);
+	}
+	
+	private static void debugCommand(String args) {
+		server.printDebug(System.out);
 	}
 	
 	private static void resetCommand(String args) {
@@ -179,7 +165,7 @@ public final class StartServer {
 		System.out.println("Enter commands (" + commands.keySet().stream().collect(Collectors.joining(", ")) + "): ");
 		try(var scan = new Scanner(System.in)) {
 			while(server.isOpen()) {
-				var command = getCommand(scan.next());
+				var command = getCommand(scan.next().toLowerCase());
 				String args = scan.nextLine().stripLeading();
 				commandQueue.add(() -> command.accept(args));
 			}

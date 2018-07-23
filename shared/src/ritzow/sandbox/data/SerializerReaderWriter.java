@@ -57,7 +57,7 @@ public class SerializerReaderWriter implements Serializer, Deserializer {
 	
 	@Override
 	@SuppressWarnings("unchecked")
-	public <T> T deserialize(byte[] object) throws ClassNotRegisteredException {
+	public <T> T deserialize(byte[] object) throws ClassNotRegisteredException { //TODO add inputstream version
 		//if the object length is 0, the object is null
 		int length = Bytes.getInteger(object, 0);
 		

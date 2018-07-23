@@ -85,7 +85,7 @@ public final class BlockGrid implements Transportable {
 	
 	public Block get(int x, int y) {
 		try {
-			synchronized(blocks) {
+			synchronized(blocks) { //TODO remove synchronization
 				return blocks[blocks.length - 1 - y][x];
 			}
 		} catch(ArrayIndexOutOfBoundsException e) {
@@ -107,20 +107,18 @@ public final class BlockGrid implements Transportable {
 		}
 	}
 	
-	public boolean destroy(World world, float x, float y) {
+	public Block destroy(World world, float x, float y) {
 		return destroy(world, Math.round(x), Math.round(y));
 	}
 	
-	public boolean destroy(World world, int x, int y) {
+	public Block destroy(World world, int x, int y) {
 		synchronized(blocks) {
-			if(isBlock(x, y)) {
-				Block block = get(x, y);
-				set(x, y, null);
+			Block block = get(x, y);
+			set(x, y, null);
+			if(block != null)
 				block.onBreak(world, this, x, y);
-				return true;
-			}	
+			return block;
 		}
-		return false;
 	}
 	
 	public boolean place(World world, float x, float y, Block block) {

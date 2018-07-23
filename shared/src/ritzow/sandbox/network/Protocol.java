@@ -70,6 +70,8 @@ public final class Protocol {
 		CONNECT_STATUS_WORLD = 1, 
 		CONNECT_STATUS_LOBBY = 2;
 	
+	public static final float BLOCK_BREAK_RANGE = 100;
+	
 	public static byte[] buildConsoleMessage(String message) {
 		byte[] msg = message.getBytes(Protocol.CHARSET);
 		byte[] packet = new byte[2 + msg.length];

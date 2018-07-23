@@ -5,7 +5,9 @@ import static org.lwjgl.glfw.GLFW.glfwPollEvents;
 import static org.lwjgl.glfw.GLFW.glfwTerminate;
 
 import java.io.IOException;
+import java.net.Inet4Address;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -40,8 +42,9 @@ public class StartClient {
 		Thread.currentThread().setName("Game Thread");
 		
 		try {
-			var serverSocket = Utility.getAddressOrDefault(args, 0, InetAddress.getLocalHost(), Protocol.DEFAULT_SERVER_UDP_PORT);
-			var localSocket = Utility.getAddressOrDefault(args, 2, serverSocket.getAddress(), 0);
+			InetSocketAddress serverSocket = Utility.getAddressOrDefault(args, 0, InetAddress.getLocalHost(), Protocol.DEFAULT_SERVER_UDP_PORT);
+			InetSocketAddress localSocket = new InetSocketAddress(Utility.getPublicAddress(Inet4Address.class), 0);
+					//Utility.getAddressOrDefault(args, 2, serverSocket.getAddress(), 0);
 			
 			System.out.print("Connecting to " + Utility.formatAddress(serverSocket) + " from " + Utility.formatAddress(localSocket) + "... ");
 			Client client = Client.connect(localSocket, serverSocket);
@@ -62,7 +65,7 @@ public class StartClient {
 			var playerController = new PlayerController(client);
 			playerController.link(input);
 			
-			var interactionController = new InteractionController(client, 5);
+			var interactionController = new InteractionController(client, Protocol.BLOCK_BREAK_RANGE);
 			interactionController.link(input);
 			
 			input.keyboardHandlers().add((key, scancode, action, mods) -> {

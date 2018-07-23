@@ -21,7 +21,7 @@ import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.Entity;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
-//TODO run message sending in its own thread, optimize message sending for single thread
+//TODO optimize message sending for single thread by integrating NetworkController features
 public class Client {
 	private final InetSocketAddress serverAddress;
 	private final NetworkController network;
@@ -74,7 +74,7 @@ public class Client {
 	}
 	
 	private void process(InetSocketAddress sender, byte[] data) {
-		if(sender.equals(serverAddress)) {
+		if(sender.equals(serverAddress) && status == Status.CONNECTED || status == Status.NOT_CONNECTED) {
 			runner.execute(() -> onReceive(new ByteArrayDataReader(data)));
 		}
 	}
@@ -290,7 +290,7 @@ public class Client {
 				return (T)e;
 			}
 		}
-		throw new IllegalStateException("No entity with ID " + ID + " exists");
+		throw new IllegalStateException("No entity with ID " + ID + " exists"); //TODO dont throw exception under certain circumstances?
 	}
 	
 	private void processServerPlayerAction(DataReader data) {
