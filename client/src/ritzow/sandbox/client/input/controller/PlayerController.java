@@ -28,30 +28,34 @@ public class PlayerController implements KeyHandler {
 
 	@Override
 	public void keyboardButton(int key, int scancode, int action, int mods) {
-		if(action == GLFW_REPEAT)
-			return;
-		boolean enabled = action == GLFW_PRESS;
-		ClientPlayerEntity player = client.getPlayer();
-		PlayerAction playerAction;
-		
-		switch(key) {
-		case GLFW.GLFW_KEY_W:
-		case ControlScheme.KEYBIND_UP:
-			playerAction = PlayerAction.MOVE_UP; break;
-		case GLFW.GLFW_KEY_D:
-		case ControlScheme.KEYBIND_RIGHT:
-			playerAction = PlayerAction.MOVE_RIGHT; break;
-		case GLFW.GLFW_KEY_A:
-		case ControlScheme.KEYBIND_LEFT:
-			playerAction = PlayerAction.MOVE_LEFT; break;
-		case GLFW.GLFW_KEY_S:
-		case ControlScheme.KEYBIND_DOWN:
-			playerAction = PlayerAction.MOVE_DOWN; break;
-		default:
-			return;
+		try {
+			if(action == GLFW_REPEAT)
+				return;
+			boolean enabled = action == GLFW_PRESS;
+			ClientPlayerEntity player = client.getPlayer();
+			PlayerAction playerAction;
+			
+			switch(key) {
+			case GLFW.GLFW_KEY_W:
+			case ControlScheme.KEYBIND_UP:
+				playerAction = PlayerAction.MOVE_UP; break;
+			case GLFW.GLFW_KEY_D:
+			case ControlScheme.KEYBIND_RIGHT:
+				playerAction = PlayerAction.MOVE_RIGHT; break;
+			case GLFW.GLFW_KEY_A:
+			case ControlScheme.KEYBIND_LEFT:
+				playerAction = PlayerAction.MOVE_LEFT; break;
+			case GLFW.GLFW_KEY_S:
+			case ControlScheme.KEYBIND_DOWN:
+				playerAction = PlayerAction.MOVE_DOWN; break;
+			default:
+				return;
+			}
+			
+			client.sendPlayerAction(playerAction, enabled);
+			player.processAction(playerAction, enabled);	
+		} catch(InterruptedException e) {
+			e.printStackTrace();
 		}
-		
-		client.sendPlayerAction(playerAction, enabled);
-		player.processAction(playerAction, enabled);
 	}
 }

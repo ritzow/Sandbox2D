@@ -8,10 +8,11 @@ import ritzow.sandbox.client.input.handler.KeyHandler;
 import ritzow.sandbox.client.input.handler.MouseButtonHandler;
 import ritzow.sandbox.client.network.Client;
 import ritzow.sandbox.client.util.ClientUtility;
-import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.BlockGrid;
+import ritzow.sandbox.world.World;
+import ritzow.sandbox.world.entity.Entity;
 
 public final class InteractionController implements MouseButtonHandler, CursorPosHandler, KeyHandler {
 	private volatile boolean primaryAction, secondaryAction;
@@ -25,12 +26,11 @@ public final class InteractionController implements MouseButtonHandler, CursorPo
 		this.range = range;
 	}
 	
-	public void update(Camera camera, int frameWidth, int frameHeight) {
+	public void update(Camera camera, Client client, World world, Entity player, int frameWidth, int frameHeight) {
 		if(primaryAction && breakAllowed()) {
 			int blockX = Math.round(ClientUtility.pixelHorizontalToWorld(camera, mouseX, frameWidth, frameHeight));
 			int blockY = Math.round(ClientUtility.pixelVerticalToWorld(camera, mouseY, frameWidth, frameHeight));
-			ClientPlayerEntity player = client.getPlayer();
-			BlockGrid front = client.getWorld().getForeground();
+			BlockGrid front = world.getForeground();
 			if(front.isValid(blockX, blockY) && inRange(player, blockX, blockY) && front.isBlock(blockX, blockY)) {
 				client.sendBlockBreak(blockX, blockY);
 				lastBreak = System.nanoTime();
@@ -38,13 +38,12 @@ public final class InteractionController implements MouseButtonHandler, CursorPo
 		} else if(secondaryAction && throwAllowed()) {
 			float worldX = ClientUtility.pixelHorizontalToWorld(camera, mouseX, frameWidth, frameHeight);
 			float worldY = ClientUtility.pixelVerticalToWorld(camera, mouseY, frameWidth, frameHeight);
-			ClientPlayerEntity player = client.getPlayer();
 			client.sendBombThrow((float)Math.atan2(worldY - player.getPositionY(), worldX - player.getPositionX()) + Utility.randomFloat(-(float)Math.PI/8, (float)Math.PI/8));
 			lastPlace = System.nanoTime();
 		}
 	}
 	
-	private boolean inRange(ClientPlayerEntity player, int blockX, int blockY) {
+	private boolean inRange(Entity player, int blockX, int blockY) {
 		return Utility.withinDistance(player.getPositionX(), player.getPositionY(), blockX, blockY, range);
 	}
 	
@@ -81,46 +80,50 @@ public final class InteractionController implements MouseButtonHandler, CursorPo
 	}
 
 	@Override
-	public void keyboardButton(int key, int scancode, int action, int mods) {
-		if(action == GLFW.GLFW_PRESS) {
-			switch(key) {
-				case GLFW.GLFW_KEY_KP_1:
-				case GLFW.GLFW_KEY_1:
-					client.getPlayer().setSlot(0);
-					break;
-				case GLFW.GLFW_KEY_KP_2:
-				case GLFW.GLFW_KEY_2:
-					client.getPlayer().setSlot(1);
-					break;
-				case GLFW.GLFW_KEY_KP_3:
-				case GLFW.GLFW_KEY_3:
-					client.getPlayer().setSlot(2);
-					break;
-				case GLFW.GLFW_KEY_KP_4:
-				case GLFW.GLFW_KEY_4:
-					client.getPlayer().setSlot(3);
-					break;
-				case GLFW.GLFW_KEY_KP_5:
-				case GLFW.GLFW_KEY_5:
-					client.getPlayer().setSlot(4);
-					break;
-			    case GLFW.GLFW_KEY_KP_6:
-				case GLFW.GLFW_KEY_6:
-					client.getPlayer().setSlot(5);
-					break;
-				case GLFW.GLFW_KEY_KP_7:
-				case GLFW.GLFW_KEY_7:
-					client.getPlayer().setSlot(6);
-					break;
-				case GLFW.GLFW_KEY_KP_8:
-				case GLFW.GLFW_KEY_8:
-					client.getPlayer().setSlot(7);
-					break;
-			    case GLFW.GLFW_KEY_KP_9:
-				case GLFW.GLFW_KEY_9:
-					client.getPlayer().setSlot(8);
-					break;
+	public void keyboardButton(int key, int scancode, int action, int mods) { //TODO using callbacks is stupid in singlethreaded, check keyboard buttons in update instead.
+		try {
+			if(action == GLFW.GLFW_PRESS) {
+				switch(key) {
+					case GLFW.GLFW_KEY_KP_1:
+					case GLFW.GLFW_KEY_1:
+						client.getPlayer().setSlot(0);
+						break;
+					case GLFW.GLFW_KEY_KP_2:
+					case GLFW.GLFW_KEY_2:
+						client.getPlayer().setSlot(1);
+						break;
+					case GLFW.GLFW_KEY_KP_3:
+					case GLFW.GLFW_KEY_3:
+						client.getPlayer().setSlot(2);
+						break;
+					case GLFW.GLFW_KEY_KP_4:
+					case GLFW.GLFW_KEY_4:
+						client.getPlayer().setSlot(3);
+						break;
+					case GLFW.GLFW_KEY_KP_5:
+					case GLFW.GLFW_KEY_5:
+						client.getPlayer().setSlot(4);
+						break;
+				    case GLFW.GLFW_KEY_KP_6:
+					case GLFW.GLFW_KEY_6:
+						client.getPlayer().setSlot(5);
+						break;
+					case GLFW.GLFW_KEY_KP_7:
+					case GLFW.GLFW_KEY_7:
+						client.getPlayer().setSlot(6);
+						break;
+					case GLFW.GLFW_KEY_KP_8:
+					case GLFW.GLFW_KEY_8:
+						client.getPlayer().setSlot(7);
+						break;
+				    case GLFW.GLFW_KEY_KP_9:
+					case GLFW.GLFW_KEY_9:
+						client.getPlayer().setSlot(8);
+						break;
+				}	
 			}	
+		} catch(InterruptedException e) {
+			e.printStackTrace();
 		}
 	}
 }

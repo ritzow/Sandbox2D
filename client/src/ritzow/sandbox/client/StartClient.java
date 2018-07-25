@@ -34,14 +34,13 @@ import ritzow.sandbox.client.network.Client.ConnectionFailedException;
 import ritzow.sandbox.client.ui.Cursors;
 import ritzow.sandbox.client.ui.UserInterfaceRenderer;
 import ritzow.sandbox.network.Protocol;
-import ritzow.sandbox.util.SharedConstants;
 import ritzow.sandbox.util.TaskQueue;
 import ritzow.sandbox.util.Utility;
 
 public class StartClient {
 	private static boolean triggerExit;
 	
-	public static void main(String[] args) throws IOException {
+	public static void main(String[] args) throws IOException, InterruptedException {
 		Thread.currentThread().setName("Game Thread");
 		
 		try {
@@ -63,7 +62,8 @@ public class StartClient {
 			
 			Camera camera = new Camera(0, 0, 1);
 			
-			var cameraGrip = new TrackingCameraController(camera, audio, client.getPlayer(), 0.005f, 0.05f, 0.6f);
+			var player = client.getPlayer();
+			var cameraGrip = new TrackingCameraController(camera, audio, player, 0.005f, 0.05f, 0.6f);
 			cameraGrip.link(input);
 			
 			var playerController = new PlayerController(client);
@@ -140,9 +140,9 @@ public class StartClient {
 					
 					//simulate world so it looks smooth
 					lastWorldUpdate = display.focused() ? Utility.updateWorld(world, lastWorldUpdate, 
-							SharedConstants.MAX_TIMESTEP, SharedConstants.TIME_SCALE_NANOSECONDS) : System.nanoTime();
+							Protocol.MAX_UPDATE_TIMESTEP, Protocol.TIME_SCALE_NANOSECONDS) : System.nanoTime();
 					cameraGrip.update(); //update camera position
-					interactionController.update(camera, display.width(), display.height()); //block breaking/"bomb throwing"
+					interactionController.update(camera, client, world, player, display.width(), display.height()); //block breaking/"bomb throwing"
 					if(display.focused()) {
 						ui.update();
 						renderer.run(display);
@@ -153,8 +153,9 @@ public class StartClient {
 				System.out.print("Exiting... ");
 				renderer.close(display);
 				display.destroy();
-				if(client.isConnected())
-					client.disconnectNotifyServer();
+				if(client.isConnected()) {
+					client.disconnect();
+				}
 				audio.close();
 				glfwTerminate();
 				System.out.println("done!");
