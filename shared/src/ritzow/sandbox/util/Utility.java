@@ -137,29 +137,15 @@ public final class Utility {
 		}
 	}
 	
-	public static void waitUnconditionally(Object o) {
-		try {
-			synchronized(o) {
-				o.wait();
-			}
-		} catch (InterruptedException e) {
-			throwInterrupted(e);
-		}
-	}
-	
 	/**
 	 * Waits on {@code lock} and returns once {@code condition} returns {@code true}.
 	 * @param lock the object to wait to be notified by.
 	 * @param condition the condition to check.
 	 */
-	public static void waitOnCondition(Object lock, BooleanSupplier condition) {
+	public static void waitOnCondition(Object lock, BooleanSupplier condition) throws InterruptedException {
 		if(!condition.getAsBoolean()) {
 			synchronized(lock) {
-				try {
-					lock.wait();
-				} catch(InterruptedException e) {
-					throwInterrupted(e);
-				}
+				lock.wait();
 				if(!condition.getAsBoolean())
 					throw new IllegalStateException("condition not met");
 			}
