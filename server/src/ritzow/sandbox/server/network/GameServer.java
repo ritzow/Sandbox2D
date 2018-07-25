@@ -28,6 +28,7 @@ import ritzow.sandbox.world.entity.ItemEntity;
 import ritzow.sandbox.world.entity.PlayerEntity;
 import ritzow.sandbox.world.item.BlockItem;
 
+//currently uses single-threaded receive processing, queued blocking message sending
 /** The server manages connected game clients, sends game updates, receives client input, and broadcasts information for clients. */
 public class GameServer {
 	private final DatagramChannel channel;
@@ -55,18 +56,14 @@ public class GameServer {
 		return (InetSocketAddress)channel.getLocalAddress();
 	}
 	
-	public void close() {
-		try {
-			clients.forEach((address, client) -> {
-				client.status = ClientState.STATUS_REMOVED;
-				world.remove(client.player);
-				client.disconnectReason = "server shutdown";
-			});
-			removeDisconnectedClients();
-			channel.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+	public void close() throws IOException {
+		clients.forEach((address, client) -> {
+			client.status = ClientState.STATUS_REMOVED;
+			world.remove(client.player);
+			client.disconnectReason = "server shutdown";
+		});
+		removeDisconnectedClients();
+		channel.close();
 	}
 	
 	public boolean isOpen() {
@@ -78,7 +75,7 @@ public class GameServer {
 	}
 	
 	public int getClientCount() {
-		return clients.size(); //TODO this is the number of clients that have ever sent a message to the server
+		return clients.size();
 	}
 	
 	public void setCurrentWorld(World world) {
@@ -86,7 +83,8 @@ public class GameServer {
 		this.world = world;
 	}
 	
-	private void process(ClientState client, ByteBuffer packet) {
+	//TODO disconnect clients who don't connect properly
+	private void onReceive(ClientState client, ByteBuffer packet) {
 		short type = packet.getShort();
 		switch(type) {
 		case Protocol.TYPE_CLIENT_CONNECT_REQUEST:
@@ -118,6 +116,10 @@ public class GameServer {
 		Bytes.putShort(update, 0, Protocol.TYPE_SERVER_ENTITY_UPDATE);	
 	}
 	
+	/**
+	 * Update the server's state. (includes message receiving)
+	 * @throws IOException if an internal error occurs
+	 */
 	public void updateServer() throws IOException {
 		removeDisconnectedClients();
 		receive();		
@@ -125,6 +127,9 @@ public class GameServer {
 	
 	private long lastClientsUpdate;
 	
+	/**
+	 * Keep clients up to date with the latest state. (includes message sending)
+	 */
 	public void updateClients() {
 		if(Utility.nanosSince(lastClientsUpdate) > NETWORK_SEND_INTERVAL_NANOSECONDS) {
 			for(Entity e : world) {
@@ -134,6 +139,16 @@ public class GameServer {
 			broadcastPing();
 			lastClientsUpdate = System.nanoTime();
 		}
+		sendToClients(); //TODO run message sending on main server thread
+	}
+	
+	/**
+	 * Sends queued messages to clients, including resend attempts.
+	 */
+	private void sendToClients() {
+//		for(ClientState client : clients.values()) {
+//			
+//		}
 	}
 	
 	private static void populateEntityUpdate(byte[] packet, Entity e) {
@@ -231,10 +246,10 @@ public class GameServer {
 		if(!world.getForeground().isValid(x, y))
 			throw new ClientBadDataException("client sent bad x and y block coordinates");
 		if(canBreakBlock(client, x, y)) {
-			breakBlock(x, y);	
+			breakBlock(x, y);
 			client.lastBlockBreak = System.nanoTime();
 		}
-		}
+	}
 	
 	private static boolean canBreakBlock(ClientState client, int x, int y) {
 		return Utility.nanosSince(client.lastBlockBreak) > Protocol.BLOCK_BREAK_COOLDOWN_NANOSECONDS &&
@@ -257,7 +272,7 @@ public class GameServer {
 			drop.setVelocityX(-0.2f + ((float) Math.random() * (0.4f)));
 			drop.setVelocityY((float) Math.random() * (0.35f));
 			world.add(drop);
-			broadcastAddEntity(drop);	
+			broadcastAddEntity(drop);
 		}
 	}
 	
@@ -274,7 +289,7 @@ public class GameServer {
 	
 	private void sendClientConnectReply(ClientState client) {
 		if(world != null) {
-			for(byte[] packet : buildAcknowledgementWorldPackets(world)) {
+			for(byte[] packet : buildAcknowledgementWorldPackets(world)) { //TODO don't send world size in ack, takes to long to serialize
 				sendUnsafe(client, packet, true);
 			}
 			
@@ -389,14 +404,14 @@ public class GameServer {
 					//if the message is the next one, process it and update last message
 					sendResponse(sender, sendBuffer, messageID);
 					state.receiveReliableID++;
-					process(state, buffer.position(Protocol.HEADER_SIZE).slice());
+					onReceive(state, buffer.position(Protocol.HEADER_SIZE).slice());
 				} else if(messageID < state.receiveReliableID) { //message already received
 					sendResponse(sender, sendBuffer, messageID);
 				} break; //else: message received too early
 			case Protocol.UNRELIABLE_TYPE:
 				if(messageID >= state.receiveUnreliableID) {
 					state.receiveUnreliableID = messageID + 1;
-					process(state, buffer.position(Protocol.HEADER_SIZE).slice());
+					onReceive(state, buffer.position(Protocol.HEADER_SIZE).slice());
 				} break; //else: message is outdated
 			}
 		}
@@ -427,6 +442,7 @@ public class GameServer {
 		sendUnsafe(client, data.clone(), true);
 	}
 	
+	//TODO take send channel as a parameter
 	public void sendUnreliable(ClientState client, byte[] data) {
 		sendUnsafe(client, data.clone(), false);
 	}
@@ -434,6 +450,12 @@ public class GameServer {
 	private static void sendUnsafe(ClientState client, byte[] data, boolean reliable) {
 		client.sendQueue.add(new SendPacket(data, reliable));
 	}
+	
+	//TODO convert sending to single threaded operation using interval checking (like for entity send interval)
+//	private static enum SendChannels {
+//		ENTITY_DATA,
+//		PING
+//	}
 	
 	private static final class ClientState {
 		int receiveReliableID, receiveUnreliableID, sendUnreliableID; //only accessed by one thread
