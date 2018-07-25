@@ -5,7 +5,6 @@ import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.util.Utility;
 
 public final class Protocol {
-	
 	private Protocol() {throw new UnsupportedOperationException("instantiation of Protocol not allowed");}
 	
 	/** The Charset for text encoding used by the client and server **/
@@ -75,6 +74,9 @@ public final class Protocol {
 	public static final long 
 		BLOCK_BREAK_COOLDOWN_NANOSECONDS = Utility.millisToNanos(200),
 		THROW_COOLDOWN_NANOSECONDS = Utility.millisToNanos(0);
+	
+	public static final float TIME_SCALE_NANOSECONDS = Utility.millisToNanos(16);
+	public static final float MAX_UPDATE_TIMESTEP = 2;
 	
 	public static byte[] buildConsoleMessage(String message) {
 		byte[] msg = message.getBytes(Protocol.CHARSET);
