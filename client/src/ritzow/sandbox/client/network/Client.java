@@ -12,9 +12,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.LinkedBlockingQueue;
 import ritzow.sandbox.client.util.SerializationProvider;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
-import ritzow.sandbox.data.ByteArrayDataReader;
 import ritzow.sandbox.data.Bytes;
-import ritzow.sandbox.data.DataReader;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.network.Protocol.PlayerAction;
 import ritzow.sandbox.network.TimeoutException;
@@ -23,32 +21,57 @@ import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.Entity;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
+//currently has queued blocking receive processing, queued blocking message sending
 public class Client {
+	
+	//sender/receiver state
 	private final DatagramChannel channel;
 	private final BlockingQueue<SendPacket> sendQueue;
 	private int receiveReliableID, receiveUnreliableID, sendUnreliableID; //only accessed by one thread
 	private volatile int sendReliableID; //accessed by both threads
 	private volatile boolean receivedByServer;
-	private final Object connectLock, worldLock, playerLock, worldStateLock, reliableSendLock;
-	private final ByteBuffer messageBuffer, responseBuffer;
+	private final Thread sendThread, receiveThread;
+	
+	//game state
+	private final Object connectLock, worldLock, playerLock, reliableSendLock;
+	private volatile Executor runner;
 	private volatile Status status;
 	private volatile WorldState worldState;
-	private volatile Executor runner;
 	private volatile long pingNanos;
+	private volatile boolean finishedDisconnect;
 	
-	//private final Map<SendChannel, BlockingQueue<SendPacket>> sendQueues;
-	
-	private static enum Status {
-		NOT_CONNECTED,
-		REJECTED,
-		CONNECTED,
-		DISCONNECTED
-	}
-	
+//	private final Map<SendChannel, BlockingQueue<SendPacket>> sendQueues;
+//	
+//	public void receive() throws IOException {
+//		while(channel.read(messageBuffer) > 0) {
+//			processPacket(messageBuffer, responseBuffer);
+//		}
+//	}
+//	
 //	private static enum SendChannel {
 //		MOVEMENT,
 //		ACTION
 //	}
+//	
+//	sendQueues = new EnumMap<>(SendChannel.class);
+//	for(SendChannel channel : SendChannel.values()) {
+//		sendQueues.put(channel, new LinkedBlockingQueue<SendPacket>());
+//	}
+	
+	private static enum Status {
+		NOT_CONNECTED(true),
+		REJECTED(false),
+		CONNECTED(true),
+		DISCONNECTING(true),
+		DISCONNECTED(false);
+		
+		final boolean transfer;
+		
+		Status(boolean transfer) {
+			this.transfer = transfer;
+		}
+		
+	}
 	
 	private static class SendPacket {
 		final byte[] data;
@@ -72,7 +95,7 @@ public class Client {
 	}
 	
 	public static final class ConnectionFailedException extends Exception {
-		public ConnectionFailedException(String message) {
+		ConnectionFailedException(String message) {
 			super(message);
 		}
 	}
@@ -93,38 +116,31 @@ public class Client {
 		this.runner = runner;
 		this.status = Status.NOT_CONNECTED;
 		this.channel = DatagramChannel.open(Utility.getProtocolFamily(bindAddress.getAddress())).bind(bindAddress).connect(serverAddress);
-		messageBuffer = ByteBuffer.allocateDirect(Protocol.MAX_PACKET_SIZE);
-		responseBuffer = ByteBuffer.allocateDirect(Protocol.HEADER_SIZE);
 		sendQueue = new LinkedBlockingQueue<>();
 		connectLock = new Object();
 		worldLock = new Object();
 		playerLock = new Object();
-		worldStateLock = new Object();
 		reliableSendLock = new Object();
-//		sendQueues = new EnumMap<>(SendChannel.class);
-//		for(SendChannel channel : SendChannel.values()) {
-//			sendQueues.put(channel, new LinkedBlockingQueue<SendPacket>());
-//		}
-		new Thread(this::sender, "Packet Sender").start();
-		new Thread(this::receiver, "Packet Receiver").start();
+		(sendThread = new Thread(this::sender, "Packet Sender")).start();;
+		(receiveThread = new Thread(this::receiver, "Packet Receiver")).start();
 		connect();
 	}
 	
-	private void connect() throws ConnectionFailedException {
+	private void connect() throws ConnectionFailedException, IOException {
 		sendConnectRequest();
-		//received ack on request packet, wait one second for response
+		//received ack on request packet, wait one second for response TODO stop sender and receiver threads (share code with disconnect methods?)
 		Utility.waitOnCondition(connectLock, 1000, () -> status != Status.NOT_CONNECTED);
 		if(status == Status.REJECTED) {
-			disconnectWithoutNotify();
+			channel.close();
 			throw new ConnectionFailedException("connection rejected");
 		} else if(status == Status.NOT_CONNECTED) {
-			disconnectWithoutNotify();
+			channel.close();
 			throw new ConnectionFailedException("no connect acknowledgement received");
 		}
 	}
 	
 	private void sendConnectRequest() {
-		sendQueue.add(new SendPacket(Bytes.of(Protocol.TYPE_CLIENT_CONNECT_REQUEST), true));
+		sendReliable(Bytes.of(Protocol.TYPE_CLIENT_CONNECT_REQUEST));
 	}
 	
 	public InetSocketAddress getServerAddress() { 
@@ -138,27 +154,12 @@ public class Client {
 	private void sender() {
 		try {
 			ByteBuffer sendBuffer = ByteBuffer.allocateDirect(Protocol.MAX_PACKET_SIZE);
-			while(status == Status.NOT_CONNECTED || status == Status.CONNECTED) {
-				SendPacket packet = sendQueue.take(); //TODO deal with blocking when disconnecting
+			while(!finishedDisconnect) {
+				SendPacket packet = sendQueue.take(); //TODO deal with blocking when disconnecting by interrupting
 				sendNext(sendBuffer, packet);
 			}
-		} catch (TimeoutException e) {
-			//TODO handle timeout with server
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		} catch(IOException e) {
-			e.printStackTrace();
-		}
-	}
-	
-	private void receiver() {
-		try {
-			while(status == Status.NOT_CONNECTED || status == Status.CONNECTED) {
-				channel.receive(messageBuffer);
-				processPacket(messageBuffer, responseBuffer);
-			}
-		} catch(IOException e) {
-			//TODO handle?
+		} catch (TimeoutException | InterruptedException | IOException e) {
+			e.printStackTrace(); //TODO handle TimeoutException and InterruptedException, close client on IOException
 		}
 	}
 	
@@ -178,15 +179,17 @@ public class Client {
 					reliableSendLock.wait(Protocol.RESEND_INTERVAL);
 				}
 				attempts++;
-			} while(!receivedByServer && attempts < Protocol.RESEND_COUNT);
+			} while(!receivedByServer && attempts < Protocol.RESEND_COUNT && status.transfer);
+			
+			Utility.notify(packet); //if the sender of the packet wants to be notified when the message is sent
 			
 			if(receivedByServer) {
 				pingNanos = Utility.nanosSince(startTime);
 				receivedByServer = false;
 				sendReliableID++;
-			} else {
+			} else if(status.transfer) {
 				throw new TimeoutException("reliable message " + packet + " , id: " + sendReliableID + " timed out.");
-			}
+			} //else return, no longer transferring
 		} else {
 			setupSendBuffer(sendBuffer, Protocol.UNRELIABLE_TYPE, sendUnreliableID++, packet.data);
 			channel.write(sendBuffer);
@@ -194,13 +197,21 @@ public class Client {
 		sendBuffer.clear();
 	}
 	
-//	public void receive() throws IOException {
-//		while(channel.read(messageBuffer) > 0) {
-//			processPacket(messageBuffer, responseBuffer);
-//		}
-//	}
+	private void receiver() {
+		try {
+			var receiveBuffer = ByteBuffer.allocateDirect(Protocol.MAX_PACKET_SIZE);
+			var responseBuffer = ByteBuffer.allocateDirect(Protocol.HEADER_SIZE);
+			while(!finishedDisconnect) {
+				channel.receive(receiveBuffer);
+				processReceived(receiveBuffer, responseBuffer);	
+			}
+		} catch(IOException e) {
+			//TODO shutdown client on IOException
+			e.printStackTrace();
+		}
+	}
 	
-	private void processPacket(ByteBuffer buffer, ByteBuffer sendBuffer) throws IOException {
+	private void processReceived(ByteBuffer buffer, ByteBuffer sendBuffer) throws IOException {
 		buffer.flip(); //flip to set limit and prepare to read packet data
 		if(buffer.limit() >= Protocol.HEADER_SIZE) {
 			byte type = buffer.get(); //type of message (RESPONSE, RELIABLE, UNRELIABLE)
@@ -236,58 +247,62 @@ public class Client {
 	}
 	
 	private void process(ByteBuffer buffer) {
-		byte[] data = new byte[buffer.remaining()];
-		buffer.get(data);
-		if(status == Status.CONNECTED || status == Status.NOT_CONNECTED) {
-			runner.execute(() -> onReceive(new ByteArrayDataReader(data)));
-		}
+		ByteBuffer clone = ByteBuffer.allocate(buffer.capacity()); //temporary until receiving is single-threaded
+		clone.put(buffer);
+		clone.position(0);
+		runner.execute(() -> onReceive(clone));
 	}
 	
-	private void onReceive(DataReader data) {
-		short type = data.readShort();
-		if(type == Protocol.TYPE_SERVER_CONNECT_ACKNOWLEDGMENT) {
-			processServerConnectAcknowledgement(data);
-		} else if(status == Status.CONNECTED) {
-			switch(type) {
-			case Protocol.TYPE_CONSOLE_MESSAGE:
-				System.out.println("[Server Message] " + new String(data.readBytes(data.remaining()), Protocol.CHARSET));
-				break;
-			case Protocol.TYPE_SERVER_WORLD_DATA:
-				processReceiveWorldData(data);
-				break;
-			case Protocol.TYPE_SERVER_ENTITY_UPDATE:
-				processUpdateEntity(data);
-				break;
-			case Protocol.TYPE_SERVER_ADD_ENTITY:
-				processAddEntity(data);
-				break;
-			case Protocol.TYPE_SERVER_REMOVE_ENTITY:
-				processRemoveEntity(data);
-				break;
-			case Protocol.TYPE_SERVER_CLIENT_DISCONNECT:
-				processServerDisconnect(data);
-				break;
-			case Protocol.TYPE_SERVER_PLAYER_ID:
-				processReceivePlayerEntityID(data);
-				break;
-			case Protocol.TYPE_SERVER_REMOVE_BLOCK:
-				processServerRemoveBlock(data);
-				break;
-			case Protocol.TYPE_SERVER_PING:
-				break;
-			case Protocol.TYPE_SERVER_PLAYER_ACTION:
-				processServerPlayerAction(data);
-				break;
-			default:
-				throw new IllegalArgumentException("Client received message of unknown protocol " + type);
+	private void onReceive(ByteBuffer data) {
+		try {
+			short type = data.getShort();
+			if(type == Protocol.TYPE_SERVER_CONNECT_ACKNOWLEDGMENT) {
+				processServerConnectAcknowledgement(data);
+			} else if(status == Status.CONNECTED) {
+				switch(type) {
+				case Protocol.TYPE_CONSOLE_MESSAGE:
+					System.out.println("[Server Message] " + new String(getRemainingBytes(data), Protocol.CHARSET));
+					break;
+				case Protocol.TYPE_SERVER_WORLD_DATA:
+					processReceiveWorldData(data);
+					break;
+				case Protocol.TYPE_SERVER_ENTITY_UPDATE:
+					processUpdateEntity(data);
+					break;
+				case Protocol.TYPE_SERVER_ADD_ENTITY:
+					processAddEntity(data);
+					break;
+				case Protocol.TYPE_SERVER_REMOVE_ENTITY:
+					processRemoveEntity(data);
+					break;
+				case Protocol.TYPE_SERVER_CLIENT_DISCONNECT:
+					processServerDisconnect(data);
+					break;
+				case Protocol.TYPE_SERVER_PLAYER_ID:
+					processReceivePlayerEntityID(data);
+					break;
+				case Protocol.TYPE_SERVER_REMOVE_BLOCK:
+					processServerRemoveBlock(data);
+					break;
+				case Protocol.TYPE_SERVER_PING:
+					break;
+				case Protocol.TYPE_SERVER_PLAYER_ACTION:
+					processServerPlayerAction(data);
+					break;
+				default:
+					throw new IllegalArgumentException("Client received message of unknown protocol " + type);
+				}
+			} else {
+				throw new IllegalStateException("Received non-TYPE_SERVER_CONNECT_ACKNOWLEDGMENT message before connecting to server");
 			}
-		} else {
-			throw new IllegalStateException("Received irrelevant message");
+		} catch(IOException e) {
+			//TODO shutdown client on IOException
+			e.printStackTrace();
 		}
 	}
 	
-	private void processServerConnectAcknowledgement(DataReader data) {
-		byte response = data.readByte();
+	private void processServerConnectAcknowledgement(ByteBuffer data) {
+		byte response = data.get();
 		switch(response) {
 		case Protocol.CONNECT_STATUS_REJECTED:
 			status = Status.REJECTED;
@@ -295,11 +310,10 @@ public class Client {
 		case Protocol.CONNECT_STATUS_WORLD:
 			status = Status.CONNECTED;
 			var state = new WorldState();
-			int remaining = data.readInteger();
+			int remaining = data.getInt();
 			state.worldBytesRemaining = remaining;
 			state.worldData = new byte[remaining];
 			this.worldState = state;
-			Utility.notify(worldStateLock);
 			break;
 		case Protocol.CONNECT_STATUS_LOBBY:
 			throw new UnsupportedOperationException("CONNECT_STATUS_LOBBY not supported");
@@ -323,60 +337,89 @@ public class Client {
 		}
 	}
 	
+	/**
+	 * @return the round trip time for the last 
+	 * reliable message sent to the server, in nanoseconds.
+	 */
 	public long getPing() {
 		return pingNanos;
 	}
 	
+	/**
+	 * @return true if the client is connected to the server and can transmit game related messages.
+	 */
 	public boolean isConnected() {
 		return status == Status.CONNECTED;
 	}
 	
-	public void disconnectNotifyServer() {
-		try {
-			checkConnected();
-			status = Status.DISCONNECTED;
-			sendReliable(Bytes.of(Protocol.TYPE_CLIENT_DISCONNECT));
-		} finally {
-			try {
-				channel.close(); //TODO wait for sending and receiving threads to finish
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-			Utility.notify(worldStateLock);
-		}
-	}
-	
-	private void disconnectWithoutNotify() {
-		status = Status.DISCONNECTED;
-		try {
-			channel.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		Utility.notify(worldStateLock);
-	}
-	
-	public World getWorld() {
-		checkConnected();
-		Utility.waitOnCondition(worldLock, () -> worldState.world != null);
-		return worldState.world;
-	}
-	
-	public ClientPlayerEntity getPlayer() {
-		checkConnected();
-		Utility.waitOnCondition(playerLock, () -> worldState.player != null);
-		return worldState.player;
-	}
-	
+	/**
+	 * Throws an {@link IllegalStateException} if the client is not in a normal
+	 * connected state where game related messages can be sent and received.
+	 */
 	private void checkConnected() {
 		if(status != Status.CONNECTED)
 			throw new IllegalStateException("client is not connected to a server");
 	}
 	
+	/**
+	 * Notifies the server, disconnects, and stops the client. May block
+	 * while disconnect is occuring.
+	 * @throws IOException if an internal I/O socket error occurs
+	 * @throws InterruptedException if the client is interrupted while disconnecting
+	 */
+	public void disconnect() throws IOException, InterruptedException {
+		checkConnected();
+		status = Status.DISCONNECTING;
+		sendReliable(Bytes.of(Protocol.TYPE_CLIENT_DISCONNECT)); //TODO wait for response message to be received by server (is there even a way to do this?)
+		finishedDisconnect = true;
+		status = Status.DISCONNECTED;
+		sendThread.join(); //TODO interrupt sender/receiver.
+		receiveThread.join();
+		channel.close();
+	}
+	
+	/**
+	 * Disconnects and stops the client without notifying the server (occurs without delay/waiting).
+	 * @throws IOException
+	 */
+	private void disconnectWithoutNotify() throws IOException {
+		checkConnected();
+		finishedDisconnect = true;
+		status = Status.DISCONNECTED;
+		channel.close();
+	}
+	
+	/**
+	 * Returns the World object sent by the server, blocking if necessary until a World is available.
+	 * @return the current world instance
+	 * @throws InterruptedException if interrupted while waiting to receive the world
+	 */
+	public World getWorld() throws InterruptedException {
+		checkConnected();
+		if(worldState == null)
+			throw new IllegalStateException("No world to get, not currently in a world.");
+		Utility.waitOnCondition(worldLock, () -> worldState.world != null);
+		return worldState.world;
+	}
+	
+	/**
+	 * Returns the player associated with this client, sent by the server.
+	 * Blocks until this client's player is received and identified.
+	 * @return the ClientPlayerEntity associated with this client, provided by the server
+	 * @throws InterruptedException if interrupted while waiting to receive the player
+	 */
+	public ClientPlayerEntity getPlayer() throws InterruptedException {
+		checkConnected();
+		Utility.waitOnCondition(playerLock, () -> worldState.player != null);
+		return worldState.player;
+	}
+	
+	/** Queues a reliable message **/
 	private void sendReliable(byte[] data) {
 		sendQueue.add(new SendPacket(data.clone(), true));
 	}
 	
+	/** Queues an unreliable messager **/
 	@SuppressWarnings("unused")
 	private void sendUnreliable(byte[] data) {
 		sendQueue.add(new SendPacket(data.clone(), false));
@@ -408,40 +451,47 @@ public class Client {
 		sendReliable(packet);
 	}
 	
+	private static byte[] getRemainingBytes(ByteBuffer buffer) {
+		byte[] data = new byte[buffer.remaining()];
+		buffer.get(data);
+		return data;
+	}
+	
 	@SuppressWarnings("unchecked")
 	private <T extends Entity> T getEntityFromID(int ID) {
-		for(Entity e : getWorld()) { //block until world is received so no NPEs happen
+		for(Entity e : worldState.world) { //block until world is received so no NPEs happen
 			if(e.getID() == ID) {
 				return (T)e;
 			}
 		}
-		throw new IllegalStateException("No entity with ID " + ID + " exists"); //TODO dont throw exception under certain circumstances?
+		throw new IllegalStateException("No entity with ID " + ID + " exists");
 	}
 	
-	private void processServerPlayerAction(DataReader data) {
-		PlayerEntity e = getEntityFromID(data.readInteger());
-		e.processAction(PlayerAction.forCode(data.readByte()), data.readBoolean());
+	private void processServerPlayerAction(ByteBuffer data) {
+		PlayerEntity e = getEntityFromID(data.getInt());
+		e.processAction(PlayerAction.forCode(data.get()), data.get() == 1 ? true : false);
 	}
 	
-	private void processServerRemoveBlock(DataReader data) {
-		worldState.world.getForeground().destroy(worldState.world, data.readInteger(), data.readInteger());
+	private void processServerRemoveBlock(ByteBuffer data) {
+		worldState.world.getForeground().destroy(worldState.world, data.getInt(), data.getInt());
 	}
 	
-	private void processServerDisconnect(DataReader data) {
+	private void processServerDisconnect(ByteBuffer data) throws IOException {
 		disconnectWithoutNotify();
-		int length = data.readInteger();
-		System.out.println("Disconnected from server: " + 
-				new String(data.readBytes(data.remaining()), 0, length, Protocol.CHARSET));
+		int length = data.getInt();
+		byte[] array = new byte[length];
+		data.get(array);
+		System.out.println("Disconnected from server: " + new String(array, Protocol.CHARSET));
 	}
 	
-	private void processReceivePlayerEntityID(DataReader data) {
-		int id = data.readInteger();
+	private void processReceivePlayerEntityID(ByteBuffer data) {
+		int id = data.getInt();
 		worldState.player = getEntityFromID(id);
 		Utility.notify(playerLock);
 	}
 	
-	private void processRemoveEntity(DataReader data) {
-		int id = data.readInteger();
+	private void processRemoveEntity(ByteBuffer data) {
+		int id = data.getInt();
 		worldState.world.removeIf(e -> e.getID() == id);
 	}
 	
@@ -449,36 +499,32 @@ public class Client {
 		return SerializationProvider.getProvider().deserialize(compress ? Bytes.decompress(data) : data);
 	}
 	
-	private void processAddEntity(DataReader data) {
-		worldState.world.add(deserialize(data.readBoolean(), data.readBytes(data.remaining())));
+	private void processAddEntity(ByteBuffer data) {
+		worldState.world.add(deserialize(data.get() == 1 ? true : false, getRemainingBytes(data)));
 	}
 	
-	private void processUpdateEntity(DataReader data) {
-		int id = data.readInteger();
-		World world = worldState.world;
-		for(Entity e : world) {
-			if(e.getID() == id) {
-				e.setPositionX(data.readFloat());
-				e.setPositionY(data.readFloat());
-				e.setVelocityX(data.readFloat());
-				e.setVelocityY(data.readFloat());
+	private void processUpdateEntity(ByteBuffer data) {
+		int entityID = data.getInt();
+		for(Entity e : worldState.world) {
+			if(e.getID() == entityID) {
+				e.setPositionX(data.getFloat());
+				e.setPositionY(data.getFloat());
+				e.setVelocityX(data.getFloat());
+				e.setVelocityY(data.getFloat());
 				return;
 			}
 		}
 	}
 	
-	private void processReceiveWorldData(DataReader data) {
+	private void processReceiveWorldData(ByteBuffer data) {
 		WorldState state = this.worldState;
 		if(state.worldData == null)
 			throw new IllegalStateException("world head packet has not been received");
 		synchronized(state.worldData) {
 			int dataSize = data.remaining();
-			Bytes.copy(data.readBytes(dataSize), state.worldData, state.worldData.length - state.worldBytesRemaining);
+			data.get(state.worldData, state.worldData.length - state.worldBytesRemaining, dataSize);
 			boolean receivedAll = (state.worldBytesRemaining -= dataSize) == 0;
-			//System.out.println(Utility.formatSize(state.worldBytesRemaining) + " remaining of " + Utility.formatSize(state.worldData.length) + " of world data.");
-			if(receivedAll) {
-				buildWorld();
-			}
+			if(receivedAll) buildWorld();
 		}
 	}
 	
