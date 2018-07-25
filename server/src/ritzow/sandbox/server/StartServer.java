@@ -15,7 +15,6 @@ import java.util.stream.Collectors;
 import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.server.network.GameServer;
-import ritzow.sandbox.util.SharedConstants;
 import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.block.DirtBlock;
@@ -46,7 +45,7 @@ public final class StartServer {
 			while(server.isOpen()) {
 				server.updateServer();
 				lastWorldUpdateTime = Utility.updateWorld(world, lastWorldUpdateTime, 
-						SharedConstants.MAX_TIMESTEP, SharedConstants.TIME_SCALE_NANOSECONDS);
+						Protocol.MAX_UPDATE_TIMESTEP, Protocol.TIME_SCALE_NANOSECONDS);
 				server.updateClients();
 				while(!commandQueue.isEmpty()) {
 					commandQueue.remove().run();
@@ -108,7 +107,7 @@ public final class StartServer {
 		register("list", 	StartServer::listCommmand);
 		register("say", 	StartServer::sayCommand);
 		register("reset", 	StartServer::resetCommand);
-		register("debug", StartServer::debugCommand);
+		register("debug",	StartServer::debugCommand);
 	}
 	
 	private static void debugCommand(String args) {
@@ -126,7 +125,11 @@ public final class StartServer {
 	}
 	
 	private static void stopCommand(String args) {
-		server.close();
+		try {
+			server.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	private static void sayCommand(String args) {
@@ -136,7 +139,11 @@ public final class StartServer {
 	
 	private static void abortCommand(String args) {
 		save = false;
-		server.close();
+		try {
+			server.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	private static void listCommmand(String args) {
