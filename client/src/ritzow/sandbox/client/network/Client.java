@@ -24,6 +24,8 @@ import ritzow.sandbox.world.entity.PlayerEntity;
 //currently has queued blocking receive processing, queued blocking message sending
 public class Client {
 	
+	private static final long CONNECT_TIMEOUT_MILLIS = 2000;
+	
 	//sender/receiver state
 	private final DatagramChannel channel;
 	private final BlockingQueue<SendPacket> sendQueue;
@@ -73,20 +75,6 @@ public class Client {
 		
 	}
 	
-	private static class SendPacket {
-		final byte[] data;
-		final boolean reliable;
-		
-		public SendPacket(byte[] data, boolean reliable) {
-			this.data = data;
-			this.reliable = reliable;
-		}
-		
-		public String toString() {
-			return "SendPacket[reliable: " + reliable + " size:" + data.length + "]";
-		}
-	}
-	
 	private static final class WorldState {
 		volatile World world;
 		volatile ClientPlayerEntity player;
@@ -127,9 +115,10 @@ public class Client {
 	}
 	
 	private void connect() throws ConnectionFailedException, IOException {
-		sendConnectRequest();
-		//received ack on request packet, wait one second for response TODO stop sender and receiver threads (share code with disconnect methods?)
-		Utility.waitOnCondition(connectLock, 1000, () -> status != Status.NOT_CONNECTED);
+		sendReliable(Bytes.of(Protocol.TYPE_CLIENT_CONNECT_REQUEST));
+		//received ack on request packet, wait one second for response 
+		//TODO stop sender and receiver threads (share code with disconnect methods?)
+		Utility.waitOnCondition(connectLock, CONNECT_TIMEOUT_MILLIS, () -> status != Status.NOT_CONNECTED);
 		if(status == Status.REJECTED) {
 			channel.close();
 			throw new ConnectionFailedException("connection rejected");
@@ -139,118 +128,20 @@ public class Client {
 		}
 	}
 	
-	private void sendConnectRequest() {
-		sendReliable(Bytes.of(Protocol.TYPE_CLIENT_CONNECT_REQUEST));
+	public InetSocketAddress getLocalAddress() {
+		try {
+			return (InetSocketAddress)channel.getLocalAddress();
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 	}
 	
-	public InetSocketAddress getServerAddress() { 
+	public InetSocketAddress getServerAddress() {
 		try {
 			return (InetSocketAddress)channel.getRemoteAddress();
 		} catch(IOException e) {
 			throw new RuntimeException(e);
 		}
-	}
-	
-	private void sender() {
-		try {
-			ByteBuffer sendBuffer = ByteBuffer.allocateDirect(Protocol.MAX_PACKET_SIZE);
-			while(!finishedDisconnect) {
-				SendPacket packet = sendQueue.take(); //TODO deal with blocking when disconnecting by interrupting
-				sendNext(sendBuffer, packet);
-			}
-		} catch (TimeoutException | InterruptedException | IOException e) {
-			e.printStackTrace(); //TODO handle TimeoutException and InterruptedException, close client on IOException
-		}
-	}
-	
-	private static void setupSendBuffer(ByteBuffer sendBuffer, byte type, int id, byte[] data) {
-		sendBuffer.put(type).putInt(id).put(data).flip();
-	}
-	
-	private void sendNext(ByteBuffer sendBuffer, SendPacket packet) throws InterruptedException, IOException, TimeoutException {
-		if(packet.reliable) {
-			setupSendBuffer(sendBuffer, Protocol.RELIABLE_TYPE, sendReliableID, packet.data);
-			int attempts = 0;
-			long startTime = System.nanoTime();
-			do {
-				channel.write(sendBuffer);
-				sendBuffer.rewind();
-				synchronized(reliableSendLock) {
-					reliableSendLock.wait(Protocol.RESEND_INTERVAL);
-				}
-				attempts++;
-			} while(!receivedByServer && attempts < Protocol.RESEND_COUNT && status.transfer);
-			
-			Utility.notify(packet); //if the sender of the packet wants to be notified when the message is sent
-			
-			if(receivedByServer) {
-				pingNanos = Utility.nanosSince(startTime);
-				receivedByServer = false;
-				sendReliableID++;
-			} else if(status.transfer) {
-				throw new TimeoutException("reliable message " + packet + " , id: " + sendReliableID + " timed out.");
-			} //else return, no longer transferring
-		} else {
-			setupSendBuffer(sendBuffer, Protocol.UNRELIABLE_TYPE, sendUnreliableID++, packet.data);
-			channel.write(sendBuffer);
-		}
-		sendBuffer.clear();
-	}
-	
-	private void receiver() {
-		try {
-			var receiveBuffer = ByteBuffer.allocateDirect(Protocol.MAX_PACKET_SIZE);
-			var responseBuffer = ByteBuffer.allocateDirect(Protocol.HEADER_SIZE);
-			while(!finishedDisconnect) {
-				channel.receive(receiveBuffer);
-				processReceived(receiveBuffer, responseBuffer);	
-			}
-		} catch(IOException e) {
-			//TODO shutdown client on IOException
-			e.printStackTrace();
-		}
-	}
-	
-	private void processReceived(ByteBuffer buffer, ByteBuffer sendBuffer) throws IOException {
-		buffer.flip(); //flip to set limit and prepare to read packet data
-		if(buffer.limit() >= Protocol.HEADER_SIZE) {
-			byte type = buffer.get(); //type of message (RESPONSE, RELIABLE, UNRELIABLE)
-			int messageID = buffer.getInt(); //received ID or messageID for ack.
-			switch(type) {
-			case Protocol.RESPONSE_TYPE:
-				if(sendReliableID == messageID) {
-					receivedByServer = true;
-					Utility.notify(reliableSendLock);
-				} break; //else drop the response
-			case Protocol.RELIABLE_TYPE:
-				if(messageID == receiveReliableID) {
-					//if the message is the next one, process it and update last message
-					sendResponse(sendBuffer, messageID);
-					receiveReliableID++;
-					process(buffer.position(Protocol.HEADER_SIZE).slice());
-				} else if(messageID < receiveReliableID) { //message already received
-					sendResponse(sendBuffer, messageID);
-				} break; //else: message received too early
-			case Protocol.UNRELIABLE_TYPE:
-				if(messageID >= receiveUnreliableID) {
-					receiveUnreliableID = messageID + 1;
-					process(buffer.position(Protocol.HEADER_SIZE).slice());
-				} break; //else: message is outdated
-			}
-		}
-		buffer.clear(); //clear to prepare for next receive
-	}
-	
-	private void sendResponse(ByteBuffer sendBuffer, int receivedMessageID) throws IOException {
-		channel.write(sendBuffer.put(Protocol.RESPONSE_TYPE).putInt(receivedMessageID).flip());
-		sendBuffer.clear();
-	}
-	
-	private void process(ByteBuffer buffer) {
-		ByteBuffer clone = ByteBuffer.allocate(buffer.capacity()); //temporary until receiving is single-threaded
-		clone.put(buffer);
-		clone.position(0);
-		runner.execute(() -> onReceive(clone));
 	}
 	
 	private void onReceive(ByteBuffer data) {
@@ -327,14 +218,6 @@ public class Client {
 	/** Redirect all received message processing to the provided TaskQueue **/
 	public void setExecutor(Executor processor) {
 		this.runner = processor;
-	}
-	
-	public InetSocketAddress getAddress() {
-		try {
-			return (InetSocketAddress)channel.getLocalAddress();
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		}
 	}
 	
 	/**
@@ -536,5 +419,121 @@ public class Client {
 		worldState.worldData = null; //release the raw data to the garbage collector
 		sendReliable(Bytes.of(Protocol.TYPE_CLIENT_WORLD_BUILT));
 		Utility.notify(worldLock);
+	}
+	
+	private static class SendPacket {
+		final byte[] data;
+		final boolean reliable;
+		
+		public SendPacket(byte[] data, boolean reliable) {
+			this.data = data;
+			this.reliable = reliable;
+		}
+		
+		public String toString() {
+			return "SendPacket[" + (reliable ? "reliable" : "unreliable") + ", size:" + data.length + "]";
+		}
+	}
+	
+	private void sender() {
+		try {
+			ByteBuffer sendBuffer = ByteBuffer.allocateDirect(Protocol.MAX_PACKET_SIZE);
+			while(!finishedDisconnect) {
+				SendPacket packet = sendQueue.take(); //TODO deal with blocking when disconnecting by interrupting
+				sendNext(sendBuffer, packet);
+			}
+		} catch (TimeoutException | InterruptedException | IOException e) {
+			e.printStackTrace(); //TODO handle TimeoutException and InterruptedException, close client on IOException
+		}
+	}
+	
+	private static void setupSendBuffer(ByteBuffer sendBuffer, byte type, int id, byte[] data) {
+		sendBuffer.put(type).putInt(id).put(data).flip();
+	}
+	
+	private void sendNext(ByteBuffer sendBuffer, SendPacket packet) throws InterruptedException, IOException, TimeoutException {
+		if(packet.reliable) {
+			setupSendBuffer(sendBuffer, Protocol.RELIABLE_TYPE, sendReliableID, packet.data);
+			int attempts = 0;
+			long startTime = System.nanoTime();
+			do {
+				channel.write(sendBuffer);
+				sendBuffer.rewind();
+				synchronized(reliableSendLock) {
+					reliableSendLock.wait(Protocol.RESEND_INTERVAL);
+				}
+				attempts++;
+			} while(!receivedByServer && attempts < Protocol.RESEND_COUNT && status.transfer);
+			
+			Utility.notify(packet); //if the sender of the packet wants to be notified when the message is sent
+			
+			if(receivedByServer) {
+				pingNanos = Utility.nanosSince(startTime);
+				receivedByServer = false;
+				sendReliableID++;
+			} else if(status.transfer) {
+				throw new TimeoutException(packet + " with ID " + sendReliableID + " timed out.");
+			} //else return, no longer transferring
+		} else {
+			setupSendBuffer(sendBuffer, Protocol.UNRELIABLE_TYPE, sendUnreliableID++, packet.data);
+			channel.write(sendBuffer);
+		}
+		sendBuffer.clear();
+	}
+	
+	private void receiver() {
+		try {
+			var receiveBuffer = ByteBuffer.allocateDirect(Protocol.MAX_PACKET_SIZE);
+			var responseBuffer = ByteBuffer.allocateDirect(Protocol.HEADER_SIZE);
+			while(!finishedDisconnect) {
+				channel.receive(receiveBuffer);
+				processReceived(receiveBuffer, responseBuffer);
+			}
+		} catch(IOException e) {
+			//TODO shutdown client on IOException
+			e.printStackTrace();
+		}
+	}
+	
+	private void processReceived(ByteBuffer buffer, ByteBuffer sendBuffer) throws IOException {
+		buffer.flip(); //flip to set limit and prepare to read packet data
+		if(buffer.limit() >= Protocol.HEADER_SIZE) {
+			byte type = buffer.get(); //type of message (RESPONSE, RELIABLE, UNRELIABLE)
+			int messageID = buffer.getInt(); //received ID or messageID for ack.
+			switch(type) {
+			case Protocol.RESPONSE_TYPE:
+				if(sendReliableID == messageID) {
+					receivedByServer = true;
+					Utility.notify(reliableSendLock);
+				} break; //else drop the response
+			case Protocol.RELIABLE_TYPE:
+				if(messageID == receiveReliableID) {
+					//if the message is the next one, process it and update last message
+					sendResponse(sendBuffer, messageID);
+					receiveReliableID++;
+					process(buffer.position(Protocol.HEADER_SIZE).slice());
+				} else if(messageID < receiveReliableID) { //message already received
+					sendResponse(sendBuffer, messageID);
+				} break; //else: message received too early
+			case Protocol.UNRELIABLE_TYPE:
+				if(messageID >= receiveUnreliableID) {
+					receiveUnreliableID = messageID + 1;
+					process(buffer.position(Protocol.HEADER_SIZE).slice());
+				} break; //else: message is outdated
+			}
+		}
+		buffer.clear(); //clear to prepare for next receive
+	}
+	
+	private void sendResponse(ByteBuffer responseBuffer, int receivedMessageID) throws IOException {
+		channel.write(responseBuffer.put(Protocol.RESPONSE_TYPE).putInt(receivedMessageID).flip());
+		responseBuffer.clear();
+	}
+	
+	private void process(ByteBuffer buffer) {
+		ByteBuffer clone = ByteBuffer.allocate(buffer.capacity()); //temporary until receiving is single-threaded
+		clone.put(buffer);
+		clone.position(0);
+		runner.execute(() -> onReceive(clone));
 	}
 }
