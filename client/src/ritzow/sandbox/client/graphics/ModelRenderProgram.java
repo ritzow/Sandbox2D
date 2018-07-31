@@ -1,12 +1,6 @@
 package ritzow.sandbox.client.graphics;
 
-import static org.lwjgl.opengl.GL11.GL_TRIANGLES;
-import static org.lwjgl.opengl.GL11.GL_UNSIGNED_INT;
-import static org.lwjgl.opengl.GL11.glDrawElements;
-import static org.lwjgl.opengl.GL15.GL_ELEMENT_ARRAY_BUFFER;
-import static org.lwjgl.opengl.GL15.glBindBuffer;
-import static org.lwjgl.opengl.GL20.glBindAttribLocation;
-import static org.lwjgl.opengl.GL30.glBindVertexArray;
+import static org.lwjgl.opengl.GL30C.*;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -14,57 +8,57 @@ import java.util.Map;
 
 public final class ModelRenderProgram extends ShaderProgram {
 	//private final Camera camera;
-	
-	private final int 
-		uniform_transform, 
-		uniform_opacity, 
-		uniform_view, 
+
+	private final int
+		uniform_transform,
+		uniform_opacity,
+		uniform_view,
 		textureUnit;
-	
+
 	private final int atlasTexture;
-	
+
 	private float framebufferWidth, framebufferHeight;
-	
+
 	private static final float[] identityMatrix = {
 			1, 0, 0, 0,
 			0, 1, 0, 0,
 			0, 0, 0, 0,
 			0, 0, 0, 1,
 	};
-	
+
 	private final float[] aspectMatrix = {
 			1, 0, 0, 0,
 			0, 1, 0, 0,
 			0, 0, 0, 0,
 			0, 0, 0, 1,
 	};
-	
+
 	private final float[] cameraMatrix = {
 			1, 0, 0, 0,
 			0, 1, 0, 0,
 			0, 0, 0, 0,
 			0, 0, 0, 1,
 	};
-	
+
 	private final float[] viewMatrix = {
 			0, 0, 0, 0,
 			0, 0, 0, 0,
 			0, 0, 0, 0,
 			0, 0, 0, 0,
 	};
-	
+
 	private final float[] transformationMatrix = {
 			1, 0, 0, 0,
 			0, 1, 0, 0,
 			0, 0, 0, 0,
 			0, 0, 0, 1,
 	};
-	
+
 	private final Map<Integer, RenderData> models;
-	
+
 	public ModelRenderProgram(Shader vertexShader, Shader fragmentShader, int textureAtlas) {
 		super(vertexShader, fragmentShader);
-		models = new HashMap<Integer, RenderData>();
+		models = new HashMap<>();
 		GraphicsUtility.checkProgramCompilation(this);
 		glBindAttribLocation(programID, RenderConstants.ATTRIBUTE_POSITIONS, "position");
 		glBindAttribLocation(programID, RenderConstants.ATTRIBUTE_TEXTURE_COORDS, "textureCoord");
@@ -77,13 +71,13 @@ public final class ModelRenderProgram extends ShaderProgram {
 		setSamplerIndex(getUniformID("textureSampler"), textureUnit);
 		GraphicsUtility.checkErrors();
 	}
-	
+
 	public void register(int modelID, RenderData model) {
 		if(models.containsKey(modelID))
 			throw new IllegalArgumentException("modelID already in use");
 		models.put(modelID, model);
 	}
-	
+
 	/**
 	 * Sets the opacity that will be used when the program renders models
 	 * @param opacity
@@ -91,12 +85,13 @@ public final class ModelRenderProgram extends ShaderProgram {
 	public void loadOpacity(float opacity) {
 		setFloat(uniform_opacity, opacity);
 	}
-	
+
+	@Override
 	public void setCurrent() {
 		super.setCurrent();
 		setTexture(textureUnit, atlasTexture);
 	}
-	
+
 	/**
 	 * Renders a model using the current shader program properties
 	 * @param model the model to render
@@ -109,7 +104,7 @@ public final class ModelRenderProgram extends ShaderProgram {
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model.indices);
 		glDrawElements(GL_TRIANGLES, model.vertexCount, GL_UNSIGNED_INT, 0);
 	}
-	
+
 	/**
 	 * Renders a model with the specified properties
 	 * @param model the model to render
@@ -125,15 +120,15 @@ public final class ModelRenderProgram extends ShaderProgram {
 		loadTransformationMatrix(posX, posY, scaleX, scaleY, rotation);
 		renderVAO(modelID);
 	}
-	
+
 	public void render(Graphics g, float posX, float posY) {
 		render(g.getModelID(), g.getOpacity(), posX, posY, g.getScaleX(), g.getScaleY(), g.getRotation());
 	}
-	
+
 	public void render(Graphics g, float opacity, float posX, float posY, float scaleX, float scaleY, float rotation) {
 		render(g.getModelID(), g.getOpacity() * opacity, posX, posY, g.getScaleX() * scaleX, g.getScaleY() * scaleY, g.getRotation() + rotation);
 	}
-	
+
 	public void loadTransformationMatrix(float posX, float posY, float scaleX, float scaleY, float rotation) {
 		transformationMatrix[0] = scaleX * (float) Math.cos(rotation);
 		transformationMatrix[1] = scaleY * (float) Math.sin(rotation);
@@ -143,16 +138,16 @@ public final class ModelRenderProgram extends ShaderProgram {
 		transformationMatrix[7] = posY;
 		setMatrix(uniform_transform, transformationMatrix);
 	}
-	
+
 	public void loadViewMatrixIdentity() {
 		setMatrix(uniform_view, identityMatrix);
 	}
-	
+
 	public void loadViewMatrix() {
 		aspectMatrix[0] = framebufferHeight/framebufferWidth;
 		setMatrix(uniform_view, aspectMatrix);
 	}
-	
+
 	public void loadViewMatrix(Camera camera) {
 		aspectMatrix[0] = framebufferHeight/framebufferWidth;
 		loadCameraMatrix(cameraMatrix, camera);
@@ -160,15 +155,15 @@ public final class ModelRenderProgram extends ShaderProgram {
 		multiply(aspectMatrix, cameraMatrix, viewMatrix);
 		setMatrix(uniform_view, viewMatrix);
 	}
-	
+
 	public int getFrameBufferWidth() {
 		return (int)framebufferWidth;
 	}
-	
+
 	public int getFrameBufferHeight() {
 		return (int)framebufferHeight;
 	}
-	
+
 	private static void loadCameraMatrix(float[] matrix, Camera camera) {
 		matrix[0] = camera.getZoom();
 		matrix[3] = -camera.getPositionX() * camera.getZoom();
@@ -180,7 +175,7 @@ public final class ModelRenderProgram extends ShaderProgram {
 		this.framebufferWidth = framebufferWidth;
 		this.framebufferHeight = framebufferHeight;
 	}
-	
+
 	//matrix operations on 4x4 1-dimensional arrays
 	private static void multiply(float[] a, float[] b, float[] destination) {
 		for(int i = 0; i < 4; i++){
@@ -191,11 +186,11 @@ public final class ModelRenderProgram extends ShaderProgram {
 			}
 		}
 	}
-	
+
 	private static float get(float[] array, int row, int column) {
 		return array[(row * 4) + column];
 	}
-	
+
 	private static void set(float[] array, int row, int column, float value) {
 		array[(row * 4) + column] =  value;
 	}

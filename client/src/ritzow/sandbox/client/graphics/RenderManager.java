@@ -1,18 +1,7 @@
 package ritzow.sandbox.client.graphics;
 
 import static org.lwjgl.glfw.GLFW.glfwSwapInterval;
-import static org.lwjgl.opengl.GL11.GL_BLEND;
-import static org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT;
-import static org.lwjgl.opengl.GL11.GL_DEPTH_TEST;
-import static org.lwjgl.opengl.GL11.GL_LINEAR;
-import static org.lwjgl.opengl.GL11.glClear;
-import static org.lwjgl.opengl.GL11.glDisable;
-import static org.lwjgl.opengl.GL11.glEnable;
-import static org.lwjgl.opengl.GL11.glViewport;
-import static org.lwjgl.opengl.GL30.GL_DRAW_FRAMEBUFFER;
-import static org.lwjgl.opengl.GL30.GL_READ_FRAMEBUFFER;
-import static org.lwjgl.opengl.GL30.glBindFramebuffer;
-import static org.lwjgl.opengl.GL30.glBlitFramebuffer;
+import static org.lwjgl.opengl.GL46C.*;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -26,12 +15,12 @@ public final class RenderManager implements FramebufferSizeHandler {
 	private volatile boolean updateViewport;
 	private volatile int framebufferWidth, framebufferHeight;
 	private final List<Renderer> renderers;
-	
+
 	public RenderManager(Display display) {
 		this.link(display.getEventDelegator());
 		this.renderers = new ArrayList<>();
 	}
-	
+
 	@SuppressWarnings("static-method")
 	public void initialize(Display display) {
 		display.setGraphicsContextOnThread();
@@ -49,7 +38,7 @@ public final class RenderManager implements FramebufferSizeHandler {
 		org.lwjgl.opengl.GL.destroy();
 		unlink(display.getEventDelegator());
 	}
-	
+
 	public void run(Display display) {
 		int width = framebufferWidth, height = framebufferHeight;
 		if(width > 0 && height > 0) {
@@ -65,12 +54,12 @@ public final class RenderManager implements FramebufferSizeHandler {
 				glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 				glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 			}
-			
+
 			display.refresh();
 			GraphicsUtility.checkErrors();
 		}
 	}
-	
+
 	public Collection<Renderer> getRenderers() {
 		return renderers;
 	}
