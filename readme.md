@@ -9,7 +9,7 @@ There are three directories that contain the source code: shared (contains code 
 ## Libraries
 ### LWJGL
 https://www.lwjgl.org/customize
-Provides bindings to GLFW, OpenGL, and OpenAL. The program currently uses version 3.1.4. Just add each jar file to the classpath and LWJGL will load the natives automatically.
+Provides bindings to GLFW, OpenGL, and OpenAL. The program currently uses version 3.2.0. Just add each jar file to the classpath and LWJGL will load the natives automatically.
 
 #### Configuration: 
 ```json
