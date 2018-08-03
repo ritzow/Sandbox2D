@@ -9,21 +9,10 @@ import ritzow.sandbox.client.graphics.Camera;
 import ritzow.sandbox.client.input.ControlScheme;
 
 public final class PanningCameraController extends CameraController {
-	protected final AudioSystem audio;
-	protected final float panSpeed;
-	protected final float zoomSpeed;
-	protected final float minZoom;
-	protected final float maxZoom;
-	
-	protected float velocityX;
-	protected float velocityY;
-	protected float velocityZ;
-	
-	protected boolean up;
-	protected boolean down;
-	protected boolean left;
-	protected boolean right;
-	
+	private final AudioSystem audio;
+	private final float panSpeed, zoomSpeed, minZoom, maxZoom;
+	private float velocityX, velocityY, velocityZ;
+
 	public PanningCameraController(Camera camera, AudioSystem audio, float panSpeed, float minZoom, float maxZoom) {
 		super(camera);
 		this.audio = audio;
@@ -32,8 +21,7 @@ public final class PanningCameraController extends CameraController {
 		this.maxZoom = maxZoom;
 		this.zoomSpeed = 0.2f;
 	}
-	
-	@Override
+
 	public void update() {
 		camera.setPositionX(camera.getPositionX() + velocityX);
 		camera.setPositionY(camera.getPositionY() + velocityY);
@@ -55,74 +43,43 @@ public final class PanningCameraController extends CameraController {
 
 	@Override
 	public void keyboardButton(int key, int scancode, int action, int mods) {
-		if(key == ControlScheme.KEYBIND_INCREASEZOOM) {
+		switch(key) {
+		case ControlScheme.KEYBIND_INCREASEZOOM:
 			if(action == GLFW_PRESS) {
 				velocityZ += zoomSpeed;
-			}
-			
-			else if(action == GLFW_RELEASE) {
+			} else if(action == GLFW_RELEASE) {
 				velocityZ = 0;
-			}
-		}
-		
-		else if(key == ControlScheme.KEYBIND_DECREASEZOOM) {
+			} break;
+		case ControlScheme.KEYBIND_DECREASEZOOM:
 			if(action == GLFW_PRESS) {
-				
 				velocityZ -= zoomSpeed;
-			}
-			
-			else if(action == GLFW_RELEASE) {
+			} else if(action == GLFW_RELEASE) {
 				velocityZ = 0;
-			}
-		}
-		
-		else if(key == ControlScheme.KEYBIND_LEFT) {
+			} break;
+		case ControlScheme.KEYBIND_LEFT:
 			if(action == GLFW_PRESS) {
-				left = true;
 				velocityX -= panSpeed;
-			}
-			
-			else if(action == GLFW_RELEASE) {
-				left = false;
+			} else if(action == GLFW_RELEASE) {
 				velocityX = 0;
-			}
-		}
-		
-		else if(key == ControlScheme.KEYBIND_RIGHT) {
+			} break;
+		case ControlScheme.KEYBIND_RIGHT:
 			if(action == GLFW_PRESS) {
-				right = true;
 				velocityX += panSpeed;
-			}
-			
-			else if(action == GLFW_RELEASE) {
-				right = false;
+			} else if(action == GLFW_RELEASE) {
 				velocityX = 0;
-			}
-		}
-		
-		else if(key == ControlScheme.KEYBIND_UP) {
+			} break;
+		case ControlScheme.KEYBIND_UP:
 			if(action == GLFW_PRESS) {
-				up = true;
 				velocityY += panSpeed;
-			}
-			
-			else if(action == GLFW_RELEASE) {
-				up = false;
+			} else if(action == GLFW_RELEASE) {
 				velocityY = 0;
-			}
-		}
-		
-		else if(key == ControlScheme.KEYBIND_DOWN) {
+			} break;
+		case ControlScheme.KEYBIND_DOWN:
 			if(action == GLFW_PRESS) {
-				down = true;
 				velocityY -= panSpeed;
-			}
-			
-			else if(action == GLFW_RELEASE) {
-				down = false;
+			} else if(action == GLFW_RELEASE) {
 				velocityY = 0;
-			}
+			} break;
 		}
 	}
-	
 }

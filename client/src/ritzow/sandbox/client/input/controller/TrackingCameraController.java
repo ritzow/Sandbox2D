@@ -7,44 +7,31 @@ import static org.lwjgl.glfw.GLFW.GLFW_RELEASE;
 import ritzow.sandbox.client.audio.AudioSystem;
 import ritzow.sandbox.client.graphics.Camera;
 import ritzow.sandbox.client.input.ControlScheme;
-import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.entity.Entity;
 
 public final class TrackingCameraController extends CameraController {
-	protected final Entity target;
-	protected final AudioSystem audio;
-	protected float zoomSpeed;
-	protected final float soundFalloff;
-	protected float velocityZ;
-	protected final float minZoom;
-	protected final float maxZoom;
-	protected long previousTime;
-	
+	private final Entity target;
+	private final AudioSystem audio;
+	private final float zoomSpeed, minZoom, maxZoom;
+	private float velocityZ;
+
 	public TrackingCameraController(Camera camera, AudioSystem audio, Entity target, float zoomSpeed, float minZoom, float maxZoom) {
 		super(camera);
-		this.zoomSpeed = zoomSpeed;
+		this.audio = audio;
 		this.target = target;
+		this.zoomSpeed = zoomSpeed;
 		this.minZoom = minZoom / target.getWidth();
 		this.maxZoom = maxZoom / target.getWidth();
-		this.soundFalloff = 1.5f;
 		this.camera.setZoom(minZoom);
-		this.audio = audio;
 	}
-	
-	@Override
-	public void update() {
-		if(previousTime == 0)
-			previousTime = System.nanoTime();
+
+	public void update(long nanoseconds) {
 		camera.setPositionX(target.getPositionX());
 		camera.setPositionY(target.getPositionY());
-		long time = System.nanoTime();
-		camera.setZoom((Math.max(Math.min(maxZoom, 
-				camera.getZoom() + camera.getZoom() * 
-				(float)Utility.millisBetween(previousTime, time) * velocityZ), minZoom)));
-		previousTime = time;
+		camera.setZoom((Math.max(Math.min(maxZoom, camera.getZoom() + camera.getZoom() * nanoseconds * velocityZ / 1_000_000_000f), minZoom)));
 		audio.setPosition(camera.getPositionX(), camera.getPositionY());
 	}
-	
+
 	@Override
 	public Camera getCamera() {
 		return camera;
@@ -54,7 +41,7 @@ public final class TrackingCameraController extends CameraController {
 	public void mouseScroll(double xoffset, double yoffset) {
 		camera.setZoom((Math.max(Math.min(maxZoom, camera.getZoom() + camera.getZoom() * (float)yoffset * 0.2f), minZoom)));
 	}
-	
+
 	@Override
 	public void mouseButton(int button, int action, int mods) {
 		if(button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_PRESS) {
@@ -67,19 +54,13 @@ public final class TrackingCameraController extends CameraController {
 		if(key == ControlScheme.KEYBIND_INCREASEZOOM) {
 			if(action == GLFW_PRESS) {
 				velocityZ = zoomSpeed;
-			}
-			
-			else if(action == GLFW_RELEASE) {
+			} else if(action == GLFW_RELEASE) {
 				velocityZ = 0;
 			}
-		}
-		
-		else if(key == ControlScheme.KEYBIND_DECREASEZOOM) {
+		} else if(key == ControlScheme.KEYBIND_DECREASEZOOM) {
 			if(action == GLFW_PRESS) {
 				velocityZ = -zoomSpeed;
-			}
-			
-			else if(action == GLFW_RELEASE) {
+			} else if(action == GLFW_RELEASE) {
 				velocityZ = 0;
 			}
 		}
