@@ -12,36 +12,30 @@ import ritzow.sandbox.world.entity.PlayerEntity;
  * @author Solomon Ritzow
  */
 public class ClientPlayerEntity extends PlayerEntity implements Renderable {
-	
+
 	public ClientPlayerEntity(int entityID) {
 		super(entityID);
 	}
-	
+
 	public ClientPlayerEntity(TransportableDataReader input) {
 		super(input);
 	}
-	
-//	@Override
-//	protected void onCrouch(boolean isCrouched) {
-//		if(isCrouched)
-//			positionY -= SIZE_SCALE/2;
-//	}
 
 	@Override
 	public void render(ModelRenderProgram renderer) {
 		float positionX = this.positionX;
 		float positionY = this.positionY;
 		renderer.render(
-				RenderConstants.MODEL_GREEN_FACE, 1.0f, positionX, positionY + (down ? 0 : 1) * SIZE_SCALE/2, 
+				RenderConstants.MODEL_GREEN_FACE, 1.0f, positionX, positionY + (down ? 0 : 1) * SIZE_SCALE/2,
 				SIZE_SCALE, SIZE_SCALE, 0.0f);
 		if(!down) {
 			renderer.render(
-					RenderConstants.MODEL_RED_SQUARE, 1.0f, positionX, positionY - SIZE_SCALE/2, 
+					RenderConstants.MODEL_RED_SQUARE, 1.0f, positionX, positionY - SIZE_SCALE/2,
 					SIZE_SCALE, SIZE_SCALE, positionX/SIZE_SCALE);
 		}
-		
+
 		if(inventory.isItem(selected)) {
-			renderer.render(((Graphical) inventory.get(selected)).getGraphics().getModelID(), 
+			renderer.render(((Graphical) inventory.get(selected)).getGraphics().getModelID(),
 					1.0f, positionX, positionY, 0.5f * SIZE_SCALE, 0.5f * SIZE_SCALE, 0);
 		}
 	}

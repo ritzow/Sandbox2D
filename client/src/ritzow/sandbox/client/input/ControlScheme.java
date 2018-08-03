@@ -14,19 +14,19 @@ public class ControlScheme {
 	public static final int KEYBIND_QUIT = 			org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE;
 	public static final int KEYBIND_FULLSCREEN =	org.lwjgl.glfw.GLFW.GLFW_KEY_F11;
 	public static final int KEYBIND_ACTIVATE =		org.lwjgl.glfw.GLFW.GLFW_KEY_E;
-	
+
 	public static Sandbox2DGameplayContext createGLFWGameplayContext(Display window) {
 		return new GLFWSandbox2DGameplayContext(window);
 	}
-	
+
 	public static class Sandbox2DGameplayContext {
 		public final AxisControl ZOOM_CONTROL;
-		
+
 		public Sandbox2DGameplayContext(AxisControl zoom) {
 			ZOOM_CONTROL = zoom;
 		}
 	}
-	
+
 	private static final class GLFWSandbox2DGameplayContext extends Sandbox2DGameplayContext {
 		static final class zoom extends ControlBase<AxisControlHandler> implements AxisControl {
 			public zoom(Display display) {
@@ -37,30 +37,31 @@ public class ControlScheme {
 				});
 			}
 		}
-		
+
 		private GLFWSandbox2DGameplayContext(Display display) {
 			super(new zoom(display));
 		}
 	}
-	
+
 	public interface AxisControlHandler {
 		void axisChangeEvent(double delta);
 	}
-	
+
 	public interface AxisControl extends Control<AxisControlHandler> {
-		
+
 	}
-	
+
 	public interface Control<T> {
 		Set<T> handlers();
 	}
-	
+
 	private static abstract class ControlBase<H> implements Control<H> {
 		protected final Set<H> handlers;
 		private ControlBase() {
 			handlers = new HashSet<>();
 		}
-		
+
+		@Override
 		public Set<H> handlers() {
 			return handlers;
 		}

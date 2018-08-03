@@ -2,11 +2,20 @@ package ritzow.sandbox.network;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.util.Utility;
 
 public final class Protocol {
 	private Protocol() {throw new UnsupportedOperationException("instantiation of Protocol not allowed");}
+
+	//gameplay
+	public static final float BLOCK_BREAK_RANGE = 1000;
+	public static final float MAX_UPDATE_TIMESTEP = 2;
+	public static final float TIME_SCALE_NANOSECONDS = Utility.millisToNanos(16);
+	public static final long BLOCK_BREAK_COOLDOWN_NANOSECONDS = Utility.millisToNanos(200);
+	public static final long THROW_COOLDOWN_NANOSECONDS = Utility.millisToNanos(0);
 
 	/** The Charset for text encoding used by the client and server **/
 	public static final Charset CHARSET = StandardCharsets.UTF_8;
@@ -70,14 +79,6 @@ public final class Protocol {
 		CONNECT_STATUS_REJECTED = 0,
 		CONNECT_STATUS_WORLD = 1,
 		CONNECT_STATUS_LOBBY = 2;
-
-	public static final float BLOCK_BREAK_RANGE = 100;
-	public static final long
-		BLOCK_BREAK_COOLDOWN_NANOSECONDS = Utility.millisToNanos(200),
-		THROW_COOLDOWN_NANOSECONDS = Utility.millisToNanos(0);
-
-	public static final float TIME_SCALE_NANOSECONDS = Utility.millisToNanos(16);
-	public static final float MAX_UPDATE_TIMESTEP = 2;
 
 	public static byte[] buildConsoleMessage(String message) {
 		byte[] msg = message.getBytes(Protocol.CHARSET);
