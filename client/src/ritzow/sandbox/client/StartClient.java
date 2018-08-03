@@ -3,25 +3,20 @@ package ritzow.sandbox.client;
 import static org.lwjgl.glfw.GLFW.glfwInit;
 import static org.lwjgl.glfw.GLFW.glfwPollEvents;
 import static org.lwjgl.glfw.GLFW.glfwTerminate;
-
+import static org.lwjgl.glfw.GLFW.glfwSetErrorCallback;
+import org.lwjgl.glfw.GLFWErrorCallback;
 import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import org.lwjgl.glfw.GLFWErrorCallback;
-import ritzow.sandbox.client.audio.AudioSystem;
-import ritzow.sandbox.client.audio.DefaultAudioSystem;
-import ritzow.sandbox.client.audio.OpenALAudioSystem;
-import ritzow.sandbox.client.audio.Sound;
-import ritzow.sandbox.client.audio.SoundInfo;
-import ritzow.sandbox.client.audio.WAVEDecoder;
+
+import ritzow.sandbox.client.audio.*;
 import ritzow.sandbox.client.graphics.*;
 import ritzow.sandbox.client.graphics.Shader.ShaderType;
 import ritzow.sandbox.client.input.ControlScheme;
@@ -36,112 +31,114 @@ import ritzow.sandbox.client.ui.UserInterfaceRenderer;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.util.TaskQueue;
 import ritzow.sandbox.util.Utility;
+import ritzow.sandbox.world.World;
 
 public class StartClient {
-	private static boolean triggerExit;
-	
+	private static boolean manualExit;
+
 	public static void main(String[] args) throws IOException, InterruptedException {
 		Thread.currentThread().setName("Game Thread");
-		
+
 		try {
 			InetSocketAddress serverSocket = Utility.getAddressOrDefault(args, 0, InetAddress.getLocalHost(), Protocol.DEFAULT_SERVER_UDP_PORT);
 			InetSocketAddress localSocket = new InetSocketAddress(Utility.getPublicAddress(Inet4Address.class), 0);
-					//Utility.getAddressOrDefault(args, 2, serverSocket.getAddress(), 0);
-			
+
 			ExecutorService runner = Executors.newSingleThreadExecutor();
 			System.out.print("Connecting to " + Utility.formatAddress(serverSocket) + " from " + Utility.formatAddress(localSocket) + "... ");
 			Client client = Client.connect(localSocket, serverSocket, runner);
 			System.out.println("connected!");
-			
+
 			AudioSystem audio = setupAudio();
 			Display display = setupGLFW();
 			EventDelegator input = display.getEventDelegator();
-			
+
 			//mute audio when window is in background
 			input.windowFocusHandlers().add(focused -> audio.setVolume(focused ? 1.0f : 0.0f));
-			
-			Camera camera = new Camera(0, 0, 1);
-			
-			var player = client.getPlayer();
-			var cameraGrip = new TrackingCameraController(camera, audio, player, 0.005f, 0.05f, 0.6f);
-			cameraGrip.link(input);
-			
-			var playerController = new PlayerController(client);
-			playerController.link(input);
-			
-			var interactionController = new InteractionController(client, Protocol.BLOCK_BREAK_RANGE);
-			interactionController.link(input);
-			
+			input.windowCloseHandlers().add(() -> manualExit = true);
 			input.keyboardHandlers().add((key, scancode, action, mods) -> {
 				if(action == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
-					if(key == ControlScheme.KEYBIND_QUIT)
-						triggerExit = true;
-					else if(key == ControlScheme.KEYBIND_FULLSCREEN)
-			            display.toggleFullscreen();
+					switch(key) {
+					case ControlScheme.KEYBIND_QUIT:
+						manualExit = true;
+						break;
+					case ControlScheme.KEYBIND_FULLSCREEN:
+						display.toggleFullscreen();
+						break;
+					}
 				}
 			});
 
-			input.windowCloseHandlers().add(() -> triggerExit = true);
-			
+			Camera camera = new Camera(0, 0, 1);
+
+			var player = client.getPlayer();
+			var cameraGrip = new TrackingCameraController(camera, audio, player, 2.5f, 0.05f, 0.6f);
+			cameraGrip.link(input);
+
+			var playerController = new PlayerController(client);
+			playerController.link(input);
+
+			var interactionController = new InteractionController(client, Protocol.BLOCK_BREAK_RANGE);
+			interactionController.link(input);
+
 			var world = client.getWorld();
 			var renderer = display.getRenderManager();
 			renderer.initialize(display);
-			
+
 			int indices = GraphicsUtility.uploadIndexData(0, 1, 2, 0, 2, 3);
-			
+
 			int positions = GraphicsUtility.uploadVertexData(
 					-0.5f,	 0.5f,
 					-0.5f,	-0.5f,
 					0.5f,	-0.5f,
 					0.5f,	 0.5f
 			);
-			
+
 			TextureData dirt = Textures.loadTextureName("dirt"),
 					grass = Textures.loadTextureName("grass"),
 					face = Textures.loadTextureName("greenFace"),
 					red = Textures.loadTextureName("redSquare");
 			TextureAtlas atlas = Textures.buildAtlas(grass, dirt, face, red);
-			
-			ModelRenderProgram modelProgram = new ModelRenderProgram(
-					new Shader(Files.newInputStream(Path.of("resources/shaders/modelVertexShader")), ShaderType.VERTEX),
-					new Shader(Files.newInputStream(Path.of("resources/shaders/modelFragmentShader")), ShaderType.FRAGMENT), 
+
+			ModelRenderProgram program = new ModelRenderProgram(
+					Shader.fromSource(Files.readString(Path.of("resources/shaders/modelVertexShader")), ShaderType.VERTEX),
+					Shader.fromSource(Files.readString(Path.of("resources/shaders/modelFragmentShader")), ShaderType.FRAGMENT),
 					atlas.texture()
 			);
-			
-			register(modelProgram, RenderConstants.MODEL_DIRT_BLOCK, indices, positions, atlas, dirt);
-			register(modelProgram, RenderConstants.MODEL_GRASS_BLOCK, indices, positions, atlas, grass);
-			register(modelProgram, RenderConstants.MODEL_GREEN_FACE, indices, positions, atlas, face);
-			register(modelProgram, RenderConstants.MODEL_RED_SQUARE, indices, positions, atlas, red);
+
+			program.register(RenderConstants.MODEL_DIRT_BLOCK, getRenderData(indices, positions, atlas, dirt));
+			program.register(RenderConstants.MODEL_GRASS_BLOCK, getRenderData(indices, positions, atlas, grass));
+			program.register(RenderConstants.MODEL_GREEN_FACE, getRenderData(indices, positions, atlas, face));
+			program.register(RenderConstants.MODEL_RED_SQUARE, getRenderData(indices, positions, atlas, red));
 			GraphicsUtility.checkErrors();
-			
-			renderer.getRenderers().add(new ClientWorldRenderer(modelProgram, cameraGrip.getCamera(), world));
-			
-			var ui = new UserInterfaceRenderer(modelProgram);
+
+			renderer.getRenderers().add(new ClientWorldRenderer(program, cameraGrip.getCamera(), world));
+
+			var ui = new UserInterfaceRenderer(program);
 			//renderer.getRenderers().add(ui);
-			
+
 			//set up synchronous packet processing structures
 			TaskQueue packetQueue = new TaskQueue();
 			try {
 				runner.shutdownNow().forEach(packetQueue::add); //transfer remaining tasks
-				runner.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);	
+				runner.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
 			} catch(InterruptedException e) {
 				e.printStackTrace();
 			}
 			client.setExecutor(packetQueue::add);
-			
+
 			//display the window now that everything is set up.
 			display.show();
-			
+
 			long lastWorldUpdate = System.nanoTime();
+			long lastCameraUpdateTime = System.nanoTime();
 			try {
-				while(!triggerExit && client.isConnected()) {
+				while(!manualExit && client.isConnected()) {
 					glfwPollEvents(); //process input/windowing events
 					packetQueue.run(); //processing packets received from server
-					
-					//simulate world so it looks smooth
-					lastWorldUpdate = display.focused() ? Utility.updateWorld(world, lastWorldUpdate, 
-							Protocol.MAX_UPDATE_TIMESTEP, Protocol.TIME_SCALE_NANOSECONDS) : System.nanoTime();
-					cameraGrip.update(); //update camera position
+					lastWorldUpdate = updateWorld(display, world, lastWorldUpdate); //simulate world on client
+					long camUpdateStart = System.nanoTime();
+					cameraGrip.update(camUpdateStart - lastCameraUpdateTime); //update camera position and zoom
+					lastCameraUpdateTime = camUpdateStart;
 					interactionController.update(camera, client, world, player, display.width(), display.height()); //block breaking/"bomb throwing"
 					if(display.focused()) {
 						ui.update();
@@ -164,21 +161,26 @@ public class StartClient {
 			System.out.println(e.getMessage() + ".");
 		}
 	}
-	
+
+	private static long updateWorld(Display display, World world, long lastWorldUpdate) {
+		return display.focused() ? Utility.updateWorld(world, lastWorldUpdate,
+				Protocol.MAX_UPDATE_TIMESTEP, Protocol.TIME_SCALE_NANOSECONDS) : System.nanoTime();
+	}
+
 	private static Display setupGLFW() throws IOException {
 		if(!glfwInit())
-			throw new UnsupportedOperationException("GLFW failed to initialize");
-		GLFWErrorCallback.createPrint(System.err).set();
+			throw new RuntimeException("GLFW failed to initialize");
+		glfwSetErrorCallback(GLFWErrorCallback.createPrint(System.err));
 		Display display = new Display("Sandbox2D", 4, 5);
 		display.setCursor(Cursors.load(Path.of("resources/assets/textures/cursors/pickaxe32.png"), 0, 0.66f));
 		return display;
 	}
-	
-	private static AudioSystem setupAudio() {
+
+	private static AudioSystem setupAudio() throws IOException {
 		AudioSystem audio = OpenALAudioSystem.getAudioSystem();
 		audio.setVolume(1.0f);
 		DefaultAudioSystem.setDefault(audio);
-		
+
 		var sounds = Map.ofEntries(
 			Map.entry("dig.wav", Sound.BLOCK_BREAK),
 			Map.entry("place.wav", Sound.BLOCK_PLACE),
@@ -186,23 +188,17 @@ public class StartClient {
 			Map.entry("throw.wav", Sound.THROW),
 			Map.entry("snap.wav", Sound.SNAP)
 		);
-		
+
 		Path directory = Path.of("resources/assets/audio");
-		
+
 		for(var entry : sounds.entrySet()) {
-			try {
-				SoundInfo info = WAVEDecoder.decode(Files.newInputStream(directory.resolve(entry.getKey())));
-				audio.registerSound(entry.getValue().code(), info);
-			} catch(NoSuchFileException e) {
-				System.out.println("The file " + e.getFile() + " does not exist");
-			} catch (IOException e) {
-				System.out.println(e.getMessage());
-			}
+			SoundInfo info = WAVEDecoder.decode(Files.newInputStream(directory.resolve(entry.getKey())));
+			audio.registerSound(entry.getValue().code(), info);
 		}
 		return audio;
 	}
-	
-	private static void register(ModelRenderProgram prog, int id, int indices, int positions, TextureAtlas atlas, TextureData data) {
-		prog.register(id, new RenderData(6, indices, positions, GraphicsUtility.uploadVertexData(atlas.getCoordinates(data))));
+
+	private static RenderData getRenderData(int indices, int positions, TextureAtlas atlas, TextureData data) {
+		return new RenderData(6, indices, positions, GraphicsUtility.uploadVertexData(atlas.getCoordinates(data)));
 	}
 }
