@@ -88,15 +88,28 @@ public final class Protocol {
 	}
 
 	public static enum PlayerAction {
-		MOVE_LEFT(0),
-		MOVE_RIGHT(1),
-		MOVE_UP(2),
-		MOVE_DOWN(3);
+		MOVE_LEFT_START(0),
+		MOVE_LEFT_STOP(1),
+		MOVE_RIGHT_START(2),
+		MOVE_RIGHT_STOP(3),
+		MOVE_UP_START(4),
+		MOVE_UP_STOP(5),
+		MOVE_DOWN_START(6),
+		MOVE_DOWN_STOP(7);
 
-		private static final PlayerAction[] actions = PlayerAction.values();
 		private final byte code;
 
-		PlayerAction(int code) {
+		private static final Map<Byte, PlayerAction> actions;
+
+		static {
+			PlayerAction[] values = PlayerAction.values();
+			actions = new HashMap<>(values.length);
+			for(PlayerAction action : values) {
+				actions.put(action.getCode(), action);
+			}
+		}
+
+		private PlayerAction(int code) {
 			if(code > Byte.MAX_VALUE || code < Byte.MIN_VALUE)
 				throw new RuntimeException("invalid player action code");
 			this.code = (byte)code;
@@ -107,11 +120,7 @@ public final class Protocol {
 		}
 
 		public static PlayerAction forCode(byte code) {
-			for(PlayerAction a : actions) {
-				if(a.getCode() == code)
-					return a;
-			}
-			throw new RuntimeException("unknown player action");
+			return actions.getOrDefault(Byte.valueOf(code), null);
 		}
 	}
 }

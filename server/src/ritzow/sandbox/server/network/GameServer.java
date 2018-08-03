@@ -196,18 +196,16 @@ public class GameServer {
 			throw new ClientBadDataException("client has no associated player to perform an action");
 		if(world.contains(client.player)) {
 			PlayerAction action = PlayerAction.forCode(data.get());
-			boolean enable = data.get() == 1 ? true : false;
-			client.player.processAction(action, enable);
-			broadcastPlayerAction(client.player, action, enable);	
+			client.player.processAction(action);
+			broadcastPlayerAction(client.player, action);
 		} //else what is the point of the player performing the action
 	}
 	
-	private void broadcastPlayerAction(PlayerEntity player, PlayerAction action, boolean isEnabled) {
-		byte[] packet = new byte[8];
+	private void broadcastPlayerAction(PlayerEntity player, PlayerAction action) {
+		byte[] packet = new byte[7];
 		Bytes.putShort(packet, 0, Protocol.TYPE_SERVER_PLAYER_ACTION);
 		Bytes.putInteger(packet, 2, player.getID());
 		packet[6] = action.getCode();
-		Bytes.putBoolean(packet, 7, isEnabled);
 		broadcastReliable(packet);
 	}
 	

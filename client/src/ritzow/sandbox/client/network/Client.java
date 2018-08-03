@@ -325,12 +325,11 @@ public class Client {
 		sendReliable(packet);
 	}
 	
-	public void sendPlayerAction(PlayerAction action, boolean enable) {
+	public void sendPlayerAction(PlayerAction action) {
 		checkConnected();
-		byte[] packet = new byte[4];
+		byte[] packet = new byte[3];
 		Bytes.putShort(packet, 0, Protocol.TYPE_CLIENT_PLAYER_ACTION);
 		packet[2] = action.getCode();
-		Bytes.putBoolean(packet, 3, enable);
 		sendReliable(packet);
 	}
 	
@@ -352,11 +351,12 @@ public class Client {
 	
 	private void processServerPlayerAction(ByteBuffer data) {
 		PlayerEntity e = getEntityFromID(data.getInt());
-		e.processAction(PlayerAction.forCode(data.get()), data.get() == 1 ? true : false);
+		e.processAction(PlayerAction.forCode(data.get()));
 	}
 	
 	private void processServerRemoveBlock(ByteBuffer data) {
-		worldState.world.getForeground().destroy(worldState.world, data.getInt(), data.getInt());
+		World world = worldState.world;
+		world.getForeground().destroy(world, data.getInt(), data.getInt());
 	}
 	
 	private void processServerDisconnect(ByteBuffer data) throws IOException {
