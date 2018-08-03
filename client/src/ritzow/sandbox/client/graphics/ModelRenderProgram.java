@@ -59,9 +59,8 @@ public final class ModelRenderProgram extends ShaderProgram {
 	public ModelRenderProgram(Shader vertexShader, Shader fragmentShader, int textureAtlas) {
 		super(vertexShader, fragmentShader);
 		models = new HashMap<>();
-		GraphicsUtility.checkProgramCompilation(this);
-		glBindAttribLocation(programID, RenderConstants.ATTRIBUTE_POSITIONS, "position");
-		glBindAttribLocation(programID, RenderConstants.ATTRIBUTE_TEXTURE_COORDS, "textureCoord");
+		//glBindAttribLocation(programID, RenderConstants.ATTRIBUTE_POSITIONS, "position");
+		//glBindAttribLocation(programID, RenderConstants.ATTRIBUTE_TEXTURE_COORDS, "textureCoord");
 		this.uniform_transform = getUniformID("transform");
 		this.uniform_opacity = getUniformID("opacity");
 		this.uniform_view = getUniformID("view");

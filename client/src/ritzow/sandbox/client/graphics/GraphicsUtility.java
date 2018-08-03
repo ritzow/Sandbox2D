@@ -61,15 +61,7 @@ public final class GraphicsUtility {
 	public static void checkErrors() throws OpenGLException {
 		int error = org.lwjgl.opengl.GL11.glGetError();
 		if(error != 0) {
-			StringBuilder errorMsg = new StringBuilder("Error Codes: ");
-			errorMsg.append(error);
-			while((error = org.lwjgl.opengl.GL11.glGetError()) != 0) {
-				errorMsg.append(", ");
-				errorMsg.append(error);
-				errorMsg.append(':');
-				errorMsg.append(errorMessages.get(error));
-			}
-			throw new OpenGLException(errorMsg.toString());
+			throw new OpenGLException("Error Code: " + error + " (" + errorMessages.get(error) + ")");
 		}
 	}
 
@@ -103,6 +95,7 @@ public final class GraphicsUtility {
 
 	public static void checkShaderCompilation(Shader shader) {
 		if(glGetShaderi(shader.getShaderID(), GL_COMPILE_STATUS) != 1) {
+			glDeleteShader(shader.getShaderID());
 			throw new OpenGLException("Shader Compilation Error: " + glGetShaderInfoLog(shader.getShaderID()));
 		}
 	}

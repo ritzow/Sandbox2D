@@ -9,8 +9,10 @@ import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -99,11 +101,14 @@ public class StartClient {
 					red = Textures.loadTextureName("redSquare");
 			TextureAtlas atlas = Textures.buildAtlas(grass, dirt, face, red);
 
+			long start = System.nanoTime();
 			ModelRenderProgram program = new ModelRenderProgram(
-					Shader.fromSource(Files.readString(Path.of("resources/shaders/modelVertexShader")), ShaderType.VERTEX),
-					Shader.fromSource(Files.readString(Path.of("resources/shaders/modelFragmentShader")), ShaderType.FRAGMENT),
+					Shader.fromSPIRV(readIntoBuffer(Path.of("resources/shaders/modelVertexShader.spv")), ShaderType.VERTEX),
+					Shader.fromSPIRV(readIntoBuffer(Path.of("resources/shaders/modelFragmentShader.spv")), ShaderType.FRAGMENT),
 					atlas.texture()
 			);
+
+			System.out.println("took " + Utility.formatTime(System.nanoTime() - start) + " to create model renderer");
 
 			program.register(RenderConstants.MODEL_DIRT_BLOCK, getRenderData(indices, positions, atlas, dirt));
 			program.register(RenderConstants.MODEL_GRASS_BLOCK, getRenderData(indices, positions, atlas, grass));
@@ -118,13 +123,9 @@ public class StartClient {
 
 			//set up synchronous packet processing structures
 			TaskQueue packetQueue = new TaskQueue();
-			try {
-				runner.shutdownNow().forEach(packetQueue::add); //transfer remaining tasks
-				runner.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
-			} catch(InterruptedException e) {
-				e.printStackTrace();
-			}
 			client.setExecutor(packetQueue::add);
+			runner.shutdown(); //transfer remaining tasks
+			runner.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
 
 			//display the window now that everything is set up.
 			display.show();
@@ -160,6 +161,13 @@ public class StartClient {
 		} catch(ConnectionFailedException e) {
 			System.out.println(e.getMessage() + ".");
 		}
+	}
+
+	private static ByteBuffer readIntoBuffer(Path file) throws IOException {
+		ByteBuffer out = ByteBuffer.allocateDirect((int)Files.size(file));
+		Files.newByteChannel(file, StandardOpenOption.READ).read(out);
+		out.flip();
+		return out;
 	}
 
 	private static long updateWorld(Display display, World world, long lastWorldUpdate) {
