@@ -26,22 +26,22 @@ import ritzow.sandbox.world.entity.Entity;
  *
  */
 public class World implements Transportable, Iterable<Entity> {
-	
+
 	/** collection of entities in the world **/
 	private final List<Entity> entities; //TODO switch to using a Map<Integer, Entity> to store entity IDs?
-	
+
 	/** blocks in the world that collide with entities and and are rendered **/
 	private final BlockGrid foreground, background;
-	
+
 	/** amount of downwards acceleration to apply to entities in the world **/
 	private float gravity;
-	
+
 	/** Entity ID counter **/
 	private int lastEntityID;
-	
+
 	/** called when an entity is removed from the world **/
 	private Consumer<Entity> onRemove;
-	
+
 	/**
 	 * Initializes a new World object with a foreground, background, entity storage, and gravity.
 	 * @param width the width of the foreground and background
@@ -54,7 +54,7 @@ public class World implements Transportable, Iterable<Entity> {
 		background = new BlockGrid(width, height);
 		this.gravity = gravity;
 	}
-	
+
 	public World(TransportableDataReader reader) {
 		gravity = reader.readFloat();
 		foreground = Objects.requireNonNull(reader.readObject());
@@ -66,27 +66,28 @@ public class World implements Transportable, Iterable<Entity> {
 		}
 		lastEntityID = reader.readInteger();
 	}
-	
+
+	@Override
 	public final byte[] getBytes(Serializer ser) { //needed for saving world to file as Transportable
 		return getBytesFiltered(e -> true, ser);
 	}
-	
+
 	public final byte[] getBytesFiltered(Predicate<Entity> entityFilter, Serializer ser) {
 		//serialize foreground and background
 		byte[] foregroundBytes = ser.serialize(foreground);
 		byte[] backgroundBytes = ser.serialize(background);
-		
+
 		int entityIDCounter = this.lastEntityID;
-		
+
 		//number of entities currently in the world
 		int numEntities = entities.size();
-		
+
 		//number of bytes of entity data
 		int totalEntityBytes = 0;
-		
+
 		//array of all of the serialized entities
 		byte[][] entityBytes = new byte[numEntities][];
-		
+
 		for(int i = 0; i < numEntities; i++) {
 			Entity e = entities.get(i);
 			if(entityFilter.test(e)) {
@@ -103,47 +104,48 @@ public class World implements Transportable, Iterable<Entity> {
 				numEntities--;
 			}
 		}
-		
+
 		//gravity, foreground data, background data, number of entities, entity data (size), lastEntityID
 		byte[] bytes = new byte[4 + foregroundBytes.length + backgroundBytes.length + 4 + totalEntityBytes + 4];
 		int index = 0;
-		
+
 		//write gravity
 		Bytes.putFloat(bytes, index, gravity);
 		index += 4;
-		
+
 		//write foreground data
 		Bytes.copy(foregroundBytes, bytes, index);
 		index += foregroundBytes.length;
-		
+
 		//write background data
 		Bytes.copy(backgroundBytes, bytes, index);
 		index += backgroundBytes.length;
-		
+
 		//write number of entities
 		Bytes.putInteger(bytes, index, numEntities);
 		index += 4;
-		
+
 		//append entity data to the end of the serialized array
 		int entityByteData = Bytes.concatenate(bytes, index, entityBytes);
 		index += entityByteData;
-		
+
 		//write last entity id
 		Bytes.putInteger(bytes, index, entityIDCounter);
-		
+
 		return bytes;
-	
+
 	}
-	
+
+	@Override
 	public String toString() {
-		StringBuilder builder = 
+		StringBuilder builder =
 				new StringBuilder(foreground.toString()).append(background.toString());
 		for(Entity e : entities) {
 			builder.append(e).append('\n');
 		}
 		return builder.toString();
 	}
-	
+
 	/**
 	 * Provides a unique entity identifier than can be used to identify a single entity.
 	 * @return an entity identifier.
@@ -151,21 +153,21 @@ public class World implements Transportable, Iterable<Entity> {
 	public int nextEntityID() {
 		return ++lastEntityID;
 	}
-	
+
 	/**
-	 * Get the foreground {@code BlockGrid} of the world.
+	 * Get the foreground {@code BlockGrid} of the world, which interacts physically with entities.
 	 */
 	public final BlockGrid getForeground() {
 		return foreground;
 	}
-	
+
 	/**
 	 * Get the background {@code BlockGrid} of the world.
 	 */
 	public final BlockGrid getBackground() {
 		return background;
 	}
-	
+
 	/**
 	 * Enables entity removal and provides an action to take when the world removes entities when updated
 	 * @param onRemove action to take when an entity is removed
@@ -173,7 +175,7 @@ public class World implements Transportable, Iterable<Entity> {
 	public void setRemoveEntities(Consumer<Entity> onRemove) {
 		this.onRemove = onRemove;
 	}
-	
+
 	/**
 	 * Enables entity removal.
 	 * @see setRemoveEntities(Consumer)
@@ -181,7 +183,7 @@ public class World implements Transportable, Iterable<Entity> {
 	public void setRemoveEntities() {
 		this.onRemove = e -> {};
 	}
-	
+
 	public void removeIf(Predicate<Entity> predicate) {
 		Iterator<Entity> it = entities.iterator();
 		while(it.hasNext()) {
@@ -189,16 +191,16 @@ public class World implements Transportable, Iterable<Entity> {
 				it.remove();
 		}
 	}
-	
+
 	public boolean contains(Entity e) {
 		return entities.contains(e);
 	}
-	
+
 	@Override
 	public Iterator<Entity> iterator() {
 		return entities.iterator();
 	}
-	
+
 	@Override
 	public Spliterator<Entity> spliterator() {
 		return entities.spliterator();
@@ -229,21 +231,21 @@ public class World implements Transportable, Iterable<Entity> {
 		}
 		return col == null ? Collections.emptyList() : col;
 	}
-	
+
 	private boolean isEntitiesModifiable = true;
-	
+
 	private void checkEntitiesModifiable() {
 		if(!isEntitiesModifiable)
 			throw new IllegalStateException("cannot add/remove from world: world is being updated");
 	}
-	
+
 	/**
 	 * Adds the provided non-null Entity to the world.
 	 * @param e the entity to add.
 	 */
 	public final void add(Entity e) {
 		Objects.requireNonNull(e);
-		checkEntitiesModifiable();	
+		checkEntitiesModifiable();
 		entities.add(e);
 	}
 
@@ -255,7 +257,7 @@ public class World implements Transportable, Iterable<Entity> {
 		checkEntitiesModifiable();
 		entities.remove(e);
 	}
-	
+
 	public final float getGravity() {
 		return gravity;
 	}
@@ -265,8 +267,8 @@ public class World implements Transportable, Iterable<Entity> {
 	}
 
 	/**
-	 * Updates the entities in the world, simulating a single timestep of the provided amount. 
-	 * Entities are updated, gravity is applied, entity vs entity collisions are resolved, 
+	 * Updates the entities in the world, simulating a single timestep of the provided amount.
+	 * Entities are updated, gravity is applied, entity vs entity collisions are resolved,
 	 * and entity vs block collisions are resolved. If {@code setRemoveEntities has been called},
 	 * entities that are below the bottom of the world will be removed and, if provided, the entity
 	 * remove handler will be called.
@@ -278,7 +280,7 @@ public class World implements Transportable, Iterable<Entity> {
 		int size = entities.size();
 		for(int i = 0; i < size; i++) {
 			Entity e = entities.get(i);
-			
+
 			//remove entities that are below the world or are flagged for deletion
 			if(onRemove != null) {
 				if(e.getPositionY() < 0 || e.getShouldDelete()) {
@@ -288,20 +290,20 @@ public class World implements Transportable, Iterable<Entity> {
 					continue;
 				}
 			}
-			
+
 			//update entity position and velocity, and anything else specific to an entity
 			e.update(this, time);
-			
+
 			//TODO use air resistance?
 			//float surfaceArea = 2*e.getWidth() + 2*e.getHeight();
-			
+
 			//apply gravity
 			e.setVelocityY(e.getVelocityY() - gravity * time);
-			
+
 			//check if collision checking is enabled
 			boolean hasLogic = e.hasEntityCollisionLogic();
 			boolean collidesEntities = e.collidesWithEntities();
-			//check for entity vs. entity collisions with all entities that have not already been 
+			//check for entity vs. entity collisions with all entities that have not already been
 			//collision checked with (for first element, all entites, for last, no entities)
 			for(int j = i + 1; j < size; j++) {
 				Entity o = entities.get(j);
@@ -313,12 +315,12 @@ public class World implements Transportable, Iterable<Entity> {
 				if(otherHasLogic && isCheckedCollision)
 					o.onCollision(this, e, time);
 			}
-			
+
 			//Check for entity collisions with blocks
 			if(e.collidesWithBlocks()) {
 				resolveBlockCollisions(e, time);
 			}
-			
+
 			//again remove entities that are below the world or are flagged for deletion
 			if(onRemove != null) {
 				if(e.getPositionY() < 0 || e.getShouldDelete()) {
@@ -330,7 +332,7 @@ public class World implements Transportable, Iterable<Entity> {
 		}
 		isEntitiesModifiable = true;
 	}
-	
+
 	private static boolean runPhysicsCollision(Entity e, Entity o, float time) {
 		if(e.getMass() < o.getMass())
 			return resolveCollision(e, o, time);
@@ -338,7 +340,7 @@ public class World implements Transportable, Iterable<Entity> {
 			return resolveCollision(o, e, time);
 		return false; //TODO what do I do when entities have same mass?
 	}
-	
+
 	private void resolveBlockCollisions(Entity e, float time) {
 		int worldTop = foreground.getHeight()-1;
 		int worldRight = foreground.getWidth()-1;
@@ -346,7 +348,7 @@ public class World implements Transportable, Iterable<Entity> {
 		int topBound = Utility.clampUpperBound(worldTop, e.getPositionY() + e.getHeight());
 		int rightBound = Utility.clampUpperBound(worldRight, e.getPositionX() + e.getWidth());
 		int bottomBound = Utility.clampLowerBound(0, e.getPositionY() - e.getHeight());
-		
+
 		for(int row = bottomBound; row <= topBound; row++) {
 			for(int column = leftBound; column <= rightBound; column++) {
 				Block block = foreground.get(column, row);
@@ -355,7 +357,7 @@ public class World implements Transportable, Iterable<Entity> {
 					boolean blockDown = row == 0 ? false : foreground.isBlock(column, row - 1);
 					boolean blockLeft = column == 0 ? false : foreground.isBlock(column - 1, row);
 					boolean blockRight = column == worldRight ? false : foreground.isBlock(column + 1, row);
-					
+
 					if(!(blockUp && blockDown && blockLeft && blockRight)) {
 						resolveBlockCollision(this, e, block, column, row, time, blockUp, blockLeft, blockRight, blockDown);
 					}
@@ -363,7 +365,7 @@ public class World implements Transportable, Iterable<Entity> {
 			}
 		}
 	}
-	
+
 	/**
 	 * Checks if there is a collision between two entities
 	 * @param e an entity
@@ -397,7 +399,7 @@ public class World implements Transportable, Iterable<Entity> {
 	private final static boolean resolveCollision(Entity e, Entity o, float time) {
 		return resolveCollision(e, o.getPositionX(), o.getPositionY(), o.getWidth(), o.getHeight(), o.getFriction(), time);
 	}
-	
+
 	/**
 	 * Resolves a collision between an entity and a hitbox. The entity passed into the first parameter will be moved if necessary.
 	 * @param e the entity to be resolved
@@ -454,8 +456,8 @@ public class World implements Transportable, Iterable<Entity> {
 		}
 		return false;
 	}
-	
-	private static boolean resolveBlockCollision(World world, Entity e, Block block, float blockX, float blockY, float time, 
+
+	private static boolean resolveBlockCollision(World world, Entity e, Block block, float blockX, float blockY, float time,
 			boolean blockUp, boolean blockLeft, boolean blockRight, boolean blockDown) {
 		float width = 0.5f * (e.getWidth() + 1);
 		float height = 0.5f * (e.getHeight() + 1);

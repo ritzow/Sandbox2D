@@ -1,6 +1,6 @@
 package ritzow.sandbox.client.graphics;
 
-import static org.lwjgl.opengl.GL30C.*;
+import static org.lwjgl.opengl.GL46C.*;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -59,16 +59,14 @@ public final class ModelRenderProgram extends ShaderProgram {
 	public ModelRenderProgram(Shader vertexShader, Shader fragmentShader, int textureAtlas) {
 		super(vertexShader, fragmentShader);
 		models = new HashMap<>();
-		GraphicsUtility.checkProgramCompilation(this);
-		glBindAttribLocation(programID, RenderConstants.ATTRIBUTE_POSITIONS, "position");
-		glBindAttribLocation(programID, RenderConstants.ATTRIBUTE_TEXTURE_COORDS, "textureCoord");
-		this.uniform_transform = getUniformID("transform");
-		this.uniform_opacity = getUniformID("opacity");
-		this.uniform_view = getUniformID("view");
+		//glGetAttribLocation(program, name) TODO use getattriblocation? needs to be updated in VAO creation
+		this.uniform_transform = getUniformLocation("transform");
+		this.uniform_opacity = getUniformLocation("opacity");
+		this.uniform_view = getUniformLocation("view");
 		this.atlasTexture = textureAtlas;
 		this.textureUnit = 0;
 		setCurrent(); //needs this for setSamplerIndex which uses current program
-		setSamplerIndex(getUniformID("textureSampler"), textureUnit);
+		setSamplerIndex(getUniformLocation("textureSampler"), textureUnit);
 		GraphicsUtility.checkErrors();
 	}
 

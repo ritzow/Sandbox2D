@@ -4,20 +4,26 @@ import static org.lwjgl.opengl.GL20C.glCompileShader;
 import static org.lwjgl.opengl.GL20C.glCreateShader;
 import static org.lwjgl.opengl.GL20C.glDeleteShader;
 import static org.lwjgl.opengl.GL20C.glShaderSource;
+import static org.lwjgl.opengl.GL20C.GL_VERTEX_SHADER;
+import static org.lwjgl.opengl.GL20C.GL_FRAGMENT_SHADER;
+import static org.lwjgl.opengl.GL32C.GL_GEOMETRY_SHADER;
+
+import static org.lwjgl.opengl.GL46C.*;
 
 import java.nio.ByteBuffer;
-import org.lwjgl.opengl.GL20;
-import org.lwjgl.opengl.GL32;
+import java.nio.IntBuffer;
+import org.lwjgl.system.MemoryStack;
 
 public final class Shader {
-	protected final int shaderID;
+	private final int shaderID;
 
+	/** Type of OpenGL shader **/
 	public static enum ShaderType {
-		VERTEX(GL20.GL_VERTEX_SHADER),
-		FRAGMENT(GL20.GL_FRAGMENT_SHADER),
-		GEOMETRY(GL32.GL_GEOMETRY_SHADER);
+		VERTEX(GL_VERTEX_SHADER),
+		FRAGMENT(GL_FRAGMENT_SHADER),
+		GEOMETRY(GL_GEOMETRY_SHADER);
 
-		private int glType;
+		private final int glType;
 
 		ShaderType(int glType) {
 			this.glType = glType;
@@ -28,8 +34,18 @@ public final class Shader {
 		return new Shader(programSource, type);
 	}
 
-	public static Shader fromSPIRV(ByteBuffer program, ShaderType type) {
-		throw new UnsupportedOperationException("not implemented");
+	public static Shader fromSPIRV(ByteBuffer moduleBinary, ShaderType type) {
+		return new Shader(moduleBinary, type);
+	}
+
+	private Shader(ByteBuffer buffer, ShaderType type) {
+		shaderID = glCreateShader(type.glType);
+		try(MemoryStack stack = MemoryStack.stackPush()) {
+			glShaderBinary(stack.ints(shaderID), GL_SHADER_BINARY_FORMAT_SPIR_V, buffer);
+			IntBuffer empty = stack.mallocInt(0);
+			glSpecializeShader(shaderID, "main", empty, empty);
+		}
+		GraphicsUtility.checkShaderCompilation(this);
 	}
 
 	private Shader(String programSource, ShaderType type) {

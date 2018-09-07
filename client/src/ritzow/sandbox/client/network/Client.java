@@ -2,6 +2,7 @@ package ritzow.sandbox.client.network;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.PortUnreachableException;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
@@ -496,6 +497,9 @@ public class Client {
 				channel.receive(receiveBuffer);
 				processReceived(receiveBuffer, responseBuffer);
 			}
+		} catch(PortUnreachableException e) {
+			status = Status.NOT_CONNECTED;
+			Utility.notify(connectLock);
 		} catch(IOException e) {
 			//TODO shutdown client on IOException
 			e.printStackTrace();

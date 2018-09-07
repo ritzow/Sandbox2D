@@ -12,6 +12,7 @@ import java.util.Scanner;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+
 import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.server.network.GameServer;
@@ -27,7 +28,7 @@ public final class StartServer {
 	private static final Path saveFile = Path.of("data/worlds/world.dat");
 	private static final Map<String, Consumer<String>> commands = new HashMap<>();
 	private static final Queue<Runnable> commandQueue = new ConcurrentLinkedQueue<>();
-	
+
 	public static void main(String[] args) throws IOException {
 		try {
 			Thread.currentThread().setName("Server Main");
@@ -38,13 +39,13 @@ public final class StartServer {
 			World world = getWorld();
 			System.out.println("took " + Utility.formatTime(Utility.nanosSince(time)) + ".");
 			server.setCurrentWorld(world);
-			
+
 			new Thread(StartServer::runCommandParser, "Command Parser").start();
-			
+
 			long lastWorldUpdateTime = System.nanoTime();
 			while(server.isOpen()) {
 				server.updateServer();
-				lastWorldUpdateTime = Utility.updateWorld(world, lastWorldUpdateTime, 
+				lastWorldUpdateTime = Utility.updateWorld(world, lastWorldUpdateTime,
 						Protocol.MAX_UPDATE_TIMESTEP, Protocol.TIME_SCALE_NANOSECONDS);
 				server.updateClients();
 				while(!commandQueue.isEmpty()) {
@@ -58,22 +59,21 @@ public final class StartServer {
 			} else {
 				System.out.println("Server stopped without saving to file.");
 			}
-			
+
 			System.exit(0);
 		} catch(BindException e) {
 			System.out.println("Could not start server: '" + e.getMessage() + "'");
 		}
-	
 	}
-	
+
 	public static World getWorld() throws IOException {
 		return Files.exists(saveFile) ? loadWorld(saveFile) : generateWorld(100, 100);
 	}
-	
+
 	public static World loadWorld(Path file) throws IOException {
 		return SerializationProvider.getProvider().deserialize(Bytes.decompress(Files.readAllBytes(file)));
 	}
-	
+
 	private static void saveWorld(World world, Path file) {
 		try {
 			System.out.print("Saving world... ");
@@ -85,7 +85,7 @@ public final class StartServer {
 			System.out.println("Error while saving world to file '" + saveFile + "':" + e.getClass().getTypeName() + ":" + e.getMessage());
 		}
 	}
-	
+
 	private static World generateWorld(int width, int height) {
 		World world = new World(width, height, 0.016f);
 		for(int column = 0; column < world.getForeground().getWidth(); column++) {
@@ -100,7 +100,7 @@ public final class StartServer {
 		}
 		return world;
 	}
-	
+
 	private static void registerCommands() {
 		register("stop", 	StartServer::stopCommand);
 		register("abort", 	StartServer::abortCommand);
@@ -109,11 +109,11 @@ public final class StartServer {
 		register("reset", 	StartServer::resetCommand);
 		register("debug",	StartServer::debugCommand);
 	}
-	
+
 	private static void debugCommand(String args) {
 		server.printDebug(System.out);
 	}
-	
+
 	private static void resetCommand(String args) {
 		try {
 			if(Files.deleteIfExists(saveFile))
@@ -123,7 +123,7 @@ public final class StartServer {
 		}
 		abortCommand(args);
 	}
-	
+
 	private static void stopCommand(String args) {
 		try {
 			server.close();
@@ -136,7 +136,7 @@ public final class StartServer {
 		server.broadcastConsoleMessage(args);
 		System.out.println("Message '" + args + "' sent to " + server.getClientCount() + " client(s).");
 	}
-	
+
 	private static void abortCommand(String args) {
 		save = false;
 		try {
@@ -145,7 +145,7 @@ public final class StartServer {
 			e.printStackTrace();
 		}
 	}
-	
+
 	private static void listCommmand(String args) {
 		if(server.getClientCount() == 0) {
 			System.out.println("No connected clients.");
@@ -157,16 +157,16 @@ public final class StartServer {
 			}
 		}
 	}
-	
+
 	private static void unknownCommand(String args) {
 		System.out.println("Unknown command.");
 	}
-	
+
 	private static void register(String name, Consumer<String> action) {
 		if(commands.putIfAbsent(name, action) != null)
-			throw new IllegalArgumentException(name + " already registered");	
+			throw new IllegalArgumentException(name + " already registered");
 	}
-	
+
 	private static void runCommandParser() { //TODO fix command parser thread staying alive after server exit
 		registerCommands();
 		System.out.println("Enter commands (" + commands.keySet().stream().collect(Collectors.joining(", ")) + "): ");
@@ -178,7 +178,7 @@ public final class StartServer {
 			}
 		}
 	}
-	
+
 	private static Consumer<String> getCommand(String name) {
 		return commands.getOrDefault(name, StartServer::unknownCommand);
 	}

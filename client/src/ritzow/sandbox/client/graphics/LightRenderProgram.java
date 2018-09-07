@@ -18,11 +18,11 @@ public final class LightRenderProgram extends ShaderProgram {
 
 	public LightRenderProgram(Shader vertex, Shader fragment, Camera camera) {
 		super(vertex, fragment);
-		uniform_lightColor = getUniformID("lightColor");
-		uniform_lightRadius = getUniformID("lightRadius");
-		uniform_lightIntensity = getUniformID("lightIntensity");
-		uniform_lightPosX = getUniformID("lightPosX");
-		uniform_lightPosY = getUniformID("lightPosY");
+		uniform_lightColor = getUniformLocation("lightColor");
+		uniform_lightRadius = getUniformLocation("lightRadius");
+		uniform_lightIntensity = getUniformLocation("lightIntensity");
+		uniform_lightPosX = getUniformLocation("lightPosX");
+		uniform_lightPosY = getUniformLocation("lightPosY");
 		this.camera = camera;
 	}
 

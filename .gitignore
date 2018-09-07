@@ -17,6 +17,8 @@ libraries/
 /build/
 
 #don't include eclipse project settings
+.classpath
+.project
 .settings
 
 #don't include stupid mac metadata files
