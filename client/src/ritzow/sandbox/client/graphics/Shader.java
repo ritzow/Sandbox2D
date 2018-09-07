@@ -14,7 +14,7 @@ import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import org.lwjgl.system.MemoryStack;
 
-public final class Shader {
+public class Shader {
 	private final int shaderID;
 
 	/** Type of OpenGL shader **/

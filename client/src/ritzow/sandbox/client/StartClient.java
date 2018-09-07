@@ -5,7 +5,6 @@ import static org.lwjgl.glfw.GLFW.glfwPollEvents;
 import static org.lwjgl.glfw.GLFW.glfwTerminate;
 import static org.lwjgl.glfw.GLFW.glfwSetErrorCallback;
 import org.lwjgl.glfw.GLFWErrorCallback;
-
 import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
@@ -39,7 +38,6 @@ import ritzow.sandbox.world.World;
 
 public class StartClient {
 	private static boolean manualExit;
-
 	private static long UPDATE_SKIP_THRESHOLD_NANOSECONDS = Utility.millisToNanos(100);
 
 	public static void main(String[] args) throws IOException, InterruptedException {
