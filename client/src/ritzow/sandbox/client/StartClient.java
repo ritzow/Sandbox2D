@@ -221,8 +221,10 @@ public class StartClient {
 		Path directory = Path.of("resources/assets/audio");
 
 		for(var entry : sounds.entrySet()) {
-			SoundInfo info = WAVEDecoder.decode(Files.newInputStream(directory.resolve(entry.getKey())));
-			audio.registerSound(entry.getValue().code(), info);
+			try(var in = Files.newInputStream(directory.resolve(entry.getKey()))) {
+				SoundInfo info = WAVEDecoder.decode(in);
+				audio.registerSound(entry.getValue().code(), info);
+			}
 		}
 		return audio;
 	}
