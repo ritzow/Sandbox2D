@@ -4,5 +4,5 @@
  */
 module ritzow.sandbox.server {
 	exports ritzow.sandbox.server;
-	requires ritzow.sandbox.shared;
+	requires transitive ritzow.sandbox.shared;
 }
