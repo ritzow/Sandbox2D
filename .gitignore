@@ -7,6 +7,9 @@ doc/
 #don't include application storage
 /server/data/
 
+#don't include fonts
+/serverlauncher/resources/font/
+
 #don't include library binaries or documentation
 libraries/
 

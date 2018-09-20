@@ -3,6 +3,7 @@ package ritzow.sandbox.server;
 import java.io.IOException;
 import java.net.BindException;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -30,9 +31,13 @@ public final class StartServer {
 	private static final Queue<Runnable> commandQueue = new ConcurrentLinkedQueue<>();
 
 	public static void main(String[] args) throws IOException {
+		Thread.currentThread().setName("Server Main");
+		run(Utility.getAddressOrDefault(args, 0, InetAddress.getLocalHost(), Protocol.DEFAULT_SERVER_UDP_PORT));
+	}
+
+	public static void run(InetSocketAddress bindAddress) throws IOException {
 		try {
-			Thread.currentThread().setName("Server Main");
-			server = GameServer.start(Utility.getAddressOrDefault(args, 0, InetAddress.getLocalHost(), Protocol.DEFAULT_SERVER_UDP_PORT));
+			server = GameServer.start(bindAddress);
 			System.out.println("Started server on " + Utility.formatAddress(server.getAddress()) + ".");
 			System.out.print("Loading world... ");
 			long time = System.nanoTime();
