@@ -2,24 +2,27 @@ package ritzow.sandbox.client;
 
 import static org.lwjgl.glfw.GLFW.glfwInit;
 import static org.lwjgl.glfw.GLFW.glfwPollEvents;
-import static org.lwjgl.glfw.GLFW.glfwTerminate;
 import static org.lwjgl.glfw.GLFW.glfwSetErrorCallback;
-import org.lwjgl.glfw.GLFWErrorCallback;
+import static org.lwjgl.glfw.GLFW.glfwTerminate;
+
 import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.PortUnreachableException;
-import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-
-import ritzow.sandbox.client.audio.*;
+import org.lwjgl.glfw.GLFWErrorCallback;
+import ritzow.sandbox.client.audio.AudioSystem;
+import ritzow.sandbox.client.audio.DefaultAudioSystem;
+import ritzow.sandbox.client.audio.OpenALAudioSystem;
+import ritzow.sandbox.client.audio.Sound;
+import ritzow.sandbox.client.audio.SoundInfo;
+import ritzow.sandbox.client.audio.WAVEDecoder;
 import ritzow.sandbox.client.graphics.*;
 import ritzow.sandbox.client.graphics.Shader.ShaderType;
 import ritzow.sandbox.client.input.ControlScheme;
@@ -104,7 +107,7 @@ public class StartClient {
 			TextureAtlas atlas = Textures.buildAtlas(grass, dirt, face, red);
 
 			long start = System.nanoTime();
-			var program = createProgramFromSPIRV(atlas);
+			var program = createProgramFromSource(atlas);
 			System.out.println("took " + Utility.formatTime(System.nanoTime() - start) + " to create model renderer");
 
 			program.register(RenderConstants.MODEL_DIRT_BLOCK, getRenderData(indices, positions, atlas, dirt));
@@ -161,29 +164,28 @@ public class StartClient {
 			System.out.println("port unreachable.");
 		}
 	}
+	
+//	private static ByteBuffer readIntoBuffer(Path file) throws IOException {
+//		ByteBuffer out = ByteBuffer.allocateDirect((int)Files.size(file));
+//		Files.newByteChannel(file, StandardOpenOption.READ).read(out);
+//		out.flip();
+//		return out;
+//	}
 
-	private static ModelRenderProgram createProgramFromSPIRV(TextureAtlas atlas) throws IOException {
-		return new ModelRenderProgram(
-				Shader.fromSPIRV(readIntoBuffer(Path.of("resources/shaders/modelVertexShader.spv")), ShaderType.VERTEX),
-				Shader.fromSPIRV(readIntoBuffer(Path.of("resources/shaders/modelFragmentShader.spv")), ShaderType.FRAGMENT),
-				atlas.texture()
-		);
-	}
-
-	@SuppressWarnings("unused")
+//	private static ModelRenderProgram createProgramFromSPIRV(TextureAtlas atlas) throws IOException {
+//		return new ModelRenderProgram(
+//				Shader.fromSPIRV(readIntoBuffer(Path.of("resources/shaders/modelVertexShader.spv")), ShaderType.VERTEX),
+//				Shader.fromSPIRV(readIntoBuffer(Path.of("resources/shaders/modelFragmentShader.spv")), ShaderType.FRAGMENT),
+//				atlas.texture()
+//		);
+//	}
+	
 	private static ModelRenderProgram createProgramFromSource(TextureAtlas atlas) throws IOException {
 		return new ModelRenderProgram(
 				Shader.fromSource(Files.readString(Path.of("resources/shaders/modelVertexShader")), ShaderType.VERTEX),
 				Shader.fromSource(Files.readString(Path.of("resources/shaders/modelFragmentShader")), ShaderType.FRAGMENT),
 				atlas.texture()
 		);
-	}
-
-	private static ByteBuffer readIntoBuffer(Path file) throws IOException {
-		ByteBuffer out = ByteBuffer.allocateDirect((int)Files.size(file));
-		Files.newByteChannel(file, StandardOpenOption.READ).read(out);
-		out.flip();
-		return out;
 	}
 
 	private static long updateWorld(Display display, World world, long lastWorldUpdate) {

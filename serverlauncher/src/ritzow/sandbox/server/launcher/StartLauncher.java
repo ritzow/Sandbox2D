@@ -23,7 +23,6 @@ import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.CornerRadii;
 import javafx.scene.paint.Color;
-import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.stage.FileChooser;
 import javafx.stage.FileChooser.ExtensionFilter;
@@ -50,10 +49,12 @@ public final class StartLauncher {
 
 	private static void start() {
 		try {
-			try(var in = Files.newInputStream(Path.of("bin/font/OpenSans-Bold.ttf"))) {
-				Font.loadFont(in, 18);
-			}
+//			try(var in = Files.newInputStream(Path.of("bin/font/OpenSans-Bold.ttf"))) {
+//				Font.loadFont(in, 18);
+//			}
 
+			//Font.loadFont("https://fonts.googleapis.com/css?family=Open+Sans:700", 18);
+			
 			var loader = new FXMLLoader();
 			controller = new LauncherController();
 			loader.setController(controller);

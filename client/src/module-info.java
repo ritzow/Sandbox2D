@@ -6,6 +6,7 @@
  * @author Solomon Ritzow
  */
 module ritzow.sandbox.client {
+	requires java.base;
 	requires ritzow.sandbox.shared;
 	requires static java.desktop;
 	requires PNGDecoder;

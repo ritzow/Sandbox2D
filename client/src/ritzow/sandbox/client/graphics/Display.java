@@ -23,17 +23,18 @@ public final class Display {
 		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 		glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
 		glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-
+		
 		int screenWidth = glfwGetVideoMode(glfwGetPrimaryMonitor()).width();
 		int screenHeight = glfwGetVideoMode(glfwGetPrimaryMonitor()).height();
 
 		displayID = glfwCreateWindow(screenWidth/2, screenHeight/2, title, 0, 0);
+		if(displayID == 0) {
+			throw new UnsupportedOperationException("Error creating window");
+		}
 		glfwSetWindowPos(displayID, screenWidth/4, screenHeight/4);
 
 		input = new EventDelegator(displayID);
 		render = new RenderManager(this);
-
-		//input.windowFocusHandlers().add(focused -> this.focused = focused);
 	}
 
 	public void setCursor(long cursor) {

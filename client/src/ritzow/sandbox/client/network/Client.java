@@ -109,7 +109,7 @@ public class Client {
 		worldLock = new Object();
 		playerLock = new Object();
 		reliableSendLock = new Object();
-		(sendThread = new Thread(this::sender, "Packet Sender")).start();;
+		(sendThread = new Thread(this::sender, "Packet Sender")).start();
 		(receiveThread = new Thread(this::receiver, "Packet Receiver")).start();
 		connect();
 	}
