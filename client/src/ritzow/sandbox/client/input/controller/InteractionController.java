@@ -7,7 +7,7 @@ import ritzow.sandbox.client.input.EventDelegator;
 import ritzow.sandbox.client.input.handler.CursorPosHandler;
 import ritzow.sandbox.client.input.handler.KeyHandler;
 import ritzow.sandbox.client.input.handler.MouseButtonHandler;
-import ritzow.sandbox.client.network.Client;
+import ritzow.sandbox.client.network.GameTalker;
 import ritzow.sandbox.client.util.ClientUtility;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.util.Utility;
@@ -20,15 +20,15 @@ public final class InteractionController implements MouseButtonHandler, CursorPo
 	private volatile int mouseX, mouseY;
 	private long lastThrow, lastBreak;
 	private float range;
-	private final Client client;
+	private final GameTalker client;
 
-	public InteractionController(Client client, float range) {
+	public InteractionController(GameTalker client, float range) {
 		this.client = client;
 		this.range = range;
 	}
 
 	//TODO wait for server response before sending more block break packets
-	public void update(Camera camera, Client client, World world, Entity player, int frameWidth, int frameHeight) {
+	public void update(Camera camera, GameTalker client, World world, Entity player, int frameWidth, int frameHeight) {
 		if(primaryAction && breakAllowed()) {
 			int blockX = Math.round(ClientUtility.pixelHorizontalToWorld(camera, mouseX, frameWidth, frameHeight));
 			int blockY = Math.round(ClientUtility.pixelVerticalToWorld(camera, mouseY, frameWidth, frameHeight));

@@ -5,13 +5,13 @@ import static org.lwjgl.glfw.GLFW.*;
 import ritzow.sandbox.client.input.ControlScheme;
 import ritzow.sandbox.client.input.EventDelegator;
 import ritzow.sandbox.client.input.handler.KeyHandler;
-import ritzow.sandbox.client.network.Client;
+import ritzow.sandbox.client.network.GameTalker;
 import ritzow.sandbox.network.Protocol.PlayerAction;
 
 public class PlayerController implements KeyHandler {
-	protected final Client client;
+	protected final GameTalker client;
 
-	public PlayerController(Client client) {
+	public PlayerController(GameTalker client) {
 		this.client = client;
 	}
 
