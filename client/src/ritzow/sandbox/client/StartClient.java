@@ -27,13 +27,13 @@ import ritzow.sandbox.client.graphics.*;
 import ritzow.sandbox.client.graphics.Shader.ShaderType;
 import ritzow.sandbox.client.input.ControlScheme;
 import ritzow.sandbox.client.input.EventDelegator;
+import ritzow.sandbox.client.input.controller.CameraController;
 import ritzow.sandbox.client.input.controller.InteractionController;
 import ritzow.sandbox.client.input.controller.PlayerController;
 import ritzow.sandbox.client.input.controller.TrackingCameraController;
 import ritzow.sandbox.client.network.Client;
 import ritzow.sandbox.client.network.Client.ConnectionFailedException;
 import ritzow.sandbox.client.ui.Cursors;
-import ritzow.sandbox.client.ui.UserInterfaceRenderer;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.util.TaskQueue;
 import ritzow.sandbox.util.Utility;
@@ -47,11 +47,13 @@ public class StartClient {
 		Thread.currentThread().setName("Game Thread");
 
 		try {
-			InetSocketAddress serverSocket = Utility.getAddressOrDefault(args, 0, InetAddress.getLocalHost(), Protocol.DEFAULT_SERVER_UDP_PORT);
+			InetSocketAddress serverSocket = 
+					Utility.getAddressOrDefault(args, 0, InetAddress.getLocalHost(), Protocol.DEFAULT_SERVER_UDP_PORT);
 			InetSocketAddress localSocket = new InetSocketAddress(Utility.getPublicAddress(Inet4Address.class), 0);
 
 			ExecutorService runner = Executors.newSingleThreadExecutor();
-			System.out.print("Connecting to " + Utility.formatAddress(serverSocket) + " from " + Utility.formatAddress(localSocket) + "... ");
+			System.out.print("Connecting to " + Utility.formatAddress(serverSocket) 
+				+ " from " + Utility.formatAddress(localSocket) + "... ");
 			Client client = Client.connect(localSocket, serverSocket, runner);
 			System.out.println("connected!");
 
@@ -88,38 +90,7 @@ public class StartClient {
 			interactionController.link(input);
 
 			var world = client.getWorld();
-			var renderer = display.getRenderManager();
-			renderer.initialize(display);
-
-			int indices = GraphicsUtility.uploadIndexData(0, 1, 2, 0, 2, 3);
-
-			int positions = GraphicsUtility.uploadVertexData(
-					-0.5f,	 0.5f,
-					-0.5f,	-0.5f,
-					0.5f,	-0.5f,
-					0.5f,	 0.5f
-			);
-
-			TextureData dirt = Textures.loadTextureName("dirt"),
-					grass = Textures.loadTextureName("grass"),
-					face = Textures.loadTextureName("greenFace"),
-					red = Textures.loadTextureName("redSquare");
-			TextureAtlas atlas = Textures.buildAtlas(grass, dirt, face, red);
-
-			long start = System.nanoTime();
-			var program = createProgramFromSource(atlas);
-			System.out.println("took " + Utility.formatTime(System.nanoTime() - start) + " to create model renderer");
-
-			program.register(RenderConstants.MODEL_DIRT_BLOCK, getRenderData(indices, positions, atlas, dirt));
-			program.register(RenderConstants.MODEL_GRASS_BLOCK, getRenderData(indices, positions, atlas, grass));
-			program.register(RenderConstants.MODEL_GREEN_FACE, getRenderData(indices, positions, atlas, face));
-			program.register(RenderConstants.MODEL_RED_SQUARE, getRenderData(indices, positions, atlas, red));
-			GraphicsUtility.checkErrors();
-
-			renderer.getRenderers().add(new ClientWorldRenderer(program, cameraGrip.getCamera(), world));
-
-			var ui = new UserInterfaceRenderer(program);
-			//renderer.getRenderers().add(ui);
+			var renderer = setupRenderer(display, world, cameraGrip);
 
 			//set up synchronous packet processing structures
 			TaskQueue packetQueue = new TaskQueue();
@@ -142,7 +113,6 @@ public class StartClient {
 					lastCameraUpdateTime = camUpdateStart;
 					interactionController.update(camera, client, world, player, display.width(), display.height()); //block breaking/"bomb throwing"
 					if(display.focused()) {
-						ui.update();
 						renderer.run(display);
 					}
 					Utility.sleep(1); //reduce CPU usage
@@ -163,6 +133,43 @@ public class StartClient {
 		} catch(PortUnreachableException e) {
 			System.out.println("port unreachable.");
 		}
+	}
+	
+	private static RenderManager setupRenderer(Display display, World world, CameraController cameraGrip) throws IOException {
+		var renderer = display.getRenderManager();
+		renderer.initialize(display);
+
+		int indices = GraphicsUtility.uploadIndexData(0, 1, 2, 0, 2, 3);
+
+		int positions = GraphicsUtility.uploadVertexData(
+				-0.5f,	 0.5f,
+				-0.5f,	-0.5f,
+				0.5f,	-0.5f,
+				0.5f,	 0.5f
+		);
+
+		TextureData dirt = Textures.loadTextureName("dirt"),
+				grass = Textures.loadTextureName("grass"),
+				face = Textures.loadTextureName("greenFace"),
+				red = Textures.loadTextureName("redSquare");
+		TextureAtlas atlas = Textures.buildAtlas(grass, dirt, face, red);
+
+		long start = System.nanoTime();
+		var program = createProgramFromSource(atlas);
+		System.out.println("took " + Utility.formatTime(System.nanoTime() - start) + " to create model renderer");
+
+		program.register(RenderConstants.MODEL_DIRT_BLOCK, getRenderData(indices, positions, atlas, dirt));
+		program.register(RenderConstants.MODEL_GRASS_BLOCK, getRenderData(indices, positions, atlas, grass));
+		program.register(RenderConstants.MODEL_GREEN_FACE, getRenderData(indices, positions, atlas, face));
+		program.register(RenderConstants.MODEL_RED_SQUARE, getRenderData(indices, positions, atlas, red));
+		GraphicsUtility.checkErrors();
+
+		renderer.getRenderers().add(new ClientWorldRenderer(program, cameraGrip.getCamera(), world));
+
+		//var ui = new UserInterfaceRenderer(program);
+		//renderer.getRenderers().add(ui);
+		
+		return renderer;
 	}
 	
 //	private static ByteBuffer readIntoBuffer(Path file) throws IOException {
