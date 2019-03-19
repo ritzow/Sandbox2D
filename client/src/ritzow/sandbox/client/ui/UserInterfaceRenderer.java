@@ -35,6 +35,7 @@ public class UserInterfaceRenderer implements Renderer {
 
 	@Override
 	public Framebuffer render(int framebufferWidth, int framebufferHeight) throws OpenGLException {
+		//also update the elements in here
 		for(ElementEntry entry : elements) {
 			program.render(entry.element, entry.posX, entry.posY);
 		}
@@ -43,9 +44,5 @@ public class UserInterfaceRenderer implements Renderer {
 	
 	public void add(UIElement element, float posX, float posY) {
 		elements.add(new ElementEntry(posX, posY, element));
-	}
-	
-	public void update() {
-		
 	}
 }

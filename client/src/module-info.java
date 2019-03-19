@@ -6,12 +6,13 @@
  * @author Solomon Ritzow
  */
 module ritzow.sandbox.client {
-	requires java.base;
 	requires ritzow.sandbox.shared;
-	requires static java.desktop;
-	requires PNGDecoder;
+	
 	requires org.lwjgl;
 	requires org.lwjgl.glfw;
 	requires org.lwjgl.openal;
 	requires org.lwjgl.opengl;
+	requires PNGDecoder;
+	
+	requires static java.desktop;
 }

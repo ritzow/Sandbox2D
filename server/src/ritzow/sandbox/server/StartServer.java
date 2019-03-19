@@ -32,7 +32,7 @@ public final class StartServer {
 
 	public static void main(String[] args) throws IOException {
 		Thread.currentThread().setName("Server Main");
-		run(Utility.getAddressOrDefault(args, 0, InetAddress.getLocalHost(), Protocol.DEFAULT_SERVER_UDP_PORT));
+		run(Utility.getAddressOrDefault(args, 0, InetAddress.getLocalHost(), Protocol.DEFAULT_SERVER_PORT_UDP));
 	}
 
 	public static void run(InetSocketAddress bindAddress) throws IOException {

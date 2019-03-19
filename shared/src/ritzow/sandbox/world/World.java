@@ -41,6 +41,9 @@ public class World implements Transportable, Iterable<Entity> {
 
 	/** called when an entity is removed from the world **/
 	private Consumer<Entity> onRemove;
+	
+	/** For access protection during entity updates **/
+	private boolean isEntitiesModifiable = true;
 
 	/**
 	 * Initializes a new World object with a foreground, background, entity storage, and gravity.
@@ -231,8 +234,6 @@ public class World implements Transportable, Iterable<Entity> {
 		}
 		return col == null ? Collections.emptyList() : col;
 	}
-
-	private boolean isEntitiesModifiable = true;
 
 	private void checkEntitiesModifiable() {
 		if(!isEntitiesModifiable)

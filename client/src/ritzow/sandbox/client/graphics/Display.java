@@ -88,6 +88,10 @@ public final class Display {
 		glfwFocusWindow(displayID);
 	}
 
+	public boolean minimized() {
+		return glfwGetWindowAttrib(displayID, GLFW_ICONIFIED) == 1;
+	}
+	
 	public boolean focused() {
 		return glfwGetWindowAttrib(displayID, GLFW_FOCUSED) == GLFW_TRUE;
 	}

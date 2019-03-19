@@ -27,7 +27,7 @@ public final class Protocol {
 		RESEND_COUNT = 10,
 		RESEND_INTERVAL = TIMEOUT_DISCONNECT/RESEND_COUNT;
 
-	public static final int DEFAULT_SERVER_UDP_PORT = 50000;
+	public static final int DEFAULT_SERVER_PORT_UDP = 50000;
 	public static final int STARTING_SEND_ID = 0;
 
 	public static final int
