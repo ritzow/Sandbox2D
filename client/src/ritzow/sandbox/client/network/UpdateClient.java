@@ -35,7 +35,7 @@ public class UpdateClient implements GameTalker {
 	private WorldState worldState;
 	private long ping; //rount trip time in nanoseconds
 
-	private static enum Status {
+	public static enum Status {
 		CONNECTING,
 		CONNECTED,
 		DISCONNECTING,
@@ -74,8 +74,8 @@ public class UpdateClient implements GameTalker {
 		sendReliable(Bytes.of(Protocol.TYPE_CLIENT_CONNECT_REQUEST));
 	}
 	
-	public boolean isConnecting() {
-		return status == Status.CONNECTING;
+	public Status getStatus() {
+		return status;
 	}
 
 	public InetSocketAddress getLocalAddress() {
@@ -95,50 +95,45 @@ public class UpdateClient implements GameTalker {
 	}
 
 	private void onReceive(ByteBuffer data) {
-		try {
-			short type = data.getShort();
-			if(type == Protocol.TYPE_SERVER_CONNECT_ACKNOWLEDGMENT) {
-				processServerConnectAcknowledgement(data);
-			} else if(status == Status.CONNECTED) {
-				switch(type) {
-				case Protocol.TYPE_CONSOLE_MESSAGE:
-					System.out.println("[Server Message] " + new String(getRemainingBytes(data), Protocol.CHARSET));
-					break;
-				case Protocol.TYPE_SERVER_WORLD_DATA:
-					processReceiveWorldData(data);
-					break;
-				case Protocol.TYPE_SERVER_ENTITY_UPDATE:
-					processUpdateEntity(data);
-					break;
-				case Protocol.TYPE_SERVER_ADD_ENTITY:
-					processAddEntity(data);
-					break;
-				case Protocol.TYPE_SERVER_REMOVE_ENTITY:
-					processRemoveEntity(data);
-					break;
-				case Protocol.TYPE_SERVER_CLIENT_DISCONNECT:
-					processServerDisconnect(data);
-					break;
-				case Protocol.TYPE_SERVER_PLAYER_ID:
-					processReceivePlayerEntityID(data);
-					break;
-				case Protocol.TYPE_SERVER_REMOVE_BLOCK:
-					processServerRemoveBlock(data);
-					break;
-				case Protocol.TYPE_SERVER_PING:
-					break;
-				case Protocol.TYPE_SERVER_PLAYER_ACTION:
-					processServerPlayerAction(data);
-					break;
-				default:
-					throw new IllegalArgumentException("Client received message of unknown protocol " + type);
-				}
-			} else {
-				throw new IllegalStateException("Received non-TYPE_SERVER_CONNECT_ACKNOWLEDGMENT message before connecting to server");
+		short type = data.getShort();
+		if(type == Protocol.TYPE_SERVER_CONNECT_ACKNOWLEDGMENT) {
+			processServerConnectAcknowledgement(data);
+		} else if(status == Status.CONNECTED) {
+			switch(type) {
+			case Protocol.TYPE_CONSOLE_MESSAGE:
+				System.out.println("[Server Message] " + new String(getRemainingBytes(data), Protocol.CHARSET));
+				break;
+			case Protocol.TYPE_SERVER_WORLD_DATA:
+				processReceiveWorldData(data);
+				break;
+			case Protocol.TYPE_SERVER_ENTITY_UPDATE:
+				processUpdateEntity(data);
+				break;
+			case Protocol.TYPE_SERVER_ADD_ENTITY:
+				processAddEntity(data);
+				break;
+			case Protocol.TYPE_SERVER_REMOVE_ENTITY:
+				processRemoveEntity(data);
+				break;
+			case Protocol.TYPE_SERVER_CLIENT_DISCONNECT:
+				processServerDisconnect(data);
+				break;
+			case Protocol.TYPE_SERVER_PLAYER_ID:
+				processReceivePlayerEntityID(data);
+				break;
+			case Protocol.TYPE_SERVER_REMOVE_BLOCK:
+				processServerRemoveBlock(data);
+				break;
+			case Protocol.TYPE_SERVER_PING:
+				break;
+			case Protocol.TYPE_SERVER_PLAYER_ACTION:
+				processServerPlayerAction(data);
+				break;
+			default:
+				throw new IllegalArgumentException("Client received message of unknown protocol " + type);
 			}
-		} catch(IOException e) {
-			//TODO shutdown client on IOException
-			e.printStackTrace();
+		} else {
+			throw new IllegalStateException("Received non-TYPE_SERVER_CONNECT_ACKNOWLEDGMENT message before connecting to server");
 		}
 	}
 
@@ -177,13 +172,6 @@ public class UpdateClient implements GameTalker {
 	}
 
 	/**
-	 * @return true if the client is connected to the server and can transmit game related messages.
-	 */
-	public boolean isConnected() {
-		return status == Status.CONNECTED;
-	}
-
-	/**
 	 * Throws an {@link IllegalStateException} if the client is not in a normal
 	 * connected state where game related messages can be sent and received.
 	 */
@@ -202,16 +190,6 @@ public class UpdateClient implements GameTalker {
 		checkConnected();
 		status = Status.DISCONNECTING;
 		sendReliable(Bytes.of(Protocol.TYPE_CLIENT_DISCONNECT));
-	}
-
-	/**
-	 * Disconnects and stops the client without notifying the server (occurs without delay/waiting).
-	 * @throws IOException
-	 */
-	private void disconnectWithoutNotify() throws IOException {
-		checkConnected();
-		status = Status.DISCONNECTED;
-		channel.close();
 	}
 
 	/**
@@ -301,8 +279,8 @@ public class UpdateClient implements GameTalker {
 		world.getForeground().destroy(world, data.getInt(), data.getInt());
 	}
 
-	private void processServerDisconnect(ByteBuffer data) throws IOException {
-		disconnectWithoutNotify();
+	private void processServerDisconnect(ByteBuffer data) {
+		status = Status.DISCONNECTED;
 		int length = data.getInt();
 		byte[] array = new byte[length];
 		data.get(array);
@@ -399,7 +377,7 @@ public class UpdateClient implements GameTalker {
 					if(sendAttempts < Protocol.RESEND_COUNT) {
 						sendReliableInternal(sendBuffer);
 					} else {
-						throw new TimeoutException("failed to send"); //TODO stop the client	
+						throw new TimeoutException("failed to send");	
 					}
 				} break; //need to be able to receive a response
 			} else {
@@ -433,13 +411,6 @@ public class UpdateClient implements GameTalker {
 		sendQueue.poll(); //don't send the message again
 	}
 
-	private void process(ByteBuffer buffer) {
-		ByteBuffer clone = ByteBuffer.allocate(buffer.capacity()); //temporary until receiving is single-threaded
-		clone.put(buffer);
-		clone.position(0);
-		onReceive(clone); //TODO do I need to clone it if it's single threaded?
-	}
-
 	private void processReceived(ByteBuffer buffer, ByteBuffer responseBuffer) throws IOException {
 		buffer.flip(); //flip to set limit and prepare to read packet data
 		if(buffer.limit() >= Protocol.HEADER_SIZE) {
@@ -455,18 +426,22 @@ public class UpdateClient implements GameTalker {
 					//if the message is the next one, process it and update last message
 					sendResponse(responseBuffer, messageID);
 					receiveReliableID++;
-					process(buffer.position(Protocol.HEADER_SIZE).slice());
+					process(buffer);
 				} else if(messageID < receiveReliableID) { //message already received
 					sendResponse(responseBuffer, messageID);
 				} break; //else: message received too early
 			case Protocol.UNRELIABLE_TYPE:
 				if(messageID >= receiveUnreliableID) {
 					receiveUnreliableID = messageID + 1;
-					process(buffer.position(Protocol.HEADER_SIZE).slice());
+					process(buffer);
 				} break; //else: message is outdated
 			}
 		}
 		buffer.clear(); //clear to prepare for next receive
+	}
+	
+	private void process(ByteBuffer buffer) {
+		onReceive(buffer.position(Protocol.HEADER_SIZE).slice());
 	}
 
 	private void sendResponse(ByteBuffer responseBuffer, int receivedMessageID) throws IOException {

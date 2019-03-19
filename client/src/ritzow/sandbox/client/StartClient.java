@@ -9,9 +9,11 @@ import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.PortUnreachableException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import ritzow.sandbox.client.audio.AudioSystem;
@@ -30,113 +32,147 @@ import ritzow.sandbox.client.input.controller.PlayerController;
 import ritzow.sandbox.client.input.controller.TrackingCameraController;
 import ritzow.sandbox.client.network.UpdateClient;
 import ritzow.sandbox.client.ui.Cursors;
+import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.network.TimeoutException;
 import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.World;
 
 public class StartClient {
-	private static boolean exit;
 	private static long UPDATE_SKIP_THRESHOLD_NANOSECONDS = Utility.millisToNanos(100);
+	private static List<GameTask> updates = new ArrayList<GameTask>();
+	private static UpdateClient client;
+	private static Display display;
+	private static AudioSystem audio;
+	private static EventDelegator input;
+	private static ClientPlayerEntity player;
+	private static World world;
+	private static Camera camera;
+	private static TrackingCameraController cameraGrip;
+	private static PlayerController playerControls;
+	private static InteractionController interactionControls;
+	private static RenderManager renderer;
+	private static long lastWorldUpdate = System.nanoTime();
+	private static long lastCameraUpdateTime = System.nanoTime();
+	private static ListIterator<GameTask> currentTasks;
+	
+	private interface GameTask {
+		void run() throws Exception;
+	}
 
-	public static void main(String[] args) throws InterruptedException {
+	public static void main(String[] args) throws Exception {
 		Thread.currentThread().setName("Game Thread");
+		InetSocketAddress serverSocket = 
+				Utility.getAddressOrDefault(args, 0, InetAddress.getLocalHost(), Protocol.DEFAULT_SERVER_PORT_UDP);
+		var localSocket = new InetSocketAddress(Utility.getPublicAddress(Inet4Address.class), 0);
+		System.out.print("Connecting to " + Utility.formatAddress(serverSocket) 
+			+ " from " + Utility.formatAddress(localSocket) + "... ");
+		client = UpdateClient.startConnection(localSocket, serverSocket);
+		updates.add(client::update); //add client updates to the game loop
+		updates.add(StartClient::setupPart1);
+		
+		//program loop
+		while(!updates.isEmpty()) {
+			currentTasks = updates.listIterator();
+			while(currentTasks.hasNext()) {
+				currentTasks.next().run();
+			}	
+		}
+	}
+	
+	private static void endTask() {
+		currentTasks.remove();
+	}
+	
+	private static void replaceTask(GameTask task) {
+		endTask();
+		newTask(task);
+	}
+	
+	private static void newTask(GameTask task) {
+		currentTasks.add(task);
+	}
+	
+	private static void setupPart1() throws IOException {
+		if(client.getStatus() == UpdateClient.Status.CONNECTED) {
+			System.out.println("connected.");
+			audio = setupAudio();
+			display = setupGLFW();
+			input = display.getEventDelegator();
 
-		try {
-			InetSocketAddress serverSocket = 
-					Utility.getAddressOrDefault(args, 0, InetAddress.getLocalHost(), Protocol.DEFAULT_SERVER_UDP_PORT);
-			InetSocketAddress localSocket = new InetSocketAddress(Utility.getPublicAddress(Inet4Address.class), 0);
-
-			System.out.print("Connecting to " + Utility.formatAddress(serverSocket) 
-				+ " from " + Utility.formatAddress(localSocket) + "... ");
-			UpdateClient client = UpdateClient.startConnection(localSocket, serverSocket);
-
-			while(client.isConnecting()) { //run until connected
-				client.update();
-				if(client.isConnected()) {
-					System.out.println("connected.");
-					AudioSystem audio = setupAudio();
-					Display display = setupGLFW();
-					EventDelegator input = display.getEventDelegator();
-
-					//mute audio when window is in background
-					input.windowFocusHandlers().add(focused -> audio.setVolume(focused ? 1.0f : 0.0f));
-					input.windowCloseHandlers().add(() -> exit = true);
-					input.keyboardHandlers().add((key, scancode, action, mods) -> {
-						if(action == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
-							switch(key) {
-							case ControlScheme.KEYBIND_QUIT:
-								exit = true;
-								break;
-							case ControlScheme.KEYBIND_FULLSCREEN:
-								display.toggleFullscreen();
-								break;
-							}
-						}
-					});
-
-					Camera camera = new Camera(0, 0, 1);
-					
-					while(client.getPlayer() == null || client.getWorld() == null) {
-						client.update();
-					}
-
-					var player = client.getPlayer();
-					var cameraGrip = new TrackingCameraController(camera, audio, player, 2.5f, 0.05f, 0.6f);
-					cameraGrip.link(input);
-
-					var playerController = new PlayerController(client);
-					playerController.link(input);
-
-					var interactionController = new InteractionController(client, Protocol.BLOCK_BREAK_RANGE);
-					interactionController.link(input);
-
-					var world = client.getWorld();
-					var renderer = setupRenderer(display, world, cameraGrip);
-
-					//display the window now that everything is set up.
-					display.show();
-					
-					long lastWorldUpdate = System.nanoTime();
-					long lastCameraUpdateTime = System.nanoTime();
-					try {
-						while(!exit && client.isConnected()) {
-							glfwPollEvents(); //process input/windowing events
-							client.update();
-							lastWorldUpdate = updateWorld(display, world, lastWorldUpdate); //simulate world on client
-							long camUpdateStart = System.nanoTime();
-							cameraGrip.update(camUpdateStart - lastCameraUpdateTime); //update camera position and zoom
-							lastCameraUpdateTime = camUpdateStart;
-							interactionController.update(camera, client, world, player, display.width(), display.height()); //block breaking/"bomb throwing"
-							if(display.focused()) {
-								renderer.run(display);
-							}
-							Utility.sleep(1); //reduce CPU usage
-						}
-					} catch(TimeoutException e) {
-						System.out.println("Connection timed out: " + e.getMessage());
-					} catch(IOException e) {
-						e.printStackTrace();
-					} finally {
-						System.out.print("Exiting... ");
-						renderer.close(display);
-						display.destroy();
-						if(client.isConnected()) {
-							client.startDisconnect();
-						}
-						audio.close();
-						glfwTerminate();
-						System.out.println("done!");
+			//mute audio when window is in background
+			input.windowFocusHandlers().add(focused -> audio.setVolume(focused ? 1.0f : 0.0f));
+			input.windowCloseHandlers().add(() -> newTask(StartClient::shutdown));
+			input.keyboardHandlers().add((key, scancode, action, mods) -> {
+				if(action == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
+					switch(key) {
+					case ControlScheme.KEYBIND_QUIT:
+						newTask(StartClient::shutdown);
+						break;
+					case ControlScheme.KEYBIND_FULLSCREEN:
+						display.toggleFullscreen();
+						break;
 					}
 				}
-			}
-		} catch(PortUnreachableException e) {
-			System.out.println("port unreachable.");
-		} catch(TimeoutException e) {
-			e.printStackTrace();
-		} catch(IOException e) {
-			e.printStackTrace();
+			});
+
+			camera = new Camera(0, 0, 1);
+			replaceTask(StartClient::setupPart2);
+		} else if(client.getStatus() != UpdateClient.Status.CONNECTING) {
+			endTask();
 		}
+	}
+	
+	private static void setupPart2() throws InterruptedException, IOException {
+		if(client.getWorld() != null && client.getPlayer() != null) {
+			player = client.getPlayer();
+			cameraGrip = new TrackingCameraController(camera, audio, player, 2.5f, 0.05f, 0.6f);
+			cameraGrip.link(input);
+
+			playerControls = new PlayerController(client);
+			playerControls.link(input);
+
+			interactionControls = new InteractionController(client, Protocol.BLOCK_BREAK_RANGE);
+			interactionControls.link(input);
+
+			world = client.getWorld();
+			renderer = setupRenderer(display, world, cameraGrip);
+
+			//display the window now that everything is set up.
+			display.show();
+			
+			lastWorldUpdate = System.nanoTime();
+			lastCameraUpdateTime = System.nanoTime();
+			replaceTask(StartClient::updateGame);
+		}
+	}
+	
+	private static void updateGame() throws TimeoutException, IOException {
+		if(client.getStatus() == UpdateClient.Status.CONNECTED) {
+			glfwPollEvents(); //process input/windowing events
+			client.update();
+			lastWorldUpdate = updateWorld(display, world, lastWorldUpdate); //simulate world on client
+			long camUpdateStart = System.nanoTime();
+			cameraGrip.update(camUpdateStart - lastCameraUpdateTime); //update camera position and zoom
+			lastCameraUpdateTime = camUpdateStart;
+			interactionControls.update(camera, client, world, player, display.width(), display.height()); //block breaking/"bomb throwing"
+			if(!display.minimized())
+				renderer.run(display);
+			Utility.sleep(1); //reduce CPU usage
+		} else {
+			shutdown();
+		}
+	}
+	
+	private static void shutdown() {
+		System.out.print("Exiting... ");
+		renderer.close(display);
+		display.destroy();
+		client.startDisconnect(); //TODO uhhh
+		//TODO add a task that removes all tasks
+		audio.close();
+		glfwTerminate();
+		System.out.println("done!");
 	}
 	
 	private static RenderManager setupRenderer(Display display, World world, CameraController cameraGrip) throws IOException {
@@ -160,7 +196,7 @@ public class StartClient {
 
 		long start = System.nanoTime();
 		var program = createProgramFromSource(atlas);
-		System.out.println("took " + Utility.formatTime(System.nanoTime() - start) + " to create model renderer");
+		System.out.println("Created model renderer in " + Utility.formatTime(System.nanoTime() - start) + ".");
 
 		program.register(RenderConstants.MODEL_DIRT_BLOCK, getRenderData(indices, positions, atlas, dirt));
 		program.register(RenderConstants.MODEL_GRASS_BLOCK, getRenderData(indices, positions, atlas, grass));
