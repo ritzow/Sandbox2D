@@ -40,7 +40,9 @@ import ritzow.sandbox.world.World;
 
 public class StartClient {
 	private static long UPDATE_SKIP_THRESHOLD_NANOSECONDS = Utility.millisToNanos(100);
-	private static List<GameTask> updates = new ArrayList<GameTask>();
+	private static List<GameTask> updates = new ArrayList<>();
+	private static ListIterator<GameTask> currentTasks;
+
 	private static UpdateClient client;
 	private static Display display;
 	private static AudioSystem audio;
@@ -54,45 +56,44 @@ public class StartClient {
 	private static RenderManager renderer;
 	private static long lastWorldUpdate = System.nanoTime();
 	private static long lastCameraUpdateTime = System.nanoTime();
-	private static ListIterator<GameTask> currentTasks;
-	
-	private interface GameTask {
+
+	private static interface GameTask {
 		void run() throws Exception;
 	}
 
 	public static void main(String[] args) throws Exception {
 		Thread.currentThread().setName("Game Thread");
-		InetSocketAddress serverSocket = 
+		InetSocketAddress serverSocket =
 				Utility.getAddressOrDefault(args, 0, InetAddress.getLocalHost(), Protocol.DEFAULT_SERVER_PORT_UDP);
 		var localSocket = new InetSocketAddress(Utility.getPublicAddress(Inet4Address.class), 0);
-		System.out.print("Connecting to " + Utility.formatAddress(serverSocket) 
+		System.out.print("Connecting to " + Utility.formatAddress(serverSocket)
 			+ " from " + Utility.formatAddress(localSocket) + "... ");
 		client = UpdateClient.startConnection(localSocket, serverSocket);
 		updates.add(client::update); //add client updates to the game loop
 		updates.add(StartClient::setupPart1);
-		
+
 		//program loop
 		while(!updates.isEmpty()) {
 			currentTasks = updates.listIterator();
 			while(currentTasks.hasNext()) {
 				currentTasks.next().run();
-			}	
+			}
 		}
 	}
-	
+
 	private static void endTask() {
 		currentTasks.remove();
 	}
-	
+
 	private static void replaceTask(GameTask task) {
 		endTask();
 		newTask(task);
 	}
-	
+
 	private static void newTask(GameTask task) {
 		currentTasks.add(task);
 	}
-	
+
 	private static void setupPart1() throws IOException {
 		if(client.getStatus() == UpdateClient.Status.CONNECTED) {
 			System.out.println("connected.");
@@ -122,7 +123,7 @@ public class StartClient {
 			endTask();
 		}
 	}
-	
+
 	private static void setupPart2() throws InterruptedException, IOException {
 		if(client.getWorld() != null && client.getPlayer() != null) {
 			player = client.getPlayer();
@@ -140,13 +141,13 @@ public class StartClient {
 
 			//display the window now that everything is set up.
 			display.show();
-			
+
 			lastWorldUpdate = System.nanoTime();
 			lastCameraUpdateTime = System.nanoTime();
 			replaceTask(StartClient::updateGame);
 		}
 	}
-	
+
 	private static void updateGame() throws TimeoutException, IOException {
 		if(client.getStatus() == UpdateClient.Status.CONNECTED) {
 			glfwPollEvents(); //process input/windowing events
@@ -163,7 +164,7 @@ public class StartClient {
 			shutdown();
 		}
 	}
-	
+
 	private static void shutdown() {
 		System.out.print("Exiting... ");
 		renderer.close(display);
@@ -174,7 +175,7 @@ public class StartClient {
 		glfwTerminate();
 		System.out.println("done!");
 	}
-	
+
 	private static RenderManager setupRenderer(Display display, World world, CameraController cameraGrip) throws IOException {
 		var renderer = display.getRenderManager();
 		renderer.initialize(display);
@@ -208,10 +209,10 @@ public class StartClient {
 
 		//var ui = new UserInterfaceRenderer(program);
 		//renderer.getRenderers().add(ui);
-		
+
 		return renderer;
 	}
-	
+
 //	private static ByteBuffer readIntoBuffer(Path file) throws IOException {
 //		ByteBuffer out = ByteBuffer.allocateDirect((int)Files.size(file));
 //		Files.newByteChannel(file, StandardOpenOption.READ).read(out);
@@ -226,7 +227,7 @@ public class StartClient {
 //				atlas.texture()
 //		);
 //	}
-	
+
 	private static ModelRenderProgram createProgramFromSource(TextureAtlas atlas) throws IOException {
 		return new ModelRenderProgram(
 				Shader.fromSource(Files.readString(Path.of("resources/shaders/modelVertexShader")), ShaderType.VERTEX),
