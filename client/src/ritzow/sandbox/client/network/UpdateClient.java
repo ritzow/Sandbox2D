@@ -98,68 +98,53 @@ public class UpdateClient implements GameTalker {
 		short type = data.getShort();
 		if(type == Protocol.TYPE_SERVER_CONNECT_ACKNOWLEDGMENT) {
 			processServerConnectAcknowledgement(data);
-		} else if(status == Status.CONNECTED) {
+		} else if(status != Status.CONNECTING) {
 			switch(type) {
-			case Protocol.TYPE_CONSOLE_MESSAGE:
-				System.out.println("[Server Message] " + new String(getRemainingBytes(data), Protocol.CHARSET));
-				break;
-			case Protocol.TYPE_SERVER_WORLD_DATA:
-				processReceiveWorldData(data);
-				break;
-			case Protocol.TYPE_SERVER_ENTITY_UPDATE:
-				processUpdateEntity(data);
-				break;
-			case Protocol.TYPE_SERVER_ADD_ENTITY:
-				processAddEntity(data);
-				break;
-			case Protocol.TYPE_SERVER_REMOVE_ENTITY:
-				processRemoveEntity(data);
-				break;
-			case Protocol.TYPE_SERVER_CLIENT_DISCONNECT:
-				processServerDisconnect(data);
-				break;
-			case Protocol.TYPE_SERVER_PLAYER_ID:
-				processReceivePlayerEntityID(data);
-				break;
-			case Protocol.TYPE_SERVER_REMOVE_BLOCK:
-				processServerRemoveBlock(data);
-				break;
-			case Protocol.TYPE_SERVER_PING:
-				break;
-			case Protocol.TYPE_SERVER_PLAYER_ACTION:
-				processServerPlayerAction(data);
-				break;
-			default:
-				throw new IllegalArgumentException("Client received message of unknown protocol " + type);
+				case Protocol.TYPE_CONSOLE_MESSAGE -> processServerConsoleMessage(data);
+				case Protocol.TYPE_SERVER_WORLD_DATA -> processReceiveWorldData(data);
+				case Protocol.TYPE_SERVER_ENTITY_UPDATE -> processUpdateEntity(data);
+				case Protocol.TYPE_SERVER_ADD_ENTITY -> processAddEntity(data);
+				case Protocol.TYPE_SERVER_REMOVE_ENTITY -> processRemoveEntity(data);
+				case Protocol.TYPE_SERVER_CLIENT_DISCONNECT -> processServerDisconnect(data);
+				case Protocol.TYPE_SERVER_PLAYER_ID -> processReceivePlayerEntityID(data);
+				case Protocol.TYPE_SERVER_REMOVE_BLOCK -> processServerRemoveBlock(data);
+				case Protocol.TYPE_SERVER_PLAYER_ACTION -> processServerPlayerAction(data);
+				case Protocol.TYPE_SERVER_PING -> {}
+				default -> throw new IllegalArgumentException("Client received message of unknown protocol " + type);
 			}
 		} else {
 			throw new IllegalStateException("Received non-TYPE_SERVER_CONNECT_ACKNOWLEDGMENT message before connecting to server");
 		}
 	}
+	
+	private static void processServerConsoleMessage(ByteBuffer data) {
+		System.out.println("[Server Message] " + new String(getRemainingBytes(data), Protocol.CHARSET));
+	}
 
 	private void processServerConnectAcknowledgement(ByteBuffer data) {
 		byte response = data.get();
 		switch(response) {
-		case Protocol.CONNECT_STATUS_REJECTED:
-			status = Status.REJECTED;
+			case Protocol.CONNECT_STATUS_REJECTED -> {
+				status = Status.REJECTED;
 				try {
 					channel.close();
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-			break;
-		case Protocol.CONNECT_STATUS_WORLD:
-			status = Status.CONNECTED;
-			var state = new WorldState();
-			int remaining = data.getInt();
-			state.worldBytesRemaining = remaining;
-			state.worldData = new byte[remaining];
-			this.worldState = state;
-			break;
-		case Protocol.CONNECT_STATUS_LOBBY:
-			throw new UnsupportedOperationException("CONNECT_STATUS_LOBBY not supported");
-		default:
-			throw new RuntimeException("unknown connect ack type " + response);
+			}
+			
+			case Protocol.CONNECT_STATUS_WORLD -> {
+				status = Status.CONNECTED;
+				var state = new WorldState();
+				int remaining = data.getInt();
+				state.worldBytesRemaining = remaining;
+				state.worldData = new byte[remaining];
+				this.worldState = state;
+			}
+			
+			case Protocol.CONNECT_STATUS_LOBBY -> 
+				throw new UnsupportedOperationException("CONNECT_STATUS_LOBBY not supported");
+			default -> throw new RuntimeException("unknown connect ack type " + response);
 		}
 	}
 
@@ -417,24 +402,29 @@ public class UpdateClient implements GameTalker {
 			byte type = buffer.get(); //type of message (RESPONSE, RELIABLE, UNRELIABLE)
 			int messageID = buffer.getInt(); //received ID or messageID for ack.
 			switch(type) {
-			case Protocol.RESPONSE_TYPE:
-				if(sendReliableID == messageID) {
-					resetSendReliable();
-				} break; //else drop the response
-			case Protocol.RELIABLE_TYPE:
-				if(messageID == receiveReliableID) {
-					//if the message is the next one, process it and update last message
-					sendResponse(responseBuffer, messageID);
-					receiveReliableID++;
-					process(buffer);
-				} else if(messageID < receiveReliableID) { //message already received
-					sendResponse(responseBuffer, messageID);
-				} break; //else: message received too early
-			case Protocol.UNRELIABLE_TYPE:
-				if(messageID >= receiveUnreliableID) {
-					receiveUnreliableID = messageID + 1;
-					process(buffer);
-				} break; //else: message is outdated
+				case Protocol.RESPONSE_TYPE -> {
+					if(sendReliableID == messageID) {
+						resetSendReliable();
+					} //else drop the response	
+				}
+				
+				case Protocol.RELIABLE_TYPE -> {
+					if(messageID == receiveReliableID) {
+						//if the message is the next one, process it and update last message
+						sendResponse(responseBuffer, messageID);
+						receiveReliableID++;
+						process(buffer);
+					} else if(messageID < receiveReliableID) { //message already received
+						sendResponse(responseBuffer, messageID);
+					} //else: message received too early	
+				}
+				
+				case Protocol.UNRELIABLE_TYPE -> {
+					if(messageID >= receiveUnreliableID) {
+						receiveUnreliableID = messageID + 1;
+						process(buffer);
+					} //else: message is outdated	
+				}
 			}
 		}
 		buffer.clear(); //clear to prepare for next receive
