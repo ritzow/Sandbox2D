@@ -6,14 +6,6 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Queue;
-import java.util.Scanner;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
-
 import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.server.network.GameServer;
@@ -27,8 +19,6 @@ public final class StartServer {
 	private static GameServer server;
 	private static volatile boolean save = true;
 	private static final Path saveFile = Path.of("data/worlds/world.dat");
-	private static final Map<String, Consumer<String>> commands = new HashMap<>();
-	private static final Queue<Runnable> commandQueue = new ConcurrentLinkedQueue<>();
 
 	public static void main(String[] args) throws IOException {
 		Thread.currentThread().setName("Server Main");
@@ -45,7 +35,9 @@ public final class StartServer {
 			System.out.println("took " + Utility.formatTime(Utility.nanosSince(time)) + ".");
 			server.setCurrentWorld(world);
 
-			new Thread(StartServer::runCommandParser, "Command Parser").start();
+			CommandParser parser = new CommandParser();
+			registerCommands(parser);
+			new Thread(parser::run, "Command Parser").start();
 
 			long lastWorldUpdateTime = System.nanoTime();
 			while(server.isOpen()) {
@@ -53,9 +45,7 @@ public final class StartServer {
 				lastWorldUpdateTime = Utility.updateWorld(world, lastWorldUpdateTime,
 						Protocol.MAX_UPDATE_TIMESTEP, Protocol.TIME_SCALE_NANOSECONDS);
 				server.updateClients();
-				while(!commandQueue.isEmpty()) {
-					commandQueue.remove().run();
-				}
+				parser.update();
 				Utility.sleep(1);
 			}
 
@@ -106,13 +96,13 @@ public final class StartServer {
 		return world;
 	}
 
-	private static void registerCommands() {
-		register("stop", 	StartServer::stopCommand);
-		register("abort", 	StartServer::abortCommand);
-		register("list", 	StartServer::listCommmand);
-		register("say", 	StartServer::sayCommand);
-		register("reset", 	StartServer::resetCommand);
-		register("debug",	StartServer::debugCommand);
+	private static void registerCommands(CommandParser runner) {
+		runner.register("stop", 	StartServer::stopCommand);
+		runner.register("abort", 	StartServer::abortCommand);
+		runner.register("list", 	StartServer::listCommmand);
+		runner.register("say", 		StartServer::sayCommand);
+		runner.register("reset", 	StartServer::resetCommand);
+		runner.register("debug",	StartServer::debugCommand);
 	}
 
 	private static void debugCommand(String args) {
@@ -161,30 +151,5 @@ public final class StartServer {
 				System.out.println(Utility.formatAddress(address));
 			}
 		}
-	}
-
-	private static void unknownCommand(String args) {
-		System.out.println("Unknown command.");
-	}
-
-	private static void register(String name, Consumer<String> action) {
-		if(commands.putIfAbsent(name, action) != null)
-			throw new IllegalArgumentException(name + " already registered");
-	}
-
-	private static void runCommandParser() { //TODO fix command parser thread staying alive after server exit
-		registerCommands();
-		System.out.println("Enter commands (" + commands.keySet().stream().collect(Collectors.joining(", ")) + "): ");
-		try(var scan = new Scanner(System.in)) {
-			while(server.isOpen()) {
-				var command = getCommand(scan.next().toLowerCase());
-				String args = scan.nextLine().stripLeading();
-				commandQueue.add(() -> command.accept(args));
-			}
-		}
-	}
-
-	private static Consumer<String> getCommand(String name) {
-		return commands.getOrDefault(name, StartServer::unknownCommand);
 	}
 }
