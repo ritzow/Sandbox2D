@@ -9,11 +9,10 @@ import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.ListIterator;
+import java.nio.file.StandardOpenOption;
 import java.util.Map;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import ritzow.sandbox.client.audio.AudioSystem;
@@ -39,10 +38,6 @@ import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.World;
 
 public class StartClient {
-	private static long UPDATE_SKIP_THRESHOLD_NANOSECONDS = Utility.millisToNanos(100);
-	private static List<GameTask> updates = new ArrayList<>();
-	private static ListIterator<GameTask> currentTasks;
-
 	private static UpdateClient client;
 	private static Display display;
 	private static AudioSystem audio;
@@ -54,12 +49,8 @@ public class StartClient {
 	private static PlayerController playerControls;
 	private static InteractionController interactionControls;
 	private static RenderManager renderer;
-	private static long lastWorldUpdate = System.nanoTime();
-	private static long lastCameraUpdateTime = System.nanoTime();
-
-	private static interface GameTask {
-		void run() throws Exception;
-	}
+	
+	private static final boolean USE_OPENGL_4_6 = false;
 
 	public static void main(String[] args) throws Exception {
 		Thread.currentThread().setName("Game Thread");
@@ -69,29 +60,9 @@ public class StartClient {
 		System.out.print("Connecting to " + Utility.formatAddress(serverSocket)
 			+ " from " + Utility.formatAddress(localSocket) + "... ");
 		client = UpdateClient.startConnection(localSocket, serverSocket);
-		updates.add(client::update); //add client updates to the game loop
-		updates.add(StartClient::setupPart1);
-
-		//program loop
-		while(!updates.isEmpty()) {
-			currentTasks = updates.listIterator();
-			while(currentTasks.hasNext()) {
-				currentTasks.next().run();
-			}
-		}
-	}
-
-	private static void endTask() {
-		currentTasks.remove();
-	}
-
-	private static void replaceTask(GameTask task) {
-		endTask();
-		newTask(task);
-	}
-
-	private static void newTask(GameTask task) {
-		currentTasks.add(task);
+		GameLoop.addTask(client::update); //add client updates to the game loop
+		GameLoop.addTask(StartClient::setupPart1);
+		GameLoop.run();
 	}
 
 	private static void setupPart1() throws IOException {
@@ -103,12 +74,12 @@ public class StartClient {
 
 			//mute audio when window is in background
 			input.windowFocusHandlers().add(focused -> audio.setVolume(focused ? 1.0f : 0.0f));
-			input.windowCloseHandlers().add(() -> newTask(StartClient::shutdown));
+			input.windowCloseHandlers().add(() -> GameLoop.spawnTask(StartClient::shutdown));
 			input.keyboardHandlers().add((key, scancode, action, mods) -> {
 				if(action == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
 					switch(key) {
 					case ControlScheme.KEYBIND_QUIT:
-						newTask(StartClient::shutdown);
+						GameLoop.spawnTask(StartClient::shutdown);
 						break;
 					case ControlScheme.KEYBIND_FULLSCREEN:
 						display.toggleFullscreen();
@@ -118,11 +89,15 @@ public class StartClient {
 			});
 
 			camera = new Camera(0, 0, 1);
-			replaceTask(StartClient::setupPart2);
+			GameLoop.replaceTask(StartClient::setupPart2);
 		} else if(client.getStatus() != UpdateClient.Status.CONNECTING) {
-			endTask();
+			GameLoop.endTask();
 		}
 	}
+	
+	private static long UPDATE_SKIP_THRESHOLD_NANOSECONDS = Utility.millisToNanos(100);
+	private static long lastWorldUpdate;
+	private static long lastCameraUpdateTime;
 
 	private static void setupPart2() throws InterruptedException, IOException {
 		if(client.getWorld() != null && client.getPlayer() != null) {
@@ -144,7 +119,7 @@ public class StartClient {
 
 			lastWorldUpdate = System.nanoTime();
 			lastCameraUpdateTime = System.nanoTime();
-			replaceTask(StartClient::updateGame);
+			GameLoop.replaceTask(StartClient::updateGame);
 		}
 	}
 
@@ -167,10 +142,10 @@ public class StartClient {
 
 	private static void shutdown() {
 		System.out.print("Exiting... ");
-		renderer.close(display);
-		display.destroy();
 		client.startDisconnect(); //TODO uhhh
 		//TODO add a task that removes all tasks
+		renderer.close(display);
+		display.destroy();
 		audio.close();
 		glfwTerminate();
 		System.out.println("done!");
@@ -196,7 +171,7 @@ public class StartClient {
 		TextureAtlas atlas = Textures.buildAtlas(grass, dirt, face, red);
 
 		long start = System.nanoTime();
-		var program = createProgramFromSource(atlas);
+		var program = USE_OPENGL_4_6 ? createProgramFromSPIRV(atlas) : createProgramFromSource(atlas);
 		System.out.println("Created model renderer in " + Utility.formatTime(System.nanoTime() - start) + ".");
 
 		program.register(RenderConstants.MODEL_DIRT_BLOCK, getRenderData(indices, positions, atlas, dirt));
@@ -213,20 +188,21 @@ public class StartClient {
 		return renderer;
 	}
 
-//	private static ByteBuffer readIntoBuffer(Path file) throws IOException {
-//		ByteBuffer out = ByteBuffer.allocateDirect((int)Files.size(file));
-//		Files.newByteChannel(file, StandardOpenOption.READ).read(out);
-//		out.flip();
-//		return out;
-//	}
+	private static ByteBuffer readIntoBuffer(Path file) throws IOException {
+		ByteBuffer out = ByteBuffer.allocateDirect((int)Files.size(file));
+		try(var channel = Files.newByteChannel(file, StandardOpenOption.READ)) {
+			channel.read(out);
+		}
+		return out.flip();
+	}
 
-//	private static ModelRenderProgram createProgramFromSPIRV(TextureAtlas atlas) throws IOException {
-//		return new ModelRenderProgram(
-//				Shader.fromSPIRV(readIntoBuffer(Path.of("resources/shaders/modelVertexShader.spv")), ShaderType.VERTEX),
-//				Shader.fromSPIRV(readIntoBuffer(Path.of("resources/shaders/modelFragmentShader.spv")), ShaderType.FRAGMENT),
-//				atlas.texture()
-//		);
-//	}
+	private static ModelRenderProgram createProgramFromSPIRV(TextureAtlas atlas) throws IOException {
+		return new ModelRenderProgram(
+				Shader.fromSPIRV(readIntoBuffer(Path.of("resources/shaders/modelVertexShader.spv")), ShaderType.VERTEX),
+				Shader.fromSPIRV(readIntoBuffer(Path.of("resources/shaders/modelFragmentShader.spv")), ShaderType.FRAGMENT),
+				atlas.texture()
+		);
+	}
 
 	private static ModelRenderProgram createProgramFromSource(TextureAtlas atlas) throws IOException {
 		return new ModelRenderProgram(
@@ -235,7 +211,7 @@ public class StartClient {
 				atlas.texture()
 		);
 	}
-
+	
 	private static long updateWorld(Display display, World world, long lastWorldUpdate) {
 		long time = System.nanoTime();
 
