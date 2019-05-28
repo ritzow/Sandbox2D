@@ -101,20 +101,21 @@ public abstract class PlayerEntity extends Entity implements Living {
 
 	public void processAction(PlayerAction action) {
 		switch(action) {
-		case MOVE_LEFT_START: 	left = true; break;
-		case MOVE_LEFT_STOP: 	left = false; break;
-		case MOVE_RIGHT_START: 	right = true; break;
-		case MOVE_RIGHT_STOP: 	right = false; break;
-		case MOVE_UP_START: 	up = true; break;
-		case MOVE_UP_STOP: 		up = false; break;
-		case MOVE_DOWN_START:
-			down = true;
-			positionY -= SIZE_SCALE/2;
-			break;
-		case MOVE_DOWN_STOP:
-			down = false;
-			positionY += SIZE_SCALE/2;
-			break;
+			case MOVE_LEFT_START ->	left = true;
+			case MOVE_LEFT_STOP ->	left = false;
+			case MOVE_RIGHT_START -> right = true;
+			case MOVE_RIGHT_STOP -> right = false;
+			case MOVE_UP_START -> up = true;
+			case MOVE_UP_STOP ->	up = false;
+			case MOVE_DOWN_START -> {
+				down = true;
+				positionY -= SIZE_SCALE/2;
+			}
+			
+			case MOVE_DOWN_STOP -> {
+				down = false;
+				positionY += SIZE_SCALE/2;			
+			}
 		}
 	}
 
