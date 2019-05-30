@@ -1,9 +1,26 @@
 package ritzow.sandbox.client.util;
 
+import de.matthiasmann.twl.utils.PNGDecoder;
+import de.matthiasmann.twl.utils.PNGDecoder.Format;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import org.lwjgl.BufferUtils;
+import org.lwjgl.glfw.GLFWImage;
 import ritzow.sandbox.client.graphics.Camera;
 import ritzow.sandbox.util.Utility;
 
 public class ClientUtility {
+	
+	public static GLFWImage loadGlfwImage(Path file) throws IOException {
+		PNGDecoder decoder = new PNGDecoder(Files.newInputStream(file));
+		ByteBuffer pixels = BufferUtils.createByteBuffer(decoder.getWidth() * decoder.getHeight() * 4);
+		decoder.decode(pixels, decoder.getWidth() * 4, Format.RGBA);
+		pixels.flip();
+		return GLFWImage.create().set(decoder.getWidth(), decoder.getHeight(), pixels);
+	}
+	
 	public static float pixelHorizontalToWorld(Camera camera, int mouseX, int frameWidth, int frameHeight) {
 		float worldX = (2f * mouseX) / frameWidth - 1f; //normalize the mouse coordinate
 		worldX /= frameHeight/(float)frameWidth; 		//apply aspect ratio
