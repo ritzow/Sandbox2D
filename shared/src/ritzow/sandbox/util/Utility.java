@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
 
@@ -20,6 +21,14 @@ import ritzow.sandbox.world.World;
 public final class Utility {
 	private Utility() {
 		throw new UnsupportedOperationException("Utility class cannot be instantiated");
+	}
+	
+	public static boolean sendIntervalElapsed(long startTime, int attempts) {
+		return System.nanoTime() >= startTime + attempts * Utility.millisToNanos(Protocol.RESEND_INTERVAL);
+	}
+	
+	public static int splitQuantity(int bucketSize, int itemCount) {
+		return itemCount/bucketSize + itemCount%bucketSize;
 	}
 
 	public static String formatAddress(InetSocketAddress address) {

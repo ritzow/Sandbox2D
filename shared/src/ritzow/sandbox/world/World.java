@@ -194,6 +194,10 @@ public class World implements Transportable, Iterable<Entity> {
 				it.remove();
 		}
 	}
+	
+	public int entities() {
+		return entities.size();
+	}
 
 	public boolean contains(Entity e) {
 		return entities.contains(e);
