@@ -146,9 +146,9 @@ public final class StartServer {
 			System.out.println("No connected clients.");
 		} else {
 			System.out.println("Connected clients:");
-			for(var address : server.listClients()) {
+			for(var string : server.listClients()) {
 				System.out.print("    - ");
-				System.out.println(Utility.formatAddress(address));
+				System.out.println(string);
 			}
 		}
 	}
