@@ -52,6 +52,10 @@ public final class Display {
 	public void enableCursor(boolean enabled) {
 		glfwSetInputMode(displayID, GLFW_CURSOR, enabled ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
 	}
+	
+	public void resetCursor() {
+		setCursor(0);
+	}
 
 	public void setCursor(long cursor) {
 		glfwSetCursor(displayID, cursor);
@@ -60,6 +64,10 @@ public final class Display {
 	/** Call from OpenGL thread **/
 	public void setGraphicsContextOnThread() {
 		glfwMakeContextCurrent(displayID);
+	}
+	
+	public boolean wasClosed() {
+		return glfwWindowShouldClose(displayID);
 	}
 
 	/** Call from OpenGL thread thread **/

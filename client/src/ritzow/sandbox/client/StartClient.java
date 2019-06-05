@@ -14,10 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Map;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import org.lwjgl.glfw.GLFWErrorCallback;
-import ritzow.sandbox.client.GameLoop.GameTask;
 import ritzow.sandbox.client.audio.AudioSystem;
 import ritzow.sandbox.client.audio.DefaultAudioSystem;
 import ritzow.sandbox.client.audio.OpenALAudioSystem;
@@ -41,67 +38,66 @@ import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.World;
 
 public class StartClient {
-	private static InetSocketAddress serverAddress;
-	private static InetSocketAddress localAddress;
-	private static UpdateClient client;
-	private static Display display;
-	private static AudioSystem audio;
-	private static EventDelegator input;
-	private static ClientPlayerEntity player;
-	private static World world;
-	private static Camera camera;
-	private static TrackingCameraController cameraGrip;
-	private static PlayerController playerControls;
-	private static InteractionController interactionControls;
-	private static RenderManager renderer;
-	private static ModelRenderProgram worldProgram;
-	private static volatile boolean connect;
-	private static long startupStart;
-	
-	private static long UPDATE_SKIP_THRESHOLD_NANOSECONDS = Utility.millisToNanos(100);
-	private static long lastWorldUpdate;
-	private static long lastCameraUpdateTime;
-	
-	private static final Queue<GameTask> concurrentEvents = new ConcurrentLinkedQueue<>();
-	
+	private static final long UPDATE_SKIP_THRESHOLD_NANOSECONDS = Utility.millisToNanos(100);
 	private static final boolean USE_OPENGL_4_6 = false;
 
+	private static Display display;
+	private static long pickaxeCursor;
+	private static EventDelegator input;
+	private static AudioSystem audio;
+	private static RenderManager renderer;
+	private static ModelRenderProgram worldProgram;
+	private static InetSocketAddress serverAddress;
+	private static InetSocketAddress localAddress;
+	private static GameState state;
+	
 	public static void main(String[] args) throws Exception {
-		startupStart = System.nanoTime();
+		Thread.currentThread().setName("Game Thread");
 		serverAddress =	Utility.getAddressOrDefault(args, 0, InetAddress.getLocalHost(), Protocol.DEFAULT_SERVER_PORT_UDP);
 		localAddress = new InetSocketAddress(Utility.getPublicAddress(Inet4Address.class), 0);
-		Thread.currentThread().setName("Game Thread");
 		setupInitial();
-		GameLoop.run(StartClient::menuLoop, StartClient::runConcurrentEvents);
+		GameLoop.run(StartClient::menuLoop);
 		System.out.println("done!");
 	}
 	
-	private static void runConcurrentEvents() throws Exception {
-		while(!concurrentEvents.isEmpty()) {
-			concurrentEvents.poll().run();
-		}
+	private static class GameState {
+		private UpdateClient client;
+		private ClientPlayerEntity player;
+		private World world;
+		private Camera camera;
+		private TrackingCameraController cameraGrip;
+		private PlayerController playerControls;
+		private InteractionController interactionControls;
+		private long lastWorldUpdate;
+		private long lastCameraUpdateTime;
 	}
 	
 	private static void menuLoop() {
-		glfwPollEvents(); //process input/windowing events
+		renderer.run(display);
 		Utility.sleep(1); //reduce CPU usage
+		glfwPollEvents(); //process input/windowing events
 	}
 	
 	private static void connect() throws NumberFormatException, IOException {
 		System.out.print("Connecting to " + Utility.formatAddress(serverAddress)
 		+ " from " + Utility.formatAddress(localAddress) + "... ");
-		client = UpdateClient.startConnection(localAddress, serverAddress);
-		//client.setEventListener(ClientEvent.CONNECT_ACCEPTED, StartClient::onAccepted);
-		client.setEventListener(ClientEvent.CONNECT__REJECTED, StartClient::onRejected);
-		client.setEventListener(ClientEvent.DISCONNECTED, StartClient::onDisconnected);
-		client.setEventListener(ClientEvent.WORLD_JOIN, StartClient::setupGameWorld);
-		GameLoop.set(client::update, StartClient::runConcurrentEvents);
+		state = new GameState();
+		state.client = UpdateClient.startConnection(localAddress, serverAddress);
+		state.client.setEventListener(ClientEvent.CONNECT_ACCEPTED, StartClient::onAccepted);
+		state.client.setEventListener(ClientEvent.CONNECT__REJECTED, StartClient::onRejected);
+		state.client.setEventListener(ClientEvent.DISCONNECTED, StartClient::onDisconnected);
+		state.client.setEventListener(ClientEvent.WORLD_JOIN, StartClient::setupGameWorld);
+		GameLoop.set(state.client::update);
+	}
+	
+	private static void onAccepted() {
+		System.out.println("connected.");
 	}
 	
 	private static void onRejected() {
 		GameLoop.set();
 		try {
-			client.close();
+			state.client.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -109,12 +105,26 @@ public class StartClient {
 	
 	private static void onDisconnected() {
 		try {
-			client.close();
+			state.client.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		
+		if(display.wasClosed()) {
+			exit();
+		} else {
+			state = null;
+			display.resetCursor();
+			renderer.getRenderers().clear();
+			renderer.getRenderers().add(new MenuRenderer(worldProgram));
+			GameLoop.set(StartClient::menuLoop);	
+		}
+	}
+	
+	private static void exit() {
 		GameLoop.set(); //stop the game loop now that the client is closed
 		System.out.print("Exiting... ");
+		worldProgram.delete();
 		renderer.close(display);
 		display.destroy();
 		audio.close();
@@ -122,21 +132,16 @@ public class StartClient {
 	}
 	
 	private static void onConcurrentExit() {
-		concurrentEvents.add(() -> {
-			if(client == null) {
-				System.out.print("Exiting... ");
-				GameLoop.set();
-				display.destroy();
-				glfwTerminate();
-				audio.close();
-			} else {
-				GameLoop.set(client::update);
-				client.startDisconnect();
-			}
-		});
+		if(state == null) {
+			exit();
+		} else {
+			GameLoop.set(state.client::update);
+			state.client.startDisconnect();
+		}
 	}
 	
 	private static void setupInitial() throws IOException {
+		long startupStart = System.nanoTime();
 		audio = setupAudio();
 		display = setupGLFW();
 		input = display.getEventDelegator();
@@ -144,14 +149,17 @@ public class StartClient {
 
 		//mute audio when window is in background
 		input.windowFocusHandlers().add(focused -> audio.setVolume(focused ? 1.0f : 0.0f));
-		input.windowCloseHandlers().add(StartClient::onConcurrentExit); //TODO make this work pre-connect too
+		input.windowCloseHandlers().add(StartClient::onConcurrentExit);
 		input.keyboardHandlers().add((key, scancode, action, mods) -> {
 			if(action == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
 				switch(key) {
 					case ControlScheme.KEYBIND_CONNECT -> {
-						if(!connect) {
-							concurrentEvents.add(StartClient::connect);
-							connect = true;
+						if(state == null) {
+							try {
+								connect();
+							} catch (NumberFormatException | IOException e) {
+								e.printStackTrace();
+							}
 						}
 					}
 					case ControlScheme.KEYBIND_QUIT -> StartClient.onConcurrentExit();
@@ -160,40 +168,39 @@ public class StartClient {
 			}
 		});
 		
+		renderer.getRenderers().add(new MenuRenderer(worldProgram));
+		
 		//display the window now that everything is set up.
 		display.show();
 		System.out.println("Startup took " + Utility.formatTime(Utility.nanosSince(startupStart)));
 	}
 
 	private static void setupGameWorld(World world, ClientPlayerEntity player) {
-		StartClient.world = world;
-		StartClient.player = player;
+		state.world = world;
+		state.player = player;
 		
-		camera = new Camera(0, 0, 1);
-		cameraGrip = new TrackingCameraController(camera, audio, player, 2.5f, 0.05f, 0.6f);
-		cameraGrip.link(input);
-
-		playerControls = new PlayerController(client);
-		playerControls.link(input);
-
-		interactionControls = new InteractionController(client, Protocol.BLOCK_BREAK_RANGE);
-		interactionControls.link(input);
-
-		renderer.getRenderers().add(new ClientWorldRenderer(worldProgram, cameraGrip.getCamera(), world));
-		lastWorldUpdate = System.nanoTime();
-		lastCameraUpdateTime = System.nanoTime();
-		display.enableCursor(true);
-		GameLoop.set(StartClient::updateGame, StartClient::runConcurrentEvents);
+		state.camera = new Camera(0, 0, 1);
+		state.cameraGrip = new TrackingCameraController(state.camera, audio, player, 2.5f, 0.05f, 0.6f);
+		state.cameraGrip.link(input);
+		state.playerControls = new PlayerController(state.client);
+		state.playerControls.link(input);
+		state.interactionControls = new InteractionController(state.client, Protocol.BLOCK_BREAK_RANGE);
+		state.interactionControls.link(input);
+		renderer.getRenderers().add(new ClientWorldRenderer(worldProgram, state.cameraGrip.getCamera(), world));
+		state.lastWorldUpdate = System.nanoTime();
+		state.lastCameraUpdateTime = System.nanoTime();
+		display.setCursor(pickaxeCursor);
+		GameLoop.set(StartClient::updateGame);
 	}
 
 	private static void updateGame() throws TimeoutException, IOException {
 		glfwPollEvents(); //process input/windowing events
-		client.update();
-		lastWorldUpdate = updateWorld(display, world, lastWorldUpdate); //simulate world on client
+		state.client.update();
+		state.lastWorldUpdate = updateWorld(display, state.world, state.lastWorldUpdate); //simulate world on client
 		long camUpdateStart = System.nanoTime();
-		cameraGrip.update(camUpdateStart - lastCameraUpdateTime); //update camera position and zoom
-		lastCameraUpdateTime = camUpdateStart;
-		interactionControls.update(camera, client, world, player, display.width(), display.height()); //block breaking/"bomb throwing"
+		state.cameraGrip.update(camUpdateStart - state.lastCameraUpdateTime); //update camera position and zoom
+		state.lastCameraUpdateTime = camUpdateStart;
+		state.interactionControls.update(state.camera, state.client, state.world, state.player, display.width(), display.height()); //block breaking/"bomb throwing"
 		if(!display.minimized())
 			renderer.run(display);
 		Utility.sleep(1); //reduce CPU usage
@@ -274,8 +281,7 @@ public class StartClient {
 		glfwSetErrorCallback(GLFWErrorCallback.createPrint(System.err));
 		Display display = new Display("Sandbox2D", 4, 5);
 		var cursor = ClientUtility.loadGlfwImage(Path.of("resources/assets/textures/cursors/pickaxe32.png"));
-		display.setCursor(ClientUtility.loadGlfwCursor(cursor, 0, 0.66f));
-		display.enableCursor(false);
+		pickaxeCursor = ClientUtility.loadGlfwCursor(cursor, 0, 0.66f);
 		display.setIcons(ClientUtility.loadGlfwImage(Path.of("resources/assets/textures/redSquare.png")));
 		return display;
 	}
