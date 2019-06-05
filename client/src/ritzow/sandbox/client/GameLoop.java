@@ -2,39 +2,41 @@ package ritzow.sandbox.client;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.ListIterator;
 
 public class GameLoop {
-	private static List<GameTask> updates = new ArrayList<>();
-	private static ListIterator<GameTask> currentTasks;
+	private static final List<GameTask> updates = new ArrayList<>();
+	private static int index;
 	
 	public static interface GameTask {
 		void run() throws Exception;
 	}
 	
-	public static void run() throws Exception {
+	public static void print() {
+		for(int i = 0; i < updates.size(); i++) {
+			System.out.print(updates.get(i));
+			if(i == index)
+				System.out.print("<-- current");
+			System.out.println();
+		}
+	}
+	
+	public static void run(GameTask... initial) throws Exception {
+		for(var task : initial) {
+			updates.add(task);
+		}
+		
 		while(!updates.isEmpty()) {
-			currentTasks = updates.listIterator();
-			while(currentTasks.hasNext()) {
-				currentTasks.next().run();
+			for(index = 0; index < updates.size(); index++) {
+				updates.get(index).run();
 			}
 		}
 	}
 	
-	public static void addTask(GameTask task) {
-		updates.add(task);
-	}
-	
-	public static void endTask() {
-		currentTasks.remove();
-	}
-
-	public static void replaceTask(GameTask task) {
-		endTask();
-		spawnTask(task);
-	}
-
-	public static void spawnTask(GameTask task) {
-		currentTasks.add(task);
+	public static void set(GameTask... tasks) {
+		index = 0;
+		updates.clear();
+		for(var task : tasks) {
+			updates.add(task);
+		}
 	}
 }

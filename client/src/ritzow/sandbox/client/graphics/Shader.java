@@ -52,7 +52,6 @@ public class Shader {
 		shaderID = glCreateShader(type.glType);
 		glShaderSource(shaderID, programSource);
 		glCompileShader(shaderID);
-
 		GraphicsUtility.checkShaderCompilation(this);
 	}
 

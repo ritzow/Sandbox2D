@@ -1,5 +1,7 @@
 package ritzow.sandbox.client.util;
 
+import static org.lwjgl.glfw.GLFW.glfwCreateCursor;
+
 import de.matthiasmann.twl.utils.PNGDecoder;
 import de.matthiasmann.twl.utils.PNGDecoder.Format;
 import java.io.IOException;
@@ -12,6 +14,10 @@ import ritzow.sandbox.client.graphics.Camera;
 import ritzow.sandbox.util.Utility;
 
 public class ClientUtility {
+	
+	public static long loadGlfwCursor(GLFWImage image, float ratioX, float ratioY) {
+		return glfwCreateCursor(image, (int)(image.width() * ratioX), (int)(image.height() * ratioY));
+	}
 	
 	public static GLFWImage loadGlfwImage(Path file) throws IOException {
 		PNGDecoder decoder = new PNGDecoder(Files.newInputStream(file));

@@ -10,9 +10,17 @@ import static org.lwjgl.glfw.GLFW.glfwSetWindowFocusCallback;
 import static org.lwjgl.glfw.GLFW.glfwSetWindowIconifyCallback;
 import static org.lwjgl.glfw.GLFW.glfwSetWindowRefreshCallback;
 
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.LinkedList;
-import ritzow.sandbox.client.input.handler.*;
+import ritzow.sandbox.client.input.handler.CursorPosHandler;
+import ritzow.sandbox.client.input.handler.FramebufferSizeHandler;
+import ritzow.sandbox.client.input.handler.KeyHandler;
+import ritzow.sandbox.client.input.handler.MouseButtonHandler;
+import ritzow.sandbox.client.input.handler.ScrollHandler;
+import ritzow.sandbox.client.input.handler.WindowCloseHandler;
+import ritzow.sandbox.client.input.handler.WindowFocusHandler;
+import ritzow.sandbox.client.input.handler.WindowIconifyHandler;
+import ritzow.sandbox.client.input.handler.WindowRefreshHandler;
 
 /** Dispatches GLFW events to handlers in an object oriented fashion **/
 public final class EventDelegator {
@@ -72,15 +80,15 @@ public final class EventDelegator {
 		});
 	}
 	
-	private final Collection<CursorPosHandler> cursorPosHandlers = 				new LinkedList<>();
-	private final Collection<FramebufferSizeHandler> framebufferSizeHandlers = 	new LinkedList<>();
-	private final Collection<KeyHandler> keyHandlers =							new LinkedList<>();
-	private final Collection<MouseButtonHandler> mouseButtonHandlers = 			new LinkedList<>();
-	private final Collection<ScrollHandler> scrollHandlers = 					new LinkedList<>();
-	private final Collection<WindowRefreshHandler> windowRefreshHandlers = 		new LinkedList<>();
-	private final Collection<WindowCloseHandler> windowCloseHandlers = 			new LinkedList<>();
-	private final Collection<WindowIconifyHandler> windowIconifyHandlers = 		new LinkedList<>();
-	private final Collection<WindowFocusHandler> windowFocusHandlers = 			new LinkedList<>();
+	private final Collection<CursorPosHandler> cursorPosHandlers = 				new ArrayList<>();
+	private final Collection<FramebufferSizeHandler> framebufferSizeHandlers = 	new ArrayList<>();
+	private final Collection<KeyHandler> keyHandlers =							new ArrayList<>();
+	private final Collection<MouseButtonHandler> mouseButtonHandlers = 			new ArrayList<>();
+	private final Collection<ScrollHandler> scrollHandlers = 					new ArrayList<>();
+	private final Collection<WindowRefreshHandler> windowRefreshHandlers = 		new ArrayList<>();
+	private final Collection<WindowCloseHandler> windowCloseHandlers = 			new ArrayList<>();
+	private final Collection<WindowIconifyHandler> windowIconifyHandlers = 		new ArrayList<>();
+	private final Collection<WindowFocusHandler> windowFocusHandlers = 			new ArrayList<>();
 
 	public final Collection<CursorPosHandler> cursorPosHandlers() {
 		return cursorPosHandlers;

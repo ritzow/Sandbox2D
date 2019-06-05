@@ -3,6 +3,7 @@ package ritzow.sandbox.client.graphics;
 import static org.lwjgl.glfw.GLFW.*;
 
 import java.nio.IntBuffer;
+import org.lwjgl.glfw.GLFWImage;
 import org.lwjgl.system.MemoryStack;
 import ritzow.sandbox.client.input.EventDelegator;
 
@@ -35,6 +36,21 @@ public final class Display {
 
 		input = new EventDelegator(displayID);
 		render = new RenderManager(this);
+	}
+	
+	public void setIcons(GLFWImage... icons) {
+		try(MemoryStack stack = MemoryStack.stackPush()) {
+			var buffer = GLFWImage.mallocStack(icons.length, stack);
+			for(int i = 0; i < icons.length; i++) {
+				buffer.put(icons[i]);
+			}
+			buffer.flip();
+			glfwSetWindowIcon(displayID, buffer);
+		}
+	}
+	
+	public void enableCursor(boolean enabled) {
+		glfwSetInputMode(displayID, GLFW_CURSOR, enabled ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
 	}
 
 	public void setCursor(long cursor) {
@@ -97,7 +113,7 @@ public final class Display {
 	}
 
 	public int width() {
-		try(MemoryStack stack = org.lwjgl.system.MemoryStack.stackPush()) {
+		try(MemoryStack stack = MemoryStack.stackPush()) {
 			IntBuffer buffer = stack.mallocInt(1);
 			glfwGetFramebufferSize(displayID, buffer, null);
 			return buffer.get(0);
@@ -105,7 +121,7 @@ public final class Display {
 	}
 
 	public int height() {
-		try(MemoryStack stack = org.lwjgl.system.MemoryStack.stackPush()) {
+		try(MemoryStack stack = MemoryStack.stackPush()) {
 			IntBuffer buffer = stack.mallocInt(1);
 			glfwGetFramebufferSize(displayID, null, buffer);
 			return buffer.get(0);
@@ -123,7 +139,7 @@ public final class Display {
 	public void setFullscreen(boolean fullscreen) {
 		if(fullscreen) {
 			if(glfwGetWindowMonitor(displayID) == 0) { //on fullscreen, store windowed information
-				try(MemoryStack stack = org.lwjgl.system.MemoryStack.stackPush()) {
+				try(MemoryStack stack = MemoryStack.stackPush()) {
 					IntBuffer first = stack.mallocInt(1), second = stack.mallocInt(1);
 					glfwGetWindowSize(displayID, first, second);
 					windowedWidth = first.get(0);
