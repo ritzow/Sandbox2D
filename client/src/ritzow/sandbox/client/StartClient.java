@@ -9,6 +9,8 @@ import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -46,30 +48,108 @@ public class StartClient {
 	private static EventDelegator input;
 	private static AudioSystem audio;
 	private static RenderManager renderer;
-	private static ModelRenderProgram worldProgram;
+	private static ModelRenderProgram shaderProgram;
 	private static InetSocketAddress serverAddress;
 	private static InetSocketAddress localAddress;
 	private static GameState state;
 	
 	public static void main(String[] args) throws Exception {
-		Thread.currentThread().setName("Game Thread");
-		serverAddress =	Utility.getAddressOrDefault(args, 0, InetAddress.getLocalHost(), Protocol.DEFAULT_SERVER_PORT_UDP);
-		localAddress = new InetSocketAddress(Utility.getPublicAddress(Inet4Address.class), 0);
+		Thread.currentThread().setName("Game Loop");
+		setAddresses();
 		setupInitial();
 		GameLoop.run(StartClient::menuLoop);
 		System.out.println("done!");
 	}
 	
+	private static void setAddresses(String... args) throws NumberFormatException, UnknownHostException, SocketException {
+		serverAddress =	Utility.getAddressOrDefault(args, 0, InetAddress.getLocalHost(), Protocol.DEFAULT_SERVER_PORT_UDP);
+		localAddress = new InetSocketAddress(Utility.getPublicAddress(Inet4Address.class), 0);
+	}
+	
 	private static class GameState {
-		private UpdateClient client;
-		private ClientPlayerEntity player;
-		private World world;
-		private Camera camera;
-		private TrackingCameraController cameraGrip;
-		private PlayerController playerControls;
-		private InteractionController interactionControls;
-		private long lastWorldUpdate;
-		private long lastCameraUpdateTime;
+		UpdateClient client;
+		ClientPlayerEntity player;
+		World world;
+		TrackingCameraController cameraGrip;
+		PlayerController playerControls;
+		InteractionController interactionControls;
+		long lastWorldUpdate;
+		long lastCameraUpdateTime;
+		
+		void connect() throws NumberFormatException, IOException {
+			System.out.print("Connecting to " + Utility.formatAddress(serverAddress)
+			+ " from " + Utility.formatAddress(localAddress) + "... ");
+			client = UpdateClient.startConnection(localAddress, serverAddress);
+			client.setEventListener(ClientEvent.CONNECT_ACCEPTED, this::onAccepted);
+			client.setEventListener(ClientEvent.CONNECT_REJECTED, this::onRejected);
+			client.setEventListener(ClientEvent.DISCONNECTED, this::onDisconnected);
+			client.setEventListener(ClientEvent.WORLD_JOIN, this::setupGameWorld);
+			GameLoop.set(client::update);
+		}
+		
+		void setupGameWorld(World world, ClientPlayerEntity player) {
+			this.world = world;
+			this.player = player;
+			cameraGrip = new TrackingCameraController(audio, player, 2.5f, 0.05f, 0.6f);
+			cameraGrip.link(input);
+			renderer.getRenderers().add(new ClientWorldRenderer(shaderProgram, cameraGrip.getCamera(), world));
+			playerControls = new PlayerController(client);
+			playerControls.link(input);
+			interactionControls = new InteractionController(client, Protocol.BLOCK_BREAK_RANGE);
+			interactionControls.link(input);
+			lastWorldUpdate = System.nanoTime();
+			lastCameraUpdateTime = System.nanoTime();
+			display.setCursor(pickaxeCursor);
+			GameLoop.set(this::updateGame);
+		}
+		
+		void updateGame() throws TimeoutException, IOException {
+			glfwPollEvents(); //process input/windowing events
+			client.update();
+			lastWorldUpdate = updateWorld(display, world, lastWorldUpdate); //simulate world on client
+			long camUpdateStart = System.nanoTime();
+			cameraGrip.update(camUpdateStart - lastCameraUpdateTime); //update camera position and zoom
+			lastCameraUpdateTime = camUpdateStart;
+			interactionControls.update(cameraGrip.getCamera(), client, 
+					world, player, display.width(), display.height()); //block breaking/"bomb throwing"
+			if(!display.minimized()) renderer.run(display);
+			Utility.sleep(1); //reduce CPU usage
+		}
+		
+		private void onAccepted() {
+			System.out.println("connected.");
+		}
+		
+		private void onRejected() {
+			try {
+				client.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			returnToMenu();
+		}
+		
+		private void onDisconnected() {
+			try {
+				client.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			
+			if(display.wasClosed()) {
+				exit();
+			} else {
+				returnToMenu();
+			}
+		}
+	}
+	
+	private static void returnToMenu() {
+		state = null;
+		display.resetCursor();
+		renderer.getRenderers().clear();
+		renderer.getRenderers().add(new MenuRenderer(shaderProgram));
+		GameLoop.set(StartClient::menuLoop);	
 	}
 	
 	private static void menuLoop() {
@@ -78,53 +158,10 @@ public class StartClient {
 		glfwPollEvents(); //process input/windowing events
 	}
 	
-	private static void connect() throws NumberFormatException, IOException {
-		System.out.print("Connecting to " + Utility.formatAddress(serverAddress)
-		+ " from " + Utility.formatAddress(localAddress) + "... ");
-		state = new GameState();
-		state.client = UpdateClient.startConnection(localAddress, serverAddress);
-		state.client.setEventListener(ClientEvent.CONNECT_ACCEPTED, StartClient::onAccepted);
-		state.client.setEventListener(ClientEvent.CONNECT__REJECTED, StartClient::onRejected);
-		state.client.setEventListener(ClientEvent.DISCONNECTED, StartClient::onDisconnected);
-		state.client.setEventListener(ClientEvent.WORLD_JOIN, StartClient::setupGameWorld);
-		GameLoop.set(state.client::update);
-	}
-	
-	private static void onAccepted() {
-		System.out.println("connected.");
-	}
-	
-	private static void onRejected() {
-		GameLoop.set();
-		try {
-			state.client.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-	
-	private static void onDisconnected() {
-		try {
-			state.client.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		
-		if(display.wasClosed()) {
-			exit();
-		} else {
-			state = null;
-			display.resetCursor();
-			renderer.getRenderers().clear();
-			renderer.getRenderers().add(new MenuRenderer(worldProgram));
-			GameLoop.set(StartClient::menuLoop);	
-		}
-	}
-	
 	private static void exit() {
 		GameLoop.set(); //stop the game loop now that the client is closed
 		System.out.print("Exiting... ");
-		worldProgram.delete();
+		shaderProgram.delete();
 		renderer.close(display);
 		display.destroy();
 		audio.close();
@@ -145,7 +182,7 @@ public class StartClient {
 		audio = setupAudio();
 		display = setupGLFW();
 		input = display.getEventDelegator();
-		setupRenderer(display);
+		shaderProgram = setupRenderer(display);
 
 		//mute audio when window is in background
 		input.windowFocusHandlers().add(focused -> audio.setVolume(focused ? 1.0f : 0.0f));
@@ -156,7 +193,7 @@ public class StartClient {
 					case ControlScheme.KEYBIND_CONNECT -> {
 						if(state == null) {
 							try {
-								connect();
+								(state = new GameState()).connect();
 							} catch (NumberFormatException | IOException e) {
 								e.printStackTrace();
 							}
@@ -168,45 +205,14 @@ public class StartClient {
 			}
 		});
 		
-		renderer.getRenderers().add(new MenuRenderer(worldProgram));
+		renderer.getRenderers().add(new MenuRenderer(shaderProgram));
 		
 		//display the window now that everything is set up.
 		display.show();
 		System.out.println("Startup took " + Utility.formatTime(Utility.nanosSince(startupStart)));
 	}
-
-	private static void setupGameWorld(World world, ClientPlayerEntity player) {
-		state.world = world;
-		state.player = player;
-		
-		state.camera = new Camera(0, 0, 1);
-		state.cameraGrip = new TrackingCameraController(state.camera, audio, player, 2.5f, 0.05f, 0.6f);
-		state.cameraGrip.link(input);
-		state.playerControls = new PlayerController(state.client);
-		state.playerControls.link(input);
-		state.interactionControls = new InteractionController(state.client, Protocol.BLOCK_BREAK_RANGE);
-		state.interactionControls.link(input);
-		renderer.getRenderers().add(new ClientWorldRenderer(worldProgram, state.cameraGrip.getCamera(), world));
-		state.lastWorldUpdate = System.nanoTime();
-		state.lastCameraUpdateTime = System.nanoTime();
-		display.setCursor(pickaxeCursor);
-		GameLoop.set(StartClient::updateGame);
-	}
-
-	private static void updateGame() throws TimeoutException, IOException {
-		glfwPollEvents(); //process input/windowing events
-		state.client.update();
-		state.lastWorldUpdate = updateWorld(display, state.world, state.lastWorldUpdate); //simulate world on client
-		long camUpdateStart = System.nanoTime();
-		state.cameraGrip.update(camUpdateStart - state.lastCameraUpdateTime); //update camera position and zoom
-		state.lastCameraUpdateTime = camUpdateStart;
-		state.interactionControls.update(state.camera, state.client, state.world, state.player, display.width(), display.height()); //block breaking/"bomb throwing"
-		if(!display.minimized())
-			renderer.run(display);
-		Utility.sleep(1); //reduce CPU usage
-	}
 	
-	private static void setupRenderer(Display display) throws IOException {
+	private static ModelRenderProgram setupRenderer(Display display) throws IOException {
 		renderer = display.getRenderManager();
 		renderer.initialize(display);
 
@@ -235,10 +241,7 @@ public class StartClient {
 		program.register(RenderConstants.MODEL_RED_SQUARE, getRenderData(indices, positions, atlas, red));
 		GraphicsUtility.checkErrors();
 		
-		worldProgram = program;
-		
-		//var ui = new UserInterfaceRenderer(program);
-		//renderer.getRenderers().add(ui);
+		return program;
 	}
 
 	private static ByteBuffer readIntoBuffer(Path file) throws IOException {

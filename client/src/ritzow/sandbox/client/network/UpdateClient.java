@@ -70,7 +70,7 @@ public class UpdateClient implements GameTalker {
 	
 	public static final class ClientEvent<T> {
 		public static final ClientEvent<Runnable> CONNECT_ACCEPTED = new ClientEvent<>();
-		public static final ClientEvent<Runnable> CONNECT__REJECTED = new ClientEvent<>();
+		public static final ClientEvent<Runnable> CONNECT_REJECTED = new ClientEvent<>();
 		public static final ClientEvent<Runnable> DISCONNECTED = new ClientEvent<>();
 		public static final ClientEvent<BiConsumer<World, ClientPlayerEntity>> WORLD_JOIN = new ClientEvent<>();
 		private static byte count;
@@ -253,7 +253,7 @@ public class UpdateClient implements GameTalker {
 		switch(response) {
 			case Protocol.CONNECT_STATUS_REJECTED -> {
 				status = Status.REJECTED;
-				var action = getAction(ClientEvent.CONNECT__REJECTED);
+				var action = getAction(ClientEvent.CONNECT_REJECTED);
 				if(action != null) action.run();
 			}
 			case Protocol.CONNECT_STATUS_WORLD -> {
