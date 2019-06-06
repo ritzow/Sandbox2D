@@ -15,8 +15,8 @@ public final class TrackingCameraController extends CameraController {
 	private final float zoomSpeed, minZoom, maxZoom;
 	private float velocityZ;
 
-	public TrackingCameraController(Camera camera, AudioSystem audio, Entity target, float zoomSpeed, float minZoom, float maxZoom) {
-		super(camera);
+	public TrackingCameraController(AudioSystem audio, Entity target, float zoomSpeed, float minZoom, float maxZoom) {
+		super(new Camera(0, 0, 1));
 		this.audio = audio;
 		this.target = target;
 		this.zoomSpeed = zoomSpeed;
@@ -33,11 +33,6 @@ public final class TrackingCameraController extends CameraController {
 	}
 
 	@Override
-	public Camera getCamera() {
-		return camera;
-	}
-
-	@Override
 	public void mouseScroll(double xoffset, double yoffset) {
 		camera.setZoom((Math.max(Math.min(maxZoom, camera.getZoom() + camera.getZoom() * (float)yoffset * 0.2f), minZoom)));
 	}
@@ -51,17 +46,21 @@ public final class TrackingCameraController extends CameraController {
 
 	@Override
 	public void keyboardButton(int key, int scancode, int action, int mods) {
-		if(key == ControlScheme.KEYBIND_INCREASEZOOM) {
-			if(action == GLFW_PRESS) {
-				velocityZ = zoomSpeed;
-			} else if(action == GLFW_RELEASE) {
-				velocityZ = 0;
+		switch(key) {
+			case ControlScheme.KEYBIND_INCREASEZOOM -> {
+				if(action == GLFW_PRESS) {
+					velocityZ = zoomSpeed;
+				} else if(action == GLFW_RELEASE) {
+					velocityZ = 0;
+				}
 			}
-		} else if(key == ControlScheme.KEYBIND_DECREASEZOOM) {
-			if(action == GLFW_PRESS) {
-				velocityZ = -zoomSpeed;
-			} else if(action == GLFW_RELEASE) {
-				velocityZ = 0;
+			
+			case ControlScheme.KEYBIND_DECREASEZOOM -> {
+				if(action == GLFW_PRESS) {
+					velocityZ = -zoomSpeed;
+				} else if(action == GLFW_RELEASE) {
+					velocityZ = 0;
+				}
 			}
 		}
 	}
