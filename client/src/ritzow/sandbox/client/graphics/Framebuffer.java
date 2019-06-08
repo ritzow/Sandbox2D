@@ -4,6 +4,10 @@ import static org.lwjgl.opengl.GL30C.*;
 
 public final class Framebuffer {
 	public final int framebufferID;
+	
+	public Framebuffer(int id) {
+		this.framebufferID = id;
+	}
 
 	public Framebuffer() {
 		this.framebufferID = glGenFramebuffers();

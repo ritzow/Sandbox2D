@@ -11,9 +11,6 @@ import ritzow.sandbox.world.entity.Entity;
 
 public final class ClientWorldRenderer implements Renderer {
 	private final ModelRenderProgram modelProgram;
-	private final Framebuffer framebuffer;
-	private final OpenGLTexture diffuseTexture;
-	private int previousWidth, previousHeight;
 	private final World world;
 	private final Camera camera;
 
@@ -21,46 +18,28 @@ public final class ClientWorldRenderer implements Renderer {
 		this.modelProgram = modelProgram;
 		this.camera = camera;
 		this.world = world;
-		this.framebuffer = new Framebuffer();
-		this.diffuseTexture = new OpenGLTexture(100, 100);
-		framebuffer.attachTexture(diffuseTexture, GL_COLOR_ATTACHMENT0);
 		GraphicsUtility.checkErrors();
 	}
 
 	@Override
-	public Framebuffer render(final int currentWidth, final int currentHeight) {
-		//ensure that model program is cached on stack
+	public void render(Framebuffer framebuffer, final int width, final int height) {
+		//ensure that model program, camera, world are cached on stack
 		ModelRenderProgram program = this.modelProgram;
-
-		//update framebuffer size
-		if(previousWidth != currentWidth || previousHeight != currentHeight) {
-			program.setResolution(currentWidth, currentHeight);
-			diffuseTexture.setSize(currentWidth, currentHeight);
-			previousWidth = currentWidth;
-			previousHeight = currentHeight;
-		}
-
-		//cache on thread
 		Camera camera = this.camera;
-
+		World world = this.world;
+		
 		//set the current shader program
 		program.setCurrent();
 
 		//load the view transformation
-		program.loadViewMatrix(camera);
+		program.loadViewMatrix(camera, width, height);
 
 		//prepare the diffuse texture for drawing
 		framebuffer.clear(1.0f, 1.0f, 1.0f, 1.0f);
 		framebuffer.setDraw();
 
-		//tell the framebuffer to draw the shader output to attachment 0
-		glDrawBuffers(GL_COLOR_ATTACHMENT0);
-
 		//set the blending mode to allow transparency
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-		int width = program.getFrameBufferWidth();
-		int height = program.getFrameBufferHeight();
 
 		//get visible world coordinates
 		float worldLeft = 	ClientUtility.getViewLeftBound(camera, width, height);
@@ -108,7 +87,5 @@ public final class ClientWorldRenderer implements Renderer {
 				graphics.render(program);
 			}
 		}
-
-		return framebuffer;
 	}
 }

@@ -9,5 +9,5 @@ public interface Renderer {
 	 * @return A Framebuffer object the size of the screen that contains a Texture at color attachment 0 to be drawn
 	 * @throws OpenGLException if an OpenGL error occurred
 	 */
-	public Framebuffer render(int framebufferWidth, int framebufferHeight) throws OpenGLException;
+	public void render(Framebuffer dest, int framebufferWidth, int framebufferHeight) throws OpenGLException;
 }

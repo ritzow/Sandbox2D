@@ -2,12 +2,10 @@ package ritzow.sandbox.client.graphics;
 
 import static org.lwjgl.opengl.GL46C.*;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
 public final class ModelRenderProgram extends ShaderProgram {
-	//private final Camera camera;
 
 	private final int
 		uniform_transform,
@@ -16,8 +14,6 @@ public final class ModelRenderProgram extends ShaderProgram {
 		textureUnit;
 
 	private final int atlasTexture;
-
-	private float framebufferWidth, framebufferHeight;
 
 	private static final float[] identityMatrix = {
 			1, 0, 0, 0,
@@ -100,6 +96,7 @@ public final class ModelRenderProgram extends ShaderProgram {
 			throw new IllegalArgumentException("no model exists for model id " + modelID);
 		glBindVertexArray(model.vao);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model.indices);
+		//TODO instanced rendering allows multiple runs of the shader program with 1 draw call
 		glDrawElements(GL_TRIANGLES, model.vertexCount, GL_UNSIGNED_INT, 0);
 	}
 
@@ -141,27 +138,11 @@ public final class ModelRenderProgram extends ShaderProgram {
 		setMatrix(uniform_view, identityMatrix);
 	}
 
-	public void loadViewMatrix() {
+	public void loadViewMatrix(float framebufferWidth, float framebufferHeight) {
 		aspectMatrix[0] = framebufferHeight/framebufferWidth;
 		setMatrix(uniform_view, aspectMatrix);
 	}
-
-	public void loadViewMatrix(Camera camera) {
-		aspectMatrix[0] = framebufferHeight/framebufferWidth;
-		loadCameraMatrix(cameraMatrix, camera);
-		Arrays.fill(viewMatrix, 0);
-		multiply(aspectMatrix, cameraMatrix, viewMatrix);
-		setMatrix(uniform_view, viewMatrix);
-	}
-
-	public int getFrameBufferWidth() {
-		return (int)framebufferWidth;
-	}
-
-	public int getFrameBufferHeight() {
-		return (int)framebufferHeight;
-	}
-
+	
 	private static void loadCameraMatrix(float[] matrix, Camera camera) {
 		matrix[0] = camera.getZoom();
 		matrix[3] = -camera.getPositionX() * camera.getZoom();
@@ -169,27 +150,30 @@ public final class ModelRenderProgram extends ShaderProgram {
 		matrix[7] = -camera.getPositionY() * camera.getZoom();
 	}
 
-	public void setResolution(float framebufferWidth, float framebufferHeight) {
-		this.framebufferWidth = framebufferWidth;
-		this.framebufferHeight = framebufferHeight;
+	public void loadViewMatrix(Camera camera, float framebufferWidth, float framebufferHeight) {
+		aspectMatrix[0] = framebufferHeight/framebufferWidth;
+		loadCameraMatrix(cameraMatrix, camera);
+		multiply(aspectMatrix, cameraMatrix, viewMatrix);
+		setMatrix(uniform_view, viewMatrix);
 	}
 
 	//matrix operations on 4x4 1-dimensional arrays
 	private static void multiply(float[] a, float[] b, float[] destination) {
-		for(int i = 0; i < 4; i++){
-			for(int j = 0; j < 4; j++){
-				for(int k = 0; k < 4; k++){
-					set(destination, i, j, get(destination, i, j) + get(a, i, k) * get(b, k, j));
-				}
+		for(int i = 0; i <= 12; i += 4) {
+			for(int j = 0; j < 4; j++) {
+				destination[i + j] = a[i] * b[j] 
+								   + a[i + 1] * b[j + 4] 
+								   + a[i + 2] * b[j + 8] 
+								   + a[i + 3] * b[j + 12];
 			}
 		}
 	}
 
-	private static float get(float[] array, int row, int column) {
-		return array[(row * 4) + column];
-	}
-
-	private static void set(float[] array, int row, int column, float value) {
-		array[(row * 4) + column] =  value;
-	}
+//	private static float get(float[] array, int row, int column) {
+//		return array[(row * 4) + column];
+//	}
+//
+//	private static void set(float[] array, int row, int column, float value) {
+//		array[(row * 4) + column] =  value;
+//	}
 }

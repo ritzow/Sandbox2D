@@ -12,13 +12,15 @@ import ritzow.sandbox.client.input.handler.FramebufferSizeHandler;
 
 /** Contains instance methods for initializing and destroying OpenGL, and rendering and updating the display**/
 public final class RenderManager implements FramebufferSizeHandler {
-	private volatile boolean updateViewport;
-	private volatile int framebufferWidth, framebufferHeight;
+	private boolean updateViewport;
+	private int framebufferWidth, framebufferHeight;
 	private final List<Renderer> renderers;
+	private final Framebuffer displayBuffer;
 
 	public RenderManager(Display display) {
 		this.link(display.getEventDelegator());
 		this.renderers = new ArrayList<>();
+		this.displayBuffer = new Framebuffer(0);
 	}
 
 	@SuppressWarnings("static-method")
@@ -32,7 +34,6 @@ public final class RenderManager implements FramebufferSizeHandler {
 	}
 
 	public void close(Display display) {
-		renderers.clear();
 		GraphicsUtility.checkErrors();
 		GLFW.glfwMakeContextCurrent(0);
 		org.lwjgl.opengl.GL.destroy();
@@ -46,13 +47,9 @@ public final class RenderManager implements FramebufferSizeHandler {
 				glViewport(0, 0, width, height);
 				updateViewport = false;
 			}
-
-			glClear(GL_COLOR_BUFFER_BIT);
-
+			
 			for(Renderer r : renderers) {
-				glBindFramebuffer(GL_READ_FRAMEBUFFER, r.render(width, height).framebufferID);
-				glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-				glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+				r.render(displayBuffer, width, height);
 			}
 
 			display.refresh();
