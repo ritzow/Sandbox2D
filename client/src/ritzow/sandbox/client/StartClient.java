@@ -49,9 +49,9 @@ public class StartClient {
 	private static AudioSystem audio;
 	private static RenderManager renderer;
 	private static ModelRenderProgram shaderProgram;
-	private static InetSocketAddress serverAddress;
-	private static InetSocketAddress localAddress;
+	private static InetSocketAddress localAddress, serverAddress;
 	private static GameState state;
+	private static boolean quit;
 	
 	public static void main(String[] args) throws Exception {
 		Thread.currentThread().setName("Game Loop");
@@ -73,8 +73,7 @@ public class StartClient {
 		TrackingCameraController cameraGrip;
 		PlayerController playerControls;
 		InteractionController interactionControls;
-		long lastWorldUpdate;
-		long lastCameraUpdateTime;
+		long lastWorldUpdate, lastCameraUpdate;
 		
 		void connect() throws NumberFormatException, IOException {
 			System.out.print("Connecting to " + Utility.formatAddress(serverAddress)
@@ -95,11 +94,11 @@ public class StartClient {
 			renderer.getRenderers().add(new ClientWorldRenderer(shaderProgram, cameraGrip.getCamera(), world));
 			playerControls = new PlayerController(client);
 			playerControls.link(input);
-			interactionControls = new InteractionController(client, Protocol.BLOCK_BREAK_RANGE);
+			interactionControls = new InteractionController(client);
 			interactionControls.link(input);
-			lastWorldUpdate = System.nanoTime();
-			lastCameraUpdateTime = System.nanoTime();
 			display.setCursor(pickaxeCursor);
+			lastWorldUpdate = System.nanoTime();
+			lastCameraUpdate = System.nanoTime();
 			GameLoop.set(this::updateGame);
 		}
 		
@@ -108,8 +107,8 @@ public class StartClient {
 			client.update();
 			lastWorldUpdate = updateWorld(display, world, lastWorldUpdate); //simulate world on client
 			long camUpdateStart = System.nanoTime();
-			cameraGrip.update(camUpdateStart - lastCameraUpdateTime); //update camera position and zoom
-			lastCameraUpdateTime = camUpdateStart;
+			cameraGrip.update(camUpdateStart - lastCameraUpdate); //update camera position and zoom
+			lastCameraUpdate = camUpdateStart;
 			interactionControls.update(cameraGrip.getCamera(), client, 
 					world, player, display.width(), display.height()); //block breaking/"bomb throwing"
 			if(!display.minimized()) renderer.run(display);
@@ -137,10 +136,15 @@ public class StartClient {
 			}
 			
 			if(display.wasClosed()) {
-				exit();
+				StartClient.exit();
 			} else {
 				returnToMenu();
 			}
+		}
+		
+		private void exit() {
+			client.startDisconnect();
+			GameLoop.set(client::update);
 		}
 	}
 	
@@ -152,13 +156,18 @@ public class StartClient {
 		GameLoop.set(StartClient::menuLoop);	
 	}
 	
+	//TODO need to refactor StartClient again, split GameState, MenuState, etc. into different separate contexts
+	//keeping in mind UI overlays, etc. in-game
 	private static void menuLoop() {
-		renderer.run(display);
-		Utility.sleep(1); //reduce CPU usage
 		glfwPollEvents(); //process input/windowing events
+		if(!quit) {
+			renderer.run(display);
+			Utility.sleep(1); //reduce CPU usage	
+		}
 	}
 	
 	private static void exit() {
+		quit = true;
 		GameLoop.set(); //stop the game loop now that the client is closed
 		System.out.print("Exiting... ");
 		shaderProgram.delete();
@@ -168,12 +177,11 @@ public class StartClient {
 		glfwTerminate();
 	}
 	
-	private static void onConcurrentExit() {
+	private static void quit() {
 		if(state == null) {
 			exit();
 		} else {
-			GameLoop.set(state.client::update);
-			state.client.startDisconnect();
+			state.exit();
 		}
 	}
 	
@@ -186,7 +194,7 @@ public class StartClient {
 
 		//mute audio when window is in background
 		input.windowFocusHandlers().add(focused -> audio.setVolume(focused ? 1.0f : 0.0f));
-		input.windowCloseHandlers().add(StartClient::onConcurrentExit);
+		input.windowCloseHandlers().add(StartClient::quit);
 		input.keyboardHandlers().add((key, scancode, action, mods) -> {
 			if(action == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
 				switch(key) {
@@ -199,7 +207,7 @@ public class StartClient {
 							}
 						}
 					}
-					case ControlScheme.KEYBIND_QUIT -> StartClient.onConcurrentExit();
+					case ControlScheme.KEYBIND_QUIT -> quit();
 					case ControlScheme.KEYBIND_FULLSCREEN -> display.toggleFullscreen();
 				}
 			}
