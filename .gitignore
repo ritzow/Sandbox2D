@@ -24,5 +24,13 @@ libraries/
 .project
 .settings
 
+#don't include visual studio project files
+/clientlauncher/Windows/*.filters
+/clientlauncher/Windows/*.user
+/clientlauncher/Windows/*.aps
+/clientlauncher/Windows/jvm
+/clientlauncher/Windows/x64
+/clientlauncher/Windows/.vs
+
 #don't include stupid mac metadata files
 .DS_Store
