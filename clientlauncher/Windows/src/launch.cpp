@@ -4,12 +4,6 @@
 constexpr bool SHOW_CONSOLE = false;
 constexpr UINT32 OPTION_COUNT = 6;
 
-void CreateConsole() {
-	AllocConsole();
-	FILE* file;
-	freopen_s(&file, "CONOUT$", "w", stdout);
-}
-
 typedef struct {
 	JavaVM* vm;
 	JNIEnv* env;
@@ -42,14 +36,8 @@ const char* getErrorType(jint result) {
 	}
 }
 
-void DisplayVMError(jint result) {
-	char dest;
-	const char* str1 = "Could not create JVM: ";
-	const char* str2 = getErrorType(result);
-	size_t length = strlen(str1) + strlen(str2) + 1;
-	strcpy_s(&dest, length, str1);
-	strcat_s(&dest, length, str2);
-	MessageBox(nullptr, &dest, "Java Virtual Machine Creation Failed", MB_OK | MB_ICONERROR);
+void DisplayError(const char* title, const char* message) {
+	MessageBox(nullptr, message, title, MB_OK | MB_ICONERROR);
 }
 
 void RunGame(VMInfo info, LPSTR args) {
@@ -61,7 +49,9 @@ void RunGame(VMInfo info, LPSTR args) {
 
 INT WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ INT nShowCmd) {
 	if (SHOW_CONSOLE) {
-		CreateConsole();
+		AllocConsole();
+		FILE* file;
+		freopen_s(&file, "CONOUT$", "w", stdout);
 		printf("Command Line Arguments: \"%s\"\n", lpCmdLine);
 	}
 
@@ -82,12 +72,18 @@ INT WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 			FreeLibrary(JvmDLL);
 			return EXIT_SUCCESS;
 		} else {
-			DisplayVMError(info.result);
+			char dest;
+			const char* str1 = "Could not create JVM: ";
+			const char* str2 = getErrorType(info.result);
+			size_t length = strlen(str1) + strlen(str2) + 1;
+			strcpy_s(&dest, length, str1);
+			strcat_s(&dest, length, str2);
+			DisplayError("Java Virtual Machine Creation Failed", &dest);
 			FreeLibrary(JvmDLL);
 			return EXIT_FAILURE;
 		}
 	} else {
-		MessageBox(nullptr, "Failed to load jvm.dll", "Java Libray Load Failed", MB_OK | MB_ICONERROR);
+		DisplayError("Java Libray Load Failed", "Failed to load jvm.dll");
 		return EXIT_FAILURE;
 	}
 }
