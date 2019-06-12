@@ -6,10 +6,8 @@ import static org.lwjgl.glfw.GLFW.glfwSetErrorCallback;
 import static org.lwjgl.glfw.GLFW.glfwTerminate;
 
 import java.io.IOException;
-import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
@@ -50,30 +48,72 @@ public class StartClient {
 	private static RenderManager renderer;
 	private static ModelRenderProgram shaderProgram;
 	private static InetSocketAddress localAddress, serverAddress;
-	private static GameState state;
+//	private static GameState state;
+//	private static InGameState gameState;
+//	private static MenuState menuState;
 	private static boolean quit;
+	
+	public static void start(String commandLine) throws Exception {
+		main(commandLine.split(" "));
+	}
 	
 	public static void main(String[] args) throws Exception {
 		Thread.currentThread().setName("Game Loop");
-		setAddresses();
+		setAddresses(args);
+		MenuState mainMenu = new MenuState();
 		setupInitial();
-		GameLoop.run(StartClient::menuLoop);
+		//GameLoop.start(StartClient::menuLoop);
+		GameLoop.start(mainMenu);
 		System.out.println("done!");
 	}
 	
-	private static void setAddresses(String... args) throws NumberFormatException, UnknownHostException, SocketException {
-		serverAddress =	Utility.getAddressOrDefault(args, 0, InetAddress.getLocalHost(), Protocol.DEFAULT_SERVER_PORT_UDP);
-		localAddress = new InetSocketAddress(Utility.getPublicAddress(Inet4Address.class), 0);
+	private static void setAddresses(String... args) throws NumberFormatException, UnknownHostException {
+		var localHost = InetAddress.getByName("127.0.0.1");
+		serverAddress =	Utility.getAddressOrDefault(args, 0, localHost, Protocol.DEFAULT_SERVER_PORT_UDP);
+		localAddress = new InetSocketAddress(localHost, 0);
 	}
 	
-	private static class GameState {
+	public static interface GameState {
+		void run() throws Exception;
+		void exit();
+	}
+	
+	private static class MenuState implements GameState {
+		Renderer menuRenderer;
+
+		@Override
+		public void exit() {
+			
+		}
+
+		@Override
+		public void run() throws Exception {
+			menuLoop();
+		}
+	}
+	
+	private static class InGameState implements GameState {
 		UpdateClient client;
 		ClientPlayerEntity player;
 		World world;
+		ClientWorldRenderer worldRenderer;
 		TrackingCameraController cameraGrip;
 		PlayerController playerControls;
 		InteractionController interactionControls;
 		long lastWorldUpdate, lastCameraUpdate;
+		
+		@Override
+		public void run() throws Exception {
+			updateGame();
+		}
+		
+		public void exit() {
+			client.startDisconnect();
+			//GameLoop.set(client::update);
+			while(true) {
+				client.update();
+			}
+		}
 		
 		void connect() throws NumberFormatException, IOException {
 			System.out.print("Connecting to " + Utility.formatAddress(serverAddress)
@@ -91,7 +131,7 @@ public class StartClient {
 			this.player = player;
 			cameraGrip = new TrackingCameraController(audio, player, 2.5f, 0.05f, 0.6f);
 			cameraGrip.link(input);
-			renderer.getRenderers().add(new ClientWorldRenderer(shaderProgram, cameraGrip.getCamera(), world));
+			worldRenderer = new ClientWorldRenderer(shaderProgram, cameraGrip.getCamera(), world);
 			playerControls = new PlayerController(client);
 			playerControls.link(input);
 			interactionControls = new InteractionController(client);
@@ -111,7 +151,7 @@ public class StartClient {
 			lastCameraUpdate = camUpdateStart;
 			interactionControls.update(cameraGrip.getCamera(), client, 
 					world, player, display.width(), display.height()); //block breaking/"bomb throwing"
-			if(!display.minimized()) renderer.run(display);
+			if(!display.minimized()) renderer.run(display, worldRenderer);
 			Utility.sleep(1); //reduce CPU usage
 		}
 		
@@ -141,18 +181,11 @@ public class StartClient {
 				returnToMenu();
 			}
 		}
-		
-		private void exit() {
-			client.startDisconnect();
-			GameLoop.set(client::update);
-		}
 	}
 	
 	private static void returnToMenu() {
-		state = null;
+		gameState = null;
 		display.resetCursor();
-		renderer.getRenderers().clear();
-		renderer.getRenderers().add(new MenuRenderer(shaderProgram));
 		GameLoop.set(StartClient::menuLoop);	
 	}
 	
@@ -161,14 +194,14 @@ public class StartClient {
 	private static void menuLoop() {
 		glfwPollEvents(); //process input/windowing events
 		if(!quit) {
-			renderer.run(display);
+			renderer.run(display, menuState.menuRenderer);
 			Utility.sleep(1); //reduce CPU usage	
 		}
 	}
 	
 	private static void exit() {
 		quit = true;
-		GameLoop.set(); //stop the game loop now that the client is closed
+		GameLoop.end(); //stop the game loop now that the client is closed
 		System.out.print("Exiting... ");
 		shaderProgram.delete();
 		renderer.close(display);
@@ -178,10 +211,10 @@ public class StartClient {
 	}
 	
 	private static void quit() {
-		if(state == null) {
+		if(gameState == null) {
 			exit();
 		} else {
-			state.exit();
+			gameState.exit();
 		}
 	}
 	
@@ -191,6 +224,8 @@ public class StartClient {
 		display = setupGLFW();
 		input = display.getEventDelegator();
 		shaderProgram = setupRenderer(display);
+		menuState = new MenuState();
+		menuState.menuRenderer = new MenuRenderer(shaderProgram);
 
 		//mute audio when window is in background
 		input.windowFocusHandlers().add(focused -> audio.setVolume(focused ? 1.0f : 0.0f));
@@ -199,9 +234,9 @@ public class StartClient {
 			if(action == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
 				switch(key) {
 					case ControlScheme.KEYBIND_CONNECT -> {
-						if(state == null) {
+						if(gameState == null) {
 							try {
-								(state = new GameState()).connect();
+								(gameState = new InGameState()).connect();
 							} catch (NumberFormatException | IOException e) {
 								e.printStackTrace();
 							}
@@ -212,8 +247,6 @@ public class StartClient {
 				}
 			}
 		});
-		
-		renderer.getRenderers().add(new MenuRenderer(shaderProgram));
 		
 		//display the window now that everything is set up.
 		display.show();
