@@ -5,7 +5,6 @@ import static org.lwjgl.glfw.GLFW.GLFW_REPEAT;
 import static ritzow.sandbox.network.Protocol.PlayerAction.*;
 
 import ritzow.sandbox.client.input.ControlScheme;
-import ritzow.sandbox.client.input.EventDelegator;
 import ritzow.sandbox.client.input.handler.KeyHandler;
 import ritzow.sandbox.client.network.GameTalker;
 
@@ -14,14 +13,6 @@ public class PlayerController implements KeyHandler {
 
 	public PlayerController(GameTalker client) {
 		this.client = client;
-	}
-
-	public void link(EventDelegator manager) {
-		manager.keyboardHandlers().add(this);
-	}
-
-	public void unlink(EventDelegator manager) {
-		manager.keyboardHandlers().remove(this);
 	}
 
 	@Override

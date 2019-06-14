@@ -16,9 +16,9 @@ public class ControlScheme {
 	public static final int KEYBIND_ACTIVATE =		org.lwjgl.glfw.GLFW.GLFW_KEY_E;
 	public static final int KEYBIND_CONNECT =		org.lwjgl.glfw.GLFW.GLFW_KEY_C;
 
-	public static Sandbox2DGameplayContext createGLFWGameplayContext(Display window) {
-		return new GLFWSandbox2DGameplayContext(window);
-	}
+//	public static Sandbox2DGameplayContext createGLFWGameplayContext(Display window) {
+//		return new GLFWSandbox2DGameplayContext(window);
+//	}
 
 	public static class Sandbox2DGameplayContext {
 		public final AxisControl ZOOM_CONTROL;
@@ -28,21 +28,21 @@ public class ControlScheme {
 		}
 	}
 
-	private static final class GLFWSandbox2DGameplayContext extends Sandbox2DGameplayContext {
-		static final class zoom extends ControlBase<AxisControlHandler> implements AxisControl {
-			public zoom(Display display) {
-				display.getEventDelegator().scrollHandlers().add((x, y) -> {
-					for(AxisControlHandler handler : handlers) {
-						handler.axisChangeEvent(y);
-					}
-				});
-			}
-		}
-
-		private GLFWSandbox2DGameplayContext(Display display) {
-			super(new zoom(display));
-		}
-	}
+//	private static final class GLFWSandbox2DGameplayContext extends Sandbox2DGameplayContext {
+//		static final class zoom extends ControlBase<AxisControlHandler> implements AxisControl {
+//			public zoom(Display display) {
+//				display.getEventDelegator().scrollHandlers().add((x, y) -> {
+//					for(AxisControlHandler handler : handlers) {
+//						handler.axisChangeEvent(y);
+//					}
+//				});
+//			}
+//		}
+//
+//		private GLFWSandbox2DGameplayContext(Display display) {
+//			super(new zoom(display));
+//		}
+//	}
 
 	public interface AxisControlHandler {
 		void axisChangeEvent(double delta);

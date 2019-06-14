@@ -3,7 +3,6 @@ package ritzow.sandbox.client.input.controller;
 import static org.lwjgl.glfw.GLFW.*;
 
 import ritzow.sandbox.client.graphics.Camera;
-import ritzow.sandbox.client.input.EventDelegator;
 import ritzow.sandbox.client.input.handler.CursorPosHandler;
 import ritzow.sandbox.client.input.handler.KeyHandler;
 import ritzow.sandbox.client.input.handler.MouseButtonHandler;
@@ -16,37 +15,45 @@ import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.Entity;
 
 public final class InteractionController implements MouseButtonHandler, CursorPosHandler, KeyHandler {
-	private volatile boolean primaryAction, secondaryAction;
-	private volatile int mouseX, mouseY;
+	private boolean primaryAction, secondaryAction;
+	private int mouseX, mouseY;
 	private long lastThrow, lastBreak;
-	private float range;
 	private final GameTalker client;
 
-	public InteractionController(GameTalker client, float range) {
+	public InteractionController(GameTalker client) {
 		this.client = client;
-		this.range = range;
 	}
 
 	//TODO wait for server response before sending more block break packets
 	public void update(Camera camera, GameTalker client, World world, Entity player, int frameWidth, int frameHeight) {
 		if(primaryAction && breakAllowed()) {
 			int blockX = Math.round(ClientUtility.pixelHorizontalToWorld(camera, mouseX, frameWidth, frameHeight));
-			int blockY = Math.round(ClientUtility.pixelVerticalToWorld(camera, mouseY, frameWidth, frameHeight));
+			int blockY = Math.round(ClientUtility.pixelVerticalToWorld(camera, mouseY, frameHeight));
 			BlockGrid grid = world.getForeground();
 			if(inRange(player, blockX, blockY) && grid.isValid(blockX, blockY) && grid.isBlock(blockX, blockY)) {
 				client.sendBlockBreak(blockX, blockY);
-				lastBreak = System.nanoTime(); //TODO only reset cooldown if a block is actually broken
+				//TODO comm. with server, only reset cooldown to server provided value if a block is actually broken
+				//requires a different approach, lastBreak won't be set here
+				lastBreak = System.nanoTime();
 			}
 		} else if(secondaryAction && throwAllowed()) {
 			float worldX = ClientUtility.pixelHorizontalToWorld(camera, mouseX, frameWidth, frameHeight);
-			float worldY = ClientUtility.pixelVerticalToWorld(camera, mouseY, frameWidth, frameHeight);
-			client.sendBombThrow((float)Math.atan2(worldY - player.getPositionY(), worldX - player.getPositionX()) + Utility.randomFloat(-(float)Math.PI/8, (float)Math.PI/8));
+			float worldY = ClientUtility.pixelVerticalToWorld(camera, mouseY, frameHeight);
+			client.sendBombThrow(computeThrowAngle(player, worldX, worldY));
 			lastThrow = System.nanoTime();
 		}
 	}
+	
+	private static final float MAX_ANGLE = (float)Math.PI/8;
+	
+	private static float computeThrowAngle(Entity player, float worldX, float worldY) {
+		return (float)Math.atan2(worldY - player.getPositionY(), worldX - player.getPositionX()) 
+				+ Utility.randomFloat(-MAX_ANGLE, MAX_ANGLE);
+	}
 
-	private boolean inRange(Entity player, int blockX, int blockY) {
-		return Utility.withinDistance(player.getPositionX(), player.getPositionY(), blockX, blockY, range);
+	private static boolean inRange(Entity player, int blockX, int blockY) {
+		return Utility.withinDistance(player.getPositionX(), player.getPositionY(), 
+				blockX, blockY, Protocol.BLOCK_BREAK_RANGE);
 	}
 
 	private boolean breakAllowed() {
@@ -55,18 +62,6 @@ public final class InteractionController implements MouseButtonHandler, CursorPo
 
 	private boolean throwAllowed() {
 		return Utility.nanosSince(lastThrow) > Protocol.THROW_COOLDOWN_NANOSECONDS;
-	}
-
-	public void link(EventDelegator input) {
-		input.cursorPosHandlers().add(this);
-		input.keyboardHandlers().add(this);
-		input.mouseButtonHandlers().add(this);
-	}
-
-	public void unlink(EventDelegator input) {
-		input.cursorPosHandlers().remove(this);
-		input.keyboardHandlers().remove(this);
-		input.mouseButtonHandlers().remove(this);
 	}
 
 	@Override
