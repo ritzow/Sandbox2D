@@ -17,21 +17,25 @@ import ritzow.sandbox.world.entity.PlayerEntity;
 
 public final class StartServer {
 	private static GameServer server;
-	private static volatile boolean save = true;
+	private static boolean save = true;
 	private static final Path saveFile = Path.of("data/worlds/world.dat");
 
+	private static final int WORLD_WIDTH = 200, WORLD_BASE_HEIGHT = 50, WORLD_AMPLITUDE = 20;
+	private static final float WORLD_FREQUENCY = 0.15f;
+	
 	public static void main(String[] args) throws IOException {
 		Thread.currentThread().setName("Server Main");
-		run(Utility.getAddressOrDefault(args, 0, InetAddress.getLocalHost(), Protocol.DEFAULT_SERVER_PORT_UDP));
+		run(Utility.getAddressOrDefault(args, 0, InetAddress.getByName("127.0.0.1"), Protocol.DEFAULT_SERVER_PORT_UDP));
 	}
 
+	//TODO investigate slow server closing after saving
 	public static void run(InetSocketAddress bindAddress) throws IOException {
 		try {
 			server = GameServer.start(bindAddress);
 			System.out.println("Started server on " + Utility.formatAddress(server.getAddress()) + ".");
 			System.out.print("Loading world... ");
 			long time = System.nanoTime();
-			World world = getWorld();
+			World world = Files.exists(saveFile) ? loadWorld(saveFile) : generateWorld();
 			System.out.println("took " + Utility.formatTime(Utility.nanosSince(time)) + ".");
 			server.setCurrentWorld(world);
 
@@ -60,13 +64,24 @@ public final class StartServer {
 			System.out.println("Could not start server: '" + e.getMessage() + "'");
 		}
 	}
-
-	public static World getWorld() throws IOException {
-		return Files.exists(saveFile) ? loadWorld(saveFile) : generateWorld(100, 100);
-	}
-
+	
 	public static World loadWorld(Path file) throws IOException {
 		return SerializationProvider.getProvider().deserialize(Bytes.decompress(Files.readAllBytes(file)));
+	}
+	
+	private static World generateWorld() {
+		World world = new World(WORLD_WIDTH, WORLD_BASE_HEIGHT + WORLD_AMPLITUDE, 0.016f);
+		for(int column = 0; column < WORLD_WIDTH; column++) {
+			int amplitude = WORLD_BASE_HEIGHT + WORLD_AMPLITUDE/2 
+					+ Math.round(WORLD_AMPLITUDE/2 * (float)Math.sin(column * WORLD_FREQUENCY)) - 1;
+			for(int row = 0; row < amplitude; row++) {
+				world.getForeground().set(column, row, new DirtBlock());
+				world.getBackground().set(column, row, new DirtBlock());
+			}
+			world.getForeground().set(column, amplitude, new GrassBlock());
+			world.getBackground().set(column, amplitude, new DirtBlock());
+		}
+		return world;
 	}
 
 	private static void saveWorld(World world, Path file) {
@@ -80,22 +95,7 @@ public final class StartServer {
 			System.out.println("Error while saving world to file '" + saveFile + "':" + e.getClass().getTypeName() + ":" + e.getMessage());
 		}
 	}
-
-	private static World generateWorld(int width, int height) {
-		World world = new World(width, height, 0.016f);
-		for(int column = 0; column < world.getForeground().getWidth(); column++) {
-			double halfheight = world.getForeground().getHeight()/2;
-			halfheight += (Math.sin(column * 0.1f) + 1) * (world.getForeground().getHeight() - halfheight) * 0.05f;
-			for(int row = 0; row < halfheight; row++) {
-				world.getForeground().set(column, row, new DirtBlock());
-				world.getBackground().set(column, row, new DirtBlock());
-			}
-			world.getForeground().set(column, (int)halfheight, new GrassBlock());
-			world.getBackground().set(column, (int)halfheight, new DirtBlock());
-		}
-		return world;
-	}
-
+	
 	private static void registerCommands(CommandParser runner) {
 		runner.register("stop", 	StartServer::stopCommand);
 		runner.register("abort", 	StartServer::abortCommand);
