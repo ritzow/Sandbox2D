@@ -1,20 +1,20 @@
 package ritzow.sandbox.client;
 
 import static org.lwjgl.glfw.GLFW.glfwInit;
-import static org.lwjgl.glfw.GLFW.glfwPollEvents;
 import static org.lwjgl.glfw.GLFW.glfwSetErrorCallback;
 import static org.lwjgl.glfw.GLFW.glfwTerminate;
+import static org.lwjgl.glfw.GLFW.glfwDestroyCursor;
 
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Map;
 import org.lwjgl.glfw.GLFWErrorCallback;
+import org.lwjgl.glfw.GLFWImage;
 import ritzow.sandbox.client.audio.AudioSystem;
 import ritzow.sandbox.client.audio.DefaultAudioSystem;
 import ritzow.sandbox.client.audio.OpenALAudioSystem;
@@ -23,239 +23,59 @@ import ritzow.sandbox.client.audio.SoundInfo;
 import ritzow.sandbox.client.audio.WAVEDecoder;
 import ritzow.sandbox.client.graphics.*;
 import ritzow.sandbox.client.graphics.Shader.ShaderType;
-import ritzow.sandbox.client.input.ControlScheme;
-import ritzow.sandbox.client.input.EventDelegator;
-import ritzow.sandbox.client.input.controller.InteractionController;
-import ritzow.sandbox.client.input.controller.PlayerController;
-import ritzow.sandbox.client.input.controller.TrackingCameraController;
-import ritzow.sandbox.client.network.UpdateClient;
-import ritzow.sandbox.client.network.UpdateClient.ClientEvent;
 import ritzow.sandbox.client.util.ClientUtility;
-import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
 import ritzow.sandbox.network.Protocol;
-import ritzow.sandbox.network.TimeoutException;
 import ritzow.sandbox.util.Utility;
-import ritzow.sandbox.world.World;
 
 public class StartClient {
-	private static final long UPDATE_SKIP_THRESHOLD_NANOSECONDS = Utility.millisToNanos(100);
+	static final long UPDATE_SKIP_THRESHOLD_NANOSECONDS = Utility.millisToNanos(100);
 	private static final boolean USE_OPENGL_4_6 = false;
 
-	private static Display display;
-	private static long pickaxeCursor;
-	private static EventDelegator input;
-	private static AudioSystem audio;
-	private static RenderManager renderer;
-	private static ModelRenderProgram shaderProgram;
-	private static InetSocketAddress localAddress, serverAddress;
-//	private static GameState state;
-//	private static InGameState gameState;
-//	private static MenuState menuState;
-	private static boolean quit;
-	
+	static Display display;
+	static long pickaxeCursor;
+	static AudioSystem audio;
+	static ModelRenderProgram shaderProgram;
+	static InetSocketAddress localAddress;
+	static InetSocketAddress serverAddress;
+	static boolean quit;
+	static MainMenuContext mainMenu;
+
+	/** For use by native launcher **/
 	public static void start(String commandLine) throws Exception {
 		main(commandLine.split(" "));
 	}
 	
 	public static void main(String[] args) throws Exception {
+		long startupStart = System.nanoTime();
 		Thread.currentThread().setName("Game Loop");
-		setAddresses(args);
-		MenuState mainMenu = new MenuState();
-		setupInitial();
-		//GameLoop.start(StartClient::menuLoop);
+		var localHost = InetAddress.getByName("127.0.0.1");
+		serverAddress =	Utility.getAddressOrDefault(args, 0, localHost, Protocol.DEFAULT_SERVER_PORT_UDP);
+		localAddress = new InetSocketAddress(localHost, 0);
+		audio = setupAudio();
+		display = setupGLFW();
+		shaderProgram = setupRenderer(display);
+		mainMenu = new MainMenuContext(new MenuRenderer(shaderProgram));
+		display.show();
+		System.out.println("Startup took " + Utility.formatTime(Utility.nanosSince(startupStart)));
 		GameLoop.start(mainMenu);
 		System.out.println("done!");
 	}
 	
-	private static void setAddresses(String... args) throws NumberFormatException, UnknownHostException {
-		var localHost = InetAddress.getByName("127.0.0.1");
-		serverAddress =	Utility.getAddressOrDefault(args, 0, localHost, Protocol.DEFAULT_SERVER_PORT_UDP);
-		localAddress = new InetSocketAddress(localHost, 0);
-	}
-	
-	public static interface GameState {
-		void run() throws Exception;
-		void exit();
-	}
-	
-	private static class MenuState implements GameState {
-		Renderer menuRenderer;
-
-		@Override
-		public void exit() {
-			
-		}
-
-		@Override
-		public void run() throws Exception {
-			menuLoop();
-		}
-	}
-	
-	private static class InGameState implements GameState {
-		UpdateClient client;
-		ClientPlayerEntity player;
-		World world;
-		ClientWorldRenderer worldRenderer;
-		TrackingCameraController cameraGrip;
-		PlayerController playerControls;
-		InteractionController interactionControls;
-		long lastWorldUpdate, lastCameraUpdate;
-		
-		@Override
-		public void run() throws Exception {
-			updateGame();
-		}
-		
-		public void exit() {
-			client.startDisconnect();
-			//GameLoop.set(client::update);
-			while(true) {
-				client.update();
-			}
-		}
-		
-		void connect() throws NumberFormatException, IOException {
-			System.out.print("Connecting to " + Utility.formatAddress(serverAddress)
-			+ " from " + Utility.formatAddress(localAddress) + "... ");
-			client = UpdateClient.startConnection(localAddress, serverAddress);
-			client.setEventListener(ClientEvent.CONNECT_ACCEPTED, this::onAccepted);
-			client.setEventListener(ClientEvent.CONNECT_REJECTED, this::onRejected);
-			client.setEventListener(ClientEvent.DISCONNECTED, this::onDisconnected);
-			client.setEventListener(ClientEvent.WORLD_JOIN, this::setupGameWorld);
-			GameLoop.set(client::update);
-		}
-		
-		void setupGameWorld(World world, ClientPlayerEntity player) {
-			this.world = world;
-			this.player = player;
-			cameraGrip = new TrackingCameraController(audio, player, 2.5f, 0.05f, 0.6f);
-			cameraGrip.link(input);
-			worldRenderer = new ClientWorldRenderer(shaderProgram, cameraGrip.getCamera(), world);
-			playerControls = new PlayerController(client);
-			playerControls.link(input);
-			interactionControls = new InteractionController(client);
-			interactionControls.link(input);
-			display.setCursor(pickaxeCursor);
-			lastWorldUpdate = System.nanoTime();
-			lastCameraUpdate = System.nanoTime();
-			GameLoop.set(this::updateGame);
-		}
-		
-		void updateGame() throws TimeoutException, IOException {
-			glfwPollEvents(); //process input/windowing events
-			client.update();
-			lastWorldUpdate = updateWorld(display, world, lastWorldUpdate); //simulate world on client
-			long camUpdateStart = System.nanoTime();
-			cameraGrip.update(camUpdateStart - lastCameraUpdate); //update camera position and zoom
-			lastCameraUpdate = camUpdateStart;
-			interactionControls.update(cameraGrip.getCamera(), client, 
-					world, player, display.width(), display.height()); //block breaking/"bomb throwing"
-			if(!display.minimized()) renderer.run(display, worldRenderer);
-			Utility.sleep(1); //reduce CPU usage
-		}
-		
-		private void onAccepted() {
-			System.out.println("connected.");
-		}
-		
-		private void onRejected() {
-			try {
-				client.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-			returnToMenu();
-		}
-		
-		private void onDisconnected() {
-			try {
-				client.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-			
-			if(display.wasClosed()) {
-				StartClient.exit();
-			} else {
-				returnToMenu();
-			}
-		}
-	}
-	
-	private static void returnToMenu() {
-		gameState = null;
-		display.resetCursor();
-		GameLoop.set(StartClient::menuLoop);	
-	}
-	
-	//TODO need to refactor StartClient again, split GameState, MenuState, etc. into different separate contexts
-	//keeping in mind UI overlays, etc. in-game
-	private static void menuLoop() {
-		glfwPollEvents(); //process input/windowing events
-		if(!quit) {
-			renderer.run(display, menuState.menuRenderer);
-			Utility.sleep(1); //reduce CPU usage	
-		}
-	}
-	
-	private static void exit() {
+	static void exit() {
 		quit = true;
-		GameLoop.end(); //stop the game loop now that the client is closed
+		GameLoop.stop(); //stop the game loop now that the client is closed
 		System.out.print("Exiting... ");
 		shaderProgram.delete();
-		renderer.close(display);
+		RenderManager.closeContext();
+		glfwDestroyCursor(pickaxeCursor);
 		display.destroy();
 		audio.close();
 		glfwTerminate();
 	}
 	
-	private static void quit() {
-		if(gameState == null) {
-			exit();
-		} else {
-			gameState.exit();
-		}
-	}
-	
-	private static void setupInitial() throws IOException {
-		long startupStart = System.nanoTime();
-		audio = setupAudio();
-		display = setupGLFW();
-		input = display.getEventDelegator();
-		shaderProgram = setupRenderer(display);
-		menuState = new MenuState();
-		menuState.menuRenderer = new MenuRenderer(shaderProgram);
-
-		//mute audio when window is in background
-		input.windowFocusHandlers().add(focused -> audio.setVolume(focused ? 1.0f : 0.0f));
-		input.windowCloseHandlers().add(StartClient::quit);
-		input.keyboardHandlers().add((key, scancode, action, mods) -> {
-			if(action == org.lwjgl.glfw.GLFW.GLFW_PRESS) {
-				switch(key) {
-					case ControlScheme.KEYBIND_CONNECT -> {
-						if(gameState == null) {
-							try {
-								(gameState = new InGameState()).connect();
-							} catch (NumberFormatException | IOException e) {
-								e.printStackTrace();
-							}
-						}
-					}
-					case ControlScheme.KEYBIND_QUIT -> quit();
-					case ControlScheme.KEYBIND_FULLSCREEN -> display.toggleFullscreen();
-				}
-			}
-		});
-		
-		//display the window now that everything is set up.
-		display.show();
-		System.out.println("Startup took " + Utility.formatTime(Utility.nanosSince(startupStart)));
-	}
-	
 	private static ModelRenderProgram setupRenderer(Display display) throws IOException {
-		renderer = display.getRenderManager();
-		renderer.initialize(display);
+		display.setGraphicsContextOnThread();
+		RenderManager.initializeContext();
 
 		int indices = GraphicsUtility.uploadIndexData(0, 1, 2, 0, 2, 3);
 
@@ -284,6 +104,10 @@ public class StartClient {
 		
 		return program;
 	}
+	
+	private static RenderData getRenderData(int indices, int positions, TextureAtlas atlas, TextureData data) {
+		return new RenderData(6, indices, positions, GraphicsUtility.uploadVertexData(atlas.getCoordinates(data)));
+	}
 
 	private static ByteBuffer readIntoBuffer(Path file) throws IOException {
 		ByteBuffer out = ByteBuffer.allocateDirect((int)Files.size(file));
@@ -308,25 +132,15 @@ public class StartClient {
 				atlas.texture()
 		);
 	}
-	
-	private static long updateWorld(Display display, World world, long lastWorldUpdate) {
-		long time = System.nanoTime();
-
-		if(display.focused() && time - lastWorldUpdate < UPDATE_SKIP_THRESHOLD_NANOSECONDS) {
-			return Utility.updateWorld(world, lastWorldUpdate, Protocol.MAX_UPDATE_TIMESTEP, Protocol.TIME_SCALE_NANOSECONDS);
-		} else {
-			return time;
-		}
-	}
 
 	private static Display setupGLFW() throws IOException {
 		if(!glfwInit())
 			throw new RuntimeException("GLFW failed to initialize");
 		glfwSetErrorCallback(GLFWErrorCallback.createPrint(System.err));
-		Display display = new Display("Sandbox2D", 4, 5);
-		var cursor = ClientUtility.loadGlfwImage(Path.of("resources/assets/textures/cursors/pickaxe32.png"));
-		pickaxeCursor = ClientUtility.loadGlfwCursor(cursor, 0, 0.66f);
-		display.setIcons(ClientUtility.loadGlfwImage(Path.of("resources/assets/textures/redSquare.png")));
+		GLFWImage icon = ClientUtility.loadGLFWImage(Path.of("resources/assets/textures/redSquare.png"));
+		Display display = new Display(4, 5, "Sandbox2D", icon);
+		var cursor = ClientUtility.loadGLFWImage(Path.of("resources/assets/textures/cursors/pickaxe32.png"));
+		pickaxeCursor = ClientUtility.loadGLFWCursor(cursor, 0, 0.66f);
 		return display;
 	}
 
@@ -353,8 +167,23 @@ public class StartClient {
 		}
 		return audio;
 	}
-
-	private static RenderData getRenderData(int indices, int positions, TextureAtlas atlas, TextureData data) {
-		return new RenderData(6, indices, positions, GraphicsUtility.uploadVertexData(atlas.getCoordinates(data)));
+	
+	static class GameLoop {
+		private static GameContext context;
+		
+		public static void start(GameContext context) {
+			GameLoop.context = context;
+			while(context != null) {
+				GameLoop.context.run();
+			}
+		}
+		
+		public static void setContext(GameContext context) {
+			GameLoop.context = context;
+		}
+		
+		public static void stop() {
+			context = null;
+		}
 	}
 }
