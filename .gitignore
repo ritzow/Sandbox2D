@@ -26,8 +26,7 @@ libraries/
 
 #don't include visual studio project files
 /clientlauncher/Windows/include
-/clientlauncher/Windows/*.filters
-/clientlauncher/Windows/*.user
+/clientlauncher/Windows/*.vcxproj.user
 /clientlauncher/Windows/**/*.aps
 /clientlauncher/Windows/x64
 /clientlauncher/Windows/.vs
