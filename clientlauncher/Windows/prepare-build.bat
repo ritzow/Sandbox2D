@@ -16,8 +16,12 @@ move "x64\Release\jvm\include" "include"
 copy "include\win32" "include"
 rmdir /S /Q "include\win32"
 
+::TODO call Build.java and move the resulting files?
 ::copy required runtime code and resources
-xcopy /E /Y "..\..\client\libraries\lwjgl" "x64\Release\"
+xcopy /Y "..\..\client\libraries\lwjgl\lwjgl.jar" "x64\Release\"
+xcopy /Y "..\..\client\libraries\lwjgl\lwjgl-opengl.jar" "x64\Release\"
+xcopy /Y "..\..\client\libraries\lwjgl\lwjgl-openal.jar" "x64\Release\"
+xcopy /Y "..\..\client\libraries\lwjgl\lwjgl-glfw.jar" "x64\Release\"
 xcopy /Y "..\..\client\libraries\PNGDecoder\PNGDecoder.jar" "x64\Release\"
 xcopy /E /Y "..\..\client\resources" "x64\Release\resources\"
 xcopy /E /Y "..\..\client\bin" "x64\Release\client\"
