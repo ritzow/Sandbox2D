@@ -2,8 +2,6 @@ package ritzow.sandbox.network;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.Map;
 import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.util.Utility;
 
@@ -11,10 +9,11 @@ public final class Protocol {
 	private Protocol() {throw new UnsupportedOperationException("instantiation of Protocol not allowed");}
 
 	//gameplay
-	public static final float BLOCK_BREAK_RANGE = 1000;
 	public static final float MAX_UPDATE_TIMESTEP = 2;
 	public static final float TIME_SCALE_NANOSECONDS = Utility.millisToNanos(16);
-	public static final long BLOCK_BREAK_COOLDOWN_NANOSECONDS = Utility.millisToNanos(200);
+	
+	public static final float BLOCK_BREAK_RANGE = 1000;
+	public static final long BLOCK_BREAK_COOLDOWN_NANOSECONDS = Utility.millisToNanos(0);
 	public static final long THROW_COOLDOWN_NANOSECONDS = Utility.millisToNanos(0);
 
 	/** The Charset for text encoding used by the client and server **/
@@ -89,39 +88,28 @@ public final class Protocol {
 	}
 
 	public static enum PlayerAction {
-		MOVE_LEFT_START(0),
-		MOVE_LEFT_STOP(1),
-		MOVE_RIGHT_START(2),
-		MOVE_RIGHT_STOP(3),
-		MOVE_UP_START(4),
-		MOVE_UP_STOP(5),
-		MOVE_DOWN_START(6),
-		MOVE_DOWN_STOP(7);
-
-		private final byte code;
-
-		private static final Map<Byte, PlayerAction> actions;
-
-		static {
-			PlayerAction[] values = PlayerAction.values();
-			actions = new HashMap<>(values.length);
-			for(PlayerAction action : values) {
-				actions.put(action.getCode(), action);
-			}
-		}
-
-		private PlayerAction(int code) {
-			if(code > Byte.MAX_VALUE || code < Byte.MIN_VALUE)
-				throw new RuntimeException("invalid player action code");
-			this.code = (byte)code;
-		}
-
-		public byte getCode() {
-			return code;
+		MOVE_LEFT_START,
+		MOVE_LEFT_STOP,
+		MOVE_RIGHT_START,
+		MOVE_RIGHT_STOP,
+		MOVE_UP_START,
+		MOVE_UP_STOP,
+		MOVE_DOWN_START,
+		MOVE_DOWN_STOP;
+		
+		private static final PlayerAction[] map = PlayerAction.values();
+		
+//		private PlayerAction(int code) {
+//			if(code > Byte.MAX_VALUE || code < Byte.MIN_VALUE)
+//				throw new RuntimeException("invalid player action code");
+//		}
+		
+		public byte code() {
+			return (byte)this.ordinal();
 		}
 
 		public static PlayerAction forCode(byte code) {
-			return actions.getOrDefault(Byte.valueOf(code), null);
+			return code < map.length ? map[code] : null;
 		}
 	}
 }
