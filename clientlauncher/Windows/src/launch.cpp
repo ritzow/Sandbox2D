@@ -1,29 +1,12 @@
 #include <windows.h>
 #include "../include/jni.h"
+#include <string>
+#include <vector>
 
 constexpr bool SHOW_CONSOLE = false;
-constexpr UINT32 OPTION_COUNT = 6;
+constexpr UINT32 OPTION_COUNT = 5;
 
-typedef struct {
-	JavaVM* vm;
-	JNIEnv* env;
-	jint result;
-} VMInfo;
-
-typedef jint (JNICALL *FunCreateJavaVM)(JavaVM**, void**, void*); FunCreateJavaVM CreateJavaVM;
-
-VMInfo InstantiateVM(JavaVMOption options[OPTION_COUNT]) {
-	JavaVMInitArgs args;
-	args.version = JNI_VERSION_10;
-	args.ignoreUnrecognized = false;
-	args.nOptions = OPTION_COUNT;
-	args.options = options;
-	VMInfo info;
-	info.result = CreateJavaVM(&info.vm, (void**)& info.env, &args);
-	return info;
-}
-
-const char* getErrorType(jint result) {
+const char* getErrorString(jint result) {
 	switch (result) {
 	case JNI_OK: return "Success";
 	case JNI_ERR: return "Unknown error";
@@ -40,46 +23,64 @@ void DisplayError(const char* title, const char* message) {
 	MessageBox(nullptr, message, title, MB_OK | MB_ICONERROR);
 }
 
-void RunGame(VMInfo info, LPSTR args) {
-	jclass classMain = info.env->FindClass("ritzow/sandbox/client/StartClient");
-	jmethodID methodMain = info.env->GetStaticMethodID(classMain, "start", "(Ljava/lang/String;)V");
-	info.env->CallStaticVoidMethod(classMain, methodMain, info.env->NewStringUTF(""));
-	info.vm->DestroyJavaVM();
+typedef struct {
+	JavaVM* vm;
+	JNIEnv* env;
+	jint result;
+} VMInfo;
+
+VMInfo CreateJVM(HMODULE dll, std::vector<JavaVMOption> options) {
+	JavaVMInitArgs args;
+	args.version = JNI_VERSION_10;
+	args.ignoreUnrecognized = false;
+	args.nOptions = (jint)options.size();
+	args.options = options.data();
+
+	VMInfo info;
+	typedef jint(JNICALL *LoadFunc)(JavaVM**, JNIEnv**, JavaVMInitArgs*);
+	LoadFunc CreateJavaVM = (LoadFunc)GetProcAddress(dll, "JNI_CreateJavaVM");
+	info.result = CreateJavaVM(&info.vm, &info.env, &args);
+	return info;
+}
+
+void RunGame(JNIEnv* env, LPSTR args) {
+	jclass classMain = env->FindClass("ritzow/sandbox/client/StartClient");
+	jmethodID methodMain = env->GetStaticMethodID(classMain, "start", "(Ljava/lang/String;)V");
+	env->CallStaticVoidMethod(classMain, methodMain, env->NewStringUTF(args));
 }
 
 INT WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ INT nShowCmd) {
-	if (SHOW_CONSOLE) {
+	if constexpr (SHOW_CONSOLE) {
 		AllocConsole();
 		FILE* file;
 		freopen_s(&file, "CONOUT$", "w", stdout);
 		printf("Command Line Arguments: \"%s\"\n", lpCmdLine);
 	}
 
-	HMODULE JvmDLL = LoadLibrary("jvm/bin/server/jvm.dll");
-	if (JvmDLL != nullptr) {
-		CreateJavaVM = (FunCreateJavaVM)GetProcAddress(JvmDLL, "JNI_CreateJavaVM");
-		JavaVMOption options[OPTION_COUNT];
-		options[0].optionString = const_cast<char*>("--module-path=client;shared;lwjgl-glfw.jar;PNGDecoder.jar;lwjgl-opengl.jar;lwjgl-openal.jar;lwjgl.jar;");
-		options[1].optionString = const_cast<char*>("-Djava.class.path=lwjgl-glfw-natives-windows.jar;lwjgl-natives-windows.jar;lwjgl-openal-natives-windows.jar;lwjgl-opengl-natives-windows.jar");
-		options[2].optionString = const_cast<char*>("-Djdk.module.main=ritzow.sandbox.client");
-		options[3].optionString = const_cast<char*>("-Djdk.module.main.class=ritzow.sandbox.client.StartClient");
-		options[4].optionString = const_cast<char*>("--enable-preview");
-		options[5].optionString = const_cast<char*>("vfprintf");
-		options[5].extraInfo = *vfprintf;
-		VMInfo info = InstantiateVM(options);
+	HMODULE dll = LoadLibrary("jvm\\bin\\server\\jvm.dll");
+	if (dll != nullptr) {
+		std::vector<JavaVMOption> arguments {
+			{(char*)"--module-path=client;shared;lwjgl-glfw.jar;PNGDecoder.jar;lwjgl-opengl.jar;lwjgl-openal.jar;lwjgl.jar;"},
+			{(char*)"-Djdk.module.main=ritzow.sandbox.client"},
+			{(char*)"-Djdk.module.main.class=ritzow.sandbox.client.StartClient"},
+			{(char*)"--enable-preview"},
+			{(char*)"vfprintf", *vfprintf}
+		};
+
+		VMInfo info = CreateJVM(dll, arguments);
 		if (info.result == JNI_OK) {
-			RunGame(info, lpCmdLine);
-			FreeLibrary(JvmDLL);
+			RunGame(info.env, lpCmdLine);
+			if (info.env->ExceptionCheck()) {
+				info.env->ExceptionDescribe();
+			}
+			info.vm->DestroyJavaVM();
+			FreeLibrary(dll);
 			return EXIT_SUCCESS;
 		} else {
-			char dest;
-			const char* str1 = "Could not create JVM: ";
-			const char* str2 = getErrorType(info.result);
-			size_t length = strlen(str1) + strlen(str2) + 1;
-			strcpy_s(&dest, length, str1);
-			strcat_s(&dest, length, str2);
-			DisplayError("Java Virtual Machine Creation Failed", &dest);
-			FreeLibrary(JvmDLL);
+			std::string message = "Could not create JVM: ";
+			message += getErrorString(info.result);
+			DisplayError("Java Virtual Machine Creation Failed", message.c_str());
+			FreeLibrary(dll);
 			return EXIT_FAILURE;
 		}
 	} else {
