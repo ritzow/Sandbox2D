@@ -21,7 +21,6 @@ public class ShaderProgram {
 		GraphicsUtility.checkProgramCompilation(this);
 	}
 
-	@Deprecated
 	public void setCurrent() {
 		glUseProgram(programID);
 	}

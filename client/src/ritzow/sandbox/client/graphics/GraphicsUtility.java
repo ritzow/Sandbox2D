@@ -3,23 +3,19 @@ package ritzow.sandbox.client.graphics;
 import static org.lwjgl.opengl.GL46C.*;
 
 import java.nio.ByteBuffer;
-import java.util.HashMap;
 import java.util.Map;
 
 public final class GraphicsUtility {
 
 	private GraphicsUtility() {}
 
-	private static final Map<Integer, String> errorMessages;
-
-	static {
-		errorMessages = new HashMap<>();
-		errorMessages.put(0x500, "Invalid enum");
-		errorMessages.put(0x501, "Invalid value");
-		errorMessages.put(0x502, "Invalid operation");
-		errorMessages.put(0x506, "Attempt to use incomplete framebuffer");
-		errorMessages.put(0x507, "OpenGL context lost");
-	}
+	private static final Map<Integer, String> errorMessages = Map.ofEntries(
+		Map.entry(0x500, "Invalid enum"),
+		Map.entry(0x501, "Invalid value"),
+		Map.entry(0x502, "Invalid operation"),
+		Map.entry(0x506, "Attempt to use incomplete framebuffer"),
+		Map.entry(0x507, "OpenGL context lost")
+	);
 
 	public static int uploadIndexData(int... data) {
 		int id = glGenBuffers();

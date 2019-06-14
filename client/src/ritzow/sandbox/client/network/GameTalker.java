@@ -5,7 +5,7 @@ import ritzow.sandbox.network.Protocol.PlayerAction;
 
 public interface GameTalker {
 	void sendPlayerAction(PlayerAction action);
-	ClientPlayerEntity getPlayer() throws InterruptedException;
+	ClientPlayerEntity getPlayer();
 	void sendBlockBreak(int x, int y);
 	void sendBombThrow(float angle);
 }

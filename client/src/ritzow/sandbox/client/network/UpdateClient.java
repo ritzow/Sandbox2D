@@ -40,17 +40,10 @@ public class UpdateClient implements GameTalker {
 	private long ping; //rount trip time in nanoseconds
 
 	public static enum Status {
-		CONNECTING(true),
-		CONNECTED(true),
-		DISCONNECTING(true),
-		DISCONNECTED(false),
-		REJECTED(true);
-		
-		boolean requiresCommunication;
-		
-		Status(boolean requiresCommunication) {
-			this.requiresCommunication = requiresCommunication;
-		}
+		CONNECTING,
+		CONNECTED,
+		DISCONNECTING,
+		DISCONNECTED;
 	}
 
 	private static final class WorldState {
@@ -192,7 +185,7 @@ public class UpdateClient implements GameTalker {
 	 * @return the ClientPlayerEntity associated with this client, provided by the server
 	 * @throws InterruptedException if interrupted while waiting to receive the player
 	 */
-	public ClientPlayerEntity getPlayer() throws InterruptedException {
+	public ClientPlayerEntity getPlayer() {
 		if(worldState == null)
 			return null;
 		return worldState.player;
@@ -234,7 +227,7 @@ public class UpdateClient implements GameTalker {
 	public void sendPlayerAction(PlayerAction action) {
 		byte[] packet = new byte[3];
 		Bytes.putShort(packet, 0, Protocol.TYPE_CLIENT_PLAYER_ACTION);
-		packet[2] = action.getCode();
+		packet[2] = action.code();
 		sendReliable(packet);
 	}
 
@@ -252,10 +245,11 @@ public class UpdateClient implements GameTalker {
 		byte response = data.get();
 		switch(response) {
 			case Protocol.CONNECT_STATUS_REJECTED -> {
-				status = Status.REJECTED;
+				status = Status.DISCONNECTED;
 				var action = getAction(ClientEvent.CONNECT_REJECTED);
 				if(action != null) action.run();
 			}
+			
 			case Protocol.CONNECT_STATUS_WORLD -> {
 				var state = new WorldState();
 				int remaining = data.getInt();
@@ -266,8 +260,10 @@ public class UpdateClient implements GameTalker {
 				var action = getAction(ClientEvent.CONNECT_ACCEPTED);
 				if(action != null) action.run();
 			}
+			
 			case Protocol.CONNECT_STATUS_LOBBY -> 
 				throw new UnsupportedOperationException("CONNECT_STATUS_LOBBY not supported");
+			
 			default -> throw new UnsupportedOperationException("unknown connect ack type " + response);
 		}
 	}
@@ -377,19 +373,38 @@ public class UpdateClient implements GameTalker {
 		}
 	}
 	
-	private final ByteBuffer 
-		receiveBuffer = ByteBuffer.allocateDirect(Protocol.MAX_PACKET_SIZE), //received messages
-		responseBuffer = ByteBuffer.allocateDirect(Protocol.HEADER_SIZE), //message responses
-		sendBuffer = ByteBuffer.allocateDirect(Protocol.MAX_PACKET_SIZE); //message sending
+	/** Buffers for sending packets, receiving packets, and sending acknowledgements **/
+	private final ByteBuffer
+		sendBuffer = ByteBuffer.allocateDirect(Protocol.MAX_PACKET_SIZE),
+		receiveBuffer = ByteBuffer.allocateDirect(Protocol.MAX_PACKET_SIZE),
+		responseBuffer = ByteBuffer.allocateDirect(Protocol.HEADER_SIZE);
+	
+	private static void setupSendBuffer(ByteBuffer sendBuffer, byte type, int id, byte[] data) {
+		sendBuffer.put(type).putInt(id).put(data).flip();
+	}
+	
+	private void sendReliableInternal(ByteBuffer message) throws IOException {
+		channel.write(message);
+		sendBuffer.rewind();
+		sendAttempts++;
+	}
+	
+	private void process(ByteBuffer buffer) {
+		onReceive(buffer.position(Protocol.HEADER_SIZE));
+	}
+
+	private void sendResponse(ByteBuffer responseBuffer, int receivedMessageID) throws IOException {
+		channel.write(responseBuffer.put(Protocol.RESPONSE_TYPE).putInt(receivedMessageID).flip());
+		responseBuffer.clear();
+	}
 	
 	public void update() throws TimeoutException, IOException {
-		//receive incoming packets
 		//already connected to server so no need to check SocketAddress
-		while(channel.isOpen() && channel.receive(receiveBuffer) != null) {
-			processReceived(receiveBuffer, responseBuffer);
+		while(status != Status.DISCONNECTED && channel.receive(receiveBuffer) != null) {
+			processReceived(receiveBuffer, responseBuffer); //process messages from the server
 		}
 		
-		while(channel.isOpen() && !sendQueue.isEmpty()) {
+		while(status != Status.DISCONNECTED && !sendQueue.isEmpty()) {
 			SendPacket packet = sendQueue.peek();
 			if(packet.reliable) {
 				if(sendAttempts == 0) {
@@ -411,16 +426,6 @@ public class UpdateClient implements GameTalker {
 			}
 		}
 	}
-
-	private static void setupSendBuffer(ByteBuffer sendBuffer, byte type, int id, byte[] data) {
-		sendBuffer.put(type).putInt(id).put(data).flip();
-	}
-	
-	private void sendReliableInternal(ByteBuffer message) throws IOException {
-		channel.write(message);
-		sendBuffer.rewind();
-		sendAttempts++;
-	}
 	
 	private void processReceived(ByteBuffer buffer, ByteBuffer responseBuffer) throws IOException {
 		buffer.flip(); //flip to set limit and prepare to read packet data
@@ -435,8 +440,7 @@ public class UpdateClient implements GameTalker {
 						sendReliableID++;
 						sendBuffer.clear();
 						var action = messageSentActions.get(sendQueue.poll());
-						if(action != null)
-							action.run();
+						if(action != null) action.run();
 					} //else drop the response
 				}
 				
@@ -460,14 +464,5 @@ public class UpdateClient implements GameTalker {
 			}
 		}
 		buffer.clear(); //clear to prepare for next receive
-	}
-	
-	private void process(ByteBuffer buffer) {
-		onReceive(buffer.position(Protocol.HEADER_SIZE));
-	}
-
-	private void sendResponse(ByteBuffer responseBuffer, int receivedMessageID) throws IOException {
-		channel.write(responseBuffer.put(Protocol.RESPONSE_TYPE).putInt(receivedMessageID).flip());
-		responseBuffer.clear();
 	}
 }

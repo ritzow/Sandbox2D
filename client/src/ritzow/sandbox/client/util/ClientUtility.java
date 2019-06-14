@@ -14,12 +14,11 @@ import ritzow.sandbox.client.graphics.Camera;
 import ritzow.sandbox.util.Utility;
 
 public class ClientUtility {
-	
-	public static long loadGlfwCursor(GLFWImage image, float ratioX, float ratioY) {
+	public static long loadGLFWCursor(GLFWImage image, float ratioX, float ratioY) {
 		return glfwCreateCursor(image, (int)(image.width() * ratioX), (int)(image.height() * ratioY));
 	}
 	
-	public static GLFWImage loadGlfwImage(Path file) throws IOException {
+	public static GLFWImage loadGLFWImage(Path file) throws IOException {
 		PNGDecoder decoder = new PNGDecoder(Files.newInputStream(file));
 		ByteBuffer pixels = BufferUtils.createByteBuffer(decoder.getWidth() * decoder.getHeight() * 4);
 		decoder.decode(pixels, decoder.getWidth() * 4, Format.RGBA);
@@ -35,8 +34,8 @@ public class ClientUtility {
 		return worldX;
 	}
 	
-	public static float pixelVerticalToWorld(Camera camera, int mouseY, int frameWidth, int frameHeight) {
-		float worldY = -((2f * mouseY) / frameHeight - 1f);
+	public static float pixelVerticalToWorld(Camera camera, int mouseY, int framebufferHeight) {
+		float worldY = -((2f * mouseY) / framebufferHeight - 1f);
 		worldY /= camera.getZoom();
 		worldY += camera.getPositionY();
 		return worldY;

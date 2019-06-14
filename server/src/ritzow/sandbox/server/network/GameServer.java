@@ -258,7 +258,7 @@ public class GameServer {
 		byte[] packet = new byte[7];
 		Bytes.putShort(packet, 0, Protocol.TYPE_SERVER_PLAYER_ACTION);
 		Bytes.putInteger(packet, 2, player.getID());
-		packet[6] = action.getCode();
+		packet[6] = action.code();
 		broadcastReliable(packet);
 	}
 
@@ -380,12 +380,13 @@ public class GameServer {
 	private static void placePlayer(Entity player, BlockGrid grid) {
 		float posX = grid.getWidth()/2;
 		player.setPositionX(posX);
-		for(int blockY = 1; blockY < grid.getHeight(); blockY++) {
-			if(grid.isBlock(posX, blockY) && !(grid.isBlock(posX, blockY + 1) || grid.isBlock(posX, blockY + 2))) {
-				player.setPositionY(blockY + 1);
-				break;
+		for(int blockY = grid.getHeight() - 1; blockY > 0; blockY--) {
+			if(grid.isBlock(posX, blockY)) {
+				player.setPositionY(blockY + 0.5f + player.getHeight()/2);
+				return;
 			}
 		}
+		player.setPositionY(grid.getHeight());
 	}
 
 	private static byte[][] buildAcknowledgementWorldPackets(World world) {
