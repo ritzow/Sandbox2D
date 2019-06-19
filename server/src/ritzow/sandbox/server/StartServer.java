@@ -8,7 +8,7 @@ import java.nio.file.Path;
 import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.network.NetworkUtility;
 import ritzow.sandbox.network.Protocol;
-import ritzow.sandbox.server.network.GameServer;
+import ritzow.sandbox.server.network.Server;
 import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.block.DirtBlock;
@@ -16,7 +16,7 @@ import ritzow.sandbox.world.block.GrassBlock;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
 public final class StartServer {
-	private static GameServer server;
+	private static Server server;
 	private static boolean save = true;
 	private static final Path saveFile = Path.of("data/worlds/world.dat");
 
@@ -30,7 +30,7 @@ public final class StartServer {
 
 	public static void run(InetSocketAddress bindAddress) throws IOException {
 		try {
-			server = GameServer.start(bindAddress);
+			server = Server.start(bindAddress);
 			System.out.println("Started server on " + Utility.formatAddress(server.getAddress()) + ".");
 			System.out.print("Loading world... ");
 			long time = System.nanoTime();
