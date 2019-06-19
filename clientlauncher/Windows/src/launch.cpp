@@ -1,10 +1,9 @@
 #include <windows.h>
-#include "../include/jni.h"
 #include <string>
 #include <vector>
+#include "../include/jni.h"
 
 constexpr bool SHOW_CONSOLE = false;
-constexpr UINT32 OPTION_COUNT = 5;
 
 const char* getErrorString(jint result) {
 	switch (result) {
@@ -35,7 +34,6 @@ VMInfo CreateJVM(HMODULE dll, std::vector<JavaVMOption> options) {
 	args.ignoreUnrecognized = false;
 	args.nOptions = (jint)options.size();
 	args.options = options.data();
-
 	VMInfo info;
 	typedef jint(JNICALL *LoadFunc)(JavaVM**, JNIEnv**, JavaVMInitArgs*);
 	LoadFunc CreateJavaVM = (LoadFunc)GetProcAddress(dll, "JNI_CreateJavaVM");
@@ -60,18 +58,17 @@ INT WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 	HMODULE dll = LoadLibrary("jvm\\bin\\server\\jvm.dll");
 	if (dll != nullptr) {
 		std::vector<JavaVMOption> arguments {
-			{(char*)"--module-path=client;shared;lwjgl-glfw.jar;PNGDecoder.jar;lwjgl-opengl.jar;lwjgl-openal.jar;lwjgl.jar;"},
 			{(char*)"-Djdk.module.main=ritzow.sandbox.client"},
 			{(char*)"-Djdk.module.main.class=ritzow.sandbox.client.StartClient"},
-			{(char*)"--enable-preview"},
+			{(char*)"--enable-preview"}, //Java 12 switch expressions
 			{(char*)"vfprintf", *vfprintf}
 		};
-
 		VMInfo info = CreateJVM(dll, arguments);
 		if (info.result == JNI_OK) {
 			RunGame(info.env, lpCmdLine);
 			if (info.env->ExceptionCheck()) {
 				info.env->ExceptionDescribe();
+				DisplayError("Java Exception Occurred", "See console output for details");
 			}
 			info.vm->DestroyJavaVM();
 			FreeLibrary(dll);

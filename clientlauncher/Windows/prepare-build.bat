@@ -6,13 +6,18 @@ rmdir /S /Q "%output%"
 rmdir /S /Q "x64\Development\Output"
 mkdir "%output%"
 
-::create the java runtime
+set "client=..\..\client"
+set "shared=..\..\shared"
+set "lwjgl=%client%\libraries\lwjgl"
+
+::create the java runtime TODO call Build.java and move the resulting files instead of relying on Eclipse IDE build for client/shared modules
 "C:\Program Files\Java\jdk-12\bin\jlink.exe" ^
-	--compress=1 ^
+	--compress=2 ^
 	--no-man-pages ^
 	--strip-debug ^
 	--endian little ^
-	--add-modules java.base,jdk.unsupported ^
+	--module-path "%client%\bin;%shared%\bin;%lwjgl%\lwjgl.jar;%lwjgl%\lwjgl-glfw.jar;%lwjgl%\lwjgl-opengl.jar;%lwjgl%\lwjgl-openal.jar;" ^
+	--add-modules java.base,jdk.unsupported,ritzow.sandbox.client,ritzow.sandbox.shared,org.lwjgl,org.lwjgl.glfw,org.lwjgl.opengl,org.lwjgl.openal ^
 	--output "%output%\jvm"
 
 ::delete unecessary files kept by jlink
@@ -27,19 +32,8 @@ move "%output%\jvm\include" "include"
 copy "include\win32" "include"
 rmdir /S /Q "include\win32"
 
-set "client=..\..\client"
-set "shared=..\..\shared"
-set "lwjgl=%client%\libraries\lwjgl"
-
-::copy code, libraries, and resources to output TODO call Build.java and move the resulting files instead of relying on Eclipse IDE build
-xcopy /E /Y /Q "%client%\bin" "%output%\client\"
-xcopy /E /Y /Q "%shared%\bin" "%output%\shared\"
+::copy resources to output 
 xcopy /E /Y /Q "%client%\resources" "%output%\resources\"
-xcopy /Y "%lwjgl%\lwjgl.jar" "%output%\"
-xcopy /Y "%lwjgl%\lwjgl-opengl.jar" "%output%\"
-xcopy /Y "%lwjgl%\lwjgl-openal.jar" "%output%\"
-xcopy /Y "%lwjgl%\lwjgl-glfw.jar" "%output%\"
-xcopy /Y "%client%\libraries\PNGDecoder\PNGDecoder.jar" "%output%\"
 
 ::copy natives
 xcopy /E /Y "natives" "%output%\"
