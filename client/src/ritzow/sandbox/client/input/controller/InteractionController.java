@@ -1,11 +1,8 @@
 package ritzow.sandbox.client.input.controller;
 
-import static org.lwjgl.glfw.GLFW.*;
-
 import ritzow.sandbox.client.graphics.Camera;
 import ritzow.sandbox.client.input.Control;
 import ritzow.sandbox.client.input.InputProvider;
-import ritzow.sandbox.client.input.handler.KeyHandler;
 import ritzow.sandbox.client.network.GameTalker;
 import ritzow.sandbox.client.util.ClientUtility;
 import ritzow.sandbox.network.Protocol;
@@ -14,13 +11,8 @@ import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.Entity;
 
-public final class InteractionController implements KeyHandler {
+public final class InteractionController {
 	private long lastThrow, lastBreak;
-	private final GameTalker client;
-
-	public InteractionController(GameTalker client) {
-		this.client = client;
-	}
 
 	//TODO wait for server response before sending more block break packets
 	public void update(InputProvider input, Camera camera, GameTalker client, World world, Entity player, int frameWidth, int frameHeight) {
@@ -61,22 +53,5 @@ public final class InteractionController implements KeyHandler {
 
 	private boolean throwAllowed() {
 		return Utility.nanosSince(lastThrow) > Protocol.THROW_COOLDOWN_NANOSECONDS;
-	}
-
-	@Override
-	public void keyboardButton(int key, int scancode, int action, int mods) {
-		if(action == GLFW_PRESS) {
-			switch(key) {
-				case GLFW_KEY_1, GLFW_KEY_KP_1 -> client.getPlayer().setSlot(0);
-				case GLFW_KEY_2, GLFW_KEY_KP_2 -> client.getPlayer().setSlot(1);
-				case GLFW_KEY_3, GLFW_KEY_KP_3 -> client.getPlayer().setSlot(2);
-				case GLFW_KEY_4, GLFW_KEY_KP_4 -> client.getPlayer().setSlot(3);
-				case GLFW_KEY_5, GLFW_KEY_KP_5 -> client.getPlayer().setSlot(4);
-			    case GLFW_KEY_6, GLFW_KEY_KP_6 -> client.getPlayer().setSlot(5);
-				case GLFW_KEY_7, GLFW_KEY_KP_7 -> client.getPlayer().setSlot(6);
-				case GLFW_KEY_8, GLFW_KEY_KP_8 -> client.getPlayer().setSlot(7);
-			    case GLFW_KEY_9, GLFW_KEY_KP_9 -> client.getPlayer().setSlot(8);
-			}
-		}
 	}
 }
