@@ -25,7 +25,7 @@ public final class StartServer {
 	
 	public static void main(String[] args) throws IOException {
 		Thread.currentThread().setName("Server Main");
-		run(Utility.getAddressOrDefault(args, 0, InetAddress.getByName("127.0.0.1"), Protocol.DEFAULT_SERVER_PORT_UDP));
+		run(new InetSocketAddress(NetworkUtility.getLoopbackAddress(), Protocol.DEFAULT_SERVER_PORT_UDP));
 	}
 
 	//TODO investigate slow server closing after saving

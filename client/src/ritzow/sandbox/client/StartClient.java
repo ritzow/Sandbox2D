@@ -46,11 +46,11 @@ public class StartClient {
 	}
 	
 	public static void main(String[] args) throws Exception {
-		long startupStart = System.nanoTime();
 		Thread.currentThread().setName("Game Loop");
-		var localHost = InetAddress.getByName("127.0.0.1");
-		serverAddress =	Utility.getAddressOrDefault(args, 0, localHost, Protocol.DEFAULT_SERVER_PORT_UDP);
-		localAddress = new InetSocketAddress(localHost, 0);
+		long startupStart = System.nanoTime();
+		InetAddress localHost = NetworkUtility.getLoopbackAddress();
+		serverAddress =	Utility.getAddressFromProgramArgumentsOrDefault(args, 0, localHost, Protocol.DEFAULT_SERVER_PORT_UDP);
+		localAddress = new InetSocketAddress(serverAddress.getAddress().equals(localHost) ? localHost : NetworkUtility.getPrimaryAddress(), 0);
 		audio = setupAudio();
 		display = setupGLFW();
 		shaderProgram = setupRenderer(display);
