@@ -8,20 +8,18 @@ import ritzow.sandbox.client.input.Control;
 import ritzow.sandbox.client.input.Control.Button;
 import ritzow.sandbox.client.input.InputContext;
 import ritzow.sandbox.client.input.controller.InteractionController;
-import ritzow.sandbox.client.input.controller.PlayerController;
 import ritzow.sandbox.client.input.controller.TrackingCameraController;
-import ritzow.sandbox.client.network.UpdateClient;
-import ritzow.sandbox.client.network.UpdateClient.ClientEvent;
+import ritzow.sandbox.client.network.Client;
+import ritzow.sandbox.client.network.Client.ClientEvent;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.World;
 
 class InWorldContext implements GameContext {
-	UpdateClient client;
+	Client client;
 	ClientWorldRenderer worldRenderer;
 	TrackingCameraController cameraGrip;
-	PlayerController playerControls;
 	InteractionController interactionControls;
 	ClientPlayerEntity player;
 	World world;
@@ -41,10 +39,6 @@ class InWorldContext implements GameContext {
 		private final Map<Button, Runnable> controls = Map.ofEntries(
 				Map.entry(Control.FULLSCREEN, StartClient.display::toggleFullscreen),
 				Map.entry(Control.QUIT,  InWorldContext.this::leaveServer)
-				//Map.entry(Control.MOVE_LEFT,  InWorldContext.this::leaveServer),
-				//Map.entry(Control.MOVE_RIGHT,  InWorldContext.this::leaveServer),
-				//Map.entry(Control.MOVE_UP,  InWorldContext.this::leaveServer),
-				//Map.entry(Control.MOVE_DOWN,  InWorldContext.this::leaveServer)
 		);
 
 		@Override
@@ -54,18 +48,12 @@ class InWorldContext implements GameContext {
 
 		@Override
 		public void keyboardButton(int key, int scancode, int action, int mods) {
-			if(interactionControls != null)
-				interactionControls.keyboardButton(key, scancode, action, mods);
-			if(playerControls != null)
-				playerControls.keyboardButton(key, scancode, action, mods);
 			if(cameraGrip != null)
 				cameraGrip.keyboardButton(key, scancode, action, mods);
 		}
 
 		@Override
 		public void mouseButton(int button, int action, int mods) {
-			//if(interactionControls != null)
-			//	interactionControls.mouseButton(button, action, mods);
 			if(cameraGrip != null)
 				cameraGrip.mouseButton(button, action, mods);
 		}
@@ -92,7 +80,7 @@ class InWorldContext implements GameContext {
 		try {
 			System.out.print("Connecting to " + Utility.formatAddress(StartClient.serverAddress)
 			+ " from " + Utility.formatAddress(StartClient.localAddress) + "... ");
-			client = UpdateClient.create(StartClient.localAddress, StartClient.serverAddress);
+			client = Client.create(StartClient.localAddress, StartClient.serverAddress);
 			client.setEventListener(ClientEvent.CONNECT_ACCEPTED, this::onAccepted);
 			client.setEventListener(ClientEvent.CONNECT_REJECTED, this::onRejected);
 			client.setEventListener(ClientEvent.DISCONNECTED, this::onDisconnected);
@@ -108,6 +96,17 @@ class InWorldContext implements GameContext {
 
 	private void updateGame() {
 		StartClient.display.poll(input);
+
+		//TODO update player client-side as well
+		client.sendPlayerState(
+			StartClient.display.isControlActivated(Control.MOVE_LEFT),
+			StartClient.display.isControlActivated(Control.MOVE_RIGHT),
+			StartClient.display.isControlActivated(Control.MOVE_UP),
+			StartClient.display.isControlActivated(Control.MOVE_DOWN),
+			StartClient.display.isControlActivated(Control.USE_HELD_ITEM),
+			StartClient.display.isControlActivated(Control.THROW_BOMB)
+		);
+
 		client.update();
 		long time = System.nanoTime();
 		lastWorldUpdate = (StartClient.display.focused() && time - lastWorldUpdate < StartClient.UPDATE_SKIP_THRESHOLD_NANOSECONDS) ?
@@ -132,8 +131,7 @@ class InWorldContext implements GameContext {
 		this.player = player;
 		cameraGrip = new TrackingCameraController(2.5f, 0.05f / player.getWidth(), 0.6f / player.getWidth());
 		worldRenderer = new ClientWorldRenderer(StartClient.shaderProgram, cameraGrip.getCamera(), world);
-		playerControls = new PlayerController(client);
-		interactionControls = new InteractionController(client);
+		interactionControls = new InteractionController();
 		StartClient.display.setCursor(StartClient.pickaxeCursor);
 		lastWorldUpdate = System.nanoTime();
 		lastCameraUpdate = System.nanoTime();

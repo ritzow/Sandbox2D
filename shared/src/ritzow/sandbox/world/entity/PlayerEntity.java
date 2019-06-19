@@ -3,7 +3,6 @@ package ritzow.sandbox.world.entity;
 import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.data.Serializer;
 import ritzow.sandbox.data.TransportableDataReader;
-import ritzow.sandbox.network.Protocol.PlayerAction;
 import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
@@ -99,24 +98,22 @@ public abstract class PlayerEntity extends Entity implements Living {
 		return false;
 	}
 
-	public void processAction(PlayerAction action) {
-		switch(action) {
-			case MOVE_LEFT_START ->	left = true;
-			case MOVE_LEFT_STOP ->	left = false;
-			case MOVE_RIGHT_START -> right = true;
-			case MOVE_RIGHT_STOP -> right = false;
-			case MOVE_UP_START -> up = true;
-			case MOVE_UP_STOP ->	up = false;
-			case MOVE_DOWN_START -> {
-				down = true;
-				positionY -= SIZE_SCALE/2;
-			}
-			
-			case MOVE_DOWN_STOP -> {
-				down = false;
-				positionY += SIZE_SCALE/2;			
-			}
-		}
+	public void setLeft(boolean left) {
+		this.left = left;
+	}
+
+	public void setRight(boolean right) {
+		this.right = right;
+	}
+
+	public void setUp(boolean up) {
+		this.up = up;
+	}
+
+	public void setDown(boolean down) {
+		if(!this.down && down) positionY -= SIZE_SCALE/2;
+		else if(this.down && !down) positionY += SIZE_SCALE/2;
+		this.down = down;
 	}
 
 	public Inventory<Item> inventory() {

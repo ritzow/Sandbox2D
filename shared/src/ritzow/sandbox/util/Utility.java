@@ -9,6 +9,9 @@ import java.net.ProtocolFamily;
 import java.net.SocketException;
 import java.net.StandardProtocolFamily;
 import java.net.UnknownHostException;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
@@ -22,11 +25,15 @@ public final class Utility {
 	private Utility() {
 		throw new UnsupportedOperationException("Utility class cannot be instantiated");
 	}
-	
+
+	public static String formatCurrentTime() {
+		return "[" + LocalTime.now().format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)) + "]";
+	}
+
 	public static boolean sendIntervalElapsed(long startTime, int attempts) {
 		return System.nanoTime() >= startTime + attempts * Utility.millisToNanos(Protocol.RESEND_INTERVAL);
 	}
-	
+
 	public static int splitQuantity(int bucketSize, int itemCount) {
 		return itemCount/bucketSize + itemCount%bucketSize;
 	}

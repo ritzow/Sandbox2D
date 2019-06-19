@@ -4,6 +4,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.util.Utility;
+import ritzow.sandbox.world.entity.PlayerEntity;
 
 public final class Protocol {
 	private Protocol() {throw new UnsupportedOperationException("instantiation of Protocol not allowed");}
@@ -11,7 +12,7 @@ public final class Protocol {
 	//gameplay
 	public static final float MAX_UPDATE_TIMESTEP = 2;
 	public static final float TIME_SCALE_NANOSECONDS = Utility.millisToNanos(16);
-	
+
 	public static final float BLOCK_BREAK_RANGE = 1000;
 	public static final long BLOCK_BREAK_COOLDOWN_NANOSECONDS = Utility.millisToNanos(0);
 	public static final long THROW_COOLDOWN_NANOSECONDS = Utility.millisToNanos(0);
@@ -53,7 +54,7 @@ public final class Protocol {
 		TYPE_SERVER_REMOVE_BLOCK = 9,
 		TYPE_CLIENT_CONNECT_REQUEST = 10,
 		TYPE_CLIENT_DISCONNECT = 11,
-		TYPE_CLIENT_PLAYER_ACTION = 12,
+		TYPE_CLIENT_PLAYER_STATE = 12,
 		TYPE_CLIENT_BREAK_BLOCK = 13,
 		TYPE_SERVER_PING = 14,
 		TYPE_SERVER_PLAYER_ACTION = 15,
@@ -87,29 +88,40 @@ public final class Protocol {
 		return packet;
 	}
 
-	public static enum PlayerAction {
-		MOVE_LEFT_START,
-		MOVE_LEFT_STOP,
-		MOVE_RIGHT_START,
-		MOVE_RIGHT_STOP,
-		MOVE_UP_START,
-		MOVE_UP_STOP,
-		MOVE_DOWN_START,
-		MOVE_DOWN_STOP;
-		
-		private static final PlayerAction[] map = PlayerAction.values();
-		
-//		private PlayerAction(int code) {
-//			if(code > Byte.MAX_VALUE || code < Byte.MIN_VALUE)
-//				throw new RuntimeException("invalid player action code");
-//		}
-		
-		public byte code() {
-			return (byte)this.ordinal();
+	public static class PlayerState {
+		//PlayerState format:
+		//2 bytes message type
+		//1 bit unused
+		//1 bit unused
+		//1 bit left
+		//1 bit right
+		//1 bit up
+		//1 bit down
+		//1 bit primary_action
+		//1 bit secondary_action
+		public static byte MOVE_LEFT = 			0b00000001;
+		public static byte MOVE_RIGHT = 		0b00000010;
+		public static byte MOVE_UP = 			0b00000100;
+		public static byte MOVE_DOWN = 			0b00001000;
+		public static byte PRIMARY_ACTION = 	0b00010000;
+		public static byte SECONDARY_ACTION = 	0b00100000;
+
+		public static byte getState(boolean left, boolean right, boolean up, boolean down, boolean primaryAction, boolean secondaryAction) {
+			byte state = 0;
+			state |= left ? PlayerState.MOVE_LEFT : 0;
+			state |= right ? PlayerState.MOVE_RIGHT : 0;
+			state |= up ? PlayerState.MOVE_UP : 0;
+			state |= down ? PlayerState.MOVE_DOWN : 0;
+			state |= primaryAction ? PlayerState.PRIMARY_ACTION : 0;
+			state |= secondaryAction ? PlayerState.SECONDARY_ACTION : 0;
+			return state;
 		}
 
-		public static PlayerAction forCode(byte code) {
-			return code < map.length ? map[code] : null;
+		public static void updatePlayer(PlayerEntity player, byte state) {
+			player.setLeft((state & MOVE_LEFT) != 0);
+			player.setRight((state & MOVE_RIGHT) != 0);
+			player.setUp((state & MOVE_UP) != 0);
+			player.setDown((state & MOVE_DOWN) != 0);
 		}
 	}
 }

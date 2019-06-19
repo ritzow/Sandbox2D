@@ -16,14 +16,13 @@ import ritzow.sandbox.client.util.SerializationProvider;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
 import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.network.Protocol;
-import ritzow.sandbox.network.Protocol.PlayerAction;
 import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.Entity;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
 //currently has queued blocking receive processing, queued blocking message sending
-public class UpdateClient implements GameTalker {
+public class Client implements GameTalker {
 
 	//sender/receiver state
 	private final DatagramChannel channel;
@@ -49,7 +48,6 @@ public class UpdateClient implements GameTalker {
 
 	private static final class WorldState {
 		World world;
-		ClientPlayerEntity player;
 		byte[] worldData;
 		int worldBytesRemaining;
 	}
@@ -93,15 +91,15 @@ public class UpdateClient implements GameTalker {
 	 * @throws IOException if an internal I/O error occurrs.
 	 * @throws SocketException if the local address could not be bound to.
 	 */
-	public static UpdateClient create(InetSocketAddress bindAddress, InetSocketAddress serverAddress) throws IOException {
-		return new UpdateClient(bindAddress, serverAddress);
+	public static Client create(InetSocketAddress bindAddress, InetSocketAddress serverAddress) throws IOException {
+		return new Client(bindAddress, serverAddress);
 	}
 
 	public void beginConnect() {
 		sendReliable(Bytes.of(Protocol.TYPE_CLIENT_CONNECT_REQUEST));
 	}
 
-	private UpdateClient(InetSocketAddress bindAddress, InetSocketAddress serverAddress) throws IOException {
+	private Client(InetSocketAddress bindAddress, InetSocketAddress serverAddress) throws IOException {
 		this.channel = DatagramChannel.open(Utility.getProtocolFamily(bindAddress.getAddress())).bind(bindAddress).connect(serverAddress);
 		this.channel.configureBlocking(false);
 		this.sendQueue = new ArrayDeque<>();
@@ -143,7 +141,7 @@ public class UpdateClient implements GameTalker {
 				case Protocol.TYPE_SERVER_CLIENT_DISCONNECT -> processServerDisconnect(data);
 				case Protocol.TYPE_SERVER_PLAYER_ID -> processReceivePlayerEntityID(data);
 				case Protocol.TYPE_SERVER_REMOVE_BLOCK -> processServerRemoveBlock(data);
-				case Protocol.TYPE_SERVER_PLAYER_ACTION -> processServerPlayerAction(data);
+				case Protocol.TYPE_CLIENT_PLAYER_STATE -> processPlayerState(data);
 				case Protocol.TYPE_SERVER_PING -> {}
 				default -> throw new IllegalArgumentException("Client received message of unknown protocol " + type);
 			}
@@ -186,19 +184,6 @@ public class UpdateClient implements GameTalker {
 		return worldState.world;
 	}
 
-	/**
-	 * Returns the player associated with this client, sent by the server.
-	 * Blocks until this client's player is received and identified.
-	 * @return the ClientPlayerEntity associated with this client, provided by the server
-	 * @throws InterruptedException if interrupted while waiting to receive the player
-	 */
-	@Override
-	public ClientPlayerEntity getPlayer() {
-		if(worldState == null)
-			return null;
-		return worldState.player;
-	}
-
 	/** Queues a reliable message **/
 	private void sendReliable(byte[] data) {
 		sendQueue.add(new SendPacket(data.clone(), true));
@@ -212,7 +197,6 @@ public class UpdateClient implements GameTalker {
 	}
 
 	/** Queues an unreliable messager **/
-	@SuppressWarnings("unused")
 	private void sendUnreliable(byte[] data) {
 		sendQueue.add(new SendPacket(data.clone(), false));
 	}
@@ -234,12 +218,11 @@ public class UpdateClient implements GameTalker {
 		sendReliable(packet);
 	}
 
-	@Override
-	public void sendPlayerAction(PlayerAction action) {
+	public void sendPlayerState(boolean left, boolean right, boolean up, boolean down, boolean primaryAction, boolean secondaryAction) {
 		byte[] packet = new byte[3];
-		Bytes.putShort(packet, 0, Protocol.TYPE_CLIENT_PLAYER_ACTION);
-		packet[2] = action.code();
-		sendReliable(packet);
+		Bytes.putShort(packet, 0, Protocol.TYPE_CLIENT_PLAYER_STATE);
+		packet[2] = Protocol.PlayerState.getState(left, right, up, down, primaryAction, secondaryAction);
+		sendUnreliable(packet);
 	}
 
 	private static byte[] getRemainingBytes(ByteBuffer buffer) {
@@ -297,9 +280,9 @@ public class UpdateClient implements GameTalker {
 		throw new IllegalStateException("No entity with ID " + ID + " exists");
 	}
 
-	private void processServerPlayerAction(ByteBuffer data) {
+	private void processPlayerState(ByteBuffer data) {
 		PlayerEntity e = getEntityFromID(data.getInt());
-		e.processAction(PlayerAction.forCode(data.get()));
+		Protocol.PlayerState.updatePlayer(e, data.get());
 	}
 
 	private void processServerRemoveBlock(ByteBuffer data) {
@@ -319,9 +302,9 @@ public class UpdateClient implements GameTalker {
 
 	private void processReceivePlayerEntityID(ByteBuffer data) {
 		int id = data.getInt();
-		worldState.player = getEntityFromID(id);
+		ClientPlayerEntity player = getEntityFromID(id);
 		var action = getAction(ClientEvent.WORLD_JOIN);
-		if(action != null) action.accept(worldState.world, worldState.player);
+		if(action != null) action.accept(worldState.world, player);
 	}
 
 	private void processRemoveEntity(ByteBuffer data) {

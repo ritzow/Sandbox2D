@@ -13,7 +13,6 @@ import java.util.function.Predicate;
 import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.data.Transportable;
 import ritzow.sandbox.network.Protocol;
-import ritzow.sandbox.network.Protocol.PlayerAction;
 import ritzow.sandbox.server.SerializationProvider;
 import ritzow.sandbox.server.world.entity.ServerBombEntity;
 import ritzow.sandbox.server.world.entity.ServerPlayerEntity;
@@ -30,12 +29,13 @@ import ritzow.sandbox.world.item.BlockItem;
 //currently uses single-threaded receive processing, queued blocking message sending
 /** The server manages connected game clients, sends game updates, receives client input, and broadcasts information for clients. */
 public class Server {
+	private static final long NETWORK_SEND_INTERVAL_NANOSECONDS = Utility.millisToNanos(100);
+	private static final float BOMB_THROW_VELOCITY = 0.8f;
+
 	private final DatagramChannel channel;
 	private final ByteBuffer receiveBuffer, responseBuffer;
 	private final Map<InetSocketAddress, ClientState> clients;
 	private World world;
-
-	private static final float BOMB_THROW_VELOCITY = 0.8f;
 
 	public static Server start(InetSocketAddress bind) throws IOException {
 		return new Server(bind);
@@ -87,15 +87,13 @@ public class Server {
 		switch(type) {
 			case Protocol.TYPE_CLIENT_CONNECT_REQUEST -> sendClientConnectReply(client);
 			case Protocol.TYPE_CLIENT_DISCONNECT -> processClientDisconnect(client);
-			case Protocol.TYPE_CLIENT_PLAYER_ACTION -> processPlayerAction(client, packet);
 			case Protocol.TYPE_CLIENT_BREAK_BLOCK -> processClientBreakBlock(client, packet);
 			case Protocol.TYPE_CLIENT_BOMB_THROW -> processClientThrowBomb(client, packet);
-			case Protocol.TYPE_CLIENT_WORLD_BUILT -> client.status = ClientState.STATUS_IN_GAME; //nothing to do here, maybe in the futoure though
+			case Protocol.TYPE_CLIENT_WORLD_BUILT -> client.status = ClientState.STATUS_IN_GAME;
+			case Protocol.TYPE_CLIENT_PLAYER_STATE -> processClientPlayerState(client, packet);
 			default -> throw new ClientBadDataException("received unknown protocol " + type);
 		}
 	}
-
-	private static final long NETWORK_SEND_INTERVAL_NANOSECONDS = Utility.millisToNanos(100);
 
 	/**
 	 * Update the server's state. (includes message receiving)
@@ -245,22 +243,23 @@ public class Server {
 //		return packet;
 //	}
 
-	private void processPlayerAction(ClientState client, ByteBuffer data) {
+	private void processClientPlayerState(ClientState client, ByteBuffer packet) {
 		if(client.player == null)
 			throw new ClientBadDataException("client has no associated player to perform an action");
 		if(world.contains(client.player)) {
-			PlayerAction action = PlayerAction.forCode(data.get());
-			client.player.processAction(action);
-			broadcastPlayerAction(client.player, action);
-		} //else what is the point of the player performing the action
-	}
+			byte state = packet.get();
 
-	private void broadcastPlayerAction(PlayerEntity player, PlayerAction action) {
-		byte[] packet = new byte[7];
-		Bytes.putShort(packet, 0, Protocol.TYPE_SERVER_PLAYER_ACTION);
-		Bytes.putInteger(packet, 2, player.getID());
-		packet[6] = action.code();
-		broadcastReliable(packet);
+			//update server
+			Protocol.PlayerState.updatePlayer(client.player, state);
+			//TODO for now ignore the primary/secondary actions
+
+			//update clients
+			byte[] message = new byte[7];
+			Bytes.putShort(message, 0, Protocol.TYPE_CLIENT_PLAYER_STATE);
+			Bytes.putInteger(message, 2, client.player.getID());
+			message[6] = state; //copy from incoming packt to outgoing packet
+			broadcastUnreliable(message);
+		} //else what is the point of the player performing the action
 	}
 
 	public void printDebug(PrintStream out) {
