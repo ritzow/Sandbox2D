@@ -92,6 +92,7 @@ public class ShaderProgram {
 
 	public final void deleteProgram() {
 		glDeleteProgram(programID);
+		GraphicsUtility.checkErrors();
 	}
 
 	public void deleteShaders() {
@@ -99,5 +100,6 @@ public class ShaderProgram {
 			glDetachShader(programID, s.getShaderID());
 			s.delete();
 		}
+		GraphicsUtility.checkErrors();
 	}
 }

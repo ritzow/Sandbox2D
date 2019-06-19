@@ -13,12 +13,12 @@ public final class MenuRenderer implements Renderer {
 	@Override
 	public void render(Framebuffer dest, final int width, final int height) {
 		//prepare the diffuse texture for drawing
-		dest.clear(0.0f, 0.0f, 1.0f, 1.0f);
+		dest.clear(161/256f, 252/256f, 156/256f, 1.0f);
 		dest.setDraw();
-		
+
 		//ensure that model program is cached on stack
 		ModelRenderProgram program = this.modelProgram;
-		
+
 		//set the current shader program
 		program.setCurrent();
 

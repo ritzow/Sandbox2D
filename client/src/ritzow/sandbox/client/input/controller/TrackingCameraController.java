@@ -10,22 +10,18 @@ import ritzow.sandbox.client.input.ControlScheme;
 import ritzow.sandbox.world.entity.Entity;
 
 public final class TrackingCameraController extends CameraController {
-	private final Entity target;
-	private final AudioSystem audio;
 	private final float zoomSpeed, minZoom, maxZoom;
 	private float velocityZ;
 
-	public TrackingCameraController(AudioSystem audio, Entity target, float zoomSpeed, float minZoom, float maxZoom) {
+	public TrackingCameraController(float zoomSpeed, float minZoom, float maxZoom) {
 		super(new Camera(0, 0, 1));
-		this.audio = audio;
-		this.target = target;
 		this.zoomSpeed = zoomSpeed;
-		this.minZoom = minZoom / target.getWidth();
-		this.maxZoom = maxZoom / target.getWidth();
+		this.minZoom = minZoom;
+		this.maxZoom = maxZoom;
 		this.camera.setZoom(minZoom);
 	}
 
-	public void update(long nanoseconds) {
+	public void update(Entity target, AudioSystem audio, long nanoseconds) {
 		camera.setPositionX(target.getPositionX());
 		camera.setPositionY(target.getPositionY());
 		camera.setZoom((Math.max(Math.min(maxZoom, camera.getZoom() + camera.getZoom() * nanoseconds * velocityZ / 1_000_000_000f), minZoom)));
@@ -54,7 +50,7 @@ public final class TrackingCameraController extends CameraController {
 					velocityZ = 0;
 				}
 			}
-			
+
 			case ControlScheme.KEYBIND_DECREASEZOOM -> {
 				if(action == GLFW_PRESS) {
 					velocityZ = -zoomSpeed;

@@ -3,9 +3,9 @@ package ritzow.sandbox.client.input.controller;
 import static org.lwjgl.glfw.GLFW.*;
 
 import ritzow.sandbox.client.graphics.Camera;
-import ritzow.sandbox.client.input.handler.CursorPosHandler;
+import ritzow.sandbox.client.input.Control;
+import ritzow.sandbox.client.input.InputProvider;
 import ritzow.sandbox.client.input.handler.KeyHandler;
-import ritzow.sandbox.client.input.handler.MouseButtonHandler;
 import ritzow.sandbox.client.network.GameTalker;
 import ritzow.sandbox.client.util.ClientUtility;
 import ritzow.sandbox.network.Protocol;
@@ -14,9 +14,7 @@ import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.Entity;
 
-public final class InteractionController implements MouseButtonHandler, CursorPosHandler, KeyHandler {
-	private boolean primaryAction, secondaryAction;
-	private int mouseX, mouseY;
+public final class InteractionController implements KeyHandler {
 	private long lastThrow, lastBreak;
 	private final GameTalker client;
 
@@ -25,8 +23,9 @@ public final class InteractionController implements MouseButtonHandler, CursorPo
 	}
 
 	//TODO wait for server response before sending more block break packets
-	public void update(Camera camera, GameTalker client, World world, Entity player, int frameWidth, int frameHeight) {
-		if(primaryAction && breakAllowed()) {
+	public void update(InputProvider input, Camera camera, GameTalker client, World world, Entity player, int frameWidth, int frameHeight) {
+		final int mouseX = input.getCursorX(), mouseY = input.getCursorY();
+		if(input.isControlActivated(Control.USE_HELD_ITEM) && breakAllowed()) {
 			int blockX = Math.round(ClientUtility.pixelHorizontalToWorld(camera, mouseX, frameWidth, frameHeight));
 			int blockY = Math.round(ClientUtility.pixelVerticalToWorld(camera, mouseY, frameHeight));
 			BlockGrid grid = world.getForeground();
@@ -36,23 +35,23 @@ public final class InteractionController implements MouseButtonHandler, CursorPo
 				//requires a different approach, lastBreak won't be set here
 				lastBreak = System.nanoTime();
 			}
-		} else if(secondaryAction && throwAllowed()) {
+		} else if(input.isControlActivated(Control.THROW_BOMB) && throwAllowed()) {
 			float worldX = ClientUtility.pixelHorizontalToWorld(camera, mouseX, frameWidth, frameHeight);
 			float worldY = ClientUtility.pixelVerticalToWorld(camera, mouseY, frameHeight);
 			client.sendBombThrow(computeThrowAngle(player, worldX, worldY));
 			lastThrow = System.nanoTime();
 		}
 	}
-	
+
 	private static final float MAX_ANGLE = (float)Math.PI/8;
-	
+
 	private static float computeThrowAngle(Entity player, float worldX, float worldY) {
-		return (float)Math.atan2(worldY - player.getPositionY(), worldX - player.getPositionX()) 
+		return (float)Math.atan2(worldY - player.getPositionY(), worldX - player.getPositionX())
 				+ Utility.randomFloat(-MAX_ANGLE, MAX_ANGLE);
 	}
 
 	private static boolean inRange(Entity player, int blockX, int blockY) {
-		return Utility.withinDistance(player.getPositionX(), player.getPositionY(), 
+		return Utility.withinDistance(player.getPositionX(), player.getPositionY(),
 				blockX, blockY, Protocol.BLOCK_BREAK_RANGE);
 	}
 
@@ -64,19 +63,6 @@ public final class InteractionController implements MouseButtonHandler, CursorPo
 		return Utility.nanosSince(lastThrow) > Protocol.THROW_COOLDOWN_NANOSECONDS;
 	}
 
-	@Override
-	public void mouseButton(int button, int action, int mods) {
-		primaryAction = action == GLFW_PRESS && (button == GLFW_MOUSE_BUTTON_LEFT || primaryAction);
-		secondaryAction = action == GLFW_PRESS && (button == GLFW_MOUSE_BUTTON_RIGHT || secondaryAction);
-	}
-
-	@Override
-	public void cursorPos(double xpos, double ypos) {
-		mouseX = (int) xpos;
-		mouseY = (int) ypos;
-	}
-
-	//TODO using callbacks is stupid in singlethreaded, check keyboard buttons in update instead.
 	@Override
 	public void keyboardButton(int key, int scancode, int action, int mods) {
 		if(action == GLFW_PRESS) {

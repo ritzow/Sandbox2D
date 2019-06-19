@@ -46,7 +46,7 @@ public final class Utility {
 		}
 	}
 
-	public static InetSocketAddress getAddressOrDefault(String[] args, int index, InetAddress defaultAddress, int defaultPort) throws NumberFormatException, UnknownHostException {
+	public static InetSocketAddress getAddressFromProgramArgumentsOrDefault(String[] args, int index, InetAddress defaultAddress, int defaultPort) throws NumberFormatException, UnknownHostException {
 		return new InetSocketAddress((args.length > index && !args[index].isEmpty()) ? InetAddress.getByName(args[index]) : defaultAddress,
 				args.length > 1 ? Integer.parseInt(args[index + 1]) : defaultPort);
 	}

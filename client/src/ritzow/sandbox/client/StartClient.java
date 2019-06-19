@@ -24,12 +24,13 @@ import ritzow.sandbox.client.audio.WAVEDecoder;
 import ritzow.sandbox.client.graphics.*;
 import ritzow.sandbox.client.graphics.Shader.ShaderType;
 import ritzow.sandbox.client.util.ClientUtility;
+import ritzow.sandbox.network.NetworkUtility;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.util.Utility;
 
 public class StartClient {
 	static final long UPDATE_SKIP_THRESHOLD_NANOSECONDS = Utility.millisToNanos(100);
-	private static final boolean USE_OPENGL_4_6 = false;
+	private static final boolean USE_OPENGL_4_6 = true;
 
 	static Display display;
 	static long pickaxeCursor;
@@ -37,14 +38,13 @@ public class StartClient {
 	static ModelRenderProgram shaderProgram;
 	static InetSocketAddress localAddress;
 	static InetSocketAddress serverAddress;
-	static boolean quit;
 	static MainMenuContext mainMenu;
 
 	/** For use by native launcher **/
 	public static void start(String commandLine) throws Exception {
 		main(commandLine.split(" "));
 	}
-	
+
 	public static void main(String[] args) throws Exception {
 		Thread.currentThread().setName("Game Loop");
 		long startupStart = System.nanoTime();
@@ -53,27 +53,26 @@ public class StartClient {
 		localAddress = new InetSocketAddress(serverAddress.getAddress().equals(localHost) ? localHost : NetworkUtility.getPrimaryAddress(), 0);
 		audio = setupAudio();
 		display = setupGLFW();
-		shaderProgram = setupRenderer(display);
+		shaderProgram = setupGraphics(display);
 		mainMenu = new MainMenuContext(new MenuRenderer(shaderProgram));
-		display.show();
 		System.out.println("Startup took " + Utility.formatTime(Utility.nanosSince(startupStart)));
+		display.show();
 		GameLoop.start(mainMenu);
 		System.out.println("done!");
 	}
-	
+
 	static void exit() {
-		quit = true;
 		GameLoop.stop(); //stop the game loop now that the client is closed
 		System.out.print("Exiting... ");
 		shaderProgram.delete();
 		RenderManager.closeContext();
-		glfwDestroyCursor(pickaxeCursor);
 		display.destroy();
 		audio.close();
+		glfwDestroyCursor(pickaxeCursor);
 		glfwTerminate();
 	}
-	
-	private static ModelRenderProgram setupRenderer(Display display) throws IOException {
+
+	private static ModelRenderProgram setupGraphics(Display display) throws IOException {
 		display.setGraphicsContextOnThread();
 		RenderManager.initializeContext();
 
@@ -86,25 +85,24 @@ public class StartClient {
 				0.5f,	 0.5f
 		);
 
-		TextureData dirt = Textures.loadTextureName("dirt"),
-				grass = Textures.loadTextureName("grass"),
-				face = Textures.loadTextureName("greenFace"),
-				red = Textures.loadTextureName("redSquare");
+		TextureData
+			dirt = Textures.loadTextureName("dirt"),
+			grass = Textures.loadTextureName("grass"),
+			face = Textures.loadTextureName("greenFace"),
+			red = Textures.loadTextureName("redSquare");
 		TextureAtlas atlas = Textures.buildAtlas(grass, dirt, face, red);
 
-		long start = System.nanoTime();
-		var program = USE_OPENGL_4_6 ? createProgramFromSPIRV(atlas) : createProgramFromSource(atlas);
-		System.out.println("Created model renderer in " + Utility.formatTime(System.nanoTime() - start) + ".");
+		ModelRenderProgram program = USE_OPENGL_4_6 ? createProgramFromSPIRV(atlas) : createProgramFromSource(atlas);
+		GraphicsUtility.checkErrors();
 
 		program.register(RenderConstants.MODEL_DIRT_BLOCK, getRenderData(indices, positions, atlas, dirt));
 		program.register(RenderConstants.MODEL_GRASS_BLOCK, getRenderData(indices, positions, atlas, grass));
 		program.register(RenderConstants.MODEL_GREEN_FACE, getRenderData(indices, positions, atlas, face));
 		program.register(RenderConstants.MODEL_RED_SQUARE, getRenderData(indices, positions, atlas, red));
-		GraphicsUtility.checkErrors();
-		
+
 		return program;
 	}
-	
+
 	private static RenderData getRenderData(int indices, int positions, TextureAtlas atlas, TextureData data) {
 		return new RenderData(6, indices, positions, GraphicsUtility.uploadVertexData(atlas.getCoordinates(data)));
 	}
@@ -166,24 +164,5 @@ public class StartClient {
 			}
 		}
 		return audio;
-	}
-	
-	static class GameLoop {
-		private static GameContext context;
-		
-		public static void start(GameContext context) {
-			GameLoop.context = context;
-			while(context != null) {
-				GameLoop.context.run();
-			}
-		}
-		
-		public static void setContext(GameContext context) {
-			GameLoop.context = context;
-		}
-		
-		public static void stop() {
-			context = null;
-		}
 	}
 }

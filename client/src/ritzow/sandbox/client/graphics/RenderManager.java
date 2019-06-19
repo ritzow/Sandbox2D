@@ -24,8 +24,7 @@ public class RenderManager {
 	}
 
 	public static void run(Display display, Renderer renderer) {
-		var size = display.getSize();
-		int width = size.x, height = size.y;
+		int width = display.width(), height = display.height();
 		glViewport(0, 0, width, height);
 		renderer.render(displayBuffer, width, height);
 		display.refresh();
