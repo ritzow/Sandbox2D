@@ -11,11 +11,6 @@
 			<attribute name="module" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="libraries/PNGDecoder/PNGDecoder.jar" sourcepath="libraries/PNGDecoder/src">
-		<attributes>
-			<attribute name="module" value="true"/>
-		</attributes>
-	</classpathentry>
 	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-glfw.jar" sourcepath="libraries/lwjgl/lwjgl-glfw-sources.jar">
 		<attributes>
 			<attribute name="javadoc_location" value="jar:platform:/resource/Sandbox2DClient/libraries/lwjgl/lwjgl-glfw-javadoc.jar!/"/>
