@@ -2,11 +2,11 @@ package ritzow.sandbox.server;
 
 import java.io.IOException;
 import java.net.BindException;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import ritzow.sandbox.data.Bytes;
+import ritzow.sandbox.network.NetworkUtility;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.server.network.GameServer;
 import ritzow.sandbox.util.Utility;
@@ -22,13 +22,12 @@ public final class StartServer {
 
 	private static final int WORLD_WIDTH = 200, WORLD_BASE_HEIGHT = 50, WORLD_AMPLITUDE = 20;
 	private static final float WORLD_FREQUENCY = 0.15f;
-	
+
 	public static void main(String[] args) throws IOException {
 		Thread.currentThread().setName("Server Main");
 		run(new InetSocketAddress(NetworkUtility.getLoopbackAddress(), Protocol.DEFAULT_SERVER_PORT_UDP));
 	}
 
-	//TODO investigate slow server closing after saving
 	public static void run(InetSocketAddress bindAddress) throws IOException {
 		try {
 			server = GameServer.start(bindAddress);
@@ -59,20 +58,20 @@ public final class StartServer {
 				System.out.println("Server stopped without saving to file.");
 			}
 
-			System.exit(0);
+			System.exit(0); //kill the console thread
 		} catch(BindException e) {
 			System.out.println("Could not start server: '" + e.getMessage() + "'");
 		}
 	}
-	
+
 	public static World loadWorld(Path file) throws IOException {
 		return SerializationProvider.getProvider().deserialize(Bytes.decompress(Files.readAllBytes(file)));
 	}
-	
+
 	private static World generateWorld() {
 		World world = new World(WORLD_WIDTH, WORLD_BASE_HEIGHT + WORLD_AMPLITUDE, 0.016f);
 		for(int column = 0; column < WORLD_WIDTH; column++) {
-			int amplitude = WORLD_BASE_HEIGHT + WORLD_AMPLITUDE/2 
+			int amplitude = WORLD_BASE_HEIGHT + WORLD_AMPLITUDE/2
 					+ Math.round(WORLD_AMPLITUDE/2 * (float)Math.sin(column * WORLD_FREQUENCY)) - 1;
 			for(int row = 0; row < amplitude; row++) {
 				world.getForeground().set(column, row, new DirtBlock());
@@ -95,7 +94,7 @@ public final class StartServer {
 			System.out.println("Error while saving world to file '" + saveFile + "':" + e.getClass().getTypeName() + ":" + e.getMessage());
 		}
 	}
-	
+
 	private static void registerCommands(CommandParser runner) {
 		runner.register("stop", 	StartServer::stopCommand);
 		runner.register("abort", 	StartServer::abortCommand);
