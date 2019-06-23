@@ -83,15 +83,19 @@ public class Server {
 
 	//TODO disconnect clients who don't connect properly
 	private void onReceive(ClientState client, ByteBuffer packet) {
-		short type = packet.getShort();
-		switch(type) {
-			case Protocol.TYPE_CLIENT_CONNECT_REQUEST -> sendClientConnectReply(client);
-			case Protocol.TYPE_CLIENT_DISCONNECT -> processClientDisconnect(client);
-			case Protocol.TYPE_CLIENT_BREAK_BLOCK -> processClientBreakBlock(client, packet);
-			case Protocol.TYPE_CLIENT_BOMB_THROW -> processClientThrowBomb(client, packet);
-			case Protocol.TYPE_CLIENT_WORLD_BUILT -> client.status = ClientState.STATUS_IN_GAME;
-			case Protocol.TYPE_CLIENT_PLAYER_STATE -> processClientPlayerState(client, packet);
-			default -> throw new ClientBadDataException("received unknown protocol " + type);
+		try {
+			short type = packet.getShort();
+			switch(type) {
+				case Protocol.TYPE_CLIENT_CONNECT_REQUEST -> sendClientConnectReply(client);
+				case Protocol.TYPE_CLIENT_DISCONNECT -> processClientDisconnect(client);
+				case Protocol.TYPE_CLIENT_BREAK_BLOCK -> processClientBreakBlock(client, packet);
+				case Protocol.TYPE_CLIENT_BOMB_THROW -> processClientThrowBomb(client, packet);
+				case Protocol.TYPE_CLIENT_WORLD_BUILT -> client.status = ClientState.STATUS_IN_GAME;
+				case Protocol.TYPE_CLIENT_PLAYER_STATE -> processClientPlayerState(client, packet);
+				default -> throw new ClientBadDataException("received unknown protocol " + type);
+			}
+		} catch(ClientBadDataException e) {
+			System.out.println("Server received bad data from client: " + e.getMessage());
 		}
 	}
 
@@ -102,6 +106,38 @@ public class Server {
 	public void updateServer() throws IOException {
 		removeDisconnectedClients();
 		receive();
+	}
+
+	public void removeDisconnectedClients() {
+		var iterator = clients.values().iterator();
+		while(iterator.hasNext()) {
+			ClientState client = iterator.next();
+			if(isDisconnectState(client.status)) {
+				//TODO handle manual disconnect case
+				iterator.remove();
+				if(client.player != null) {
+					world.remove(client.player);
+					broadcastRemoveEntity(client.player);
+				}
+
+				if(client.status != ClientState.STATUS_CONNECTION_REJECTED) {
+					broadcastAndPrint(getDisconnectMessage(client));
+				}
+			}
+		}
+	}
+
+	//TODO does this disconnect clients before they've been notified?
+	private static boolean isDisconnectState(byte status) {
+		return switch(status) {
+			case ClientState.STATUS_CONNECTED -> false;
+			case ClientState.STATUS_TIMED_OUT -> true;
+			case ClientState.STATUS_REMOVED -> true;
+			case ClientState.STATUS_SELF_DISCONNECTED -> true;
+			case ClientState.STATUS_CONNECTION_REJECTED -> true;
+			case ClientState.STATUS_IN_GAME -> false;
+			default -> false;
+		};
 	}
 
 	private long lastClientsUpdate;
@@ -120,6 +156,12 @@ public class Server {
 	 */
 	public void updateClients() throws IOException {
 		if(Utility.nanosSince(lastClientsUpdate) > NETWORK_SEND_INTERVAL_NANOSECONDS) {
+			for(ClientState client : clients.values()) {
+				if(client.status == ClientState.STATUS_IN_GAME) {
+					broadcastPlayerState(client);
+				}
+			}
+
 			//TODO optimize entity packet format and sending (batch entity updates)
 			for(Entity e : world) {
 				populateEntityUpdate(ENTITY_UPDATE_BUFFER, e);
@@ -247,19 +289,18 @@ public class Server {
 		if(client.player == null)
 			throw new ClientBadDataException("client has no associated player to perform an action");
 		if(world.contains(client.player)) {
-			byte state = packet.get();
-
-			//update server
-			Protocol.PlayerState.updatePlayer(client.player, state);
+			Protocol.PlayerState.updatePlayer(client.player, packet.get());
+			broadcastPlayerState(client);
 			//TODO for now ignore the primary/secondary actions
-
-			//update clients
-			byte[] message = new byte[7];
-			Bytes.putShort(message, 0, Protocol.TYPE_CLIENT_PLAYER_STATE);
-			Bytes.putInteger(message, 2, client.player.getID());
-			message[6] = state; //copy from incoming packt to outgoing packet
-			broadcastUnreliable(message);
 		} //else what is the point of the player performing the action
+	}
+
+	private void broadcastPlayerState(ClientState client) {
+		byte[] message = new byte[7];
+		Bytes.putShort(message, 0, Protocol.TYPE_CLIENT_PLAYER_STATE);
+		Bytes.putInteger(message, 2, client.player.getID());
+		message[6] = Protocol.PlayerState.getState(client.player);
+		broadcastUnreliable(message);
 	}
 
 	public void printDebug(PrintStream out) {
@@ -271,38 +312,6 @@ public class Server {
 	private static void processClientDisconnect(ClientState client) {
 		client.status = ClientState.STATUS_SELF_DISCONNECTED;
 		client.disconnectReason = "self disconnect";
-	}
-
-	//TODO does this disconnect clients before they've been notified?
-	private static boolean isDisconnectState(byte status) {
-		return switch(status) {
-			case ClientState.STATUS_CONNECTED -> false;
-			case ClientState.STATUS_TIMED_OUT -> true;
-			case ClientState.STATUS_REMOVED -> true;
-			case ClientState.STATUS_SELF_DISCONNECTED -> true;
-			case ClientState.STATUS_CONNECTION_REJECTED -> true;
-			case ClientState.STATUS_IN_GAME -> false;
-			default -> false;
-		};
-	}
-
-	public void removeDisconnectedClients() {
-		var iterator = clients.values().iterator();
-		while(iterator.hasNext()) {
-			ClientState client = iterator.next();
-			if(isDisconnectState(client.status)) {
-				//TODO handle manual disconnect case
-				iterator.remove();
-				if(client.player != null) {
-					world.remove(client.player);
-					broadcastRemoveEntity(client.player);
-				}
-
-				if(client.status != ClientState.STATUS_CONNECTION_REJECTED) {
-					broadcastAndPrint(getDisconnectMessage(client));
-				}
-			}
-		}
 	}
 
 	private void processClientBreakBlock(ClientState client, ByteBuffer data) {

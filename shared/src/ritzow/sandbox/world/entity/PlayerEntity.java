@@ -116,6 +116,22 @@ public abstract class PlayerEntity extends Entity implements Living {
 		this.down = down;
 	}
 
+	public boolean isLeft() {
+		return left;
+	}
+
+	public boolean isRight() {
+		return right;
+	}
+
+	public boolean isUp() {
+		return up;
+	}
+
+	public boolean isDown() {
+		return down;
+	}
+
 	public Inventory<Item> inventory() {
 		return inventory;
 	}

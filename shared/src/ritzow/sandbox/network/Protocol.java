@@ -91,20 +91,29 @@ public final class Protocol {
 	public static class PlayerState {
 		//PlayerState format:
 		//2 bytes message type
-		//1 bit unused
-		//1 bit unused
 		//1 bit left
 		//1 bit right
 		//1 bit up
 		//1 bit down
 		//1 bit primary_action
 		//1 bit secondary_action
+		//1 bit unused
+		//1 bit unused
 		public static byte MOVE_LEFT = 			0b00000001;
 		public static byte MOVE_RIGHT = 		0b00000010;
 		public static byte MOVE_UP = 			0b00000100;
 		public static byte MOVE_DOWN = 			0b00001000;
 		public static byte PRIMARY_ACTION = 	0b00010000;
 		public static byte SECONDARY_ACTION = 	0b00100000;
+
+		public static byte getState(PlayerEntity player) {
+			byte state = 0;
+			state |= player.isLeft() ? PlayerState.MOVE_LEFT : 0;
+			state |= player.isRight() ? PlayerState.MOVE_RIGHT : 0;
+			state |= player.isUp() ? PlayerState.MOVE_UP : 0;
+			state |= player.isDown() ? PlayerState.MOVE_DOWN : 0;
+			return state;
+		}
 
 		public static byte getState(boolean left, boolean right, boolean up, boolean down, boolean primaryAction, boolean secondaryAction) {
 			byte state = 0;
