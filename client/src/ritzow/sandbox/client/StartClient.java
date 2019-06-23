@@ -54,7 +54,7 @@ public class StartClient {
 		audio = setupAudio();
 		display = setupGLFW();
 		shaderProgram = setupGraphics(display);
-		mainMenu = new MainMenuContext(new MenuRenderer(shaderProgram));
+		mainMenu = new MainMenuContext(shaderProgram);
 		System.out.println("Startup took " + Utility.formatTime(Utility.nanosSince(startupStart)));
 		display.show();
 		GameLoop.start(mainMenu);

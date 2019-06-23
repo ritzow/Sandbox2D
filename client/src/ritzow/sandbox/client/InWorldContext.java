@@ -2,7 +2,6 @@ package ritzow.sandbox.client;
 
 import java.io.IOException;
 import java.util.Map;
-import ritzow.sandbox.client.graphics.ClientWorldRenderer;
 import ritzow.sandbox.client.graphics.RenderManager;
 import ritzow.sandbox.client.input.Control;
 import ritzow.sandbox.client.input.Control.Button;
@@ -11,6 +10,7 @@ import ritzow.sandbox.client.input.controller.InteractionController;
 import ritzow.sandbox.client.input.controller.TrackingCameraController;
 import ritzow.sandbox.client.network.Client;
 import ritzow.sandbox.client.network.Client.ClientEvent;
+import ritzow.sandbox.client.world.ClientWorldRenderer;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.util.Utility;
@@ -66,7 +66,10 @@ class InWorldContext implements GameContext {
 
 		@Override
 		public void windowRefresh() {
-			updateNoPoll();
+			client.sendPlayerState(false, false, false, false, false, false);
+			interactionControls.update(StartClient.display, cameraGrip.getCamera(), client, world, player); //block breaking/"bomb throwing"
+			client.update();
+			updateVisuals();
 		};
 	};
 
@@ -88,42 +91,62 @@ class InWorldContext implements GameContext {
 			client.setEventListener(ClientEvent.WORLD_JOIN, this::onWorldJoin);
 			client.setEventListener(ClientEvent.EXCEPTION_OCCURRED, this::onException);
 			client.beginConnect();
-			GameLoop.setContext(client::update);
+			GameLoop.setContext(this::waitForHandshake);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
 
+	private void waitForHandshake() {
+		StartClient.display.poll(input);
+		client.update();
+	}
+
 	private void updateGame() {
 		StartClient.display.poll(input);
 
-		//TODO update player client-side as well
+		boolean isLeft = StartClient.display.isControlActivated(Control.MOVE_LEFT);
+		boolean isRight = StartClient.display.isControlActivated(Control.MOVE_RIGHT);
+		boolean isUp = StartClient.display.isControlActivated(Control.MOVE_UP);
+		boolean isDown = StartClient.display.isControlActivated(Control.MOVE_DOWN);
+		boolean isPrimary = StartClient.display.isControlActivated(Control.USE_HELD_ITEM);
+		boolean isSecondary = StartClient.display.isControlActivated(Control.THROW_BOMB);
+
+		player.setLeft(isLeft);
+		player.setRight(isRight);
+		player.setUp(isUp);
+		player.setDown(isDown);
+
 		client.sendPlayerState(
-			StartClient.display.isControlActivated(Control.MOVE_LEFT),
-			StartClient.display.isControlActivated(Control.MOVE_RIGHT),
-			StartClient.display.isControlActivated(Control.MOVE_UP),
-			StartClient.display.isControlActivated(Control.MOVE_DOWN),
-			StartClient.display.isControlActivated(Control.USE_HELD_ITEM),
-			StartClient.display.isControlActivated(Control.THROW_BOMB)
+			isLeft,
+			isRight,
+			isUp,
+			isDown,
+			isPrimary,
+			isSecondary
 		);
 
+		interactionControls.update(StartClient.display, cameraGrip.getCamera(), client, world, player); //block breaking/"bomb throwing"
 		client.update();
-		long time = System.nanoTime();
-		lastWorldUpdate = (StartClient.display.focused() && time - lastWorldUpdate < StartClient.UPDATE_SKIP_THRESHOLD_NANOSECONDS) ?
-		Utility.updateWorld(world, lastWorldUpdate,
-			Protocol.MAX_UPDATE_TIMESTEP, Protocol.TIME_SCALE_NANOSECONDS) : time; //simulate world on client
-		long camUpdateStart = System.nanoTime();
-		cameraGrip.update(player, StartClient.audio, camUpdateStart - lastCameraUpdate); //update camera position and zoom
-		lastCameraUpdate = camUpdateStart;
-		interactionControls.update(StartClient.display, cameraGrip.getCamera(), client,
-				world, player, StartClient.display.width(), StartClient.display.height()); //block breaking/"bomb throwing"
-		if(!StartClient.display.minimized()) RenderManager.run(StartClient.display, worldRenderer);
+		if(!StartClient.display.minimized()) {
+			updateVisuals();
+		} else {
+			lastWorldUpdate = System.nanoTime();
+			lastCameraUpdate = System.nanoTime();
+		}
 		Utility.sleep(1); //reduce CPU usage
 	}
 
-	private void updateNoPoll() {
+	private void updateVisuals() {
+		long start = System.nanoTime();
+		if(start - lastWorldUpdate < StartClient.UPDATE_SKIP_THRESHOLD_NANOSECONDS) {
+			Utility.updateWorld(world, lastWorldUpdate, Protocol.MAX_UPDATE_TIMESTEP, Protocol.TIME_SCALE_NANOSECONDS);
+		}
+		lastWorldUpdate = start;
+		long camUpdateStart = System.nanoTime();
+		cameraGrip.update(player, StartClient.audio, camUpdateStart - lastCameraUpdate); //update camera position and zoom
+		lastCameraUpdate = camUpdateStart;
 		RenderManager.run(StartClient.display, worldRenderer);
-		client.update();
 	}
 
 	private void onWorldJoin(World world, ClientPlayerEntity player) {
@@ -143,6 +166,7 @@ class InWorldContext implements GameContext {
 	}
 
 	private void onRejected() {
+		System.out.println("rejected.");
 		try {
 			abort();
 		} catch (IOException e) {
@@ -165,6 +189,7 @@ class InWorldContext implements GameContext {
 	}
 
 	private void onTimeout() {
+		System.out.println("timed out.");
 		try {
 			abort();
 		} catch (IOException e) {
