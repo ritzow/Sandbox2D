@@ -25,14 +25,9 @@ public class ServerPlayerEntity extends PlayerEntity {
 			e.setVelocityY(Utility.maxComponentInRadius(vx, 0.5f));
 		}
 	}
-	
+
 	@Override
 	public boolean hasEntityCollisionLogic() {
 		return true;
-	}
-	
-	@Override
-	public boolean collidesWithEntities() {
-		return false;
 	}
 }

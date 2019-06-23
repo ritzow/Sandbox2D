@@ -1,6 +1,6 @@
 package ritzow.sandbox.client.graphics;
 
-import static org.lwjgl.opengl.GL30C.*;
+import static org.lwjgl.opengl.GL46C.*;
 
 public final class RenderData {
 	public final int vao;

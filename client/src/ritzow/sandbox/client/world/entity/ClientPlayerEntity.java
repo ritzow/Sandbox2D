@@ -26,7 +26,7 @@ public class ClientPlayerEntity extends PlayerEntity implements Renderable {
 		float positionX = this.positionX;
 		float positionY = this.positionY;
 		renderer.render(
-				RenderConstants.MODEL_GREEN_FACE, 1.0f, positionX, positionY + (down ? 0 : 1) * SIZE_SCALE/2,
+				RenderConstants.MODEL_GREEN_FACE, 1.0f, positionX, positionY + (down ? 0 : SIZE_SCALE/2),
 				SIZE_SCALE, SIZE_SCALE, 0.0f);
 		if(!down) {
 			renderer.render(

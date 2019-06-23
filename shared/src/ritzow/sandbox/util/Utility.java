@@ -43,10 +43,9 @@ public final class Utility {
 	}
 
 	public static ProtocolFamily getProtocolFamily(InetAddress address) {
-		Class<? extends InetAddress> addressClass = address.getClass();
-		if(addressClass.equals(Inet6Address.class)) {
+		if(address instanceof Inet6Address) {
 			return StandardProtocolFamily.INET6;
-		} else if(addressClass.equals(Inet4Address.class)) {
+		} else if(address instanceof Inet4Address) {
 			return StandardProtocolFamily.INET;
 		} else {
 			throw new IllegalArgumentException("InetAddress of unknown protocol");

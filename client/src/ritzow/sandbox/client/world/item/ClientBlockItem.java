@@ -14,12 +14,12 @@ public final class ClientBlockItem extends BlockItem implements Graphical {
 	
 	public ClientBlockItem(TransportableDataReader input) {
 		super(input);
-		graphics = new ImmutableGraphics(((ClientBlockProperties)block).getModelIndex(), 1.0f, 1.0f, 1.0f, 0.0f);
+		graphics = new ImmutableGraphics(((ClientBlockProperties)block).getModelIndex(), 1.0f, 1.0f, 0.0f, 1.0f);
 	}
 	
 	public ClientBlockItem(Block block) {
 		super(block);
-		this.graphics = new ImmutableGraphics(((ClientBlockProperties)block).getModelIndex(), 1.0f, 1.0f, 1.0f, 0.0f);
+		this.graphics = new ImmutableGraphics(((ClientBlockProperties)block).getModelIndex(), 1.0f, 1.0f, 0.0f, 1.0f);
 	}
 	
 	@Override

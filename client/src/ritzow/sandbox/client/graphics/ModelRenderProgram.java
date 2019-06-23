@@ -7,6 +7,14 @@ import java.util.Map;
 
 public final class ModelRenderProgram extends ShaderProgram {
 
+	private static final int
+		SCALE_X = 0,
+		SCALE_Y = 5,
+		SHEAR_X = 1,
+		SHEAR_Y = 4,
+		TRANS_X = 3,
+		TRANS_Y = 7;
+
 	private final int
 		uniform_transform,
 		uniform_opacity,
@@ -120,60 +128,66 @@ public final class ModelRenderProgram extends ShaderProgram {
 		render(g.getModelID(), g.getOpacity(), posX, posY, g.getScaleX(), g.getScaleY(), g.getRotation());
 	}
 
-	public void render(Graphics g, float opacity, float posX, float posY, float scaleX, float scaleY, float rotation) {
+	public void render(Graphics g, float posX, float posY, float scaleX, float scaleY, float rotation, float opacity) {
 		render(g.getModelID(), g.getOpacity() * opacity, posX, posY, g.getScaleX() * scaleX, g.getScaleY() * scaleY, g.getRotation() + rotation);
 	}
 
 	public void loadTransformationMatrix(float posX, float posY, float scaleX, float scaleY, float rotation) {
-		transformationMatrix[0] = scaleX * (float) Math.cos(rotation);
-		transformationMatrix[1] = scaleY * (float) Math.sin(rotation);
-		transformationMatrix[3] = posX;
-		transformationMatrix[4] = scaleX * (float) -Math.sin(rotation);
-		transformationMatrix[5] = scaleY * (float) Math.cos(rotation);
-		transformationMatrix[7] = posY;
+		transformationMatrix[SCALE_X] = scaleX * (float) Math.cos(rotation);
+		transformationMatrix[SHEAR_X] = scaleY * (float) Math.sin(rotation);
+		transformationMatrix[TRANS_X] = posX;
+		transformationMatrix[SHEAR_Y] = scaleX * (float) -Math.sin(rotation);
+		transformationMatrix[SCALE_Y] = scaleY * (float) Math.cos(rotation);
+		transformationMatrix[TRANS_Y] = posY;
 		setMatrix(uniform_transform, transformationMatrix);
 	}
 
-	public void loadViewMatrixIdentity() {
-		setMatrix(uniform_view, identityMatrix);
-	}
-
-	public void loadViewMatrix(float framebufferWidth, float framebufferHeight) {
-		aspectMatrix[0] = framebufferHeight/framebufferWidth;
+	public void loadViewMatrixStandard(int framebufferWidth, int framebufferHeight) {
+		computeAspectMatrix(framebufferWidth, framebufferHeight);
 		setMatrix(uniform_view, aspectMatrix);
 	}
-	
-	private static void loadCameraMatrix(float[] matrix, Camera camera) {
-		matrix[0] = camera.getZoom();
-		matrix[3] = -camera.getPositionX() * camera.getZoom();
-		matrix[5] = camera.getZoom();
-		matrix[7] = -camera.getPositionY() * camera.getZoom();
-	}
 
-	public void loadViewMatrix(Camera camera, float framebufferWidth, float framebufferHeight) {
-		aspectMatrix[0] = framebufferHeight/framebufferWidth;
-		loadCameraMatrix(cameraMatrix, camera);
+	public void loadViewMatrix(Camera camera, int framebufferWidth, int framebufferHeight) {
+		computeAspectMatrix(framebufferWidth, framebufferHeight);
+		computeCameraMatrix(camera);
 		multiply(aspectMatrix, cameraMatrix, viewMatrix);
 		setMatrix(uniform_view, viewMatrix);
+	}
+
+	//TODO figure out the weird vertical squashing from aspect ratio
+	private void computeAspectMatrix(int framebufferWidth, int framebufferHeight) {
+		float ratio = framebufferWidth/(float)framebufferHeight;
+		aspectMatrix[SCALE_X] = 1/ratio;
+		//float scaleY = 1/ratio;
+		//float scaleX = scaleY/ratio;
+//		aspectMatrix[SCALE_X] = scaleX;
+//		aspectMatrix[SCALE_Y] = scaleY;
+
+//		if(framebufferWidth > framebufferHeight) {
+//			aspectMatrix[SCALE_X] = 1;
+//			aspectMatrix[SCALE_Y] = ratio;
+//		} else {
+//			aspectMatrix[SCALE_X] = 1/ratio;
+//			aspectMatrix[SCALE_Y] = 1;
+//		}
+	}
+
+	private void computeCameraMatrix(Camera camera) {
+		cameraMatrix[SCALE_X] = camera.getZoom();
+		cameraMatrix[TRANS_X] = -camera.getPositionX() * camera.getZoom();
+		cameraMatrix[SCALE_Y] = camera.getZoom();
+		cameraMatrix[TRANS_Y] = -camera.getPositionY() * camera.getZoom();
 	}
 
 	//matrix operations on 4x4 1-dimensional arrays
 	private static void multiply(float[] a, float[] b, float[] destination) {
 		for(int i = 0; i <= 12; i += 4) {
 			for(int j = 0; j < 4; j++) {
-				destination[i + j] = a[i] * b[j] 
-								   + a[i + 1] * b[j + 4] 
-								   + a[i + 2] * b[j + 8] 
+				destination[i + j] = a[i] * b[j]
+								   + a[i + 1] * b[j + 4]
+								   + a[i + 2] * b[j + 8]
 								   + a[i + 3] * b[j + 12];
 			}
 		}
 	}
-
-//	private static float get(float[] array, int row, int column) {
-//		return array[(row * 4) + column];
-//	}
-//
-//	private static void set(float[] array, int row, int column, float value) {
-//		array[(row * 4) + column] =  value;
-//	}
 }

@@ -3,6 +3,7 @@ package ritzow.sandbox.client.input;
 import static org.lwjgl.glfw.GLFW.*;
 
 public class Control {
+	public static final Button ACTIVATE_UI_ELEMENT = 	new Button(Button.TYPE_MOUSE, GLFW_MOUSE_BUTTON_LEFT);
 	public static final Button USE_HELD_ITEM = 	new Button(Button.TYPE_MOUSE, GLFW_MOUSE_BUTTON_LEFT);
 
 	public static final Button THROW_BOMB = 	new Button(Button.TYPE_KEYBOARD, GLFW_KEY_ENTER);

@@ -9,6 +9,13 @@ import ritzow.sandbox.client.graphics.Textures;
 
 public final class Font {
 
+	private static final char[] CHARACTER_LIST = new char[] {
+			'!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+			':', ';', '<', '=', '>', '?', '@', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R',
+			'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '[', '\\', ']', '^', '_', '`', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k',
+			'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '{', '|', '}', '~', ' ',
+	};
+
 	protected final int[] glyphs;
 	protected final OpenGLTexture charsetLatin;
 	protected final String name;
@@ -62,15 +69,8 @@ public final class Font {
 		float horizontalPadding = 0.00390626f; //exact 0.00390625f, use 0.00390626f to fix texture edges
 		float verticalPadding = 0.00390625f;
 
-		char[] characters = new char[] {
-				'!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-				':', ';', '<', '=', '>', '?', '@', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R',
-				'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '[', '\\', ']', '^', '_', '`', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k',
-				'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '{', '|', '}', '~', ' ',
-		};
-
-		for(int i = 0; i < characters.length; i++) {
-			loadCharacter(characters[i], charsetLatin, getTextureCoordinates(textureWidth, textureHeight, horizontalPadding, verticalPadding, i));
+		for(int i = 0; i < CHARACTER_LIST.length; i++) {
+			loadCharacter(CHARACTER_LIST[i], charsetLatin, getTextureCoordinates(textureWidth, textureHeight, horizontalPadding, verticalPadding, i));
 		}
 	}
 

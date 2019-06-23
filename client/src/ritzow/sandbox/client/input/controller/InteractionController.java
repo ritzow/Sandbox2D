@@ -1,8 +1,8 @@
 package ritzow.sandbox.client.input.controller;
 
 import ritzow.sandbox.client.graphics.Camera;
+import ritzow.sandbox.client.graphics.Display;
 import ritzow.sandbox.client.input.Control;
-import ritzow.sandbox.client.input.InputProvider;
 import ritzow.sandbox.client.network.GameTalker;
 import ritzow.sandbox.client.util.ClientUtility;
 import ritzow.sandbox.network.Protocol;
@@ -15,9 +15,10 @@ public final class InteractionController {
 	private long lastThrow, lastBreak;
 
 	//TODO wait for server response before sending more block break packets
-	public void update(InputProvider input, Camera camera, GameTalker client, World world, Entity player, int frameWidth, int frameHeight) {
-		final int mouseX = input.getCursorX(), mouseY = input.getCursorY();
-		if(input.isControlActivated(Control.USE_HELD_ITEM) && breakAllowed()) {
+	public void update(Display display, Camera camera, GameTalker client, World world, Entity player) {
+		final int mouseX = display.getCursorX(), mouseY = display.getCursorY();
+		int frameWidth = display.width(), frameHeight = display.height();
+		if(display.isControlActivated(Control.USE_HELD_ITEM) && breakAllowed()) {
 			int blockX = Math.round(ClientUtility.pixelHorizontalToWorld(camera, mouseX, frameWidth, frameHeight));
 			int blockY = Math.round(ClientUtility.pixelVerticalToWorld(camera, mouseY, frameHeight));
 			BlockGrid grid = world.getForeground();
@@ -27,7 +28,7 @@ public final class InteractionController {
 				//requires a different approach, lastBreak won't be set here
 				lastBreak = System.nanoTime();
 			}
-		} else if(input.isControlActivated(Control.THROW_BOMB) && throwAllowed()) {
+		} else if(display.isControlActivated(Control.THROW_BOMB) && throwAllowed()) {
 			float worldX = ClientUtility.pixelHorizontalToWorld(camera, mouseX, frameWidth, frameHeight);
 			float worldY = ClientUtility.pixelVerticalToWorld(camera, mouseY, frameHeight);
 			client.sendBombThrow(computeThrowAngle(player, worldX, worldY));

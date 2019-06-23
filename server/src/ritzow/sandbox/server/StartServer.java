@@ -20,7 +20,7 @@ public final class StartServer {
 	private static boolean save = true;
 	private static final Path saveFile = Path.of("data/worlds/world.dat");
 
-	private static final int WORLD_WIDTH = 200, WORLD_BASE_HEIGHT = 50, WORLD_AMPLITUDE = 20;
+	private static final int WORLD_WIDTH = 200, WORLD_BASE_HEIGHT = 50, WORLD_AMPLITUDE = 5;
 	private static final float WORLD_FREQUENCY = 0.15f;
 
 	public static void main(String[] args) throws IOException {
@@ -42,23 +42,27 @@ public final class StartServer {
 			registerCommands(parser);
 			new Thread(parser::run, "Command Parser").start();
 
-			long lastWorldUpdateTime = System.nanoTime();
-			while(server.isOpen()) {
-				server.updateServer();
-				lastWorldUpdateTime = Utility.updateWorld(world, lastWorldUpdateTime,
-						Protocol.MAX_UPDATE_TIMESTEP, Protocol.TIME_SCALE_NANOSECONDS);
-				server.updateClients();
-				parser.update();
-				Utility.sleep(1);
-			}
+			try {
+				long lastWorldUpdateTime = System.nanoTime();
+				while(server.isOpen()) {
+					server.updateServer();
+					lastWorldUpdateTime = Utility.updateWorld(world, lastWorldUpdateTime,
+							Protocol.MAX_UPDATE_TIMESTEP, Protocol.TIME_SCALE_NANOSECONDS);
+					server.updateClients();
+					parser.update();
+					Utility.sleep(1);
+				}
 
-			if(save) {
-				saveWorld(world, saveFile);
-			} else {
-				System.out.println("Server stopped without saving to file.");
+				if(save) {
+					saveWorld(world, saveFile);
+				} else {
+					System.out.println("Server stopped without saving to file.");
+				}
+			} catch(Exception e) {
+				e.printStackTrace();
+			} finally {
+				System.exit(0); //kill the console thread
 			}
-
-			System.exit(0); //kill the console thread
 		} catch(BindException e) {
 			System.out.println("Could not start server: '" + e.getMessage() + "'");
 		}

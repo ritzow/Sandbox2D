@@ -4,7 +4,7 @@ public final class ImmutableGraphics implements Graphics {
 	private final int model;
 	private final float opacity, rotation, scaleX, scaleY;
 	
-	public ImmutableGraphics(int modelIndex, float opacity, float scaleX, float scaleY, float rotation) {
+	public ImmutableGraphics(int modelIndex, float scaleX, float scaleY, float rotation, float opacity) {
 		this.model = modelIndex;
 		this.opacity = opacity;
 		this.scaleX = scaleX;

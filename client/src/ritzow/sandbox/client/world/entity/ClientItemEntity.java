@@ -37,7 +37,7 @@ public final class ClientItemEntity<I extends Item> extends ItemEntity<I> implem
 
 	@Override
 	public void render(ModelRenderProgram renderer) {
-		renderer.render(((Graphical)item).getGraphics(), 1.0f, positionX, positionY, 0.5f, 0.5f, rotation);
+		renderer.render(((Graphical)item).getGraphics(), positionX, positionY, 0.5f, 0.5f, rotation, 1.0f);
 	}
 	
 	@Override
