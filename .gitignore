@@ -11,7 +11,7 @@ doc/
 /serverlauncher/resources/font/
 
 #don't include library binaries or documentation
-libraries/
+/client/libraries/
 
 #don't include outdated code
 /oldcode/
