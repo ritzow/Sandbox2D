@@ -41,7 +41,7 @@ public class World implements Transportable, Iterable<Entity> {
 
 	/** called when an entity is removed from the world **/
 	private Consumer<Entity> onRemove;
-	
+
 	/** For access protection during entity updates **/
 	private boolean isEntitiesModifiable = true;
 
@@ -194,7 +194,7 @@ public class World implements Transportable, Iterable<Entity> {
 				it.remove();
 		}
 	}
-	
+
 	public int entities() {
 		return entities.size();
 	}
@@ -299,9 +299,6 @@ public class World implements Transportable, Iterable<Entity> {
 			//update entity position and velocity, and anything else specific to an entity
 			e.update(this, time);
 
-			//TODO use air resistance?
-			//float surfaceArea = 2*e.getWidth() + 2*e.getHeight();
-
 			//apply gravity
 			e.setVelocityY(e.getVelocityY() - gravity * time);
 
@@ -313,7 +310,7 @@ public class World implements Transportable, Iterable<Entity> {
 			for(int j = i + 1; j < size; j++) {
 				Entity o = entities.get(j);
 				boolean otherHasLogic = o.hasEntityCollisionLogic();
-				boolean isPhysicsCollision = collidesEntities && o.collidesWithEntities() && runPhysicsCollision(e, o, time);
+				boolean isPhysicsCollision = collidesEntities && o.collidesWithEntities() && resolveCollision(e, o, time);
 				boolean isCheckedCollision = (hasLogic || otherHasLogic) && (isPhysicsCollision || checkCollision(e, o));
 				if(hasLogic && isCheckedCollision)
 					e.onCollision(this, o, time);
@@ -336,14 +333,6 @@ public class World implements Transportable, Iterable<Entity> {
 			}
 		}
 		isEntitiesModifiable = true;
-	}
-
-	private static boolean runPhysicsCollision(Entity e, Entity o, float time) {
-		if(e.getMass() < o.getMass())
-			return resolveCollision(e, o, time);
-		else if(e.getMass() > o.getMass())
-			return resolveCollision(o, e, time);
-		return false; //TODO what do I do when entities have same mass?
 	}
 
 	private void resolveBlockCollisions(Entity e, float time) {
@@ -395,17 +384,6 @@ public class World implements Transportable, Iterable<Entity> {
 	}
 
 	/**
-	 * Resolves a collision between two entities. The entity passed into the first parameter will be moved if necessary.
-	 * @param e the first entity, which will be moved if necessary
-	 * @param o the second entity, which will not move
-	 * @param time the amount of time to simulate during the collision resolution
-	 * @return true if a collision occurred, false otherwise
-	 */
-	private final static boolean resolveCollision(Entity e, Entity o, float time) {
-		return resolveCollision(e, o.getPositionX(), o.getPositionY(), o.getWidth(), o.getHeight(), o.getFriction(), time);
-	}
-
-	/**
 	 * Resolves a collision between an entity and a hitbox. The entity passed into the first parameter will be moved if necessary.
 	 * @param e the entity to be resolved
 	 * @param otherX the x position of the hitbox
@@ -416,45 +394,33 @@ public class World implements Transportable, Iterable<Entity> {
 	 * @param time the amount of time that the resolution should simulate
 	 * @return true if a collision occurred
 	 */
-	private static boolean resolveCollision(Entity e, float otherX, float otherY, float otherWidth, float otherHeight, float otherFriction, float time) {
-		float width = 0.5f * (e.getWidth() + otherWidth);
-		float height = 0.5f * (e.getHeight() + otherHeight);
-		float deltaX = otherX - e.getPositionX();
-		float deltaY = otherY - e.getPositionY();
+	private static boolean resolveCollision(Entity e, Entity o, float time) { //TODO use momentum (mass * velocity) to determine which one moves
+		float width = 0.5f * (e.getWidth() + o.getWidth());
+		float height = 0.5f * (e.getHeight() + o.getHeight());
+		float deltaX = o.getPositionX() - e.getPositionX();
+		float deltaY = o.getPositionY() - e.getPositionY();
 		if (Math.abs(deltaX) < width && Math.abs(deltaY) < height) { /* collision! replace < in intersection detection with <= for previous behavior */
 		    float wy = width * deltaY;
 		    float hx = height * deltaX;
 		    if (wy > hx) {
-		        if (wy > -hx) { /* collision on the top of e */
-		        	e.setPositionY(otherY - height);
-					if(e.getVelocityY() > 0) {
-						e.setVelocityY(0);
-					} if(e.getVelocityX() > 0) {
-		        		e.setVelocityX(Math.max(0, e.getVelocityX() - average(e.getFriction(), otherFriction) * time));
-		        	} else if(e.getVelocityX() < 0) {
-		        		e.setVelocityX(Math.min(0, e.getVelocityX() + average(e.getFriction(), otherFriction) * time));
-		        	}
-		        } else { /* collision on the left of e */
-		        	e.setPositionX(otherX + width);
+		        if (wy > -hx) { /* collision on the bottom of other */
+		        	e.setPositionY(o.getPositionY() - height);
+		        	collisionBottom(e, o.getFriction(), time);
+		        } else { /* collision on the right of other */
+		        	e.setPositionX(o.getPositionX() + width);
 		        	if(e.getVelocityX() < 0) {
 						e.setVelocityX(0);
 					}
 		        }
 		    } else {
-		        if (wy > -hx) { /* collision on the right of e */
-		        	e.setPositionX(otherX - width);
+		        if (wy > -hx) { /* collision on the left of other */
+		        	e.setPositionX(o.getPositionX() - width);
 		        	if(e.getVelocityX() > 0) {
 						e.setVelocityX(0);
 					}
-		        } else { /* collision on the bottom of e */
-		        	e.setPositionY(otherY + height);
-		        	if(e.getVelocityY() < 0) {
-		        		e.setVelocityY(0);
-		        	} if(e.getVelocityX() > 0) {
-		        		e.setVelocityX(Math.max(0, e.getVelocityX() - average(e.getFriction(), otherFriction) * time));
-		        	} else if(e.getVelocityX() < 0) {
-		        		e.setVelocityX(Math.min(0, e.getVelocityX() + average(e.getFriction(), otherFriction) * time));
-		        	}
+		        } else { /* collision on the top of other */
+		        	e.setPositionY(o.getPositionY() + height);
+		        	collisionTop(e, o.getFriction(), time);
 		        }
 		    }
 		    return true;
@@ -474,13 +440,7 @@ public class World implements Transportable, Iterable<Entity> {
 		    if (wy > hx) {
 		        if (!blockDown && wy > -hx) { /* collision on the bottom of block */
 		        	e.setPositionY(blockY - height);
-					if(e.getVelocityY() > 0) {
-						e.setVelocityY(0);
-					} if(e.getVelocityX() > 0) {
-		        		e.setVelocityX(Math.max(0, e.getVelocityX() - average(e.getFriction(), block.getFriction()) * time));
-		        	} else if(e.getVelocityX() < 0) {
-		        		e.setVelocityX(Math.min(0, e.getVelocityX() + average(e.getFriction(), block.getFriction()) * time));
-		        	}
+		        	collisionBottom(e, block.getFriction(), time);
 		        } else if(!blockRight) { /* collision on right of block */
 		        	e.setPositionX(blockX + width);
 		        	if(e.getVelocityX() < 0) {
@@ -495,18 +455,40 @@ public class World implements Transportable, Iterable<Entity> {
 					}
 		        } else if(!blockUp) { /* collision on top of block */
 		        	e.setPositionY(blockY + height);
-		        	if(e.getVelocityY() < 0) {
-		        		e.setVelocityY(0);
-		        	} if(e.getVelocityX() > 0) {
-		        		e.setVelocityX(Math.max(0, e.getVelocityX() - average(e.getFriction(), block.getFriction()) * time));
-		        	} else if(e.getVelocityX() < 0) {
-		        		e.setVelocityX(Math.min(0, e.getVelocityX() + average(e.getFriction(), block.getFriction()) * time));
-		        	}
+		        	collisionTop(e, block.getFriction(), time);
 		        }
 		    }
 			e.onCollision(world, block, Math.round(blockX), Math.round(blockY), time);
 		    return true;
 		}
 		return false;
+	}
+
+	private static void collisionBottom(Entity e, float surfaceFriction, float time) {
+		if(e.getVelocityY() > 0) {
+			e.setVelocityY(0);
+		} if(e.getVelocityX() > 0) {
+			setVelocityEntityFrictionRight(e, surfaceFriction, time);
+		} else if(e.getVelocityX() < 0) {
+			setVelocityEntityFrictionLeft(e, surfaceFriction, time);
+		}
+	}
+
+	private static void collisionTop(Entity e, float surfaceFriction, float time) {
+    	if(e.getVelocityY() < 0) {
+    		e.setVelocityY(0);
+    	} if(e.getVelocityX() > 0) {
+    		setVelocityEntityFrictionRight(e, surfaceFriction, time);
+    	} else if(e.getVelocityX() < 0) {
+    		setVelocityEntityFrictionLeft(e, surfaceFriction, time);
+    	}
+	}
+
+	private static void setVelocityEntityFrictionRight(Entity e, float surfaceFriction, float time) {
+		e.setVelocityX(Math.max(0, Math.fma(-average(e.getFriction(), surfaceFriction), time, e.getVelocityX())));
+	}
+
+	private static void setVelocityEntityFrictionLeft(Entity e, float surfaceFriction, float time) {
+		e.setVelocityX(Math.min(0, Math.fma(average(e.getFriction(), surfaceFriction), time, e.getVelocityX())));
 	}
 }
