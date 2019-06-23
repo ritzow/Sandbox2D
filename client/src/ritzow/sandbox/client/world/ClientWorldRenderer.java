@@ -1,7 +1,13 @@
-package ritzow.sandbox.client.graphics;
+package ritzow.sandbox.client.world;
 
-import static org.lwjgl.opengl.GL30C.*;
+import static org.lwjgl.opengl.GL46C.*;
 
+import ritzow.sandbox.client.graphics.Camera;
+import ritzow.sandbox.client.graphics.Framebuffer;
+import ritzow.sandbox.client.graphics.GraphicsUtility;
+import ritzow.sandbox.client.graphics.ModelRenderProgram;
+import ritzow.sandbox.client.graphics.Renderable;
+import ritzow.sandbox.client.graphics.Renderer;
 import ritzow.sandbox.client.util.ClientUtility;
 import ritzow.sandbox.client.world.block.ClientBlockProperties;
 import ritzow.sandbox.util.Utility;
@@ -27,7 +33,7 @@ public final class ClientWorldRenderer implements Renderer {
 		ModelRenderProgram program = this.modelProgram;
 		Camera camera = this.camera;
 		World world = this.world;
-		
+
 		//set the current shader program
 		program.setCurrent();
 
