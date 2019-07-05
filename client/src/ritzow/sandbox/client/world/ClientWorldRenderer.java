@@ -6,6 +6,7 @@ import ritzow.sandbox.client.graphics.Camera;
 import ritzow.sandbox.client.graphics.Framebuffer;
 import ritzow.sandbox.client.graphics.GraphicsUtility;
 import ritzow.sandbox.client.graphics.ModelRenderProgram;
+import ritzow.sandbox.client.graphics.RenderConstants;
 import ritzow.sandbox.client.graphics.Renderable;
 import ritzow.sandbox.client.graphics.Renderer;
 import ritzow.sandbox.client.util.ClientUtility;
@@ -34,18 +35,22 @@ public final class ClientWorldRenderer implements Renderer {
 		Camera camera = this.camera;
 		World world = this.world;
 
-		//set the current shader program
-		program.setCurrent();
-
-		//load the view transformation
-		program.loadViewMatrix(camera, width, height);
-
 		//prepare the diffuse texture for drawing
 		framebuffer.clear(1.0f, 1.0f, 1.0f, 1.0f);
 		framebuffer.setDraw();
 
 		//set the blending mode to allow transparency
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		
+		//set the current shader program
+		program.setCurrent();
+		
+		program.loadViewMatrixStandard(width, height);
+		float scale = 2f * (width > height ? width/(float)height : height/(float)width);
+		program.render(RenderConstants.MODEL_SKY, 1.0f, 0, 0, scale, scale, 0);
+
+		//load the view transformation
+		program.loadViewMatrix(camera, width, height);
 
 		//get visible world coordinates
 		float worldLeft = 	ClientUtility.getViewLeftBound(camera, width, height);

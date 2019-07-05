@@ -30,7 +30,7 @@ import ritzow.sandbox.util.Utility;
 
 public class StartClient {
 	static final long UPDATE_SKIP_THRESHOLD_NANOSECONDS = Utility.millisToNanos(100);
-	private static final boolean USE_OPENGL_4_6 = true;
+	private static final boolean USE_OPENGL_4_6 = false;
 
 	static Display display;
 	static long pickaxeCursor;
@@ -89,8 +89,9 @@ public class StartClient {
 			dirt = Textures.loadTextureName("dirt"),
 			grass = Textures.loadTextureName("grass"),
 			face = Textures.loadTextureName("greenFace"),
-			red = Textures.loadTextureName("redSquare");
-		TextureAtlas atlas = Textures.buildAtlas(grass, dirt, face, red);
+			red = Textures.loadTextureName("redSquare"),
+			sky = Textures.loadTextureName("clouds");
+		TextureAtlas atlas = Textures.buildAtlas(grass, dirt, face, red, sky);
 
 		ModelRenderProgram program = USE_OPENGL_4_6 ? createProgramFromSPIRV(atlas) : createProgramFromSource(atlas);
 		GraphicsUtility.checkErrors();
@@ -99,6 +100,7 @@ public class StartClient {
 		program.register(RenderConstants.MODEL_GRASS_BLOCK, getRenderData(indices, positions, atlas, grass));
 		program.register(RenderConstants.MODEL_GREEN_FACE, getRenderData(indices, positions, atlas, face));
 		program.register(RenderConstants.MODEL_RED_SQUARE, getRenderData(indices, positions, atlas, red));
+		program.register(RenderConstants.MODEL_SKY, getRenderData(indices, positions, atlas, sky));
 
 		return program;
 	}
