@@ -8,11 +8,15 @@ import static org.lwjgl.glfw.GLFW.glfwDestroyCursor;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
 import java.util.Map;
+import java.util.regex.Pattern;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import org.lwjgl.glfw.GLFWImage;
 import ritzow.sandbox.client.audio.AudioSystem;
@@ -36,31 +40,61 @@ public class StartClient {
 	static long pickaxeCursor;
 	static AudioSystem audio;
 	static ModelRenderProgram shaderProgram;
-	static InetSocketAddress localAddress;
-	static InetSocketAddress serverAddress;
+	static InetSocketAddress localAddress, serverAddress;
 	static MainMenuContext mainMenu;
-
+	
 	/** For use by native launcher **/
-	public static void start(String commandLine) throws Exception {
-		main(commandLine.split(" "));
+	public static void start(String args) throws Exception {
+		//Pattern: all character sequences split by whitespace
+		String[] formatted = Pattern
+				.compile("\\S+")
+				.matcher(args)
+				.results()
+				.map(result -> result.group())
+				.toArray(length -> new String[length]);
+		main(formatted);
 	}
-
+	
 	public static void main(String[] args) throws Exception {
-		Thread.currentThread().setName("Game Loop");
 		long startupStart = System.nanoTime();
-		InetAddress localHost = NetworkUtility.getLoopbackAddress();
-		serverAddress =	Utility.getAddressFromProgramArgumentsOrDefault(args, 0, localHost, Protocol.DEFAULT_SERVER_PORT_UDP);
-		localAddress = new InetSocketAddress(serverAddress.getAddress().equals(localHost) ? localHost : NetworkUtility.getPrimaryAddress(), 0);
 		audio = setupAudio();
 		display = setupGLFW();
 		shaderProgram = setupGraphics(display);
 		mainMenu = new MainMenuContext(shaderProgram);
+		configureAddresses(args);
 		System.out.println("Startup took " + Utility.formatTime(Utility.nanosSince(startupStart)));
 		display.show();
-		GameLoop.start(mainMenu);
+		GameLoop.start(mainMenu::update);
 		System.out.println("done!");
 	}
-
+	
+	private static void configureAddresses(String[] args) throws SocketException, UnknownHostException {
+		if(args.length > 0) {
+			switch(args[0]) {
+				case "local" -> {
+					localAddress = new InetSocketAddress(NetworkUtility.getLoopbackAddress(), 0);
+					serverAddress = new InetSocketAddress(NetworkUtility.getLoopbackAddress(), 
+							Protocol.DEFAULT_SERVER_PORT_UDP);
+				}
+				
+				case "public" -> {
+					serverAddress = new InetSocketAddress(InetAddress.getByName(args[1]), 
+							Protocol.DEFAULT_SERVER_PORT_UDP);
+					localAddress = new InetSocketAddress(
+							NetworkUtility.getPrimaryAddress(NetworkUtility.isIPv6(serverAddress.getAddress())), 0);
+				}
+				
+				default -> throw new UnsupportedOperationException("Unknown address type");
+			}
+		} else {
+			localAddress = new InetSocketAddress(NetworkUtility.getLoopbackAddress(), 0);
+			serverAddress = new InetSocketAddress(NetworkUtility.getLoopbackAddress(), 
+					Protocol.DEFAULT_SERVER_PORT_UDP);
+		}
+		System.out.println("Local Address: " + Utility.formatAddress(localAddress));
+		System.out.println("Server Address: " + Utility.formatAddress(serverAddress));
+	}
+	
 	static void exit() {
 		GameLoop.stop(); //stop the game loop now that the client is closed
 		System.out.print("Exiting... ");
