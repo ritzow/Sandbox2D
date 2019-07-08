@@ -4,18 +4,12 @@ import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.NetworkInterface;
 import java.net.ProtocolFamily;
-import java.net.SocketException;
 import java.net.StandardProtocolFamily;
-import java.net.UnknownHostException;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
-import java.util.Set;
 import java.util.function.BooleanSupplier;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
@@ -30,7 +24,7 @@ public final class Utility {
 		return "[" + LocalTime.now().format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)) + "]";
 	}
 
-	public static boolean sendIntervalElapsed(long startTime, int attempts) {
+	public static boolean resendIntervalElapsed(long startTime, int attempts) {
 		return System.nanoTime() >= startTime + attempts * Utility.millisToNanos(Protocol.RESEND_INTERVAL);
 	}
 
@@ -50,30 +44,6 @@ public final class Utility {
 		} else {
 			throw new IllegalArgumentException("InetAddress of unknown protocol");
 		}
-	}
-
-	public static InetSocketAddress getAddressFromProgramArgumentsOrDefault(String[] args, int index, InetAddress defaultAddress, int defaultPort) throws NumberFormatException, UnknownHostException {
-		return new InetSocketAddress((args.length > index && !args[index].isEmpty()) ? InetAddress.getByName(args[index]) : defaultAddress,
-				args.length > 1 ? Integer.parseInt(args[index + 1]) : defaultPort);
-	}
-
-	public static <T extends InetAddress> T getPublicAddress(Class<T> addressType) throws SocketException {
-		Set<InetAddress> addresses = NetworkInterface.networkInterfaces()
-			.filter(network -> {
-				try {
-					return network.isUp() && !network.isLoopback();
-				} catch (SocketException e) {
-					e.printStackTrace();
-					return false;
-				}
-			})
-			.map(network -> network.inetAddresses())
-			.reduce((a, b) -> Stream.concat(a, b))
-			.get().filter(address -> addressType.isInstance(address))
-			.collect(Collectors.toSet());
-		if(addresses.isEmpty())
-			throw new RuntimeException("No address of type " + addressType + " available");
-		return addressType.cast(addresses.iterator().next());
 	}
 
 	public static int clampLowerBound(int min, float value) {
