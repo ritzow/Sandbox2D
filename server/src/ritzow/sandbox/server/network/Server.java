@@ -33,7 +33,7 @@ public class Server {
 	private static final float BOMB_THROW_VELOCITY = 0.8f;
 
 	private final DatagramChannel channel;
-	private final ByteBuffer receiveBuffer, responseBuffer;
+	private final ByteBuffer receiveBuffer, responseBuffer, sendBuffer;
 	private final Map<InetSocketAddress, ClientState> clients;
 	private World world;
 
@@ -45,7 +45,8 @@ public class Server {
 		channel = DatagramChannel.open(Utility.getProtocolFamily(bind.getAddress())).bind(bind);
 		channel.configureBlocking(false);
 		clients = new HashMap<>();
-		receiveBuffer = ByteBuffer.allocateDirect(Protocol.MAX_MESSAGE_LENGTH);
+		sendBuffer = ByteBuffer.allocateDirect(Protocol.MAX_PACKET_SIZE);
+		receiveBuffer = ByteBuffer.allocateDirect(Protocol.MAX_PACKET_SIZE);
 		responseBuffer = ByteBuffer.allocateDirect(Protocol.HEADER_SIZE);
 	}
 
@@ -156,16 +157,13 @@ public class Server {
 	 */
 	public void updateClients() throws IOException {
 		if(Utility.nanosSince(lastClientsUpdate) > NETWORK_SEND_INTERVAL_NANOSECONDS) {
-			for(ClientState client : clients.values()) {
-				if(client.status == ClientState.STATUS_IN_GAME) {
-					broadcastPlayerState(client);
-				}
-			}
-
 			//TODO optimize entity packet format and sending (batch entity updates)
 			for(Entity e : world) {
 				populateEntityUpdate(ENTITY_UPDATE_BUFFER, e);
 				broadcastUnreliable(ENTITY_UPDATE_BUFFER, client -> client.status == ClientState.STATUS_IN_GAME);
+				if(e instanceof PlayerEntity) {
+					broadcastPlayerState((PlayerEntity)e);
+				}
 			}
 
 			for(ClientState client : clients.values()) {
@@ -286,20 +284,21 @@ public class Server {
 //	}
 
 	private void processClientPlayerState(ClientState client, ByteBuffer packet) {
-		if(client.player == null)
+		PlayerEntity player = client.player;
+		if(player == null)
 			throw new ClientBadDataException("client has no associated player to perform an action");
-		if(world.contains(client.player)) {
-			Protocol.PlayerState.updatePlayer(client.player, packet.get());
-			broadcastPlayerState(client);
+		if(world.contains(player)) {
+			Protocol.PlayerState.updatePlayer(player, packet.get());
+			broadcastPlayerState(player);
 			//TODO for now ignore the primary/secondary actions
 		} //else what is the point of the player performing the action
 	}
 
-	private void broadcastPlayerState(ClientState client) {
+	private void broadcastPlayerState(PlayerEntity player) {
 		byte[] message = new byte[7];
 		Bytes.putShort(message, 0, Protocol.TYPE_CLIENT_PLAYER_STATE);
-		Bytes.putInteger(message, 2, client.player.getID());
-		message[6] = Protocol.PlayerState.getState(client.player);
+		Bytes.putInteger(message, 2, player.getID());
+		message[6] = Protocol.PlayerState.getState(player);
 		broadcastUnreliable(message);
 	}
 
@@ -566,8 +565,6 @@ public class Server {
 		channel.send(sendBuffer, client.address);
 		sendBuffer.clear();
 	}
-
-	private final ByteBuffer sendBuffer = ByteBuffer.allocateDirect(Protocol.MAX_PACKET_SIZE);
 
 	private void sendAccumulated() throws IOException {
 		for(ClientState client : clients.values()) {
