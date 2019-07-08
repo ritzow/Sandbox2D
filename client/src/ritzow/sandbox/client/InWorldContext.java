@@ -10,7 +10,6 @@ import ritzow.sandbox.client.input.InputContext;
 import ritzow.sandbox.client.input.controller.InteractionController;
 import ritzow.sandbox.client.input.controller.TrackingCameraController;
 import ritzow.sandbox.client.network.Client;
-import ritzow.sandbox.client.network.Client.ClientEvent;
 import ritzow.sandbox.client.network.Client.Status;
 import ritzow.sandbox.client.network.GameTalker;
 import ritzow.sandbox.client.util.SerializationProvider;
@@ -23,104 +22,56 @@ import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.Entity;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
-public class InWorldContext implements GameContext, GameTalker {
+public class InWorldContext implements GameTalker {
 	Client client;
+	World world;
+	byte[] worldData;
+	int worldBytesRemaining;
+	InteractionController interactionControls;
 	ClientWorldRenderer worldRenderer;
 	TrackingCameraController cameraGrip;
-	InteractionController interactionControls;
-	WorldState worldState;
 	ClientPlayerEntity player;
 	long lastWorldUpdate, lastCameraUpdate;
 	
-	private static final class WorldState {
-		World world;
-		byte[] data;
-		int worldBytesRemaining;
+	public InWorldContext(Client client, int downloadSize) {
+		this.client = client;
+		this.worldData = new byte[downloadSize];
+		this.worldBytesRemaining = downloadSize;
 	}
-
+	
 	private void leaveServer() {
 		startDisconnect();
 		GameLoop.setContext(() -> client.update(this::process));
 	}
-
-	@Override
-	public void run() {
-		try {
-			System.out.print("Connecting to " + Utility.formatAddress(StartClient.serverAddress)
-			+ " from " + Utility.formatAddress(StartClient.localAddress) + "... ");
-			client = Client.create(StartClient.localAddress, StartClient.serverAddress);
-			client.setEventListener(ClientEvent.DISCONNECTED, this::onDisconnected);
-			client.setEventListener(ClientEvent.TIMED_OUT, this::onTimeout);
-			client.setEventListener(ClientEvent.EXCEPTION_OCCURRED, this::onException);
-			client.beginConnect();
-			GameLoop.setContext(this::waitForHandshake);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-	
 
 	private static void processServerConsoleMessage(ByteBuffer data) {
 		System.out.println("[Server Message] " + new String(getRemainingBytes(data), Protocol.CHARSET));
 	}
 
 	private void process(short messageType, ByteBuffer data) {
-		if(messageType == Protocol.TYPE_SERVER_CONNECT_ACKNOWLEDGMENT) {
-			processServerConnectAcknowledgement(data);
-		} else if(client.getStatus() != Status.CONNECTING) {
-			switch(messageType) {
-				case Protocol.TYPE_CONSOLE_MESSAGE -> processServerConsoleMessage(data);
-				case Protocol.TYPE_SERVER_WORLD_DATA -> processReceiveWorldData(data);
-				case Protocol.TYPE_SERVER_ENTITY_UPDATE -> processUpdateEntity(data);
-				case Protocol.TYPE_SERVER_ADD_ENTITY -> processAddEntity(data);
-				case Protocol.TYPE_SERVER_REMOVE_ENTITY -> processRemoveEntity(data);
-				case Protocol.TYPE_SERVER_PLAYER_ID -> processReceivePlayerEntityID(data);
-				case Protocol.TYPE_SERVER_REMOVE_BLOCK -> processServerRemoveBlock(data);
-				case Protocol.TYPE_CLIENT_PLAYER_STATE -> processPlayerState(data);
-				case Protocol.TYPE_SERVER_CLIENT_DISCONNECT -> processServerDisconnect(data);
-				case Protocol.TYPE_SERVER_PING -> {}
-				default -> throw new IllegalArgumentException("Client received message of unknown protocol " + messageType);
-			}
-		} else {
-			throw new IllegalStateException("Received non-TYPE_SERVER_CONNECT_ACKNOWLEDGMENT message before connecting to server");
+		switch(messageType) {
+			case Protocol.TYPE_CONSOLE_MESSAGE -> processServerConsoleMessage(data);
+			case Protocol.TYPE_SERVER_WORLD_DATA -> processReceiveWorldData(data);
+			case Protocol.TYPE_SERVER_ENTITY_UPDATE -> processUpdateEntity(data);
+			case Protocol.TYPE_SERVER_ADD_ENTITY -> processAddEntity(data);
+			case Protocol.TYPE_SERVER_REMOVE_ENTITY -> processRemoveEntity(data);
+			case Protocol.TYPE_SERVER_PLAYER_ID -> processReceivePlayerEntityID(data);
+			case Protocol.TYPE_SERVER_REMOVE_BLOCK -> processServerRemoveBlock(data);
+			case Protocol.TYPE_CLIENT_PLAYER_STATE -> processPlayerState(data);
+			case Protocol.TYPE_SERVER_CLIENT_DISCONNECT -> processServerDisconnect(data);
+			case Protocol.TYPE_SERVER_PING -> {}
+			default -> throw new IllegalArgumentException("Client received message of unknown protocol " + messageType);
 		}
 	}
 	
 	@SuppressWarnings("unchecked")
 	private <T extends Entity> T getEntityFromID(int ID) {
-		for(Entity e : worldState.world) { //block until world is received so no NPEs happen
+		for(Entity e : world) { //block until world is received so no NPEs happen
 			if(e.getID() == ID) {
 				return (T)e;
 			}
 		}
 		throw new IllegalStateException("No entity with ID " + ID + " exists");
-	}
-	
-	private void processServerConnectAcknowledgement(ByteBuffer data) {
-		byte response = data.get();
-		switch(response) {
-			case Protocol.CONNECT_STATUS_REJECTED -> {
-				client.setStatus(Status.DISCONNECTED);
-				var action = client.getAction(ClientEvent.DISCONNECTED);
-				if(action != null) action.run();
-				onRejected();
-			}
-
-			case Protocol.CONNECT_STATUS_WORLD -> {
-				var state = new WorldState();
-				int remaining = data.getInt();
-				state.worldBytesRemaining = remaining;
-				state.data = new byte[remaining];
-				this.worldState = state;
-				client.setStatus(Status.CONNECTED);
-				onAccepted();
-			}
-
-			case Protocol.CONNECT_STATUS_LOBBY ->
-				throw new UnsupportedOperationException("CONNECT_STATUS_LOBBY not supported");
-
-			default -> throw new UnsupportedOperationException("unknown connect ack type " + response);
-		}
 	}
 	
 	/**
@@ -133,8 +84,7 @@ public class InWorldContext implements GameContext, GameTalker {
 		client.setStatus(Status.DISCONNECTING);
 		client.sendReliable(Bytes.of(Protocol.TYPE_CLIENT_DISCONNECT), () -> {
 			client.setStatus(Status.DISCONNECTED);
-			var action = client.getAction(ClientEvent.DISCONNECTED);
-			if(action != null) action.run();
+			onDisconnected();
 		});
 	}
 	
@@ -144,8 +94,21 @@ public class InWorldContext implements GameContext, GameTalker {
 		byte[] array = new byte[length];
 		data.get(array);
 		System.out.println("Disconnected from server: " + new String(array, Protocol.CHARSET));
-		var action = client.getAction(ClientEvent.DISCONNECTED);
-		if(action != null) action.run();
+		onDisconnected();
+	}
+	
+	private void onDisconnected() {
+		try {
+			StartClient.display.resetCursor();
+			client.close();
+			if(StartClient.display.wasClosed()) {
+				StartClient.exit();
+			} else {
+				GameLoop.setContext(StartClient.mainMenu::update);
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	private void processPlayerState(ByteBuffer data) {
@@ -154,19 +117,18 @@ public class InWorldContext implements GameContext, GameTalker {
 	}
 
 	private void processServerRemoveBlock(ByteBuffer data) {
-		World world = worldState.world;
 		world.getForeground().destroy(world, data.getInt(), data.getInt());
 	}
 
 	private void processReceivePlayerEntityID(ByteBuffer data) {
 		int id = data.getInt();
-		ClientPlayerEntity player = getEntityFromID(id);
-		onWorldJoin(worldState.world, player);
+		this.player = getEntityFromID(id);
+		onWorldJoin();
 	}
 
 	private void processRemoveEntity(ByteBuffer data) {
 		int id = data.getInt();
-		worldState.world.removeIf(e -> e.getID() == id);
+		world.removeIf(e -> e.getID() == id);
 	}
 
 	private static <T> T deserialize(boolean compress, byte[] data) {
@@ -174,7 +136,7 @@ public class InWorldContext implements GameContext, GameTalker {
 	}
 
 	private void processAddEntity(ByteBuffer data) {
-		worldState.world.add(deserialize(data.get() == 1 ? true : false, getRemainingBytes(data)));
+		world.add(deserialize(data.get() == 1 ? true : false, getRemainingBytes(data)));
 	}
 	
 	private static byte[] getRemainingBytes(ByteBuffer buffer) {
@@ -192,7 +154,7 @@ public class InWorldContext implements GameContext, GameTalker {
 
 	private void processUpdateEntity(ByteBuffer data) {
 		int entityID = data.getInt();
-		for(Entity e : worldState.world) {
+		for(Entity e : world) {
 			if(e.getID() == entityID) {
 				e.setPositionX(data.getFloat());
 				e.setPositionY(data.getFloat());
@@ -204,27 +166,24 @@ public class InWorldContext implements GameContext, GameTalker {
 	}
 
 	private void processReceiveWorldData(ByteBuffer data) {
-		WorldState state = this.worldState;
-		if(state.data == null)
+		if(this.worldData == null)
 			throw new IllegalStateException("world head packet has not been received");
 		int dataSize = data.remaining();
-		data.get(state.data, state.data.length - state.worldBytesRemaining, dataSize);
-		boolean receivedAll = (state.worldBytesRemaining -= dataSize) == 0;
+		data.get(this.worldData, this.worldData.length - worldBytesRemaining, dataSize);
+		boolean receivedAll = (worldBytesRemaining -= dataSize) == 0;
 		if(receivedAll) buildWorld();
 	}
 	
 	private void buildWorld() {
-		System.out.print("Building world... ");
+		System.out.print("received. Building world... ");
 		long start = System.nanoTime();
-		worldState.world = deserialize(Protocol.COMPRESS_WORLD_DATA, worldState.data);
-		System.out.println("took " + Utility.formatTime(Utility.nanosSince(start)) + ".");
-		worldState.data = null; //release the raw data to the garbage collector
+		world = deserialize(Protocol.COMPRESS_WORLD_DATA, worldData);
+		worldData = null; //release the raw data to the garbage collector
 		client.sendReliable(Bytes.of(Protocol.TYPE_CLIENT_WORLD_BUILT));
+		System.out.println("took " + Utility.formatTime(Utility.nanosSince(start)) + ".");
 	}
 
-	private void onWorldJoin(World world, ClientPlayerEntity player) {
-		worldState.world = world;
-		this.player = player;
+	private void onWorldJoin() {
 		cameraGrip = new TrackingCameraController(2.5f, 0.05f / player.getWidth(), 0.6f / player.getWidth());
 		worldRenderer = new ClientWorldRenderer(StartClient.shaderProgram, cameraGrip.getCamera(), world);
 		interactionControls = new InteractionController();
@@ -234,7 +193,7 @@ public class InWorldContext implements GameContext, GameTalker {
 		GameLoop.setContext(this::updateGame);
 	}
 	
-	private void waitForHandshake() {
+	public void listenForServer() {
 		StartClient.display.poll(input);
 		client.update(this::process);
 	}
@@ -263,7 +222,7 @@ public class InWorldContext implements GameContext, GameTalker {
 			isSecondary
 		);
 
-		interactionControls.update(StartClient.display, cameraGrip.getCamera(), this, worldState.world, player); //block breaking/"bomb throwing"
+		interactionControls.update(StartClient.display, cameraGrip.getCamera(), this, world, player); //block breaking/"bomb throwing"
 		client.update(this::process);
 		if(!StartClient.display.minimized()) {
 			updateVisuals();
@@ -277,7 +236,7 @@ public class InWorldContext implements GameContext, GameTalker {
 	private void updateVisuals() {
 		long start = System.nanoTime();
 		if(start - lastWorldUpdate < StartClient.UPDATE_SKIP_THRESHOLD_NANOSECONDS) {
-			Utility.updateWorld(worldState.world, lastWorldUpdate, Protocol.MAX_UPDATE_TIMESTEP, Protocol.TIME_SCALE_NANOSECONDS);
+			Utility.updateWorld(world, lastWorldUpdate, Protocol.MAX_UPDATE_TIMESTEP, Protocol.TIME_SCALE_NANOSECONDS);
 		}
 		lastWorldUpdate = start;
 		long camUpdateStart = System.nanoTime();
@@ -301,56 +260,6 @@ public class InWorldContext implements GameContext, GameTalker {
 		Bytes.putInteger(packet, 2, x);
 		Bytes.putInteger(packet, 6, y);
 		client.sendReliable(packet);
-	}
-
-	private static void onAccepted() {
-		System.out.println("connected.");
-	}
-
-	private void onRejected() {
-		System.out.println("rejected.");
-		try {
-			abort();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-
-	private void onDisconnected() {
-		try {
-			StartClient.display.resetCursor();
-			client.close();
-			if(StartClient.display.wasClosed()) {
-				StartClient.exit();
-			} else {
-				GameLoop.setContext(StartClient.mainMenu);
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-
-	private void onTimeout() {
-		System.out.println("timed out.");
-		try {
-			abort();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-
-	private void onException(IOException e) {
-		try {
-			System.out.println("An exception occurred: " + (e.getMessage() == null ? e.getClass().getName() : e.getMessage()));
-			abort();
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
-	}
-
-	private void abort() throws IOException {
-		client.close();
-		GameLoop.setContext(StartClient.mainMenu);
 	}
 	
 	InputContext input = new InputContext() {
@@ -396,7 +305,7 @@ public class InWorldContext implements GameContext, GameTalker {
 		public void windowRefresh() {
 			sendPlayerState(false, false, false, false, false, false);
 			interactionControls.update(StartClient.display, 
-					cameraGrip.getCamera(), InWorldContext.this, worldState.world, player); //block breaking/"bomb throwing"
+					cameraGrip.getCamera(), InWorldContext.this, world, player); //block breaking/"bomb throwing"
 			client.update(InWorldContext.this::process);
 			updateVisuals();
 		}

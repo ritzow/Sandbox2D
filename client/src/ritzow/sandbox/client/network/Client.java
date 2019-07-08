@@ -50,7 +50,6 @@ public class Client {
 	private final Object[] events = new Object[6];
 
 	public static final class ClientEvent<T> {
-		public static final ClientEvent<Runnable> DISCONNECTED = new ClientEvent<>();
 		public static final ClientEvent<Runnable> TIMED_OUT = new ClientEvent<>();
 		public static final ClientEvent<Consumer<IOException>> EXCEPTION_OCCURRED = new ClientEvent<>();
 		private static byte count;
@@ -177,12 +176,17 @@ public class Client {
 		responseBuffer = ByteBuffer.allocateDirect(Protocol.HEADER_SIZE);
 
 	public void update(MessageProcessor processor) {
+		update(Integer.MAX_VALUE, processor);
+	}
+	
+	public void update(int maxReceive, MessageProcessor processor) {
 		try {
 			//already connected to server so no need to check SocketAddress
-			while(status != Status.DISCONNECTED && channel.receive(receiveBuffer) != null) {
+			while(status != Status.DISCONNECTED && maxReceive > 0 && channel.receive(receiveBuffer) != null) {
 				receiveBuffer.flip(); //flip to set limit and prepare to read packet data
 				processReceived(processor); //process messages from the server
 				receiveBuffer.clear(); //clear to prepare for next receive
+				maxReceive--;
 			}
 
 			if(status != Status.DISCONNECTED) {
