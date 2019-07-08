@@ -3,6 +3,7 @@ package ritzow.sandbox.server;
 import java.io.IOException;
 import java.net.BindException;
 import java.net.InetSocketAddress;
+import java.net.SocketException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import ritzow.sandbox.data.Bytes;
@@ -23,9 +24,20 @@ public final class StartServer {
 	private static final int WORLD_WIDTH = 200, WORLD_BASE_HEIGHT = 50, WORLD_AMPLITUDE = 5;
 	private static final float WORLD_FREQUENCY = 0.15f;
 
-	public static void main(String[] args) throws IOException {
+	public static void main(String[] args) throws SocketException, IOException {
 		Thread.currentThread().setName("Server Main");
-		run(new InetSocketAddress(NetworkUtility.getLoopbackAddress(), Protocol.DEFAULT_SERVER_PORT_UDP));
+		if(args.length > 0) {
+			run(switch(args[0]) {
+				case "local" -> new InetSocketAddress(
+						NetworkUtility.getLoopbackAddress(), Protocol.DEFAULT_SERVER_PORT_UDP);
+				case "public" -> new InetSocketAddress(
+						NetworkUtility.getPrimaryAddress(true), Protocol.DEFAULT_SERVER_PORT_UDP);
+				default -> throw new UnsupportedOperationException("unknown address type");
+			});
+		} else {
+			run(new InetSocketAddress(
+					NetworkUtility.getLoopbackAddress(), Protocol.DEFAULT_SERVER_PORT_UDP));
+		}
 	}
 
 	public static void run(InetSocketAddress bindAddress) throws IOException {

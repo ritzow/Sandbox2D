@@ -21,7 +21,7 @@ public class TextureAtlas {
 		return texture;
 	}
 	
-	//TODO optimize texture packing
+	//TODO optimize texture packing https://gamedev.stackexchange.com/questions/2829/texture-packing-algorithm
 	private static int generateAtlas(TextureData[] textures, Map<TextureData, float[]> coords) {
 		int bytesPerPixel = textures[0].getBytesPerPixel();
 		

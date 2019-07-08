@@ -585,7 +585,7 @@ public class Server {
 						sendBuffer.clear();
 						queue.poll(); //remove and continue processing
 					} else if(client.sendAttempts <= Protocol.RESEND_COUNT) { //check if not timed out
-						if(Utility.sendIntervalElapsed(client.sendStartTime, client.sendAttempts)) {
+						if(Utility.resendIntervalElapsed(client.sendStartTime, client.sendAttempts)) {
 							sendReliableImpl(client, queue.peek());
 						}
 						break; //update to await response
