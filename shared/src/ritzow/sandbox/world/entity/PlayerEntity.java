@@ -172,7 +172,7 @@ public abstract class PlayerEntity extends Entity implements Living {
 
 	@Override
 	public float getFriction() {
-		return (down ? 0.0075f : 0.02f);
+		return (down ? 0.01f : 0.04f);
 	}
 
 	@Override
