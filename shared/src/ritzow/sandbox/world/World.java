@@ -6,8 +6,10 @@ import static ritzow.sandbox.util.Utility.intersection;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Spliterator;
 import java.util.function.Consumer;
@@ -27,8 +29,16 @@ import ritzow.sandbox.world.entity.Entity;
  */
 public class World implements Transportable, Iterable<Entity> {
 
+	//Entity operations:
+	//Get an entity by ID
+	//Remove an entity by ID or by object
+	//Add an entity
+	//iterate over entities and remaining entities
+	//Remove entities while iterating
+	
 	/** collection of entities in the world **/
 	private final List<Entity> entities; //TODO switch to using a Map<Integer, Entity> to store entity IDs?
+	private final Map<Integer, Entity> entitiesID;
 
 	/** blocks in the world that collide with entities and and are rendered **/
 	private final BlockGrid foreground, background;
@@ -52,7 +62,8 @@ public class World implements Transportable, Iterable<Entity> {
 	 * @param gravity the amount of gravity
 	 */
 	public World(int width, int height, float gravity) {
-		entities = new ArrayList<>(100);
+		entities = new ArrayList<>();
+		entitiesID = new HashMap<>();
 		foreground = new BlockGrid(width, height);
 		background = new BlockGrid(width, height);
 		this.gravity = gravity;
@@ -64,8 +75,9 @@ public class World implements Transportable, Iterable<Entity> {
 		background = Objects.requireNonNull(reader.readObject());
 		int entityCount = reader.readInteger();
 		entities = new ArrayList<>(entityCount);
+		entitiesID = new HashMap<>();
 		for(int i = 0; i < entityCount; i++) {
-			entities.add(Objects.requireNonNull(reader.readObject()));
+			addEntity(Objects.requireNonNull(reader.readObject()));
 		}
 		lastEntityID = reader.readInteger();
 	}
@@ -217,6 +229,10 @@ public class World implements Transportable, Iterable<Entity> {
 	public void forEach(Consumer<? super Entity> consumer) {
 		entities.forEach(consumer);
 	}
+	
+	public Entity getEntityFromID(int id) {
+		return entitiesID.get(id);
+	}
 
 	/**
 	 * Returns a collection of entities that are partially or fully within the given rectangle bounds
@@ -243,15 +259,24 @@ public class World implements Transportable, Iterable<Entity> {
 		if(!isEntitiesModifiable)
 			throw new IllegalStateException("cannot add/remove from world: world is being updated");
 	}
+	
+	private void addEntity(Entity e) {
+		entities.add(e);
+		entitiesID.put(e.getID(), e);
+	}
+	
+	private void removeEntity(Entity e) {
+		entities.remove(e);
+		entitiesID.remove(e.getID());
+	}
 
 	/**
 	 * Adds the provided non-null Entity to the world.
 	 * @param e the entity to add.
 	 */
 	public final void add(Entity e) {
-		Objects.requireNonNull(e);
 		checkEntitiesModifiable();
-		entities.add(e);
+		addEntity(Objects.requireNonNull(e));
 	}
 
 	/**
@@ -260,7 +285,7 @@ public class World implements Transportable, Iterable<Entity> {
 	 */
 	public final void remove(Entity e) {
 		checkEntitiesModifiable();
-		entities.remove(e);
+		removeEntity(e);
 	}
 
 	public final float getGravity() {
@@ -302,20 +327,10 @@ public class World implements Transportable, Iterable<Entity> {
 			//apply gravity
 			e.setVelocityY(e.getVelocityY() - gravity * time);
 
-			//check if collision checking is enabled
-			boolean hasLogic = e.hasEntityCollisionLogic();
-			boolean collidesEntities = e.collidesWithEntities();
 			//check for entity vs. entity collisions with all entities that have not already been
 			//collision checked with (for first element, all entites, for last, no entities)
 			for(int j = i + 1; j < size; j++) {
-				Entity o = entities.get(j);
-				boolean otherHasLogic = o.hasEntityCollisionLogic();
-				boolean isPhysicsCollision = collidesEntities && o.collidesWithEntities() && resolveCollision(e, o, time);
-				boolean isCheckedCollision = (hasLogic || otherHasLogic) && (isPhysicsCollision || checkCollision(e, o));
-				if(hasLogic && isCheckedCollision)
-					e.onCollision(this, o, time);
-				if(otherHasLogic && isCheckedCollision)
-					o.onCollision(this, e, time);
+				resolveCollision(e, entities.get(j), time);
 			}
 
 			//Check for entity collisions with blocks
@@ -353,38 +368,42 @@ public class World implements Transportable, Iterable<Entity> {
 					boolean blockRight = column == worldRight ? false : foreground.isBlock(column + 1, row);
 
 					if(!(blockUp && blockDown && blockLeft && blockRight)) {
-						resolveBlockCollision(this, e, block, column, row, time, blockUp, blockLeft, blockRight, blockDown);
+						resolveBlockCollision(this, e, block, column, row, time, 
+								blockUp, blockLeft, blockRight, blockDown);
 					}
 				}
 			}
 		}
 	}
 
-	/**
-	 * Checks if there is a collision between two entities
-	 * @param e an entity
-	 * @param o an entity
-	 * @return true if the entities intersect eachother, false otherwise
-	 */
-	private final static boolean checkCollision(Entity e, Entity o) {
-		return checkCollision(e, o.getPositionX(), o.getPositionY(), o.getWidth(), o.getHeight());
-	}
+//	/**
+//	 * Checks if there is a collision between two entities
+//	 * @param e an entity
+//	 * @param o an entity
+//	 * @return true if the entities intersect eachother, false otherwise
+//	 */
+//	private final static boolean checkCollision(Entity e, Entity o) {
+//		return checkCollision(e, o.getPositionX(), o.getPositionY(), o.getWidth(), o.getHeight());
+//	}
+
+//	/**
+//	 * Checks if there is a collision between an entity and a hitbox
+//	 * @param e an entity
+//	 * @param otherX the x position of the hitbox
+//	 * @param otherY the y position of the hitbox
+//	 * @param otherWidth the width of the hitbox
+//	 * @param otherHeight the height of the hitbox
+//	 * @return true if the entity and hitbox intersect, false otherwise;
+//	 */
+//	private final static boolean checkCollision(Entity e, 
+//		float otherX, float otherY, float otherWidth, float otherHeight) {
+//		 return (Math.abs(e.getPositionX() - otherX) * 2 < (e.getWidth() + otherWidth)) 
+//			&&  (Math.abs(e.getPositionY() - otherY) * 2 < (e.getHeight() + otherHeight));
+//	}
 
 	/**
-	 * Checks if there is a collision between an entity and a hitbox
-	 * @param e an entity
-	 * @param otherX the x position of the hitbox
-	 * @param otherY the y position of the hitbox
-	 * @param otherWidth the width of the hitbox
-	 * @param otherHeight the height of the hitbox
-	 * @return true if the entity and hitbox intersect, false otherwise;
-	 */
-	private final static boolean checkCollision(Entity e, float otherX, float otherY, float otherWidth, float otherHeight) {
-		 return (Math.abs(e.getPositionX() - otherX) * 2 < (e.getWidth() + otherWidth)) &&  (Math.abs(e.getPositionY() - otherY) * 2 < (e.getHeight() + otherHeight));
-	}
-
-	/**
-	 * Resolves a collision between an entity and a hitbox. The entity passed into the first parameter will be moved if necessary.
+	 * Resolves a collision between an entity and a hitbox. 
+	 * The entity passed into the first parameter will be moved if necessary.
 	 * @param e the entity to be resolved
 	 * @param otherX the x position of the hitbox
 	 * @param otherY the y position of the hitbox
@@ -394,42 +413,54 @@ public class World implements Transportable, Iterable<Entity> {
 	 * @param time the amount of time that the resolution should simulate
 	 * @return true if a collision occurred
 	 */
-	private static boolean resolveCollision(Entity e, Entity o, float time) { //TODO use momentum (mass * velocity) to determine which one moves
-		float width = 0.5f * (e.getWidth() + o.getWidth());
-		float height = 0.5f * (e.getHeight() + o.getHeight());
-		float deltaX = o.getPositionX() - e.getPositionX();
-		float deltaY = o.getPositionY() - e.getPositionY();
-		if (Math.abs(deltaX) < width && Math.abs(deltaY) < height) { /* collision! replace < in intersection detection with <= for previous behavior */
-		    float wy = width * deltaY;
-		    float hx = height * deltaX;
-		    if (wy > hx) {
-		        if (wy > -hx) { /* collision on the bottom of other */
-		        	e.setPositionY(o.getPositionY() - height);
-		        	collisionBottom(e, o.getFriction(), time);
-		        } else { /* collision on the right of other */
-		        	e.setPositionX(o.getPositionX() + width);
-		        	if(e.getVelocityX() < 0) {
-						e.setVelocityX(0);
-					}
-		        }
-		    } else {
-		        if (wy > -hx) { /* collision on the left of other */
-		        	e.setPositionX(o.getPositionX() - width);
-		        	if(e.getVelocityX() > 0) {
-						e.setVelocityX(0);
-					}
-		        } else { /* collision on the top of other */
-		        	e.setPositionY(o.getPositionY() + height);
-		        	collisionTop(e, o.getFriction(), time);
-		        }
-		    }
-		    return true;
+	private void resolveCollision(Entity e, Entity o, float time) {
+		if(e.hasCollision() || o.hasCollision()) {
+			//TODO use momentum (mass * velocity) to determine which one moves
+			float width = 0.5f * (e.getWidth() + o.getWidth());
+			float height = 0.5f * (e.getHeight() + o.getHeight());
+			float deltaX = o.getPositionX() - e.getPositionX();
+			float deltaY = o.getPositionY() - e.getPositionY();
+			
+			if(Math.abs(deltaX) < width && Math.abs(deltaY) < height) {
+				//collision! replace < in intersection detection with <= for previous behavior
+				
+				e.onCollision(this, o, time);
+				o.onCollision(this, e, time);
+				
+				if(e.collidesWithEntities() && o.collidesWithEntities()) {
+					float wy = width * deltaY;
+				    float hx = height * deltaX;
+				    if (wy > hx) {
+				        if (wy > -hx) { /* collision on the bottom of other */
+				        	e.setPositionY(o.getPositionY() - height);
+				        	collisionBottom(e, o.getFriction(), time);
+				        } else { /* collision on the right of other */
+				        	e.setPositionX(o.getPositionX() + width);
+				        	if(e.getVelocityX() < 0) {
+								e.setVelocityX(0);
+							}
+				        }
+				    } else {
+				        if (wy > -hx) { /* collision on the left of other */
+				        	e.setPositionX(o.getPositionX() - width);
+				        	if(e.getVelocityX() > 0) {
+								e.setVelocityX(0);
+							}
+				        } else { /* collision on the top of other */
+				        	e.setPositionY(o.getPositionY() + height);
+				        	collisionTop(e, o.getFriction(), time);
+				        }
+				    }
+				}
+			}	
 		}
-		return false;
 	}
 
-	private static boolean resolveBlockCollision(World world, Entity e, Block block, float blockX, float blockY, float time,
-			boolean blockUp, boolean blockLeft, boolean blockRight, boolean blockDown) {
+	private static boolean resolveBlockCollision(World world, 
+			Entity e, Block block, 
+			float blockX, float blockY, float time,
+			boolean blockUp, boolean blockLeft,
+			boolean blockRight, boolean blockDown) {
 		float width = 0.5f * (e.getWidth() + 1);
 		float height = 0.5f * (e.getHeight() + 1);
 		float deltaX = blockX - e.getPositionX();
