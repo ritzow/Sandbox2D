@@ -21,7 +21,7 @@ public final class StartServer {
 	private static boolean save = true;
 	private static final Path saveFile = Path.of("data/worlds/world.dat");
 
-	private static final int WORLD_WIDTH = 200, WORLD_BASE_HEIGHT = 50, WORLD_AMPLITUDE = 5;
+	private static final int WORLD_WIDTH = 200, WORLD_BASE_HEIGHT = 50, WORLD_AMPLITUDE = 50;
 	private static final float WORLD_FREQUENCY = 0.15f;
 
 	public static void main(String[] args) throws SocketException, IOException {
@@ -48,35 +48,29 @@ public final class StartServer {
 			long time = System.nanoTime();
 			World world = Files.exists(saveFile) ? loadWorld(saveFile) : generateWorld();
 			System.out.println("took " + Utility.formatTime(Utility.nanosSince(time)) + ".");
-			server.setCurrentWorld(world);
-
 			CommandParser parser = new CommandParser();
 			registerCommands(parser);
 			new Thread(parser::run, "Command Parser").start();
-
+			server.setCurrentWorld(world);
 			try {
-				long lastWorldUpdateTime = System.nanoTime();
 				while(server.isOpen()) {
-					server.updateServer();
-					lastWorldUpdateTime = Utility.updateWorld(world, lastWorldUpdateTime,
-							Protocol.MAX_UPDATE_TIMESTEP, Protocol.TIME_SCALE_NANOSECONDS);
-					server.updateClients();
 					parser.update();
+					server.update();
 					Utility.sleep(1);
 				}
-
+			} catch(Exception e) {
+				e.printStackTrace();
+			} finally {
 				if(save) {
 					saveWorld(world, saveFile);
 				} else {
 					System.out.println("Server stopped without saving to file.");
 				}
-			} catch(Exception e) {
-				e.printStackTrace();
-			} finally {
+				
 				System.exit(0); //kill the console thread
 			}
 		} catch(BindException e) {
-			System.out.println("Could not start server: '" + e.getMessage() + "'");
+			System.out.println("Couldn't start server on address " + Utility.formatAddress(bindAddress));
 		}
 	}
 
@@ -118,8 +112,9 @@ public final class StartServer {
 		runner.register("say", 		StartServer::sayCommand);
 		runner.register("reset", 	StartServer::resetCommand);
 		runner.register("debug",	StartServer::debugCommand);
+		runner.register("kill", 	StartServer::killCommand);
 	}
-
+	
 	private static void debugCommand(String args) {
 		server.printDebug(System.out);
 	}
@@ -135,6 +130,16 @@ public final class StartServer {
 	}
 
 	private static void stopCommand(String args) {
+		server.startShutdown();
+	}
+	
+	private static void abortCommand(String args) {
+		save = false;
+		server.startShutdown();
+	}
+	
+	private static void killCommand(String args) {
+		save = false;
 		try {
 			server.close();
 		} catch (IOException e) {
@@ -145,15 +150,6 @@ public final class StartServer {
 	private static void sayCommand(String args) {
 		server.broadcastConsoleMessage(args);
 		System.out.println("Message '" + args + "' sent to " + server.getClientCount() + " client(s).");
-	}
-
-	private static void abortCommand(String args) {
-		save = false;
-		try {
-			server.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
 	}
 
 	private static void listCommmand(String args) {
