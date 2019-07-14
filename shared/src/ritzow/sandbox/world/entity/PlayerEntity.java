@@ -178,7 +178,7 @@ public abstract class PlayerEntity extends Entity implements Living {
 	}
 
 	@Override
-	public boolean hasEntityCollisionLogic() {
+	public boolean hasCollision() {
 		return false;
 	}
 

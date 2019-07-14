@@ -40,7 +40,7 @@ public class ItemEntity<I extends Item> extends Entity {
 	}
 
 	@Override
-	public boolean hasEntityCollisionLogic() {
+	public boolean hasCollision() {
 		return false;
 	}
 

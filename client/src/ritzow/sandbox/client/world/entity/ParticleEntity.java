@@ -58,7 +58,7 @@ public class ParticleEntity extends Entity implements Renderable {
 	}
 
 	@Override
-	public boolean hasEntityCollisionLogic() {
+	public boolean hasCollision() {
 		return false;
 	}
 
