@@ -1,10 +1,7 @@
-#don't include binaries in git repo
+#don't include eclipse output in git repo
 bin/
 
-#don't include generated javadocs in repo
-doc/
-
-#don't include application storage
+#don't include server data storage
 /server/data/
 
 #don't include fonts
@@ -24,12 +21,11 @@ doc/
 .project
 .settings
 
-#don't include visual studio project files
-/clientlauncher/Windows/include
-/clientlauncher/Windows/*.vcxproj.user
-/clientlauncher/Windows/**/*.aps
-/clientlauncher/Windows/x64
-/clientlauncher/Windows/.vs
-
-#don't include stupid mac metadata files
-.DS_Store
+#native launcher/visual studio files
+/clientlauncher/Windows/natives
+/clientlauncher/**/lib
+/clientlauncher/**/include
+/clientlauncher/**/*.vcxproj.user
+/clientlauncher/**/*.aps
+/clientlauncher/**/x64
+/clientlauncher/**/.vs
