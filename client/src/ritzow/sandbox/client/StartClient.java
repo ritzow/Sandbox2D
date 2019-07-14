@@ -14,7 +14,6 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.regex.Pattern;
 import org.lwjgl.glfw.GLFWErrorCallback;
@@ -23,7 +22,6 @@ import ritzow.sandbox.client.audio.AudioSystem;
 import ritzow.sandbox.client.audio.DefaultAudioSystem;
 import ritzow.sandbox.client.audio.OpenALAudioSystem;
 import ritzow.sandbox.client.audio.Sound;
-import ritzow.sandbox.client.audio.SoundInfo;
 import ritzow.sandbox.client.audio.WAVEDecoder;
 import ritzow.sandbox.client.graphics.*;
 import ritzow.sandbox.client.graphics.Shader.ShaderType;
@@ -47,22 +45,25 @@ public class StartClient {
 	public static void start(String args) throws Exception {
 		//Pattern: all character sequences split by whitespace
 		String[] formatted = Pattern
-				.compile("\\S+")
-				.matcher(args)
-				.results()
-				.map(result -> result.group())
-				.toArray(length -> new String[length]);
+			.compile("\\S+")
+			.matcher(args)
+			.results()
+			.map(result -> result.group())
+			.toArray(length -> new String[length]);
 		main(formatted);
 	}
 	
 	public static void main(String[] args) throws Exception {
 		long startupStart = System.nanoTime();
+		System.out.print("Starting game... ");
 		audio = setupAudio();
 		display = setupGLFW();
 		shaderProgram = setupGraphics(display);
 		mainMenu = new MainMenuContext(shaderProgram);
 		configureAddresses(args);
-		System.out.println("Startup took " + Utility.formatTime(Utility.nanosSince(startupStart)));
+		System.out.println("took " + Utility.formatTime(Utility.nanosSince(startupStart)));
+		System.out.println("Local Address: " + Utility.formatAddress(localAddress));
+		System.out.println("Server Address: " + Utility.formatAddress(serverAddress));
 		display.show();
 		GameLoop.start(mainMenu::update);
 		System.out.println("done!");
@@ -91,8 +92,6 @@ public class StartClient {
 			serverAddress = new InetSocketAddress(NetworkUtility.getLoopbackAddress(), 
 					Protocol.DEFAULT_SERVER_PORT_UDP);
 		}
-		System.out.println("Local Address: " + Utility.formatAddress(localAddress));
-		System.out.println("Server Address: " + Utility.formatAddress(serverAddress));
 	}
 	
 	static void exit() {
@@ -125,22 +124,30 @@ public class StartClient {
 			face = Textures.loadTextureName("greenFace"),
 			red = Textures.loadTextureName("redSquare"),
 			sky = Textures.loadTextureName("clouds");
+		
+		var models = Map.ofEntries(
+			Map.entry(RenderConstants.MODEL_DIRT_BLOCK, dirt),
+			Map.entry(RenderConstants.MODEL_GRASS_BLOCK, grass),
+			Map.entry(RenderConstants.MODEL_GREEN_FACE, face),
+			Map.entry(RenderConstants.MODEL_RED_SQUARE, red),
+			Map.entry(RenderConstants.MODEL_SKY, sky)
+		);
+		
 		TextureAtlas atlas = Textures.buildAtlas(grass, dirt, face, red, sky);
-
-		ModelRenderProgram program = USE_OPENGL_4_6 ? createProgramFromSPIRV(atlas) : createProgramFromSource(atlas);
-		GraphicsUtility.checkErrors();
-
-		program.register(RenderConstants.MODEL_DIRT_BLOCK, getRenderData(indices, positions, atlas, dirt));
-		program.register(RenderConstants.MODEL_GRASS_BLOCK, getRenderData(indices, positions, atlas, grass));
-		program.register(RenderConstants.MODEL_GREEN_FACE, getRenderData(indices, positions, atlas, face));
-		program.register(RenderConstants.MODEL_RED_SQUARE, getRenderData(indices, positions, atlas, red));
-		program.register(RenderConstants.MODEL_SKY, getRenderData(indices, positions, atlas, sky));
+		ModelRenderProgram program = USE_OPENGL_4_6 ? 
+				createProgramFromSPIRV(atlas) :
+				createProgramFromSource(atlas);
+		
+		//register all the square models
+		for(var entry : models.entrySet()) {
+			program.register(entry.getKey(),
+				new RenderData(6, indices, positions, 
+					GraphicsUtility.uploadVertexData(atlas.getCoordinates(entry.getValue()))
+				)
+			);
+		}
 
 		return program;
-	}
-
-	private static RenderData getRenderData(int indices, int positions, TextureAtlas atlas, TextureData data) {
-		return new RenderData(6, indices, positions, GraphicsUtility.uploadVertexData(atlas.getCoordinates(data)));
 	}
 
 	private static ByteBuffer readIntoBuffer(Path file) throws IOException {
@@ -195,8 +202,7 @@ public class StartClient {
 
 		for(var entry : sounds.entrySet()) {
 			try(var in = Files.newInputStream(directory.resolve(entry.getKey()))) {
-				SoundInfo info = WAVEDecoder.decode(in);
-				audio.registerSound(entry.getValue().code(), info);
+				audio.registerSound(entry.getValue().code(), WAVEDecoder.decode(in));
 			}
 		}
 		return audio;
