@@ -1,5 +1,12 @@
 package ritzow.sandbox.client.graphics;
 
+import static org.lwjgl.opengl.GL11C.GL_FLOAT;
+import static org.lwjgl.opengl.GL15C.GL_ARRAY_BUFFER;
+import static org.lwjgl.opengl.GL15C.glBindBuffer;
+import static org.lwjgl.opengl.GL20C.glEnableVertexAttribArray;
+import static org.lwjgl.opengl.GL20C.glVertexAttribPointer;
+import static org.lwjgl.opengl.GL30C.glBindVertexArray;
+import static org.lwjgl.opengl.GL30C.glGenVertexArrays;
 import static org.lwjgl.opengl.GL46C.*;
 
 import java.util.HashMap;
@@ -19,16 +26,18 @@ public final class ModelRenderProgram extends ShaderProgram {
 		uniform_transform,
 		uniform_opacity,
 		uniform_view,
+		position,
+		textureCoord,
 		textureUnit;
 
 	private final int atlasTexture;
 
-	private static final float[] identityMatrix = {
-			1, 0, 0, 0,
-			0, 1, 0, 0,
-			0, 0, 0, 0,
-			0, 0, 0, 1,
-	};
+//	private static final float[] identityMatrix = {
+//			1, 0, 0, 0,
+//			0, 1, 0, 0,
+//			0, 0, 0, 0,
+//			0, 0, 0, 1,
+//	};
 
 	private final float[] aspectMatrix = {
 			1, 0, 0, 0,
@@ -62,8 +71,8 @@ public final class ModelRenderProgram extends ShaderProgram {
 
 	public ModelRenderProgram(Shader vertexShader, Shader fragmentShader, int textureAtlas) {
 		super(vertexShader, fragmentShader);
-		models = new HashMap<>();
-		//glGetAttribLocation(program, name) TODO use getattriblocation? needs to be updated in VAO creation
+		this.position = glGetAttribLocation(programID, "position");
+		this.textureCoord = glGetAttribLocation(programID, "textureCoord");
 		this.uniform_transform = getUniformLocation("transform");
 		this.uniform_opacity = getUniformLocation("opacity");
 		this.uniform_view = getUniformLocation("view");
@@ -72,12 +81,34 @@ public final class ModelRenderProgram extends ShaderProgram {
 		setCurrent(); //needs this for setSamplerIndex which uses current program
 		setSamplerIndex(getUniformLocation("textureSampler"), textureUnit);
 		GraphicsUtility.checkErrors();
+		this.models = new HashMap<>();
 	}
 
-	public void register(int modelID, RenderData model) {
+	public void register(int modelID, int vertexCount, int indicesID, int positionsID, int textureCoordsID) {
 		if(models.containsKey(modelID))
 			throw new IllegalArgumentException("modelID already in use");
-		models.put(modelID, model);
+		
+		int vao = glGenVertexArrays();
+		glBindVertexArray(vao);
+		glBindBuffer(GL_ARRAY_BUFFER, positionsID);
+		glEnableVertexAttribArray(position);
+		glVertexAttribPointer(position, 2, GL_FLOAT, false, 0, 0);
+		glBindBuffer(GL_ARRAY_BUFFER, textureCoordsID);
+		glEnableVertexAttribArray(textureCoord);
+		glVertexAttribPointer(textureCoord, 2, GL_FLOAT, false, 0, 0);
+		glBindVertexArray(0);
+		GraphicsUtility.checkErrors();
+		models.put(modelID, new RenderData(vao, vertexCount, indicesID));
+	}
+	
+	private final static class RenderData {
+		final int vao, vertexCount, indices;
+
+		RenderData(int vao, int vertexCount, int indices) {
+			this.vao = vao;
+			this.vertexCount = vertexCount;
+			this.indices = indices;
+		}
 	}
 
 	/**
@@ -94,20 +125,10 @@ public final class ModelRenderProgram extends ShaderProgram {
 		setTexture(textureUnit, atlasTexture);
 	}
 
-	/**
-	 * Renders a model using the current shader program properties
-	 * @param model the model to render
-	 */
-	public void renderVAO(int modelID) {
-		RenderData model = models.get(modelID);
-		if(model == null)
-			throw new IllegalArgumentException("no model exists for model id " + modelID);
-		glBindVertexArray(model.vao);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model.indices);
-		//TODO instanced rendering allows multiple runs of the shader program with 1 draw call
-		glDrawElements(GL_TRIANGLES, model.vertexCount, GL_UNSIGNED_INT, 0);
-	}
-
+	//TODO I should be able to render every model with a single draw call 
+	//by uploading all transform data to an array accessed in the shader
+	//will require restructuring of VAOs (possibly use only one large one)
+	
 	/**
 	 * Renders a model with the specified properties
 	 * @param model the model to render
@@ -119,9 +140,15 @@ public final class ModelRenderProgram extends ShaderProgram {
 	 * @param rotation the rotation, in radians, of the model
 	 */
 	public void render(int modelID, float opacity, float posX, float posY, float scaleX, float scaleY, float rotation) {
+		RenderData model = models.get(modelID);
+		if(model == null)
+			throw new IllegalArgumentException("no model exists for model id " + modelID);
+		
 		loadOpacity(opacity);
 		loadTransformationMatrix(posX, posY, scaleX, scaleY, rotation);
-		renderVAO(modelID);
+		glBindVertexArray(model.vao);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model.indices);
+		glDrawElements(GL_TRIANGLES, model.vertexCount, GL_UNSIGNED_INT, 0);
 	}
 
 	public void render(Graphics g, float posX, float posY) {

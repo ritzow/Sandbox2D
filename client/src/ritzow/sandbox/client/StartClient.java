@@ -140,11 +140,8 @@ public class StartClient {
 		
 		//register all the square models
 		for(var entry : models.entrySet()) {
-			program.register(entry.getKey(),
-				new RenderData(6, indices, positions, 
-					GraphicsUtility.uploadVertexData(atlas.getCoordinates(entry.getValue()))
-				)
-			);
+			program.register(entry.getKey(), 6, indices, positions, 
+				GraphicsUtility.uploadVertexData(atlas.getCoordinates(entry.getValue())));
 		}
 
 		return program;
