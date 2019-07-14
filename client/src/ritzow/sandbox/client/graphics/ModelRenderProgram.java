@@ -26,9 +26,9 @@ public final class ModelRenderProgram extends ShaderProgram {
 		uniform_transform,
 		uniform_opacity,
 		uniform_view,
-		position,
-		textureCoord,
-		textureUnit;
+		uniform_textureUnit,
+		attribute_position,
+		attribute_textureCoord;
 
 	private final int atlasTexture;
 
@@ -71,15 +71,14 @@ public final class ModelRenderProgram extends ShaderProgram {
 
 	public ModelRenderProgram(Shader vertexShader, Shader fragmentShader, int textureAtlas) {
 		super(vertexShader, fragmentShader);
-		this.position = glGetAttribLocation(programID, "position");
-		this.textureCoord = glGetAttribLocation(programID, "textureCoord");
+		this.attribute_position = getAttributeLocation("position");
+		this.attribute_textureCoord = getAttributeLocation("textureCoord");
 		this.uniform_transform = getUniformLocation("transform");
 		this.uniform_opacity = getUniformLocation("opacity");
 		this.uniform_view = getUniformLocation("view");
 		this.atlasTexture = textureAtlas;
-		this.textureUnit = 0;
-		setCurrent(); //needs this for setSamplerIndex which uses current program
-		setSamplerIndex(getUniformLocation("textureSampler"), textureUnit);
+		this.uniform_textureUnit = 0;
+		setInteger(getUniformLocation("textureSampler"), uniform_textureUnit);
 		GraphicsUtility.checkErrors();
 		this.models = new HashMap<>();
 	}
@@ -91,11 +90,11 @@ public final class ModelRenderProgram extends ShaderProgram {
 		int vao = glGenVertexArrays();
 		glBindVertexArray(vao);
 		glBindBuffer(GL_ARRAY_BUFFER, positionsID);
-		glEnableVertexAttribArray(position);
-		glVertexAttribPointer(position, 2, GL_FLOAT, false, 0, 0);
+		glEnableVertexAttribArray(attribute_position);
+		glVertexAttribPointer(attribute_position, 2, GL_FLOAT, false, 0, 0);
 		glBindBuffer(GL_ARRAY_BUFFER, textureCoordsID);
-		glEnableVertexAttribArray(textureCoord);
-		glVertexAttribPointer(textureCoord, 2, GL_FLOAT, false, 0, 0);
+		glEnableVertexAttribArray(attribute_textureCoord);
+		glVertexAttribPointer(attribute_textureCoord, 2, GL_FLOAT, false, 0, 0);
 		glBindVertexArray(0);
 		GraphicsUtility.checkErrors();
 		models.put(modelID, new RenderData(vao, vertexCount, indicesID));
@@ -122,7 +121,7 @@ public final class ModelRenderProgram extends ShaderProgram {
 	@Override
 	public void setCurrent() {
 		super.setCurrent();
-		setTexture(textureUnit, atlasTexture);
+		setCurrentTexture(uniform_textureUnit, atlasTexture);
 	}
 
 	//TODO I should be able to render every model with a single draw call 

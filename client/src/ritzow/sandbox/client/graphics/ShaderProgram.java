@@ -24,18 +24,13 @@ public class ShaderProgram {
 	public void setCurrent() {
 		glUseProgram(programID);
 	}
+	
+	protected final int getAttributeLocation(String name) {
+		return glGetAttribLocation(programID, name);
+	}
 
 	protected final int getUniformLocation(String name) {
 		return glGetUniformLocation(programID, name);
-	}
-
-	/**
-	 * Associate a texture unit with a sampler2D object in a fragment shader
-	 * @param samplerUniformID the texture sampler
-	 * @param samplerIndex the texture unit to associate the sampler with
-	 */
-	public final void setSamplerIndex(int samplerUniformID, int textureUnit) {
-		setInteger(samplerUniformID, textureUnit);
 	}
 
 	/**
@@ -43,8 +38,7 @@ public class ShaderProgram {
 	 * @param textureUnit the texture unit
 	 * @param textureID the texture
 	 */
-	@SuppressWarnings("static-method")
-	public final void setTexture(int textureUnit, int textureID) {
+	public static final void setCurrentTexture(int textureUnit, int textureID) {
 		glActiveTexture(GL_TEXTURE0 + textureUnit);
 		glBindTexture(GL_TEXTURE_2D, textureID);
 	}
