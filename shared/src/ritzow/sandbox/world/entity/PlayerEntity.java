@@ -16,7 +16,8 @@ import ritzow.sandbox.world.item.Item;
  */
 public abstract class PlayerEntity extends Entity implements Living {
 	protected final Inventory<Item> inventory;
-	protected int selected, health;
+	protected byte selected;
+	protected int health;
 	protected boolean left, right, up, down;
 
 	protected static boolean JETPACK_MODE = false;
@@ -35,18 +36,18 @@ public abstract class PlayerEntity extends Entity implements Living {
 		super(input);
 		inventory = input.readObject();
 		health = input.readInteger();
-		selected = input.readInteger();
+		selected = input.readByte();
 	}
 
 	@Override
 	public byte[] getBytes(Serializer ser) {
 		byte[] superBytes = super.getBytes(ser);
 		byte[] invBytes = ser.serialize(inventory);
-		byte[] bytes = new byte[superBytes.length + invBytes.length + 4 + 4];
+		byte[] bytes = new byte[superBytes.length + invBytes.length + 4 + 1];
 		Bytes.copy(superBytes, bytes, 0);
 		Bytes.copy(invBytes, bytes, superBytes.length);
 		Bytes.putInteger(bytes, superBytes.length + invBytes.length, health);
-		Bytes.putInteger(bytes, superBytes.length + invBytes.length + 4, selected);
+		bytes[superBytes.length + invBytes.length + 4] = selected;
 		return bytes;
 	}
 
@@ -131,6 +132,10 @@ public abstract class PlayerEntity extends Entity implements Living {
 	public boolean isDown() {
 		return down;
 	}
+	
+	public byte selected() {
+		return selected;
+	}
 
 	public Inventory<Item> inventory() {
 		return inventory;
@@ -147,7 +152,24 @@ public abstract class PlayerEntity extends Entity implements Living {
 	public void setSlot(int slot) {
 		if(slot > inventory.getSize() - 1 || slot < 0)
 			throw new IllegalArgumentException("slot out of bounds");
-		selected = slot;
+		selected = (byte)slot;
+	}
+	
+	@Override
+	public int getHealth() {
+		return health;
+	}
+
+	@Override
+	public int getMaxHealth() {
+		return 100;
+	}
+
+	@Override
+	public void setHealth(int health) {
+		if(health > getMaxHealth() || health < 0)
+			throw new IllegalArgumentException("invalid health amount");
+		this.health = health;
 	}
 
 	@Override
@@ -189,21 +211,14 @@ public abstract class PlayerEntity extends Entity implements Living {
 	public float getMass() {
 		return 0.2f * SIZE_SCALE;
 	}
-
+	
 	@Override
-	public int getHealth() {
-		return health;
+	public int hashCode() {
+		return entityID;
 	}
-
+	
 	@Override
-	public int getMaxHealth() {
-		return 100;
-	}
-
-	@Override
-	public void setHealth(int health) {
-		if(health > getMaxHealth() || health < 0)
-			throw new IllegalArgumentException("invalid health amount");
-		this.health = health;
+	public boolean equals(Object other) {
+		return other instanceof PlayerEntity && ((PlayerEntity)other).entityID == entityID;
 	}
 }

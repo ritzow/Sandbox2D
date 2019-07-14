@@ -57,6 +57,7 @@ public class InWorldContext implements GameTalker {
 			case Protocol.TYPE_SERVER_REMOVE_ENTITY -> processRemoveEntity(data);
 			case Protocol.TYPE_SERVER_PLAYER_ID -> processReceivePlayerEntityID(data);
 			case Protocol.TYPE_SERVER_REMOVE_BLOCK -> processServerRemoveBlock(data);
+			case Protocol.TYPE_SERVER_PLACE_BLOCK -> processServerPlaceBlock(data);
 			case Protocol.TYPE_CLIENT_PLAYER_STATE -> processPlayerState(data);
 			case Protocol.TYPE_SERVER_CLIENT_DISCONNECT -> processServerDisconnect(data);
 			case Protocol.TYPE_SERVER_PING -> {}
@@ -118,6 +119,13 @@ public class InWorldContext implements GameTalker {
 
 	private void processServerRemoveBlock(ByteBuffer data) {
 		world.getForeground().destroy(world, data.getInt(), data.getInt());
+	}
+
+	private void processServerPlaceBlock(ByteBuffer data) {
+		int x = data.getInt(), y = data.getInt();
+		byte[] block = new byte[data.remaining()];
+		data.get(block);
+		world.getForeground().place(world, x, y, deserialize(true, block));
 	}
 
 	private void processReceivePlayerEntityID(ByteBuffer data) {
@@ -213,14 +221,7 @@ public class InWorldContext implements GameTalker {
 		player.setUp(isUp);
 		player.setDown(isDown);
 
-		sendPlayerState(
-			isLeft,
-			isRight,
-			isUp,
-			isDown,
-			isPrimary,
-			isSecondary
-		);
+		sendPlayerState(player, isPrimary, isSecondary);
 
 		interactionControls.update(StartClient.display, cameraGrip.getCamera(), this, world, player); //block breaking/"bomb throwing"
 		client.update(this::process);
@@ -231,6 +232,13 @@ public class InWorldContext implements GameTalker {
 			lastCameraUpdate = System.nanoTime();
 		}
 		Utility.sleep(1); //reduce CPU usage
+	}
+
+	public void sendPlayerState(PlayerEntity player, boolean primary, boolean secondary) {
+		byte[] packet = new byte[4];
+		Bytes.putShort(packet, 0, Protocol.TYPE_CLIENT_PLAYER_STATE);
+		Bytes.putShort(packet, 2, Protocol.PlayerState.getState(player, primary, secondary));
+		client.sendUnreliable(packet);
 	}
 
 	private void updateVisuals() {
@@ -262,6 +270,19 @@ public class InWorldContext implements GameTalker {
 		client.sendReliable(packet);
 	}
 	
+	@Override
+	public void sendBlockPlace(int x, int y) {
+		byte[] packet = new byte[10];
+		Bytes.putShort(packet, 0, Protocol.TYPE_CLIENT_PLACE_BLOCK);
+		Bytes.putInteger(packet, 2, x);
+		Bytes.putInteger(packet, 6, y);
+		client.sendReliable(packet);
+	}
+	
+	private void selectSlot(int slot) {
+		player.setSlot(slot);
+	}
+	
 	InputContext input = new InputContext() {
 		@Override
 		public void windowFocus(boolean focused) {
@@ -275,7 +296,10 @@ public class InWorldContext implements GameTalker {
 
 		private final Map<Button, Runnable> controls = Map.ofEntries(
 				Map.entry(Control.FULLSCREEN, StartClient.display::toggleFullscreen),
-				Map.entry(Control.QUIT,  InWorldContext.this::leaveServer)
+				Map.entry(Control.QUIT,  InWorldContext.this::leaveServer),
+				Map.entry(Control.SLOT_SELECT_1, () -> selectSlot(0)),
+				Map.entry(Control.SLOT_SELECT_2, () -> selectSlot(1)),
+				Map.entry(Control.SLOT_SELECT_3, () -> selectSlot(2))
 		);
 
 		@Override
@@ -303,7 +327,7 @@ public class InWorldContext implements GameTalker {
 
 		@Override
 		public void windowRefresh() {
-			sendPlayerState(false, false, false, false, false, false);
+			sendPlayerState(player, false, false);
 			interactionControls.update(StartClient.display, 
 					cameraGrip.getCamera(), InWorldContext.this, world, player); //block breaking/"bomb throwing"
 			client.update(InWorldContext.this::process);

@@ -10,25 +10,39 @@ import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.Entity;
+import ritzow.sandbox.world.entity.PlayerEntity;
 
 public final class InteractionController {
-	private long lastThrow, lastBreak;
+	private long lastThrow, lastBreak, lastPlace;
 
 	//TODO wait for server response before sending more block break packets
-	public void update(Display display, Camera camera, GameTalker client, World world, Entity player) {
+	public void update(Display display, Camera camera, GameTalker client, World world, PlayerEntity player) {
 		final int mouseX = display.getCursorX(), mouseY = display.getCursorY();
 		int frameWidth = display.width(), frameHeight = display.height();
-		if(display.isControlActivated(Control.USE_HELD_ITEM) && breakAllowed()) {
+		if(display.isControlActivated(Control.USE_HELD_ITEM)) {
 			int blockX = Math.round(ClientUtility.pixelHorizontalToWorld(camera, mouseX, frameWidth, frameHeight));
 			int blockY = Math.round(ClientUtility.pixelVerticalToWorld(camera, mouseY, frameHeight));
 			BlockGrid grid = world.getForeground();
-			if(inRange(player, blockX, blockY) && grid.isValid(blockX, blockY) && grid.isBlock(blockX, blockY)) {
-				client.sendBlockBreak(blockX, blockY);
-				//TODO comm. with server, only reset cooldown to server provided value if a block is actually broken
-				//requires a different approach, lastBreak won't be set here
-				lastBreak = System.nanoTime();
+			if(player.selected() == 0) {
+				if(breakAllowed() && inRange(player, blockX, blockY) && 
+						grid.isValid(blockX, blockY) && 
+						grid.isBlock(blockX, blockY)) {
+					client.sendBlockBreak(blockX, blockY);
+					//TODO comm. with server, only reset cooldown to server provided value if a block is actually broken
+					//requires a different approach, lastBreak won't be set here
+					lastBreak = System.nanoTime();
+				}
+			} else if(placeAllowed()) {
+				if(inRange(player, blockX, blockY) && grid.isValid(blockX, blockY) && !grid.isBlock(blockX, blockY)) {
+					client.sendBlockPlace(blockX, blockY);
+					//TODO comm. with server, only reset cooldown to server provided value if a block is actually broken
+					//requires a different approach, lastBreak won't be set here
+					lastPlace = System.nanoTime();
+				}
 			}
-		} else if(display.isControlActivated(Control.THROW_BOMB) && throwAllowed()) {
+		}
+		
+		if(display.isControlActivated(Control.THROW_BOMB) && throwAllowed()) {
 			float worldX = ClientUtility.pixelHorizontalToWorld(camera, mouseX, frameWidth, frameHeight);
 			float worldY = ClientUtility.pixelVerticalToWorld(camera, mouseY, frameHeight);
 			client.sendBombThrow(computeThrowAngle(player, worldX, worldY));
@@ -49,7 +63,11 @@ public final class InteractionController {
 	}
 
 	private boolean breakAllowed() {
-		return Utility.nanosSince(lastBreak) > Protocol.BLOCK_BREAK_COOLDOWN_NANOSECONDS;
+		return Utility.nanosSince(lastBreak) > Protocol.BLOCK_INTERACT_COOLDOWN_NANOSECONDS;
+	}
+	
+	private boolean placeAllowed() {
+		return Utility.nanosSince(lastPlace) > Protocol.BLOCK_INTERACT_COOLDOWN_NANOSECONDS;
 	}
 
 	private boolean throwAllowed() {

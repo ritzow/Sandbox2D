@@ -17,6 +17,11 @@ public class Control {
 	public static final Button FULLSCREEN =		new Button(Button.TYPE_KEYBOARD,  GLFW_KEY_F11);
 	public static final Button CONNECT =		new Button(Button.TYPE_KEYBOARD,  GLFW_KEY_C);
 
+	public static final Button SLOT_SELECT_1 =		new Button(Button.TYPE_KEYBOARD,  GLFW_KEY_1);
+	public static final Button SLOT_SELECT_2 =		new Button(Button.TYPE_KEYBOARD,  GLFW_KEY_2);
+	public static final Button SLOT_SELECT_3 =		new Button(Button.TYPE_KEYBOARD,  GLFW_KEY_3);
+	
+
 	public static class Button {
 		public static final byte TYPE_MOUSE = 0, TYPE_KEYBOARD = 1;
 

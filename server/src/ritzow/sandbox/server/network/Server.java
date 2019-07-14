@@ -325,8 +325,34 @@ public class Server {
 		}
 	}
 
+	private void processClientPlaceBlock(ClientState client, ByteBuffer packet) {
+		int x = packet.getInt();
+		int y = packet.getInt();
+		//TODO sync block place cooldowns (System.currentTimeMillis() + cooldown)
+		if(!world.getForeground().isValid(x, y))
+			throw new ClientBadDataException("client sent invalid block coordinates x=" + x + " y=" + y);
+		if(canPlaceBlock(client, x, y)) {
+			Block blockType = switch(client.player.selected()) {
+				case 1 -> new GrassBlock();
+				case 2 -> new DirtBlock();
+				default -> null;
+			};
+			
+			if(blockType != null) {
+				world.getForeground().place(world, x, y, blockType);
+				broadcastPlaceBlock(blockType, x, y);
+				client.lastBlockPlaceTime = System.nanoTime();	
+			}
+		}		
+	}
+
 	private boolean canBreakBlock(ClientState client, int x, int y) {
 		return Utility.nanosSince(client.lastBlockBreakTime) > Protocol.BLOCK_BREAK_COOLDOWN_NANOSECONDS && world.getForeground().isBlock(x, y) &&
+			   Utility.withinDistance(client.player.getPositionX(), client.player.getPositionY(), x, y, Protocol.BLOCK_BREAK_RANGE);
+	}
+
+	private boolean canPlaceBlock(ClientState client, int x, int y) {
+		return Utility.nanosSince(client.lastBlockPlaceTime) > Protocol.BLOCK_INTERACT_COOLDOWN_NANOSECONDS && !world.getForeground().isBlock(x, y) &&
 			   Utility.withinDistance(client.player.getPositionX(), client.player.getPositionY(), x, y, Protocol.BLOCK_BREAK_RANGE);
 	}
 
@@ -335,6 +361,16 @@ public class Server {
 		Bytes.putShort(packet, 0, Protocol.TYPE_SERVER_REMOVE_BLOCK);
 		Bytes.putInteger(packet, 2, x);
 		Bytes.putInteger(packet, 6, y);
+		broadcastUnsafe(packet, true);
+	}
+
+	private void broadcastPlaceBlock(Block block, int x, int y) {
+		byte[] blockData = serialize(block, true);
+		byte[] packet = new byte[10 + blockData.length];
+		Bytes.putShort(packet, 0, Protocol.TYPE_SERVER_PLACE_BLOCK);
+		Bytes.putInteger(packet, 2, x);
+		Bytes.putInteger(packet, 6, y);
+		Bytes.copy(blockData, packet, 10);
 		broadcastUnsafe(packet, true);
 	}
 
@@ -611,7 +647,7 @@ public class Server {
 		/** Client reliable message round trip time in nanoseconds */
 		long ping;
 		/** Last block break time in nanoseconds offset */
-		long lastBlockBreakTime;
+		long lastBlockBreakTime, lastBlockPlaceTime;
 		PlayerEntity player;
 		String disconnectReason;
 

@@ -14,7 +14,7 @@ public final class Protocol {
 	public static final float TIME_SCALE_NANOSECONDS = Utility.millisToNanos(16);
 
 	public static final float BLOCK_BREAK_RANGE = 1000;
-	public static final long BLOCK_BREAK_COOLDOWN_NANOSECONDS = Utility.millisToNanos(0);
+	public static final long BLOCK_INTERACT_COOLDOWN_NANOSECONDS = Utility.millisToNanos(0);
 	public static final long THROW_COOLDOWN_NANOSECONDS = Utility.millisToNanos(0);
 
 	/** The Charset for text encoding used by the client and server **/
@@ -59,7 +59,9 @@ public final class Protocol {
 		TYPE_SERVER_PING = 14,
 		TYPE_SERVER_PLAYER_ACTION = 15,
 		TYPE_CLIENT_BOMB_THROW = 16,
-		TYPE_CLIENT_WORLD_BUILT = 17;
+		TYPE_CLIENT_WORLD_BUILT = 17,
+		TYPE_CLIENT_PLACE_BLOCK = 18,
+		TYPE_SERVER_PLACE_BLOCK = 19;
 
 	/** Serialization Type ID **/
 	public static final short
@@ -99,38 +101,40 @@ public final class Protocol {
 		//1 bit secondary_action
 		//1 bit unused
 		//1 bit unused
+		//1 byte unsigned item slot TODO not currently unsigned
 		public static byte MOVE_LEFT = 			0b00000001;
 		public static byte MOVE_RIGHT = 		0b00000010;
 		public static byte MOVE_UP = 			0b00000100;
 		public static byte MOVE_DOWN = 			0b00001000;
 		public static byte PRIMARY_ACTION = 	0b00010000;
 		public static byte SECONDARY_ACTION = 	0b00100000;
+		
+		public static boolean isPrimary(short state) {
+			return (state & PRIMARY_ACTION) == PRIMARY_ACTION;
+		}
+		
+		public static boolean isSecondary(short state) {
+			return (state & SECONDARY_ACTION) == SECONDARY_ACTION;
+		}
 
-		public static byte getState(PlayerEntity player) {
-			byte state = 0;
-			state |= player.isLeft() ? PlayerState.MOVE_LEFT : 0;
-			state |= player.isRight() ? PlayerState.MOVE_RIGHT : 0;
-			state |= player.isUp() ? PlayerState.MOVE_UP : 0;
-			state |= player.isDown() ? PlayerState.MOVE_DOWN : 0;
+		public static short getState(PlayerEntity player, boolean primary, boolean secondary) {
+			short state = 0;
+			state |= player.isLeft() 	? MOVE_LEFT : 0;
+			state |= player.isRight() 	? MOVE_RIGHT : 0;
+			state |= player.isUp() 		? MOVE_UP : 0;
+			state |= player.isDown() 	? MOVE_DOWN : 0;
+			state |= primary			? PRIMARY_ACTION : 0;
+			state |= secondary			? SECONDARY_ACTION : 0;
+			state |= player.selected() << 8;
 			return state;
 		}
 
-		public static byte getState(boolean left, boolean right, boolean up, boolean down, boolean primaryAction, boolean secondaryAction) {
-			byte state = 0;
-			state |= left ? PlayerState.MOVE_LEFT : 0;
-			state |= right ? PlayerState.MOVE_RIGHT : 0;
-			state |= up ? PlayerState.MOVE_UP : 0;
-			state |= down ? PlayerState.MOVE_DOWN : 0;
-			state |= primaryAction ? PlayerState.PRIMARY_ACTION : 0;
-			state |= secondaryAction ? PlayerState.SECONDARY_ACTION : 0;
-			return state;
-		}
-
-		public static void updatePlayer(PlayerEntity player, byte state) {
-			player.setLeft((state & MOVE_LEFT) != 0);
-			player.setRight((state & MOVE_RIGHT) != 0);
-			player.setUp((state & MOVE_UP) != 0);
-			player.setDown((state & MOVE_DOWN) != 0);
+		public static void updatePlayer(PlayerEntity player, short state) {
+			player.setLeft((state & MOVE_LEFT) == MOVE_LEFT);
+			player.setRight((state & MOVE_RIGHT) == MOVE_RIGHT);
+			player.setUp((state & MOVE_UP) == MOVE_UP);
+			player.setDown((state & MOVE_DOWN) == MOVE_DOWN);
+			player.setSlot(state >>> 8);
 		}
 	}
 }
