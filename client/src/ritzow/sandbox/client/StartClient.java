@@ -160,16 +160,16 @@ public class StartClient {
 
 	private static ModelRenderProgram createProgramFromSPIRV(TextureAtlas atlas) throws IOException {
 		return new ModelRenderProgram(
-				Shader.fromSPIRV(readIntoBuffer(Path.of("resources/shaders/modelVertexShader.spv")), ShaderType.VERTEX),
-				Shader.fromSPIRV(readIntoBuffer(Path.of("resources/shaders/modelFragmentShader.spv")), ShaderType.FRAGMENT),
+				Shader.fromSPIRV(readIntoBuffer(Path.of("resources/shaders/model.vert.spv")), ShaderType.VERTEX),
+				Shader.fromSPIRV(readIntoBuffer(Path.of("resources/shaders/model.frag.spv")), ShaderType.FRAGMENT),
 				atlas.texture()
 		);
 	}
 
 	private static ModelRenderProgram createProgramFromSource(TextureAtlas atlas) throws IOException {
 		return new ModelRenderProgram(
-				Shader.fromSource(Files.readString(Path.of("resources/shaders/modelVertexShader")), ShaderType.VERTEX),
-				Shader.fromSource(Files.readString(Path.of("resources/shaders/modelFragmentShader")), ShaderType.FRAGMENT),
+				Shader.fromSource(Files.readString(Path.of("resources/shaders/model.vert")), ShaderType.VERTEX),
+				Shader.fromSource(Files.readString(Path.of("resources/shaders/model.frag")), ShaderType.FRAGMENT),
 				atlas.texture()
 		);
 	}
