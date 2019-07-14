@@ -20,6 +20,8 @@ import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.block.Block;
+import ritzow.sandbox.world.block.DirtBlock;
+import ritzow.sandbox.world.block.GrassBlock;
 import ritzow.sandbox.world.entity.BombEntity;
 import ritzow.sandbox.world.entity.Entity;
 import ritzow.sandbox.world.entity.ItemEntity;
@@ -36,6 +38,7 @@ public class Server {
 	private final ByteBuffer receiveBuffer, responseBuffer, sendBuffer;
 	private final Map<InetSocketAddress, ClientState> clients;
 	private World world;
+	private long lastWorldUpdateTime;
 
 	public static Server start(InetSocketAddress bind) throws IOException {
 		return new Server(bind);
@@ -49,18 +52,29 @@ public class Server {
 		receiveBuffer = ByteBuffer.allocateDirect(Protocol.MAX_PACKET_SIZE);
 		responseBuffer = ByteBuffer.allocateDirect(Protocol.HEADER_SIZE);
 	}
+	
+	private static void log(String message) {
+		System.out.println(Utility.formatCurrentTime() + " " + message);
+	}
 
 	public InetSocketAddress getAddress() throws IOException {
 		return (InetSocketAddress)channel.getLocalAddress();
 	}
+	
+	public void startShutdown() {
+		for(ClientState client : clients.values()) {
+			manualDisconnect(client, "server shutting down");
+		}
+		world = null; //TODO could cause lots of bugs
+	}
+	
+	private void manualDisconnect(ClientState client, String reason) {
+		sendReliable(client, buildManualDisconnect(reason));
+		client.status = ClientState.STATUS_REMOVED;
+		client.disconnectReason = "kicked by server: " + reason;
+	}
 
 	public void close() throws IOException {
-		for(ClientState client : clients.values()) {
-			client.status = ClientState.STATUS_REMOVED;
-			client.disconnectReason = "server shutdown";
-			world.remove(client.player); //so that players aren't serialized
-		}
-		removeDisconnectedClients();
 		channel.close();
 	}
 
@@ -69,8 +83,7 @@ public class Server {
 	}
 
 	public String[] listClients() {
-		return clients.values().stream().map(client -> Utility.formatAddress(client.address) +
-				": " + ClientState.statusToString(client.status)).toArray(count -> new String[count]);
+		return clients.values().stream().map(client -> client.formattedName()).toArray(count -> new String[count]);
 	}
 
 	public int getClientCount() {
@@ -80,6 +93,7 @@ public class Server {
 	public void setCurrentWorld(World world) {
 		world.setRemoveEntities(this::broadcastRemoveEntity);
 		this.world = world;
+		this.lastWorldUpdateTime = System.nanoTime();
 	}
 
 	//TODO disconnect clients who don't connect properly
@@ -90,57 +104,74 @@ public class Server {
 				case Protocol.TYPE_CLIENT_CONNECT_REQUEST -> sendClientConnectReply(client);
 				case Protocol.TYPE_CLIENT_DISCONNECT -> processClientDisconnect(client);
 				case Protocol.TYPE_CLIENT_BREAK_BLOCK -> processClientBreakBlock(client, packet);
+				case Protocol.TYPE_CLIENT_PLACE_BLOCK -> processClientPlaceBlock(client, packet);
 				case Protocol.TYPE_CLIENT_BOMB_THROW -> processClientThrowBomb(client, packet);
 				case Protocol.TYPE_CLIENT_WORLD_BUILT -> client.status = ClientState.STATUS_IN_GAME;
 				case Protocol.TYPE_CLIENT_PLAYER_STATE -> processClientPlayerState(client, packet);
 				default -> throw new ClientBadDataException("received unknown protocol " + type);
 			}
 		} catch(ClientBadDataException e) {
-			System.out.println("Server received bad data from client: " + e.getMessage());
+			client.status = ClientState.STATUS_REMOVED;
+			client.disconnectReason = "Received bad data - " + e.getMessage();
+			log("Server received bad data from client: " + e.getMessage());
 		}
 	}
 
-	/**
-	 * Update the server's state. (includes message receiving)
-	 * @throws IOException if an internal error occurs
-	 */
-	public void updateServer() throws IOException {
-		removeDisconnectedClients();
+	public void update() throws IOException {
 		receive();
+		removeDisconnectedClients();
+		if(world != null) {
+			lastWorldUpdateTime = Utility.updateWorld(world, lastWorldUpdateTime,
+					Protocol.MAX_UPDATE_TIMESTEP, Protocol.TIME_SCALE_NANOSECONDS);
+			if(Utility.nanosSince(lastClientsUpdate) > NETWORK_SEND_INTERVAL_NANOSECONDS) {
+				//TODO optimize entity packet format and sending (batch entity updates)
+				for(Entity e : world) {
+					populateEntityUpdate(ENTITY_UPDATE_BUFFER, e);
+					broadcastUnreliable(ENTITY_UPDATE_BUFFER, client -> client.status == ClientState.STATUS_IN_GAME);
+					if(e instanceof PlayerEntity) {
+						broadcastPlayerState(null, (PlayerEntity)e);
+					}
+				}
+			
+				for(ClientState client : clients.values()) {
+					if(client.status == ClientState.STATUS_IN_GAME) {
+						client.sendQueue.add(PING_PACKET); //TODO send ping only if necessary (already timing out)
+					}
+				}
+				lastClientsUpdate = System.nanoTime();
+			}	
+		} else {
+			close();
+		}
+		sendAccumulated();
 	}
 
 	public void removeDisconnectedClients() {
 		var iterator = clients.values().iterator();
 		while(iterator.hasNext()) {
 			ClientState client = iterator.next();
-			if(isDisconnectState(client.status)) {
-				//TODO handle manual disconnect case
+			if(client.isDisconnectState() && client.sendQueue.isEmpty()) {
 				iterator.remove();
-				if(client.player != null) {
-					world.remove(client.player);
-					broadcastRemoveEntity(client.player);
-				}
-
 				if(client.status != ClientState.STATUS_CONNECTION_REJECTED) {
-					broadcastAndPrint(getDisconnectMessage(client));
+					broadcastAndPrint(formatDisconnectMessage(client));
+					if(client.player != null && world != null) {
+						world.remove(client.player);
+						broadcastRemoveEntity(client.player);
+					}
 				}
 			}
 		}
 	}
-
-	//TODO does this disconnect clients before they've been notified?
-	private static boolean isDisconnectState(byte status) {
-		return switch(status) {
-			case ClientState.STATUS_CONNECTED -> false;
-			case ClientState.STATUS_TIMED_OUT -> true;
-			case ClientState.STATUS_REMOVED -> true;
-			case ClientState.STATUS_SELF_DISCONNECTED -> true;
-			case ClientState.STATUS_CONNECTION_REJECTED -> true;
-			case ClientState.STATUS_IN_GAME -> false;
-			default -> false;
-		};
+	
+	private static byte[] buildManualDisconnect(String reason) {
+		byte[] message = reason.getBytes(Protocol.CHARSET);
+		byte[] packet = new byte[message.length + 6];
+		Bytes.putShort(packet, 0, Protocol.TYPE_SERVER_CLIENT_DISCONNECT);
+		Bytes.putInteger(packet, 2, message.length);
+		Bytes.copy(message, packet, 6);
+		return packet;
 	}
-
+	
 	private long lastClientsUpdate;
 
 	/** Reuseable entity update buffer **/
@@ -150,31 +181,6 @@ public class Server {
 	}
 
 	private static final SendPacket PING_PACKET = new SendPacket(Bytes.of(Protocol.TYPE_SERVER_PING), true);
-
-	/**
-	 * Keep clients up to date with the latest state. (includes message sending)
-	 * @throws IOException
-	 */
-	public void updateClients() throws IOException {
-		if(Utility.nanosSince(lastClientsUpdate) > NETWORK_SEND_INTERVAL_NANOSECONDS) {
-			//TODO optimize entity packet format and sending (batch entity updates)
-			for(Entity e : world) {
-				populateEntityUpdate(ENTITY_UPDATE_BUFFER, e);
-				broadcastUnreliable(ENTITY_UPDATE_BUFFER, client -> client.status == ClientState.STATUS_IN_GAME);
-				if(e instanceof PlayerEntity) {
-					broadcastPlayerState((PlayerEntity)e);
-				}
-			}
-
-			for(ClientState client : clients.values()) {
-				if(client.status == ClientState.STATUS_IN_GAME) {
-					client.sendQueue.add(PING_PACKET); //TODO send ping only if necessary (already timing out)
-				}
-			}
-			lastClientsUpdate = System.nanoTime();
-		}
-		sendAccumulated();
-	}
 
 	private static void populateEntityUpdate(byte[] packet, Entity e) {
 		Bytes.putInteger(packet, 2, e.getID());
@@ -260,46 +266,32 @@ public class Server {
 
 	private void broadcastAndPrint(String consoleMessage) {
 		broadcastReliable(Protocol.buildConsoleMessage(consoleMessage));
-		System.out.println(consoleMessage);
+		log(consoleMessage);
 	}
 
-	private String getDisconnectMessage(ClientState client) {
-		return Utility.formatCurrentTime() + Utility.formatAddress(client.address) +
+	private String formatDisconnectMessage(ClientState client) {
+		return Utility.formatAddress(client.address) +
 				" disconnected (reason: '" + client.disconnectReason + "', " + clients.size() + " players connected)";
 	}
-
-//	private void manualDisconnect(ClientState client, String reason) {
-//		client.status = ClientState.STATUS_REMOVED;
-//		client.disconnectReason = reason;
-//		sendReliable(client, buildManualDisconnect(reason));
-//	}
-
-//	private static byte[] buildManualDisconnect(String reason) {
-//		byte[] message = reason.getBytes(Protocol.CHARSET);
-//		byte[] packet = new byte[message.length + 6];
-//		Bytes.putShort(packet, 0, Protocol.TYPE_SERVER_CLIENT_DISCONNECT);
-//		Bytes.putInteger(packet, 2, message.length);
-//		Bytes.copy(message, packet, 6);
-//		return packet;
-//	}
 
 	private void processClientPlayerState(ClientState client, ByteBuffer packet) {
 		PlayerEntity player = client.player;
 		if(player == null)
 			throw new ClientBadDataException("client has no associated player to perform an action");
 		if(world.contains(player)) {
-			Protocol.PlayerState.updatePlayer(player, packet.get());
-			broadcastPlayerState(player);
+			short state = packet.getShort();
+			Protocol.PlayerState.updatePlayer(player, state);
+			broadcastPlayerState(client, player);
 			//TODO for now ignore the primary/secondary actions
 		} //else what is the point of the player performing the action
 	}
 
-	private void broadcastPlayerState(PlayerEntity player) {
-		byte[] message = new byte[7];
+	private void broadcastPlayerState(ClientState client, PlayerEntity player) {
+		byte[] message = new byte[8];
 		Bytes.putShort(message, 0, Protocol.TYPE_CLIENT_PLAYER_STATE);
 		Bytes.putInteger(message, 2, player.getID());
-		message[6] = Protocol.PlayerState.getState(player);
-		broadcastUnreliable(message);
+		Bytes.putShort(message, 6, Protocol.PlayerState.getState(player, false, false));
+		broadcastUnreliable(message, recipient -> !recipient.equals(client));
 	}
 
 	public void printDebug(PrintStream out) {
@@ -318,13 +310,13 @@ public class Server {
 		int y = data.getInt();
 		//TODO sync block break cooldowns (System.currentTimeMillis() + cooldown)
 		if(!world.getForeground().isValid(x, y))
-			throw new ClientBadDataException("client sent bad x and y block coordinates");
+			throw new ClientBadDataException("client sent invalid block coordinates x=" + x + " y=" + y);
 		if(canBreakBlock(client, x, y)) {
 			breakBlock(x, y);
 			client.lastBlockBreakTime = System.nanoTime();
 		}
 	}
-
+	
 	private void processClientPlaceBlock(ClientState client, ByteBuffer packet) {
 		int x = packet.getInt();
 		int y = packet.getInt();
@@ -347,10 +339,10 @@ public class Server {
 	}
 
 	private boolean canBreakBlock(ClientState client, int x, int y) {
-		return Utility.nanosSince(client.lastBlockBreakTime) > Protocol.BLOCK_BREAK_COOLDOWN_NANOSECONDS && world.getForeground().isBlock(x, y) &&
+		return Utility.nanosSince(client.lastBlockBreakTime) > Protocol.BLOCK_INTERACT_COOLDOWN_NANOSECONDS && world.getForeground().isBlock(x, y) &&
 			   Utility.withinDistance(client.player.getPositionX(), client.player.getPositionY(), x, y, Protocol.BLOCK_BREAK_RANGE);
 	}
-
+	
 	private boolean canPlaceBlock(ClientState client, int x, int y) {
 		return Utility.nanosSince(client.lastBlockPlaceTime) > Protocol.BLOCK_INTERACT_COOLDOWN_NANOSECONDS && !world.getForeground().isBlock(x, y) &&
 			   Utility.withinDistance(client.player.getPositionX(), client.player.getPositionY(), x, y, Protocol.BLOCK_BREAK_RANGE);
@@ -363,7 +355,7 @@ public class Server {
 		Bytes.putInteger(packet, 6, y);
 		broadcastUnsafe(packet, true);
 	}
-
+	
 	private void broadcastPlaceBlock(Block block, int x, int y) {
 		byte[] blockData = serialize(block, true);
 		byte[] packet = new byte[10 + blockData.length];
@@ -385,7 +377,7 @@ public class Server {
 			broadcastAddEntity(drop);
 		}
 	}
-
+	
 	private void processClientThrowBomb(ClientState client, ByteBuffer data) {
 		BombEntity bomb = new ServerBombEntity(this, world.nextEntityID());
 		bomb.setPositionX(client.player.getPositionX());
@@ -410,7 +402,7 @@ public class Server {
 			client.player = player;
 			broadcastAddEntity(player); //send entity to already connected players
 			sendPlayerID(client, player); //send id of player entity which was sent in world data
-			System.out.println(Utility.formatCurrentTime() + Utility.formatAddress(client.address) + " joined (" + getClientCount() + " player(s) connected)");
+			log(Utility.formatAddress(client.address) + " joined (" + getClientCount() + " player(s) connected)");
 		} else {
 			byte[] response = new byte[3];
 			Bytes.putShort(response, 0, Protocol.TYPE_SERVER_CONNECT_ACKNOWLEDGMENT);
@@ -499,14 +491,15 @@ public class Server {
 	private void broadcastUnsafe(byte[] data, boolean reliable) {
 		SendPacket packet = new SendPacket(data, reliable);
 		for(ClientState client : clients.values()) {
-			client.sendQueue.add(packet);
+			if(!client.isDisconnectState())
+				client.sendQueue.add(packet);
 		}
 	}
 
 	private void broadcastUnreliable(byte[] data, Predicate<ClientState> sendToClient) {
 		SendPacket packet = new SendPacket(data.clone(), false);
 		for(ClientState client : clients.values()) {
-			if(sendToClient.test(client)) {
+			if(sendToClient.test(client) && !client.isDisconnectState()) {
 				client.sendQueue.add(packet);
 			}
 		}
@@ -554,8 +547,6 @@ public class Server {
 	}
 
 	private void processPacket(InetSocketAddress sender, ByteBuffer buffer, ByteBuffer sendBuffer) throws IOException {
-		if(sender == null)
-			throw new IllegalArgumentException("sender is null");
 		buffer.flip(); //flip to set limit and prepare to read packet data
 		if(buffer.limit() >= Protocol.HEADER_SIZE) {
 			byte type = buffer.get(); //type of message (RESPONSE, RELIABLE, UNRELIABLE)
@@ -564,8 +555,11 @@ public class Server {
 			switch(type) {
 				case Protocol.RESPONSE_TYPE -> {
 					if(state.sendReliableID == messageID) {
-						state.receivedByClient = true;
 						state.ping = Utility.nanosSince(state.sendStartTime);
+						state.sendAttempts = 0;
+						state.sendReliableID++;
+						sendBuffer.clear();
+						state.sendQueue.poll(); //remove and continue processing
 					} //else drop the response
 				}
 
@@ -611,12 +605,6 @@ public class Server {
 						client.sendStartTime = System.nanoTime();
 						sendReliableImpl(client, queue.peek());
 						break; //update to await response
-					} else if(client.receivedByClient) { //check if received
-						client.receivedByClient = false;
-						client.sendAttempts = 0;
-						client.sendReliableID++;
-						sendBuffer.clear();
-						queue.poll(); //remove and continue processing
 					} else if(client.sendAttempts <= Protocol.RESEND_COUNT) { //check if not timed out
 						if(Utility.resendIntervalElapsed(client.sendStartTime, client.sendAttempts)) {
 							sendReliableImpl(client, queue.peek());
@@ -639,7 +627,6 @@ public class Server {
 		int receiveReliableID, receiveUnreliableID, sendUnreliableID, sendReliableID;
 		int sendAttempts;
 		long sendStartTime;
-		boolean receivedByClient;
 		final InetSocketAddress address;
 		final Queue<SendPacket> sendQueue;
 		byte status;
@@ -670,6 +657,15 @@ public class Server {
 				default -> "ILLEGAL";
 			};
 		}
+		
+		boolean isDisconnectState() {
+			return switch(status) {
+				case ClientState.STATUS_TIMED_OUT, ClientState.STATUS_REMOVED, 
+					ClientState.STATUS_SELF_DISCONNECTED, ClientState.STATUS_CONNECTION_REJECTED -> true;
+				case ClientState.STATUS_CONNECTED, ClientState.STATUS_IN_GAME -> false;
+				default -> false;
+			};
+		}
 
 		ClientState(InetSocketAddress address) {
 			this.address = address;
@@ -680,6 +676,10 @@ public class Server {
 		private void handleTimeout() {
 			status = STATUS_TIMED_OUT;
 			disconnectReason = "client timed out";
+		}
+		
+		public String formattedName() {
+			return Utility.formatAddress(address) + ": " + ClientState.statusToString(status);
 		}
 
 		@Override

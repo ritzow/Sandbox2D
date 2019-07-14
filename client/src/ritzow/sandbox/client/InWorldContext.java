@@ -44,10 +44,6 @@ public class InWorldContext implements GameTalker {
 		GameLoop.setContext(() -> client.update(this::process));
 	}
 
-	private static void processServerConsoleMessage(ByteBuffer data) {
-		System.out.println("[Server Message] " + new String(getRemainingBytes(data), Protocol.CHARSET));
-	}
-
 	private void process(short messageType, ByteBuffer data) {
 		switch(messageType) {
 			case Protocol.TYPE_CONSOLE_MESSAGE -> processServerConsoleMessage(data);
@@ -63,6 +59,14 @@ public class InWorldContext implements GameTalker {
 			case Protocol.TYPE_SERVER_PING -> {}
 			default -> throw new IllegalArgumentException("Client received message of unknown protocol " + messageType);
 		}
+	}
+
+	private static void log(String message) {
+		System.out.println(Utility.formatCurrentTime() + " " + message);
+	}
+	
+	private static void processServerConsoleMessage(ByteBuffer data) {
+		log(new String(getRemainingBytes(data), Protocol.CHARSET));
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -94,7 +98,7 @@ public class InWorldContext implements GameTalker {
 		int length = data.getInt();
 		byte[] array = new byte[length];
 		data.get(array);
-		System.out.println("Disconnected from server: " + new String(array, Protocol.CHARSET));
+		log("Disconnected from server: " + new String(array, Protocol.CHARSET));
 		onDisconnected();
 	}
 	
@@ -105,6 +109,7 @@ public class InWorldContext implements GameTalker {
 			if(StartClient.display.wasClosed()) {
 				StartClient.exit();
 			} else {
+				System.out.println("Disconnected from server.");
 				GameLoop.setContext(StartClient.mainMenu::update);
 			}
 		} catch (IOException e) {
@@ -113,14 +118,16 @@ public class InWorldContext implements GameTalker {
 	}
 	
 	private void processPlayerState(ByteBuffer data) {
-		PlayerEntity e = getEntityFromID(data.getInt());
-		Protocol.PlayerState.updatePlayer(e, data.get());
+		int id = data.getInt();
+		PlayerEntity e = getEntityFromID(id);
+		if(id != player.getID())
+			Protocol.PlayerState.updatePlayer(e, data.getShort());
 	}
 
 	private void processServerRemoveBlock(ByteBuffer data) {
 		world.getForeground().destroy(world, data.getInt(), data.getInt());
 	}
-
+	
 	private void processServerPlaceBlock(ByteBuffer data) {
 		int x = data.getInt(), y = data.getInt();
 		byte[] block = new byte[data.remaining()];
@@ -151,13 +158,6 @@ public class InWorldContext implements GameTalker {
 		byte[] data = new byte[buffer.remaining()];
 		buffer.get(data);
 		return data;
-	}
-	
-	public void sendPlayerState(boolean left, boolean right, boolean up, boolean down, boolean primaryAction, boolean secondaryAction) {
-		byte[] packet = new byte[3];
-		Bytes.putShort(packet, 0, Protocol.TYPE_CLIENT_PLAYER_STATE);
-		packet[2] = Protocol.PlayerState.getState(left, right, up, down, primaryAction, secondaryAction);
-		client.sendUnreliable(packet);
 	}
 
 	private void processUpdateEntity(ByteBuffer data) {
@@ -220,7 +220,7 @@ public class InWorldContext implements GameTalker {
 		player.setRight(isRight);
 		player.setUp(isUp);
 		player.setDown(isDown);
-
+		
 		sendPlayerState(player, isPrimary, isSecondary);
 
 		interactionControls.update(StartClient.display, cameraGrip.getCamera(), this, world, player); //block breaking/"bomb throwing"
@@ -233,7 +233,7 @@ public class InWorldContext implements GameTalker {
 		}
 		Utility.sleep(1); //reduce CPU usage
 	}
-
+	
 	public void sendPlayerState(PlayerEntity player, boolean primary, boolean secondary) {
 		byte[] packet = new byte[4];
 		Bytes.putShort(packet, 0, Protocol.TYPE_CLIENT_PLAYER_STATE);
