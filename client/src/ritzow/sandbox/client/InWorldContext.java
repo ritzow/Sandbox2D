@@ -3,6 +3,7 @@ package ritzow.sandbox.client;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Map;
+import java.util.Objects;
 import ritzow.sandbox.client.graphics.RenderManager;
 import ritzow.sandbox.client.input.Control;
 import ritzow.sandbox.client.input.Control.Button;
@@ -69,16 +70,6 @@ public class InWorldContext implements GameTalker {
 		log(new String(getRemainingBytes(data), Protocol.CHARSET));
 	}
 	
-	@SuppressWarnings("unchecked")
-	private <T extends Entity> T getEntityFromID(int ID) {
-		for(Entity e : world) { //block until world is received so no NPEs happen
-			if(e.getID() == ID) {
-				return (T)e;
-			}
-		}
-		throw new IllegalStateException("No entity with ID " + ID + " exists");
-	}
-	
 	/**
 	 * Notifies the server, disconnects, and stops the client. May block
 	 * while disconnect is occuring.
@@ -119,9 +110,9 @@ public class InWorldContext implements GameTalker {
 	
 	private void processPlayerState(ByteBuffer data) {
 		int id = data.getInt();
-		PlayerEntity e = getEntityFromID(id);
-		if(id != player.getID())
-			Protocol.PlayerState.updatePlayer(e, data.getShort());
+		if(id != player.getID()) {
+			Protocol.PlayerState.updatePlayer(getEntity(id), data.getShort());
+		}
 	}
 
 	private void processServerRemoveBlock(ByteBuffer data) {
@@ -137,8 +128,13 @@ public class InWorldContext implements GameTalker {
 
 	private void processReceivePlayerEntityID(ByteBuffer data) {
 		int id = data.getInt();
-		this.player = getEntityFromID(id);
+		this.player = getEntity(id);
 		onWorldJoin();
+	}
+	
+	@SuppressWarnings("unchecked")
+	private <E extends Entity> E getEntity(int id) {
+		return Objects.requireNonNull((E)world.getEntityFromID(id), "No entity with ID " + id + " exists");
 	}
 
 	private void processRemoveEntity(ByteBuffer data) {
@@ -162,14 +158,12 @@ public class InWorldContext implements GameTalker {
 
 	private void processUpdateEntity(ByteBuffer data) {
 		int entityID = data.getInt();
-		for(Entity e : world) {
-			if(e.getID() == entityID) {
-				e.setPositionX(data.getFloat());
-				e.setPositionY(data.getFloat());
-				e.setVelocityX(data.getFloat());
-				e.setVelocityY(data.getFloat());
-				return;
-			}
+		Entity e = getEntity(entityID);
+		if(e != null) {
+			e.setPositionX(data.getFloat());
+			e.setPositionY(data.getFloat());
+			e.setVelocityX(data.getFloat());
+			e.setVelocityY(data.getFloat());
 		}
 	}
 
@@ -222,6 +216,10 @@ public class InWorldContext implements GameTalker {
 		player.setDown(isDown);
 		
 		sendPlayerState(player, isPrimary, isSecondary);
+		
+		if(StartClient.display.isControlActivated(Control.RESET_ZOOM)) {
+			cameraGrip.resetZoom();
+		}
 
 		interactionControls.update(StartClient.display, cameraGrip.getCamera(), this, world, player); //block breaking/"bomb throwing"
 		client.update(this::process);
@@ -248,7 +246,7 @@ public class InWorldContext implements GameTalker {
 		}
 		lastWorldUpdate = start;
 		long camUpdateStart = System.nanoTime();
-		cameraGrip.update(player, StartClient.audio, camUpdateStart - lastCameraUpdate); //update camera position and zoom
+		cameraGrip.update(StartClient.display, player, StartClient.audio, camUpdateStart - lastCameraUpdate); //update camera position and zoom
 		lastCameraUpdate = camUpdateStart;
 		RenderManager.run(StartClient.display, worldRenderer);
 	}
@@ -308,21 +306,8 @@ public class InWorldContext implements GameTalker {
 		}
 
 		@Override
-		public void keyboardButton(int key, int scancode, int action, int mods) {
-			if(cameraGrip != null)
-				cameraGrip.keyboardButton(key, scancode, action, mods);
-		}
-
-		@Override
-		public void mouseButton(int button, int action, int mods) {
-			if(cameraGrip != null)
-				cameraGrip.mouseButton(button, action, mods);
-		}
-
-		@Override
 		public void mouseScroll(double xoffset, double yoffset) {
-			if(cameraGrip != null)
-				cameraGrip.mouseScroll(xoffset, yoffset);
+			if(cameraGrip != null) cameraGrip.mouseScroll(xoffset, yoffset);
 		}
 
 		@Override
