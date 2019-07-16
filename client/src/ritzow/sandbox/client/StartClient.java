@@ -24,6 +24,7 @@ import ritzow.sandbox.client.audio.OpenALAudioSystem;
 import ritzow.sandbox.client.audio.Sound;
 import ritzow.sandbox.client.audio.WAVEDecoder;
 import ritzow.sandbox.client.graphics.*;
+import ritzow.sandbox.client.graphics.ModelRenderProgram.ModelData;
 import ritzow.sandbox.client.graphics.Shader.ShaderType;
 import ritzow.sandbox.client.util.ClientUtility;
 import ritzow.sandbox.network.NetworkUtility;
@@ -81,8 +82,9 @@ public class StartClient {
 				case "public" -> {
 					serverAddress = new InetSocketAddress(InetAddress.getByName(args[1]), 
 							Protocol.DEFAULT_SERVER_PORT_UDP);
-					localAddress = new InetSocketAddress(
-							NetworkUtility.getPrimaryAddress(NetworkUtility.isIPv6(serverAddress.getAddress())), 0);
+					localAddress = NetworkUtility.socketAddress(
+							NetworkUtility.getPrimaryAddress(
+							NetworkUtility.isIPv6(serverAddress.getAddress())));
 				}
 				
 				default -> throw new UnsupportedOperationException("Unknown address type");
@@ -109,14 +111,14 @@ public class StartClient {
 		display.setGraphicsContextOnThread();
 		RenderManager.initializeContext();
 
-		int indices = GraphicsUtility.uploadIndexData(0, 1, 2, 0, 2, 3);
+		int[] indices = {0, 1, 2, 0, 2, 3};
 
-		int positions = GraphicsUtility.uploadVertexData(
-				-0.5f,	 0.5f,
-				-0.5f,	-0.5f,
-				0.5f,	-0.5f,
-				0.5f,	 0.5f
-		);
+		float[] positions = {
+			-0.5f,	 0.5f,
+			-0.5f,	-0.5f,
+			0.5f,	-0.5f,
+			0.5f,	 0.5f
+		};
 
 		TextureData
 			dirt = Textures.loadTextureName("dirt"),
@@ -125,50 +127,41 @@ public class StartClient {
 			red = Textures.loadTextureName("redSquare"),
 			sky = Textures.loadTextureName("clouds");
 		
-		var models = Map.ofEntries(
-			Map.entry(RenderConstants.MODEL_DIRT_BLOCK, dirt),
-			Map.entry(RenderConstants.MODEL_GRASS_BLOCK, grass),
-			Map.entry(RenderConstants.MODEL_GREEN_FACE, face),
-			Map.entry(RenderConstants.MODEL_RED_SQUARE, red),
-			Map.entry(RenderConstants.MODEL_SKY, sky)
-		);
+		TextureAtlas atlas = Textures.buildAtlas(sky, grass, dirt, face, red);
 		
-		TextureAtlas atlas = Textures.buildAtlas(grass, dirt, face, red, sky);
-		ModelRenderProgram program = USE_OPENGL_4_6 ? 
-				createProgramFromSPIRV(atlas) :
-				createProgramFromSource(atlas);
+		ModelData[] models = {
+			new ModelData(RenderConstants.MODEL_DIRT_BLOCK, positions, atlas.getCoordinates(dirt), indices),
+			new ModelData(RenderConstants.MODEL_GRASS_BLOCK, positions, atlas.getCoordinates(grass), indices),
+			new ModelData(RenderConstants.MODEL_GREEN_FACE, positions, atlas.getCoordinates(face), indices),
+			new ModelData(RenderConstants.MODEL_RED_SQUARE, positions, atlas.getCoordinates(red), indices),
+			new ModelData(RenderConstants.MODEL_SKY, positions, atlas.getCoordinates(sky), indices)
+		};
 		
-		//register all the square models
-		for(var entry : models.entrySet()) {
-			program.register(entry.getKey(), 6, indices, positions, 
-				GraphicsUtility.uploadVertexData(atlas.getCoordinates(entry.getValue())));
-		}
-
-		return program;
+		Shader vertex = USE_OPENGL_4_6 ? 
+			spirv("resources/shaders/model.vert.spv", ShaderType.VERTEX) :
+			source("resources/shaders/newmodel.vert", ShaderType.VERTEX);
+		Shader fragment = USE_OPENGL_4_6 ? 
+			spirv("resources/shaders/model.frag.spv", ShaderType.FRAGMENT) :
+			source("resources/shaders/newmodel.frag", ShaderType.FRAGMENT);
+			
+		return ModelRenderProgram.create(vertex, fragment, atlas.texture(), models);
+	}
+	
+	private static Shader source(String file, ShaderType type) throws IOException {
+		return Shader.fromSource(Files.readString(Path.of(file)), type);
+	}
+	
+	private static Shader spirv(String file, ShaderType type) throws IOException {
+		return Shader.fromSPIRV(readFile(file), type);
 	}
 
-	private static ByteBuffer readIntoBuffer(Path file) throws IOException {
-		ByteBuffer out = ByteBuffer.allocateDirect((int)Files.size(file));
-		try(var channel = Files.newByteChannel(file, StandardOpenOption.READ)) {
+	private static ByteBuffer readFile(String file) throws IOException {
+		Path path = Path.of(file);
+		ByteBuffer out = ByteBuffer.allocateDirect((int)Files.size(path));
+		try(var channel = Files.newByteChannel(path, StandardOpenOption.READ)) {
 			channel.read(out);
+			return out.flip();
 		}
-		return out.flip();
-	}
-
-	private static ModelRenderProgram createProgramFromSPIRV(TextureAtlas atlas) throws IOException {
-		return new ModelRenderProgram(
-				Shader.fromSPIRV(readIntoBuffer(Path.of("resources/shaders/model.vert.spv")), ShaderType.VERTEX),
-				Shader.fromSPIRV(readIntoBuffer(Path.of("resources/shaders/model.frag.spv")), ShaderType.FRAGMENT),
-				atlas.texture()
-		);
-	}
-
-	private static ModelRenderProgram createProgramFromSource(TextureAtlas atlas) throws IOException {
-		return new ModelRenderProgram(
-				Shader.fromSource(Files.readString(Path.of("resources/shaders/model.vert")), ShaderType.VERTEX),
-				Shader.fromSource(Files.readString(Path.of("resources/shaders/model.frag")), ShaderType.FRAGMENT),
-				atlas.texture()
-		);
 	}
 
 	private static Display setupGLFW() throws IOException {
@@ -176,7 +169,7 @@ public class StartClient {
 			throw new RuntimeException("GLFW failed to initialize");
 		glfwSetErrorCallback(GLFWErrorCallback.createPrint(System.err));
 		GLFWImage icon = ClientUtility.loadGLFWImage(Path.of("resources/assets/textures/redSquare.png"));
-		Display display = new Display(4, 5, "Sandbox2D", icon);
+		Display display = new Display(4, USE_OPENGL_4_6 ? 6 : 1, true, "Sandbox2D", icon);
 		var cursor = ClientUtility.loadGLFWImage(Path.of("resources/assets/textures/cursors/pickaxe32.png"));
 		pickaxeCursor = ClientUtility.loadGLFWCursor(cursor, 0, 0.66f);
 		return display;

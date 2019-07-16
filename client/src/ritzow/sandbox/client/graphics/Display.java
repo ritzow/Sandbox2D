@@ -20,11 +20,11 @@ public final class Display implements InputProvider {
 	private int windowedWidth;
 	private int windowedHeight;
 
-	public Display(int GLVersionMajor, int GLVersionMinor, String title, GLFWImage... icons) {
+	public Display(int GLVersionMajor, int GLVersionMinor, boolean core, String title, GLFWImage... icons) {
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, GLVersionMajor);
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, GLVersionMinor);
-		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+		glfwWindowHint(GLFW_OPENGL_PROFILE, core ? GLFW_OPENGL_CORE_PROFILE : GLFW_OPENGL_ANY_PROFILE);
 		glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
 		glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 		glfwWindowHint(GLFW_FOCUS_ON_SHOW, GLFW_TRUE);

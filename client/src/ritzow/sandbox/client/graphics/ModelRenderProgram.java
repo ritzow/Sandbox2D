@@ -1,18 +1,22 @@
 package ritzow.sandbox.client.graphics;
 
-import static org.lwjgl.opengl.GL11C.GL_FLOAT;
-import static org.lwjgl.opengl.GL15C.GL_ARRAY_BUFFER;
-import static org.lwjgl.opengl.GL15C.glBindBuffer;
-import static org.lwjgl.opengl.GL20C.glEnableVertexAttribArray;
-import static org.lwjgl.opengl.GL20C.glVertexAttribPointer;
-import static org.lwjgl.opengl.GL30C.glBindVertexArray;
-import static org.lwjgl.opengl.GL30C.glGenVertexArrays;
 import static org.lwjgl.opengl.GL46C.*;
 
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
+import java.util.ArrayDeque;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Queue;
+import org.lwjgl.BufferUtils;
+import org.lwjgl.system.MemoryStack;
+import org.lwjgl.system.MemoryUtil;
 
 public final class ModelRenderProgram extends ShaderProgram {
+	
+	private static final int POSITION_SIZE = 2, TEXTURE_COORD_SIZE = 2;
 
 	private static final int
 		SCALE_X = 0,
@@ -26,7 +30,7 @@ public final class ModelRenderProgram extends ShaderProgram {
 		uniform_transform,
 		uniform_opacity,
 		uniform_view,
-		uniform_textureUnit,
+		uniform_textureSampler,
 		attribute_position,
 		attribute_textureCoord;
 
@@ -67,48 +71,58 @@ public final class ModelRenderProgram extends ShaderProgram {
 			0, 0, 0, 1,
 	};
 
-	private final Map<Integer, RenderData> models;
+//	private final Map<Integer, RenderData> models;
+	
+	public static ModelRenderProgram create(Shader vertexShader, Shader fragmentShader, int textureAtlas, ModelData... models) {
+		return new ModelRenderProgram(vertexShader, fragmentShader, textureAtlas, models);
+	}
 
-	public ModelRenderProgram(Shader vertexShader, Shader fragmentShader, int textureAtlas) {
+	private ModelRenderProgram(Shader vertexShader, Shader fragmentShader, int textureAtlas, ModelData... models) {
 		super(vertexShader, fragmentShader);
 		this.attribute_position = getAttributeLocation("position");
 		this.attribute_textureCoord = getAttributeLocation("textureCoord");
 		this.uniform_transform = getUniformLocation("transform");
 		this.uniform_opacity = getUniformLocation("opacity");
 		this.uniform_view = getUniformLocation("view");
+		this.uniform_textureSampler = getUniformLocation("textureSampler");
 		this.atlasTexture = textureAtlas;
-		this.uniform_textureUnit = 0;
-		setInteger(getUniformLocation("textureSampler"), uniform_textureUnit);
 		GraphicsUtility.checkErrors();
-		this.models = new HashMap<>();
-	}
-
-	public void register(int modelID, int vertexCount, int indicesID, int positionsID, int textureCoordsID) {
-		if(models.containsKey(modelID))
-			throw new IllegalArgumentException("modelID already in use");
-		
-		int vao = glGenVertexArrays();
-		glBindVertexArray(vao);
-		glBindBuffer(GL_ARRAY_BUFFER, positionsID);
-		glEnableVertexAttribArray(attribute_position);
-		glVertexAttribPointer(attribute_position, 2, GL_FLOAT, false, 0, 0);
-		glBindBuffer(GL_ARRAY_BUFFER, textureCoordsID);
-		glEnableVertexAttribArray(attribute_textureCoord);
-		glVertexAttribPointer(attribute_textureCoord, 2, GL_FLOAT, false, 0, 0);
-		glBindVertexArray(0);
-		GraphicsUtility.checkErrors();
-		models.put(modelID, new RenderData(vao, vertexCount, indicesID));
+//		this.models = new HashMap<>();
+		this.modelProperties = new HashMap<>();
+		this.renderQueue = new ArrayDeque<>();
+		register(models);
 	}
 	
-	private final static class RenderData {
-		final int vao, vertexCount, indices;
-
-		RenderData(int vao, int vertexCount, int indices) {
-			this.vao = vao;
-			this.vertexCount = vertexCount;
-			this.indices = indices;
-		}
-	}
+//	public void register(int modelID, int positionsID, int textureCoordsID, int indicesID, int vertexCount) {
+//		if(models.containsKey(modelID))
+//			throw new IllegalArgumentException("modelID already in use");
+//		
+//		int vao = glGenVertexArrays();
+//		glBindVertexArray(vao);
+//		
+//		glBindBuffer(GL_ARRAY_BUFFER, positionsID);
+//		glEnableVertexAttribArray(attribute_position);
+//		glVertexAttribPointer(attribute_position, POSITION_SIZE, GL_FLOAT, false, 0, 0);
+//		
+//		glBindBuffer(GL_ARRAY_BUFFER, textureCoordsID);
+//		glEnableVertexAttribArray(attribute_textureCoord);
+//		glVertexAttribPointer(attribute_textureCoord, TEXTURE_COORD_SIZE, GL_FLOAT, false, 0, 0);
+//		
+//		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indicesID);
+//		
+//		glBindVertexArray(0);
+//		GraphicsUtility.checkErrors();
+//		models.put(modelID, new RenderData(vao, vertexCount));
+//	}
+//	
+//	private static final class RenderData {
+//		final int vao, vertexCount;
+//
+//		RenderData(int vao, int vertexCount) {
+//			this.vao = vao;
+//			this.vertexCount = vertexCount;
+//		}
+//	}
 
 	/**
 	 * Sets the opacity that will be used when the program renders models
@@ -121,12 +135,25 @@ public final class ModelRenderProgram extends ShaderProgram {
 	@Override
 	public void setCurrent() {
 		super.setCurrent();
-		setCurrentTexture(uniform_textureUnit, atlasTexture);
+		setCurrentTexture(0, atlasTexture);
 	}
 
-	//TODO I should be able to render every model with a single draw call 
+	//TODO I should be able to render every model with a single draw call
 	//by uploading all transform data to an array accessed in the shader
 	//will require restructuring of VAOs (possibly use only one large one)
+	//Instancing: same mesh with different uniforms
+	//https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glDrawElementsInstanced.xhtml
+	//https://stackoverflow.com/questions/21539234/how-to-do-instancing-the-right-way-in-opengl
+	
+	//use instanced rendering:
+	//or indirect rendering? https://www.khronos.org/opengl/wiki/Vertex_Rendering#Indirect_rendering
+	//transform matrices per instance
+	//Basically: you need to use one of the “Instanced” 
+	//drawing functions to draw multiple instances. 
+	//Then you can use glVertexAttribDivisor() to indicate 
+	//that a particular attribute is per-instance (or per N instances)
+	//rather than per-vertex, i.e. the same element from the attribute 
+	//array will be used for all vertices within an instance.
 	
 	/**
 	 * Renders a model with the specified properties
@@ -139,15 +166,15 @@ public final class ModelRenderProgram extends ShaderProgram {
 	 * @param rotation the rotation, in radians, of the model
 	 */
 	public void render(int modelID, float opacity, float posX, float posY, float scaleX, float scaleY, float rotation) {
-		RenderData model = models.get(modelID);
+		//RenderData model = models.get(modelID);
+		ModelAttributes model = modelProperties.get(modelID);
 		if(model == null)
-			throw new IllegalArgumentException("no model exists for model id " + modelID);
-		
+			throw new IllegalArgumentException("no data exists for model id " + modelID);
 		loadOpacity(opacity);
 		loadTransformationMatrix(posX, posY, scaleX, scaleY, rotation);
-		glBindVertexArray(model.vao);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model.indices);
-		glDrawElements(GL_TRIANGLES, model.vertexCount, GL_UNSIGNED_INT, 0);
+		glBindVertexArray(vaoID);
+		glDrawElements(GL_TRIANGLES, model.indexCount, GL_UNSIGNED_INT, model.indexOffset * Integer.BYTES);
+		glBindVertexArray(0);
 	}
 
 	public void render(Graphics g, float posX, float posY) {
@@ -214,6 +241,197 @@ public final class ModelRenderProgram extends ShaderProgram {
 								   + a[i + 2] * b[j + 8]
 								   + a[i + 3] * b[j + 12];
 			}
+		}
+	}
+	
+	private final Map<Integer, ModelAttributes> modelProperties;
+	private int vaoID;
+//	private int transformBuffer;
+	
+	public void register(ModelData... models) {
+		
+		//count totals
+		int indexTotal = 0;
+		int vertexTotal = 0;
+		for(ModelData model : models) {
+			if(model.positions.length/POSITION_SIZE != model.textureCoords.length/TEXTURE_COORD_SIZE)
+				throw new IllegalArgumentException("vertex count mismatch");
+			indexTotal += model.indexCount();
+			vertexTotal += model.vertexCount();
+		}
+		
+		//TODO remove repeat vertices (same position and texture coord)?
+		//initialize temporary buffers
+		FloatBuffer positionData = BufferUtils.createFloatBuffer(vertexTotal * POSITION_SIZE);
+		FloatBuffer textureCoordsData = BufferUtils.createFloatBuffer(vertexTotal * TEXTURE_COORD_SIZE);
+		IntBuffer indexData = BufferUtils.createIntBuffer(indexTotal);
+		
+		for(ModelData model : models) {
+			int vertexOffset = positionData.position()/POSITION_SIZE;
+			positionData.put(model.positions);
+			textureCoordsData.put(model.textureCoords);
+			
+			int indexOffset = indexData.position();
+			for(int index : model.indices) {
+				indexData.put(vertexOffset + index); //adjust index to be absolute instead of relative to model
+			}
+			
+			modelProperties.put(model.modelID, new ModelAttributes(indexOffset, model.indexCount()));
+		}
+		positionData.flip();
+		textureCoordsData.flip();
+		indexData.flip();
+		
+		int vao = glGenVertexArrays();
+		glBindVertexArray(vao);
+		
+		int positionsID = glGenBuffers();
+		glBindBuffer(GL_ARRAY_BUFFER, positionsID);
+		glBufferData(GL_ARRAY_BUFFER, positionData, GL_STATIC_DRAW);
+		glEnableVertexAttribArray(attribute_position);
+		glVertexAttribPointer(attribute_position, POSITION_SIZE, GL_FLOAT, false, 0, 0);
+		
+		int textureCoordsID = glGenBuffers();
+		glBindBuffer(GL_ARRAY_BUFFER, textureCoordsID);
+		glBufferData(GL_ARRAY_BUFFER, textureCoordsData, GL_STATIC_DRAW);
+		glEnableVertexAttribArray(attribute_textureCoord);
+		glVertexAttribPointer(attribute_textureCoord, TEXTURE_COORD_SIZE, GL_FLOAT, false, 0, 0);
+		
+//		int transformID = glGenBuffers();
+//		glBindBuffer(GL_ARRAY_BUFFER, transformID);
+//		int attribute_transform = getAttributeLocation("transform");
+//		glEnableVertexAttribArray(attribute_transform);
+//		glEnableVertexAttribArray(attribute_transform + 1);
+//		glEnableVertexAttribArray(attribute_transform + 2);
+//		glEnableVertexAttribArray(attribute_transform + 3);
+//		glVertexAttribDivisor(attribute_transform, 1);
+//		glVertexAttribPointer(attribute_transform, 2, GL_FLOAT, false, 0, 0);
+		//no data buffer, will be GL_STREAM_DRAW to pass in a dynamic number of transform matrices
+		
+		int instanceDataID = glGenBuffers();
+		glBindBuffer(GL_UNIFORM_BUFFER, instanceDataID);
+		glBufferData(GL_UNIFORM_BUFFER, 0, GL_STREAM_DRAW);
+		
+		int instanceDataIndex = glGetUniformBlockIndex(programID, "InstanceData");
+		System.out.println(instanceDataIndex);
+//		glBindBufferBase(GL_UNIFORM_BUFFER, instanceDataIndex, instanceDataID);
+		
+//		try(MemoryStack stack = MemoryStack.stackPush()) {
+//			IntBuffer buffer = stack.mallocInt(1);
+//			glGetActiveUniformBlockiv(programID, instanceDataIndex, GL_UNIFORM_BLOCK_DATA_SIZE, buffer);
+//			instanceDataSize = buffer.get(0);
+//			System.out.println("InstanceData size: " + buffer);
+//			glGetActiveUniformBlockiv(programID, instanceDataIndex, GL_UNIFORM_BLOCK_ACTIVE_UNIFORMS, buffer);
+//			IntBuffer indices = stack.mallocInt(buffer.get(0));
+//			glGetActiveUniformBlockiv(programID, instanceDataIndex, GL_UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES, indices);
+//		}
+		
+		int indicesID = glGenBuffers();
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indicesID);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexData, GL_STATIC_DRAW);
+		
+		glBindVertexArray(0);
+		GraphicsUtility.checkErrors();
+		
+		this.vaoID = vao;
+//		this.transformBuffer = transformID;
+	}
+	
+	private int instanceDataSize;
+	private final Queue<RenderInstance> renderQueue;
+	
+	public void queueRender(RenderInstance model) {
+		renderQueue.add(Objects.requireNonNull(model));
+	}
+	
+	public void queueRender(Collection<RenderInstance> models) {
+		renderQueue.addAll(models);
+	}
+	
+	public void render() {
+		//glMultiDrawElements is the command I want to use
+		//glMultiDrawElementsIndirect works even better but requires OpenGL 4.3
+		//gl_DrawID can be used from glsl for this
+		//https://www.khronos.org/opengl/wiki/Built-in_Variable_(GLSL)#Vertex_shader_inputs
+		try(MemoryStack stack = MemoryStack.stackPush()) {
+			if(stack.getPointer() < renderQueue.size() * 4)
+				throw new RuntimeException("not enough space to allocate buffers on stack");
+			IntBuffer offsets = stack.mallocInt(renderQueue.size());
+			IntBuffer counts = stack.mallocInt(renderQueue.size());
+			//ByteBuffer instanceData = stack.malloc(0 /*size of a single uniform times mdoels.size*/);
+			
+			while(!renderQueue.isEmpty()) {
+				RenderInstance model = renderQueue.poll();
+				ModelAttributes data = modelProperties.get(model.modelID);
+				offsets.put(data.indexOffset * Integer.BYTES);
+				counts.put(data.indexCount);
+				//TODO put transform matrices into in vbo/uniform
+				
+				loadOpacity(model.opacity);
+				loadTransformationMatrix(model.posX, model.posY, model.scaleX, model.scaleY, model.rotation);				
+			}
+			
+			offsets.flip();
+			counts.flip();
+			glBindVertexArray(vaoID);
+			nglMultiDrawElements(GL_TRIANGLES, MemoryUtil.memAddress(counts), GL_UNSIGNED_INT, 
+					MemoryUtil.memAddress(offsets), offsets.remaining());
+			glBindVertexArray(0);
+		}
+		GraphicsUtility.checkErrors();
+	}
+	
+	public static final class RenderInstance {
+		final int modelID;
+		final float opacity;
+		final float posX;
+		final float posY;
+		final float scaleX;
+		final float scaleY;
+		final float rotation;
+		
+		public RenderInstance(int modelID, float opacity,
+				float posX, float posY, float scaleX, float scaleY,
+				float rotation) {
+			this.modelID = modelID;
+			this.opacity = opacity;
+			this.posX = posX;
+			this.posY = posY;
+			this.scaleX = scaleX;
+			this.scaleY = scaleY;
+			this.rotation = rotation;
+		}
+	}
+	
+	private static class ModelAttributes {
+		final int indexOffset;
+		final int indexCount;
+		
+		ModelAttributes(int indexOffset, int indexCount) {
+			this.indexOffset = indexOffset;
+			this.indexCount = indexCount;
+		}
+	}
+	
+	public static class ModelData {
+		final int modelID;
+		final float[] positions;
+		final float[] textureCoords;
+		final int[] indices;
+		
+		public ModelData(int modelID, float[] positions, float[] textureCoords, int[] indices) {
+			this.modelID = modelID;
+			this.positions = positions;
+			this.textureCoords = textureCoords;
+			this.indices = indices;
+		}
+		
+		public int indexCount() {
+			return indices.length;
+		}
+		
+		public int vertexCount() {
+			return positions.length/POSITION_SIZE;
 		}
 	}
 }
