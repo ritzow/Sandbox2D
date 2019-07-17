@@ -11,8 +11,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Queue;
 import org.lwjgl.BufferUtils;
+import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
-import org.lwjgl.system.MemoryUtil;
 
 public final class ModelRenderProgram extends ShaderProgram {
 	
@@ -25,16 +25,6 @@ public final class ModelRenderProgram extends ShaderProgram {
 		SHEAR_Y = 4,
 		TRANS_X = 3,
 		TRANS_Y = 7;
-
-	private final int
-		uniform_transform,
-		uniform_opacity,
-		uniform_view,
-		uniform_textureSampler,
-		attribute_position,
-		attribute_textureCoord;
-
-	private final int atlasTexture;
 
 //	private static final float[] identityMatrix = {
 //			1, 0, 0, 0,
@@ -70,8 +60,17 @@ public final class ModelRenderProgram extends ShaderProgram {
 			0, 0, 0, 0,
 			0, 0, 0, 1,
 	};
+	
+	private final int
+	uniform_transform,
+	uniform_opacity,
+	uniform_view,
+	attribute_position,
+	attribute_textureCoord;
 
-//	private final Map<Integer, RenderData> models;
+	private final int vaoID, atlasTexture;
+	private final Queue<RenderInstance> renderQueue;
+	private final Map<Integer, ModelAttributes> modelProperties;
 	
 	public static ModelRenderProgram create(Shader vertexShader, Shader fragmentShader, int textureAtlas, ModelData... models) {
 		return new ModelRenderProgram(vertexShader, fragmentShader, textureAtlas, models);
@@ -84,54 +83,19 @@ public final class ModelRenderProgram extends ShaderProgram {
 		this.uniform_transform = getUniformLocation("transform");
 		this.uniform_opacity = getUniformLocation("opacity");
 		this.uniform_view = getUniformLocation("view");
-		this.uniform_textureSampler = getUniformLocation("textureSampler");
+		setInteger(getUniformLocation("textureSampler"), 0);
 		this.atlasTexture = textureAtlas;
-		GraphicsUtility.checkErrors();
-//		this.models = new HashMap<>();
 		this.modelProperties = new HashMap<>();
 		this.renderQueue = new ArrayDeque<>();
-		register(models);
+		this.vaoID = register(models);
 	}
-	
-//	public void register(int modelID, int positionsID, int textureCoordsID, int indicesID, int vertexCount) {
-//		if(models.containsKey(modelID))
-//			throw new IllegalArgumentException("modelID already in use");
-//		
-//		int vao = glGenVertexArrays();
-//		glBindVertexArray(vao);
-//		
-//		glBindBuffer(GL_ARRAY_BUFFER, positionsID);
-//		glEnableVertexAttribArray(attribute_position);
-//		glVertexAttribPointer(attribute_position, POSITION_SIZE, GL_FLOAT, false, 0, 0);
-//		
-//		glBindBuffer(GL_ARRAY_BUFFER, textureCoordsID);
-//		glEnableVertexAttribArray(attribute_textureCoord);
-//		glVertexAttribPointer(attribute_textureCoord, TEXTURE_COORD_SIZE, GL_FLOAT, false, 0, 0);
-//		
-//		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indicesID);
-//		
-//		glBindVertexArray(0);
-//		GraphicsUtility.checkErrors();
-//		models.put(modelID, new RenderData(vao, vertexCount));
-//	}
-//	
-//	private static final class RenderData {
-//		final int vao, vertexCount;
-//
-//		RenderData(int vao, int vertexCount) {
-//			this.vao = vao;
-//			this.vertexCount = vertexCount;
-//		}
-//	}
 
-	/**
-	 * Sets the opacity that will be used when the program renders models
-	 * @param opacity
-	 */
+	/** Sets the opacity that will be used when the program renders models **/
 	public void loadOpacity(float opacity) {
 		setFloat(uniform_opacity, opacity);
 	}
 
+	/** Must be called before anything is rendered, only required for render methods **/
 	@Override
 	public void setCurrent() {
 		super.setCurrent();
@@ -166,7 +130,6 @@ public final class ModelRenderProgram extends ShaderProgram {
 	 * @param rotation the rotation, in radians, of the model
 	 */
 	public void render(int modelID, float opacity, float posX, float posY, float scaleX, float scaleY, float rotation) {
-		//RenderData model = models.get(modelID);
 		ModelAttributes model = modelProperties.get(modelID);
 		if(model == null)
 			throw new IllegalArgumentException("no data exists for model id " + modelID);
@@ -174,7 +137,6 @@ public final class ModelRenderProgram extends ShaderProgram {
 		loadTransformationMatrix(posX, posY, scaleX, scaleY, rotation);
 		glBindVertexArray(vaoID);
 		glDrawElements(GL_TRIANGLES, model.indexCount, GL_UNSIGNED_INT, model.indexOffset * Integer.BYTES);
-		glBindVertexArray(0);
 	}
 
 	public void render(Graphics g, float posX, float posY) {
@@ -244,12 +206,7 @@ public final class ModelRenderProgram extends ShaderProgram {
 		}
 	}
 	
-	private final Map<Integer, ModelAttributes> modelProperties;
-	private int vaoID;
-//	private int transformBuffer;
-	
-	public void register(ModelData... models) {
-		
+	private int register(ModelData[] models) {
 		//count totals
 		int indexTotal = 0;
 		int vertexTotal = 0;
@@ -297,23 +254,14 @@ public final class ModelRenderProgram extends ShaderProgram {
 		glEnableVertexAttribArray(attribute_textureCoord);
 		glVertexAttribPointer(attribute_textureCoord, TEXTURE_COORD_SIZE, GL_FLOAT, false, 0, 0);
 		
-//		int transformID = glGenBuffers();
-//		glBindBuffer(GL_ARRAY_BUFFER, transformID);
-//		int attribute_transform = getAttributeLocation("transform");
-//		glEnableVertexAttribArray(attribute_transform);
-//		glEnableVertexAttribArray(attribute_transform + 1);
-//		glEnableVertexAttribArray(attribute_transform + 2);
-//		glEnableVertexAttribArray(attribute_transform + 3);
-//		glVertexAttribDivisor(attribute_transform, 1);
-//		glVertexAttribPointer(attribute_transform, 2, GL_FLOAT, false, 0, 0);
-		//no data buffer, will be GL_STREAM_DRAW to pass in a dynamic number of transform matrices
+
+		int instanceDataIndex = glGetUniformBlockIndex(programID, "InstanceData");
+		System.out.println(instanceDataIndex);
 		
 		int instanceDataID = glGenBuffers();
 		glBindBuffer(GL_UNIFORM_BUFFER, instanceDataID);
 		glBufferData(GL_UNIFORM_BUFFER, 0, GL_STREAM_DRAW);
 		
-		int instanceDataIndex = glGetUniformBlockIndex(programID, "InstanceData");
-		System.out.println(instanceDataIndex);
 //		glBindBufferBase(GL_UNIFORM_BUFFER, instanceDataIndex, instanceDataID);
 		
 //		try(MemoryStack stack = MemoryStack.stackPush()) {
@@ -333,13 +281,10 @@ public final class ModelRenderProgram extends ShaderProgram {
 		glBindVertexArray(0);
 		GraphicsUtility.checkErrors();
 		
-		this.vaoID = vao;
-//		this.transformBuffer = transformID;
+		return vao;
 	}
 	
-	private int instanceDataSize;
-	private final Queue<RenderInstance> renderQueue;
-	
+	//TODO maybe I should change the queue to actually buffer indices, etc.
 	public void queueRender(RenderInstance model) {
 		renderQueue.add(Objects.requireNonNull(model));
 	}
@@ -348,18 +293,18 @@ public final class ModelRenderProgram extends ShaderProgram {
 		renderQueue.addAll(models);
 	}
 	
+	//TODO something is causing a crash
+	/** Render queued RenderInstances **/
 	public void render() {
-		//glMultiDrawElements is the command I want to use
 		//glMultiDrawElementsIndirect works even better but requires OpenGL 4.3
 		//gl_DrawID can be used from glsl for this
 		//https://www.khronos.org/opengl/wiki/Built-in_Variable_(GLSL)#Vertex_shader_inputs
 		try(MemoryStack stack = MemoryStack.stackPush()) {
 			if(stack.getPointer() < renderQueue.size() * 4)
-				throw new RuntimeException("not enough space to allocate buffers on stack");
-			IntBuffer offsets = stack.mallocInt(renderQueue.size());
+				throw new RuntimeException("not enough space to allocate multidraw buffers on stack");
 			IntBuffer counts = stack.mallocInt(renderQueue.size());
+			PointerBuffer offsets = stack.mallocPointer(renderQueue.size());
 			//ByteBuffer instanceData = stack.malloc(0 /*size of a single uniform times mdoels.size*/);
-			
 			while(!renderQueue.isEmpty()) {
 				RenderInstance model = renderQueue.poll();
 				ModelAttributes data = modelProperties.get(model.modelID);
@@ -370,13 +315,10 @@ public final class ModelRenderProgram extends ShaderProgram {
 				loadOpacity(model.opacity);
 				loadTransformationMatrix(model.posX, model.posY, model.scaleX, model.scaleY, model.rotation);				
 			}
-			
 			offsets.flip();
 			counts.flip();
 			glBindVertexArray(vaoID);
-			nglMultiDrawElements(GL_TRIANGLES, MemoryUtil.memAddress(counts), GL_UNSIGNED_INT, 
-					MemoryUtil.memAddress(offsets), offsets.remaining());
-			glBindVertexArray(0);
+			glMultiDrawElements(GL_TRIANGLES, counts, GL_UNSIGNED_INT, offsets);
 		}
 		GraphicsUtility.checkErrors();
 	}
