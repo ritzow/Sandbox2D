@@ -1,4 +1,4 @@
-::clang++ -I ..\lib\usr\include -target x86_64-apple-darwin-macho -stdlib="libc++" launch.cpp
+::macOS build
 
 set "output=x64\Release\Output"
 
@@ -13,7 +13,9 @@ set "shared=..\..\shared"
 set "lwjgl=%client%\libraries\lwjgl"
 set "jmods=lib\jdk-12.0.1.jdk\Contents\Home\jmods"
 
-::create the java runtime TODO call Build.java and move the resulting files instead of relying on Eclipse IDE build for client/shared modules
+::create the java runtime TODO call Build.java 
+::and move the resulting files instead of relying on 
+::Eclipse IDE build for client/shared modules
 "C:\Program Files\Java\jdk-12\bin\jlink.exe" ^
 	--compress=2 ^
 	--no-man-pages ^
@@ -24,7 +26,7 @@ set "jmods=lib\jdk-12.0.1.jdk\Contents\Home\jmods"
 	--output "%output%\jvm"
 
 ::delete unecessary files kept by jlink
-rmdir /S /Q "%output%\jvm\bin"
+del "%output%\jvm\bin\keytool"
 
 ::copy files required to compile
 move "%output%\jvm\include" "include"
@@ -33,11 +35,14 @@ rmdir /S /Q "include\darwin"
 
 ::copy resources to output 
 xcopy /E /Y /Q "%client%\resources" "%output%\resources\"
+xcopy "src\run" "%output%\"
 
 ::copy natives
 xcopy /E /Y "natives" "%output%\"
 
 ::clone for development Build
-xcopy /E /Y /Q "x64\Release" "x64\Development\"
+xcopy /E /Y /Q "x64\Release\Output" "x64\Development\"
+
+::clang++ -I ..\lib\usr\include -target x86_64-apple-darwin-macho -stdlib="libc++" launch.cpp
 
 PAUSE

@@ -1,0 +1,1 @@
+./jvm/bin/java --enable-preview -m ritzow.sandbox.client/ritzow.sandbox.client.StartClient
