@@ -16,9 +16,9 @@ public abstract class Entity implements Transportable {
 		velocityX,
 		velocityY;
 	
-	public void update(World world, float time) {
-		positionX += velocityX * time;
-		positionY += velocityY * time;
+	public void update(World world, long nanoseconds) {
+		positionX = Math.fma(velocityX, nanoseconds, positionX);
+		positionY = Math.fma(velocityY, nanoseconds, positionY);
 	}
 	
 	public Entity(int entityID) {
@@ -48,8 +48,8 @@ public abstract class Entity implements Transportable {
 		 return entityID;
 	}
 	
-	public void onCollision(World world, Entity e, float time) {/* optional implementation */}
-	public void onCollision(World world, Block block, int blockX, int blockY, float time) {/* optional implementation */}
+	public void onCollision(World world, Entity e, long ns) {/* optional implementation */}
+	public void onCollision(World world, Block block, int blockX, int blockY, long ns) {/* optional implementation */}
 
 	/** @return true if the entity should be removed from the world **/
 	public abstract boolean getShouldDelete();

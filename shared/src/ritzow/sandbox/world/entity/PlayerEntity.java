@@ -23,9 +23,10 @@ public abstract class PlayerEntity extends Entity implements Living {
 	protected static boolean JETPACK_MODE = false;
 	protected static final float
 			SIZE_SCALE		= 1f,
-			MOVEMENT_SPEED	= 0.2f * SIZE_SCALE,
-			JUMP_VELOCITY	= MOVEMENT_SPEED * 1.5f,
-			AIR_MOVEMENT	= MOVEMENT_SPEED / 7.5f;
+			MOVEMENT_SPEED	= Utility.convertPerSecondToPerNano(12.5f /* human running speed meters */) * SIZE_SCALE,
+			JUMP_VELOCITY	= Utility.convertPerSecondToPerNano(11),
+			AIR_MOVEMENT	= Utility.convertAccelerationSecondsNanos(50),
+			AIR_MOVEMENT_SPEED = MOVEMENT_SPEED;
 
 	public PlayerEntity(int entityID) {
 		super(entityID);
@@ -52,7 +53,7 @@ public abstract class PlayerEntity extends Entity implements Living {
 	}
 
 	@Override
-	public void update(World world, float time) {
+	public void update(World world, long ns) {
 		if(blockBelow(world.getForeground())) {
 			if(left && right) {
 				velocityX = 0;
@@ -65,31 +66,31 @@ public abstract class PlayerEntity extends Entity implements Living {
 				velocityY = JUMP_VELOCITY;
 			}
 		} else if(left && !right) {
-			velocityX = Math.max(-MOVEMENT_SPEED, velocityX - time * AIR_MOVEMENT);
+			velocityX = Math.max(-AIR_MOVEMENT_SPEED, Math.fma(-AIR_MOVEMENT, ns, velocityX));
 		} else if(right && !left) {
-			velocityX = Math.min(MOVEMENT_SPEED, velocityX + time * AIR_MOVEMENT);
+			velocityX = Math.min(AIR_MOVEMENT_SPEED, Math.fma(AIR_MOVEMENT, ns, velocityX));
 		}
 
 		if(JETPACK_MODE && up) {
-			velocityY += AIR_MOVEMENT * time;
+			velocityY = Math.fma(AIR_MOVEMENT, ns, velocityY);
 		}
 
-		super.update(world, time);
+		super.update(world, ns);
 	}
 
 	private boolean blockBelow(BlockGrid blocks) {
 		return blockInRectangle(blocks,
-				positionX - getWidth()/2 + 0.1f, 	//x1
-				positionY - getHeight()/2 - 0.1f, 	//y1
-				positionX + getWidth()/2 - 0.1f, 	//x2
-				positionY - getHeight()/2); 		//y2
+				Math.fma(getWidth(), -0.5f, positionX + 0.1f), 	//x1 positionX - getWidth()/2 + 0.1f
+				Math.fma(getHeight(), -0.5f, positionY - 0.1f),	//y1 positionY - getHeight()/2 - 0.1f
+				Math.fma(getWidth(), 0.5f, positionX - 0.1f),	//x2 positionX + getWidth()/2 - 0.1f
+				Math.fma(getHeight(), -0.5f, positionY));		//y2 positionY - getHeight()/2
 	}
 
 	private static boolean blockInRectangle(BlockGrid blocks, float x1, float y1, float x2, float y2) {
 		int a1 = Utility.clampLowerBound(0, Math.round(x1)),
 			b1 = Utility.clampLowerBound(0, Math.round(y1)),
-			a2 = Utility.clampUpperBound(blocks.getWidth()-1, Math.round(x2)),
-			b2 = Utility.clampUpperBound(blocks.getHeight()-1, Math.round(y2));
+			a2 = Utility.clampUpperBound(blocks.getWidth() - 1, Math.round(x2)),
+			b2 = Utility.clampUpperBound(blocks.getHeight() - 1, Math.round(y2));
 		for(int x = a1; x <= a2; x++) {
 			for(int y = b1; y <= b2; y++) {
 				if(blocks.isBlock(x, y) && blocks.get(x, y).isSolid())
@@ -112,8 +113,10 @@ public abstract class PlayerEntity extends Entity implements Living {
 	}
 
 	public void setDown(boolean down) {
-		if(!this.down && down) positionY -= SIZE_SCALE/2;
-		else if(this.down && !down) positionY += SIZE_SCALE/2;
+		if(!this.down && down) 
+			positionY = Math.fma(SIZE_SCALE, -0.5f, positionY);
+		else if(this.down && !down) 
+			positionY = Math.fma(SIZE_SCALE, 0.5f, positionY);
 		this.down = down;
 	}
 
@@ -194,7 +197,7 @@ public abstract class PlayerEntity extends Entity implements Living {
 
 	@Override
 	public float getFriction() {
-		return (down ? 0.01f : 0.04f);
+		return (down ? 0.01f : 0.04f)/16;
 	}
 
 	@Override
