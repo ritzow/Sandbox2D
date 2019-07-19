@@ -1,6 +1,7 @@
 package ritzow.sandbox.client.world.entity;
 
 import ritzow.sandbox.client.graphics.ModelRenderProgram;
+import ritzow.sandbox.client.graphics.ModelRenderProgram.RenderInstance;
 import ritzow.sandbox.client.graphics.RenderConstants;
 import ritzow.sandbox.client.graphics.Renderable;
 import ritzow.sandbox.data.DataReader;
@@ -18,7 +19,15 @@ public class ClientBombEntity extends BombEntity implements Renderable {
 
 	@Override
 	public void render(ModelRenderProgram program) {
-		program.render(RenderConstants.MODEL_RED_SQUARE, 1.0f, positionX, positionY, getWidth(), getHeight(), positionX);
+		program.queueRender(
+			RenderConstants.MODEL_RED_SQUARE, 
+			1.0f, 
+			positionX, 
+			positionY, 
+			getWidth(),
+			getHeight(), 
+			positionX
+		);
 	}
 
 }

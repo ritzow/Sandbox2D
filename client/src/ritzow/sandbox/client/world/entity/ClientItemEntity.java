@@ -1,47 +1,59 @@
 package ritzow.sandbox.client.world.entity;
 
 import ritzow.sandbox.client.graphics.Graphical;
+import ritzow.sandbox.client.graphics.Graphics;
 import ritzow.sandbox.client.graphics.ModelRenderProgram;
 import ritzow.sandbox.client.graphics.Renderable;
 import ritzow.sandbox.data.TransportableDataReader;
+import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.ItemEntity;
 import ritzow.sandbox.world.item.Item;
 
 public final class ClientItemEntity<I extends Item> extends ItemEntity<I> implements Renderable {
+	private final float rotationVelocity;
 	private float rotation;
-	
-	private static final float ROTATION_SPEED = 0.05f;
-
-	public ClientItemEntity(int entityID, I item) {
-		this(entityID, item, (float) (Math.random() * Math.PI * 2), 0, 0);
-	}
 	
 	public ClientItemEntity(TransportableDataReader data) {
 		super(data);
-		this.rotation = (float) (Math.random() * Math.PI * 2);
+		this.rotationVelocity = getRotationalVelocity();
 	}
 	
-	public ClientItemEntity(int entityID, I item, float rotation, float x, float y) {
+	public ClientItemEntity(int entityID, I item, float x, float y) {
 		super(entityID, item);
-		this.rotation = rotation;
 		this.positionX = x;
 		this.positionY = y;
+		this.rotationVelocity = getRotationalVelocity();
+		this.rotation = 0;
+	}
+	
+	private static float getRotationalVelocity() {
+		return Utility.convertPerSecondToPerNano(Utility.random(-Math.PI, Math.PI));
 	}
 	
 	@Override
-	public void update(World world, float time) {
-		super.update(world, time);
-		rotation = Math.abs(rotation + ROTATION_SPEED * time);
+	public void update(World world, long ns) {
+		super.update(world, ns);
+		this.rotation = Math.fma(ns, rotationVelocity, this.rotation);
 	}
 
 	@Override
 	public void render(ModelRenderProgram renderer) {
-		renderer.render(((Graphical)item).getGraphics(), positionX, positionY, 0.5f, 0.5f, rotation, 1.0f);
+		Graphics g = ((Graphical)item).getGraphics();
+		renderer.queueRender(
+			g.getModelID(), 
+			g.getOpacity(), 
+			positionX, 
+			positionY, 
+			g.getScaleX() * 0.5f,
+			g.getScaleY() * 0.5f,
+			g.getRotation() + rotation
+			//TODO choppy spinning animation (infrequent updates?)
+		);
 	}
 	
 	@Override
 	public String toString() {
-		return super.toString() + ", item = (" + item.toString() + "), rotation = " + rotation;
+		return super.toString() + ", item = (" + item + ")";
 	}
 }

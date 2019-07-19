@@ -6,6 +6,7 @@ import ritzow.sandbox.client.graphics.Camera;
 import ritzow.sandbox.client.graphics.Framebuffer;
 import ritzow.sandbox.client.graphics.GraphicsUtility;
 import ritzow.sandbox.client.graphics.ModelRenderProgram;
+import ritzow.sandbox.client.graphics.ModelRenderProgram.RenderInstance;
 import ritzow.sandbox.client.graphics.RenderConstants;
 import ritzow.sandbox.client.graphics.Renderable;
 import ritzow.sandbox.client.graphics.Renderer;
@@ -34,18 +35,17 @@ public final class ClientWorldRenderer implements Renderer {
 		ModelRenderProgram program = this.modelProgram;
 		Camera camera = this.camera;
 		World world = this.world;
-
-		//prepare the diffuse texture for drawing
-		framebuffer.clear(1.0f, 1.0f, 1.0f, 1.0f);
-		framebuffer.setDraw();
-
+		
 		//set the blending mode to allow transparency
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		
 		//set the current shader program
 		program.setCurrent();
+		framebuffer.setDraw();
 		
 		program.loadViewMatrixStandard(width, height);
+		
+		//render before loading view matrix
 		float scale = 2f * (width > height ? width/(float)height : height/(float)width);
 		program.render(RenderConstants.MODEL_SKY, 1.0f, 0, 0, scale, scale, 0);
 
@@ -75,11 +75,11 @@ public final class ClientWorldRenderer implements Renderer {
 				var front = (ClientBlockProperties)foreground.get(column, row);
 
 				if(back != null && (front == null || front.isTransparent())) {
-					program.render(back.getModelIndex(), 0.5f, column, row, 1.0f, 1.0f, 0.0f);
+					program.queueRender(back.getModelIndex(), 0.5f, column, row, 1.0f, 1.0f, 0.0f);
 				}
 
 				if(front != null) {
-					program.render(front.getModelIndex(), 1.0f, column, row, 1.0f, 1.0f, 0.0f);
+					program.queueRender(front.getModelIndex(), 1.0f, column, row, 1.0f, 1.0f, 0.0f);
 				}
 			}
 		}
@@ -87,16 +87,17 @@ public final class ClientWorldRenderer implements Renderer {
 		//render the entities
 		for(Entity e : world) {
 			//pre-compute variables
-			Renderable graphics = (Renderable)e;
 			float posX = e.getPositionX();
 			float posY = e.getPositionY();
-			float halfWidth = graphics.getWidth()/2;
-			float halfHeight = graphics.getHeight()/2;
+			float halfWidth = e.getWidth()/2;
+			float halfHeight = e.getHeight()/2;
 
 			//check if the entity is visible inside the viewport and render it
 			if(posX < worldRight + halfWidth && posX > worldLeft - halfWidth && posY < worldTop + halfHeight && posY > worldBottom - halfHeight) {
-				graphics.render(program);
+				((Renderable)e).render(program);
 			}
 		}
+		
+		program.render();
 	}
 }

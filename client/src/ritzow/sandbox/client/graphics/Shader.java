@@ -1,13 +1,5 @@
 package ritzow.sandbox.client.graphics;
 
-import static org.lwjgl.opengl.GL20C.glCompileShader;
-import static org.lwjgl.opengl.GL20C.glCreateShader;
-import static org.lwjgl.opengl.GL20C.glDeleteShader;
-import static org.lwjgl.opengl.GL20C.glShaderSource;
-import static org.lwjgl.opengl.GL20C.GL_VERTEX_SHADER;
-import static org.lwjgl.opengl.GL20C.GL_FRAGMENT_SHADER;
-import static org.lwjgl.opengl.GL32C.GL_GEOMETRY_SHADER;
-
 import static org.lwjgl.opengl.GL46C.*;
 
 import java.nio.ByteBuffer;

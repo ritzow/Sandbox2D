@@ -47,18 +47,21 @@ public class UserInterface implements Renderer {
 		//ensure that model program is cached on stack
 		ModelRenderProgram program = this.modelProgram;
 
-		//set the current shader program
-		program.setCurrent();
-
 		//load the view transformation
 		program.loadViewMatrixStandard(framebufferWidth, framebufferHeight);
 
+		//set the current shader program
+		program.setCurrent();
+		
 		for(var element : elements) {
 			for(Graphics g : element.getKey().appearance()) {
 				Position p = element.getValue();
-				program.render(g, p.x, p.y);
+				program.queueRender(g.getModelID(), g.getOpacity(), p.x, p.y, 
+						g.getScaleX(), g.getScaleY(), g.getRotation());
 			}
 		}
+		
+		program.render();
 	}
 
 	public void notifyClick(Display display) {

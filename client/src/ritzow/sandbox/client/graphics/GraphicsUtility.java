@@ -92,7 +92,8 @@ public final class GraphicsUtility {
 	public static void checkShaderCompilation(Shader shader) {
 		if(glGetShaderi(shader.getShaderID(), GL_COMPILE_STATUS) != 1) {
 			glDeleteShader(shader.getShaderID());
-			throw new OpenGLException("Shader Compilation Error: " + glGetShaderInfoLog(shader.getShaderID()));
+			String error = glGetShaderInfoLog(shader.getShaderID());
+			throw new OpenGLException("Shader Compilation Error" + (error.length() > 0 ? ": " + error : ""));
 		}
 	}
 
