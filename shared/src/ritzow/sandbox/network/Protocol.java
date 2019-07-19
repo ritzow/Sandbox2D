@@ -10,12 +10,12 @@ public final class Protocol {
 	private Protocol() {throw new UnsupportedOperationException("instantiation of Protocol not allowed");}
 
 	//gameplay
-	public static final float MAX_UPDATE_TIMESTEP = 2;
-	public static final float TIME_SCALE_NANOSECONDS = Utility.millisToNanos(16);
+	public static final long MAX_UPDATE_TIMESTEP = Utility.millisToNanos(200);
+	public static final long MAX_UPDATE_TIME_ALLOWED = Utility.millisToNanos(10000);
 
-	public static final float BLOCK_BREAK_RANGE = 1000;
+	public static final float BLOCK_INTERACT_RANGE = 1000;
 	public static final long BLOCK_INTERACT_COOLDOWN_NANOSECONDS = Utility.millisToNanos(0);
-	public static final long THROW_COOLDOWN_NANOSECONDS = Utility.millisToNanos(0);
+	public static final long THROW_COOLDOWN_NANOSECONDS = Utility.millisToNanos(100);
 
 	/** The Charset for text encoding used by the client and server **/
 	public static final Charset CHARSET = StandardCharsets.UTF_8;
