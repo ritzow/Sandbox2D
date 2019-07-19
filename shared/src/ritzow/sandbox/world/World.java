@@ -2,15 +2,7 @@ package ritzow.sandbox.world;
 
 import static ritzow.sandbox.util.Utility.intersection;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Spliterator;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import ritzow.sandbox.data.Bytes;
@@ -145,12 +137,13 @@ public class World implements Transportable, Iterable<Entity> {
 
 	@Override
 	public String toString() {
-		StringBuilder builder =
-				new StringBuilder(foreground.toString()).append(background.toString());
-		for(Entity e : entities) {
-			builder.append(e).append('\n');
-		}
-		return builder.toString();
+		return new StringJoiner("", "Entity Count: ", "")
+			.add(Integer.toString(entities.size()))
+			.add("\n")
+			.add(foreground.toString())
+			.add("\n")
+			.add(background.toString())
+			.toString();
 	}
 
 	/**
@@ -373,7 +366,7 @@ public class World implements Transportable, Iterable<Entity> {
 				    if (wy > hx) {
 				        if (wy > -hx) { /* collision on the bottom of other */
 				        	e.setPositionY(o.getPositionY() - height);
-				        	collisionEntityTop(e, o.getFriction(), nanoseconds);
+				        	onCollisionEntity(e, o.getFriction(), nanoseconds);
 				        } else { /* collision on the right of other */
 				        	e.setPositionX(o.getPositionX() + width);
 				        	if(e.getVelocityX() < 0) {
@@ -388,7 +381,7 @@ public class World implements Transportable, Iterable<Entity> {
 							}
 				        } else { /* collision on the top of other */
 				        	e.setPositionY(o.getPositionY() + height);
-				        	collisionEntityBottom(e, o.getFriction(), nanoseconds);
+				        	onCollisionEntity(e, o.getFriction(), nanoseconds);
 				        }
 				    }
 				}
@@ -397,18 +390,18 @@ public class World implements Transportable, Iterable<Entity> {
 	}
 
 	private void resolveBlockCollision(Entity e, Block block, int blockX, int blockY, long nanoseconds) {
-		float width = 0.5f * (e.getWidth() + 1);
+		float width = 0.5f * (e.getWidth() + 1); //mid-point between entity and block
 		float height = 0.5f * (e.getHeight() + 1);
 		float deltaX = blockX - e.getPositionX();
 		float deltaY = blockY - e.getPositionY();
 		if (Math.abs(deltaX) < width && Math.abs(deltaY) < height) { /* collision! */
-			e.onCollision(this, block, Math.round(blockX), Math.round(blockY), nanoseconds);
+			e.onCollision(this, block, blockX, blockY, nanoseconds);
 		    float wy = width * deltaY;
 		    float hx = height * deltaX;
 		    if (wy > hx) {
-		        if (wy > -hx) { /* collision on the bottom of block */
+		        if (wy > -hx) { /* collision on the bottom of block, top of entity */
 		        	e.setPositionY(blockY - height);
-		        	collisionEntityTop(e, block.getFriction(), nanoseconds);
+		        	onCollisionEntity(e, block.getFriction(), nanoseconds);
 		        } else { /* collision on right of block */
 		        	e.setPositionX(blockX + width);
 		        	if(e.getVelocityX() < 0) {
@@ -416,48 +409,29 @@ public class World implements Transportable, Iterable<Entity> {
 					}
 		        }
 		    } else {
-		        if (wy > -hx) { /* collision on left of block */
+		        if (wy > -hx) { /* collision on left of block, right of entity */
 		        	e.setPositionX(blockX - width);
 		        	if(e.getVelocityX() > 0) {
 						e.setVelocityX(0);
 					}
-		        } else { /* collision on top of block */
+		        } else { /* collision on top of block, bottom of entity */
 		        	e.setPositionY(blockY + height);
-		        	collisionEntityBottom(e, block.getFriction(), nanoseconds);
+		        	onCollisionEntity(e, block.getFriction(), nanoseconds);
 		        }
 		    }
 		}	
 	}
 
-	private static void collisionEntityTop(Entity e, float surfaceFriction, long nanoseconds) {
-		if(e.getVelocityY() > 0) {
-			e.setVelocityY(0);
-		}
-		
-		if(e.getVelocityX() > 0) {
-			setVelocityEntityFrictionRight(e, surfaceFriction, nanoseconds);
-		} else if(e.getVelocityX() < 0) {
-			setVelocityEntityFrictionLeft(e, surfaceFriction, nanoseconds);
-		}
-	}
-
-	private static void collisionEntityBottom(Entity e, float surfaceFriction, long nanoseconds) {
-    	if(e.getVelocityY() < 0) {
-    		e.setVelocityY(0);
-    	} 
-    	
+	private static void onCollisionEntity(Entity e, float surfaceFriction, long nanoseconds) {
+		e.setVelocityY(0);
     	if(e.getVelocityX() > 0) {
-    		setVelocityEntityFrictionRight(e, surfaceFriction, nanoseconds);
+    		float friction = -Utility.average(e.getFriction(), surfaceFriction);
+    		float left = Math.fma(friction, nanoseconds/16_000_000_0f, e.getVelocityX());
+    		e.setVelocityX(Math.max(0, left));
     	} else if(e.getVelocityX() < 0) {
-    		setVelocityEntityFrictionLeft(e, surfaceFriction, nanoseconds);
+    		float friction = Utility.average(e.getFriction(), surfaceFriction);
+    		float right = Math.fma(friction, nanoseconds/16_000_000_0f, e.getVelocityX());
+    		e.setVelocityX(Math.min(0, right));
     	}
-	}
-
-	private static void setVelocityEntityFrictionRight(Entity e, float surfaceFriction, long nanoseconds) {
-		e.setVelocityX(Math.max(0, Math.fma(-Utility.average(e.getFriction(), surfaceFriction), nanoseconds, e.getVelocityX())));
-	}
-
-	private static void setVelocityEntityFrictionLeft(Entity e, float surfaceFriction, long nanoseconds) {
-		e.setVelocityX(Math.min(0, Math.fma(Utility.average(e.getFriction(), surfaceFriction), nanoseconds, e.getVelocityX())));
 	}
 }
