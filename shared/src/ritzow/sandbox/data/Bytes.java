@@ -206,6 +206,7 @@ public final class Bytes {
 		return putBytesWithLength(array, index, str.getBytes(charset));
 	}
 	
+	//TODO add custom optimized huffman-coding compression, especially regarding World/Entity data.
 	/**
 	 * Compressed byte data using the deflate algorithm provided by java
 	 * @param data the byte array to compress

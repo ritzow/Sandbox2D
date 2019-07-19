@@ -5,15 +5,15 @@ import ritzow.sandbox.data.Serializer;
 import ritzow.sandbox.data.TransportableDataReader;
 import ritzow.sandbox.world.item.Item;
 
-public class ItemEntity<I extends Item> extends Entity {
-	protected final I item;
+public class ItemEntity<ITEM extends Item> extends Entity {
+	protected final ITEM item;
 	
-	public ItemEntity(int entityID, I item) {
+	public ItemEntity(int entityID, ITEM item) {
 		super(entityID);
 		this.item = item;
 	}
 	
-	public ItemEntity(int entityID, I item, float x, float y) {
+	public ItemEntity(int entityID, ITEM item, float x, float y) {
 		super(entityID);
 		this.item = item;
 		this.positionX = x;
@@ -30,7 +30,7 @@ public class ItemEntity<I extends Item> extends Entity {
 		return Bytes.concatenate(super.getBytes(ser), ser.serialize(item));
 	}
 	
-	public I getItem() {
+	public ITEM getItem() {
 		return item;
 	}
 

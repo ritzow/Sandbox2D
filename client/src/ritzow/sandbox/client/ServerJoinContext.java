@@ -10,7 +10,7 @@ import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.util.Utility;
 
 class ServerJoinContext {
-	final Client client;
+	private final Client client;
 	
 	public ServerJoinContext() throws IOException {
 		System.out.print("Connecting to " + Utility.formatAddress(StartClient.serverAddress)

@@ -49,7 +49,7 @@ public class UserInterface implements Renderer {
 
 		//load the view transformation
 		program.loadViewMatrixStandard(framebufferWidth, framebufferHeight);
-
+		
 		//set the current shader program
 		program.setCurrent();
 		
@@ -68,8 +68,10 @@ public class UserInterface implements Renderer {
 
 	}
 
-	public void update(Display display) {
-		int cursorX = display.getCursorX(), cursorY = display.getCursorY();
-
+	public void update(Display display, long nanoseconds) {
+		for(var element : elements) {
+			element.getKey().update(nanoseconds);
+		}
+		//int cursorX = display.getCursorX(), cursorY = display.getCursorY();
 	}
 }
