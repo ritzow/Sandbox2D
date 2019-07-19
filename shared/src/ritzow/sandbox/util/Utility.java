@@ -1,5 +1,8 @@
 package ritzow.sandbox.util;
 
+import static ritzow.sandbox.network.Protocol.BLOCK_INTERACT_COOLDOWN_NANOSECONDS;
+import static ritzow.sandbox.network.Protocol.BLOCK_INTERACT_RANGE;
+
 import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
@@ -9,12 +12,18 @@ import java.net.StandardProtocolFamily;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
+import java.util.SplittableRandom;
 import java.util.function.BooleanSupplier;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
+import ritzow.sandbox.world.entity.Entity;
+import ritzow.sandbox.world.entity.PlayerEntity;
 
-/** Contains a number of static utility methods relating to various systems (matrix/random math, time, synchronization, hitboxes) */
+/** 
+	Contains a number of static utility methods relating to various systems 
+	(matrix/random math, time, synchronization, hitboxes) 
+**/
 public final class Utility {
 	private Utility() {
 		throw new UnsupportedOperationException("Utility class cannot be instantiated");
@@ -25,7 +34,7 @@ public final class Utility {
 	}
 
 	public static boolean resendIntervalElapsed(long startTime, int attempts) {
-		return System.nanoTime() >= startTime + attempts * Utility.millisToNanos(Protocol.RESEND_INTERVAL);
+		return System.nanoTime() >= Math.fma(Utility.millisToNanos(Protocol.RESEND_INTERVAL), attempts, startTime);
 	}
 
 	public static int splitQuantity(int bucketSize, int itemCount) {
@@ -33,7 +42,8 @@ public final class Utility {
 	}
 
 	public static String formatAddress(InetSocketAddress address) {
-		return "[" + address.getAddress().getHostAddress() + "]:" + (address.getPort() == 0 ? "any" : address.getPort());
+		return "[" + address.getAddress().getHostAddress() + "]:" + 
+				(address.getPort() == 0 ? "any" : address.getPort());
 	}
 
 	public static ProtocolFamily getProtocolFamily(InetAddress address) {
@@ -58,8 +68,8 @@ public final class Utility {
 		void perform(int x, int y);
 	}
 
-	public static void forEachBlock(BlockGrid grid, float leftX, float rightX, float bottomY, float topY, GridAction action) {
-		//calculate block grid bounds TODO fix after adding chunk system, allow for negatives
+	public static void forEachBlock(BlockGrid grid, float leftX, float rightX, 
+			float bottomY, float topY, GridAction action) {
 		int leftBound = 	clampLowerBound(0, leftX);
 		int rightBound = 	clampUpperBound(grid.getWidth()-1, rightX);
 		int topBound = 		clampUpperBound(grid.getHeight()-1, topY);
@@ -89,8 +99,6 @@ public final class Utility {
 		throw new IllegalStateException(Thread.currentThread() + " should not be interrupted", cause);
 	}
 
-	private static final float UPDATE_TIME_MAX_ALLOWED = 100;
-
 	/**
 	 * Updates the world
 	 * @param world the world to update
@@ -99,20 +107,45 @@ public final class Utility {
 	 * @param timeScale the time conversion (from nanoseconds to game time)
 	 * @return the start time for the world update (should replace the previous time)
 	 */
-	public static long updateWorld(World world, long previousTime, float maxTimestep, float timeScale) {
+	public static long updateWorld(World world, long previousTime, long maxTimestep) {
 		long start = System.nanoTime(); //get the current time
-		float updateTimeRemaining = (start - previousTime) / timeScale;
-		if(updateTimeRemaining > UPDATE_TIME_MAX_ALLOWED)
-			throw new IllegalArgumentException(updateTimeRemaining + " is greater than the max allowed world update time");
+		long updateTimeRemaining = start - previousTime;
+		if(updateTimeRemaining > Protocol.MAX_UPDATE_TIME_ALLOWED)
+			throw new IllegalArgumentException(updateTimeRemaining + 
+					" is greater than the max allowed world update time");
 
 		//update the world with a timestep of at most maxTimestep until the world is up to date.
 		while(updateTimeRemaining > 0) {
-			float singleUpdateTime = Math.min(updateTimeRemaining, maxTimestep);
+			long singleUpdateTime = Math.min(updateTimeRemaining, maxTimestep);
 			world.update(singleUpdateTime);
 			updateTimeRemaining -= singleUpdateTime;
 		}
 
 		return start;
+	}
+	
+	public static boolean canThrow(long lastThrowTime) {
+		return Utility.nanosSince(lastThrowTime) > Protocol.THROW_COOLDOWN_NANOSECONDS;
+	}
+	
+	public static boolean canBreak(PlayerEntity player, long lastBreakTime, BlockGrid blocks, int blockX, int blockY) {
+		return Utility.nanosSince(lastBreakTime) > BLOCK_INTERACT_COOLDOWN_NANOSECONDS && 
+			blocks.isValid(blockX, blockY) &&	
+			blocks.isBlock(blockX, blockY) &&
+			Utility.withinDistance(player.getPositionX(), player.getPositionY(), blockX, blockY, BLOCK_INTERACT_RANGE);
+	}
+	
+	public static boolean canPlace(PlayerEntity player, long lastPlaceTime, BlockGrid blocks, int blockX, int blockY) {
+		return Utility.nanosSince(lastPlaceTime) > Protocol.BLOCK_INTERACT_COOLDOWN_NANOSECONDS &&
+				inRange(player, blockX, blockY) && 
+				blocks.isValid(blockX, blockY) && 
+				!blocks.isBlock(blockX, blockY) &&
+				blocks.isSolidBlockAdjacent(blockX, blockY);
+	}
+	
+	public static boolean inRange(Entity player, int blockX, int blockY) {
+		return Utility.withinDistance(player.getPositionX(), player.getPositionY(),
+				blockX, blockY, Protocol.BLOCK_INTERACT_RANGE);
 	}
 
 	public static void notify(Object o) {
@@ -163,11 +196,11 @@ public final class Utility {
 	}
 
 	public static float rotateCoordX(float x, float y, float centerX, float centerY, float angle) {
-		return (float)((x - centerX)*Math.cos(angle) - (y - centerY)*Math.sin(angle)) + x;
+		return (float)Math.fma((x - centerX), Math.cos(angle), -(y - centerY) * Math.sin(angle)) + x;
 	}
 
 	public static float rotateCoordY(float x, float y, float centerX, float centerY, float angle) {
-		return (float)((y - centerY)*Math.cos(angle) + (x - centerX)*Math.sin(angle)) + y;
+		return Math.fma((y - centerY), (float)Math.cos(angle), (x - centerX)*(float)Math.sin(angle)) + y;
 	}
 
 	public static void printUsedMemory() {
@@ -176,6 +209,10 @@ public final class Utility {
 
 	public static void printTimeSince(long nanoseconds) {
 		System.out.println(formatTime(System.nanoTime() - nanoseconds));
+	}
+	
+	public static void printFramerate(long nanoseconds) {
+		System.out.println(1_000_000_000/(System.nanoTime() - nanoseconds) + " FPS");
 	}
 
 	public static String formatSize(long bytes) {
@@ -217,12 +254,21 @@ public final class Utility {
 	public static String formatNumber(double value, int decimals) {
 		long asInteger = Math.round(value);
 		String number = Double.toString(value);
-		return asInteger == value ? Long.toString(asInteger) : (decimals > 0 ? number.substring(0, Math.min(number.length(),
+		return asInteger == value ? Long.toString(asInteger) : (decimals > 0 ? 
+			number.substring(0, Math.min(number.length(),
 			number.indexOf('.') + decimals)) : ("~" + asInteger));
 	}
 
 	public static double millisBetween(long startNanos, long endNanos) {
 		return nanosToMillis(endNanos - startNanos);
+	}
+	
+	public static float convertAccelerationSecondsNanos(float acceleration) {
+		return acceleration / 1_000_000_000f / 1_000_000_000f;
+	}
+	
+	public static float convertPerSecondToPerNano(float value) {
+		return value / 1_000_000_000;
 	}
 
 	public static long millisToNanos(long milliseconds) {
@@ -249,29 +295,41 @@ public final class Utility {
 		else
 			return 0;
 	}
-
-	public static float randomFloat(float min, float max) {
-		return (float)(Math.random() * (max - min) + min);
+	
+	public static float random(double min, double max) {
+		return (float)new SplittableRandom().nextDouble(min, max);
+	}
+	
+	public static void launchAtAngle(Entity e, float angle, float velocity) {
+		e.setVelocityX((float)Math.cos(angle) * velocity);
+		e.setVelocityY((float)Math.sin(angle) * velocity);
+	}
+	
+	public static void launchAtRandomRatio(Entity e, double minFraction, double maxFraction, float velocity) {
+		launchAtAngle(e, random(minFraction * 2 * Math.PI, maxFraction * 2 * Math.PI), velocity);
+	}
+	
+	public static float randomAngleRadians() {
+		return Utility.random(0, Math.PI * 2);
 	}
 
-	public static long randomLong(long min, long max) {
-		return (long)(Math.random() * (max - min) + min);
+	public static boolean intersection(float rectangleX, float rectangleY, 
+			float width, float height, float pointX, float pointY) {
+		return (pointX <= Math.fma(0.5f, width, rectangleX) && pointX >= Math.fma(width, 0.5f, -rectangleX)) && 
+				(pointY <= Math.fma(height, 0.5f, rectangleY) && pointY >= Math.fma(height, 0.5f, -rectangleY));
 	}
 
-	public static boolean intersection(float rectangleX, float rectangleY, float width, float height, float pointX, float pointY) {
-		return (pointX <= rectangleX + width/2 && pointX >= rectangleX - width/2) && (pointY <= rectangleY + height/2 && pointY >= rectangleY - height/2);
-	}
-
-	public static boolean intersection(float x, float y, float width, float height, float x2, float y2, float width2, float height2) {
+	public static boolean intersection(float x, float y, float width, float height, 
+			float x2, float y2, float width2, float height2) {
 		return (Math.abs(x - x2) * 2 < (width + width2)) && (Math.abs(y - y2) * 2 < (height + height2));
 	}
 
 	public static float average(float val1, float val2) {
-		return (val1 + val1)/2;
+		return (val1 + val1) * 0.5f;
 	}
 
 	public static double distance(double x1, double y1, double x2, double y2) {
-		return Math.sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2));
+		return Math.sqrt(Math.fma((x1-x2), (x1-x2), (y1-y2)*(y1-y2)));
 	}
 
 	public static float distance(float x1, float y1, float x2, float y2) {
@@ -283,11 +341,11 @@ public final class Utility {
 	}
 
 	private static float distanceSquared(float x1, float y1, float x2, float y2) {
-		return (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2);
+		return Math.fma((x1-x2), (x1-x2), (y1-y2)*(y1-y2));
 	}
 
 	/** Returns the maximum value of the component opposite the one passed in (x if y given) within a given radius **/
 	public static float maxComponentInRadius(float otherComp, float radius) {
-		return (float)Math.sqrt(radius * radius - otherComp * otherComp);
+		return (float)Math.sqrt(Math.fma(radius, radius, -otherComp * otherComp));
 	}
 }
