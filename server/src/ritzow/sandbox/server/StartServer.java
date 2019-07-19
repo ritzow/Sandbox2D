@@ -44,8 +44,8 @@ public final class StartServer {
 		try {
 			server = Server.start(bindAddress);
 			System.out.println("Started server on " + Utility.formatAddress(server.getAddress()) + ".");
-			System.out.print("Loading world... ");
 			long time = System.nanoTime();
+			System.out.print((Files.exists(saveFile) ? "Loading" : "Generating") + " world... ");
 			World world = Files.exists(saveFile) ? loadWorld(saveFile) : generateWorld();
 			System.out.println("took " + Utility.formatTime(Utility.nanosSince(time)) + ".");
 			CommandParser parser = new CommandParser();
@@ -113,6 +113,11 @@ public final class StartServer {
 		runner.register("reset", 	StartServer::resetCommand);
 		runner.register("debug",	StartServer::debugCommand);
 		runner.register("kill", 	StartServer::killCommand);
+		runner.register("printworld", StartServer::printworldCommand);
+	}
+	
+	private static void printworldCommand(String args) {
+		System.out.println(server.world());
 	}
 	
 	private static void debugCommand(String args) {
