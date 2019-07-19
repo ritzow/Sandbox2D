@@ -16,6 +16,10 @@ public class NetworkUtility {
 				args.length > 1 ? Integer.parseInt(args[index + 1]) : defaultPort);
 	}
 	
+	public static InetSocketAddress socketAddress(InetAddress address) {
+		return new InetSocketAddress(address, 0);
+	}
+	
 	public static boolean isIPv6(InetAddress address) {
 		return address instanceof Inet6Address;
 	}
