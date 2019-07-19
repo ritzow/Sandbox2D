@@ -3,7 +3,7 @@ Improve portability
 Improve client data processing "pipeline"
 Add chunk loading and generation to BlockGrid and Client/Server
 Client world mesh generation
-rewrite input handling system to be more abstract
 Use or create proper logging system
 create user interface system/renderer
 Optimize texture atlas space usage
+Rewrite rendering to use a single draw command, multi/indirect/instanced etc.
