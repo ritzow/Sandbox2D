@@ -27,8 +27,8 @@ public final class ClientBlockItem extends BlockItem implements Graphical {
 		return ser.serialize(block);
 	}
 	
-	public Block getBlock() {
-		return block;
+	public ClientBlockProperties getBlock() {
+		return (ClientBlockProperties)block;
 	}
 
 	public Graphics getGraphics() {
