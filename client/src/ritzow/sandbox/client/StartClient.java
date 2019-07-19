@@ -33,7 +33,9 @@ import ritzow.sandbox.util.Utility;
 
 public class StartClient {
 	static final long UPDATE_SKIP_THRESHOLD_NANOSECONDS = Utility.millisToNanos(100);
-	private static final boolean USE_OPENGL_4_6 = false;
+	public static final int FRAME_RATE_LIMIT = 120;
+	private static final boolean USE_OPENGL_4_6 = false; 
+	public static final boolean PRINT_FPS = false;
 
 	static Display display;
 	static long pickaxeCursor;
