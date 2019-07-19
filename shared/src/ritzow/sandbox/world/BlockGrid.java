@@ -1,5 +1,6 @@
 package ritzow.sandbox.world;
 
+import java.util.Objects;
 import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.data.Serializer;
 import ritzow.sandbox.data.Transportable;
@@ -7,19 +8,23 @@ import ritzow.sandbox.data.TransportableDataReader;
 import ritzow.sandbox.world.block.Block;
 
 public final class BlockGrid implements Transportable {
-	private final Block[][] blocks;
+	private final Block[] blocks;
+	private final int width;
 
 	public BlockGrid(int width, int height) {
-		blocks = new Block[height][width];
+		blocks = new Block[width * height];
+		this.width = width;
 	}
 
 	public BlockGrid(TransportableDataReader data) {
 		int width = data.readInteger();
 		int height = data.readInteger();
-		blocks = new Block[height][width];
+		this.width = width;
+		blocks = new Block[width * height];
 		for(int row = 0; row < height; row++) {
 			for(int column = 0; column < width; column++) {
-				blocks[row][column] = data.readObject();
+				set(column, row, data.readObject());
+				//blocks[row][column] = data.readObject();
 			}
 		}
 		data.readInteger(); //TODO figure out why this extra read is necessary?
@@ -35,7 +40,7 @@ public final class BlockGrid implements Transportable {
 
 		for(int row = 0; row < height; row++) {
 			for(int column = 0; column < width; column++) {
-				blockData[row * width + column] = ser.serialize(blocks[row][column]);
+				blockData[row * width + column] = ser.serialize(get(column, row));
 			}
 		}
 
@@ -47,47 +52,37 @@ public final class BlockGrid implements Transportable {
 
 	@Override
 	public String toString() {
-		StringBuilder builder = new StringBuilder();
-
-		builder.append('┌');
-		for(int i = 1; i < blocks[0].length - 1; i++) {
-			builder.append('─');
-		}
-		builder.append('┐');
-		builder.append('\n');
-
-		for(int i = 0; i < blocks.length; i++) {
+		int width = getWidth();
+		int height = getHeight();
+		String border = "─".repeat(width);
+		StringBuilder builder = new StringBuilder(width * height)
+				.append('┌').append(border).append('┐').append('\n');
+		for(int row = height - 1; row >= 0; --row) {
 			builder.append('│');
-			for(int j = 1; j < blocks[i].length - 1; j++) {
-				Block block = blocks[i][j];
-				if(block != null) {
-					builder.append(Character.toUpperCase(blocks[i][j].getName().charAt(0)));
-				} else {
-					builder.append(" ");
-				}
+			for(int column = 0; column < width; ++column) {
+				Block block = get(column, row);
+				builder.append(block == null ? " " : Character.toUpperCase(block.getName().charAt(0)));
 			}
-			builder.append('│');
-			builder.append('\n');
+			builder.append('│').append('\n');
 		}
-
-		builder.append('└');
-		for(int i = 1; i < blocks[0].length - 1; i++) {
-			builder.append('─');
-		}
-		builder.append('┘');
-
-		return builder.toString();
+		return builder.append('└').append(border).append('┘').toString();
 	}
 
 	public boolean isValid(int x, int y) {
-		return y >= 0 && x >= 0 && y < blocks.length && x < blocks[y].length;
+		return y >= 0 && x >= 0 && y < getHeight() && x < getWidth();
 	}
 
+	/**
+	 * Returns the block at the provided block coordinates
+	 * @param x the distance from the bottom of the world, in blocks
+	 * @param y the distance from the left of the world, in blocks
+	 * @return true if there is a block at x, y
+	 * @throws IllegalArgumentException if x or y is not in the block grid
+	 */
 	public Block get(int x, int y) {
 		try {
-			synchronized(blocks) { //TODO remove synchronization
-				return blocks[blocks.length - 1 - y][x];
-			}
+			//return blocks[blocks.length - 1 - y][x];
+			return blocks[width * y + x];
 		} catch(ArrayIndexOutOfBoundsException e) {
 			throw new IllegalArgumentException("invalid coordinates " + x + ", " + y);
 		}
@@ -97,11 +92,11 @@ public final class BlockGrid implements Transportable {
 		return get(Math.round(worldX), Math.round(worldY));
 	}
 
-	public void set(int x, int y, Block block) {
+	public Block set(int x, int y, Block block) {
 		try {
-			synchronized(blocks) {
-				blocks[blocks.length - 1 - y][x] = block;
-			}
+			Block previous = blocks[width * y + x];
+			blocks[width * y + x] = block;
+			return previous;
 		} catch(ArrayIndexOutOfBoundsException e) {
 			throw new IllegalArgumentException("invalid coordinates " + x + ", " + y);
 		}
@@ -112,13 +107,10 @@ public final class BlockGrid implements Transportable {
 	}
 
 	public Block destroy(World world, int x, int y) {
-		synchronized(blocks) {
-			Block block = get(x, y);
-			set(x, y, null);
-			if(block != null)
-				block.onBreak(world, this, x, y);
-			return block;
-		}
+		Block prev = set(x, y, null);
+		if(prev != null)
+			prev.onBreak(world, this, x, y);
+		return prev;
 	}
 
 	public boolean place(World world, float x, float y, Block block) {
@@ -126,12 +118,10 @@ public final class BlockGrid implements Transportable {
 	}
 
 	public boolean place(World world, int x, int y, Block block) {
-		synchronized(blocks) {
-			if(!isBlock(x, y)) {
-				set(x, y, block);
-				block.onPlace(world, this, x, y);
-				return true;
-			}
+		if(!isBlock(x, y)) {
+			set(x, y, Objects.requireNonNull(block));
+			block.onPlace(world, this, x, y);
+			return true;
 		}
 		return false;
 	}
@@ -150,12 +140,19 @@ public final class BlockGrid implements Transportable {
 	public boolean isBlock(float worldX, float worldY) {
 		return isBlock(Math.round(worldX), Math.round(worldY));
 	}
+	
+	public boolean isSolidBlockAdjacent(int blockX, int blockY) {
+		return 	(isValid(blockX + 1, blockY) && isBlock(blockX + 1, blockY)) ||
+				(isValid(blockX - 1, blockY) && isBlock(blockX - 1, blockY)) ||
+				(isValid(blockX, blockY + 1) && isBlock(blockX, blockY + 1)) ||
+				(isValid(blockX, blockY - 1) && isBlock(blockX, blockY - 1));
+	}
 
 	public int getWidth() {
-		return blocks[0].length;
+		return width;
 	}
 
 	public int getHeight() {
-		return blocks.length;
+		return blocks.length/width;
 	}
 }
