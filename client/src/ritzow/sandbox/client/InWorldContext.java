@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Objects;
+import ritzow.sandbox.client.graphics.Display;
 import ritzow.sandbox.client.graphics.RenderManager;
 import ritzow.sandbox.client.input.Control;
 import ritzow.sandbox.client.input.Control.Button;
@@ -15,6 +16,7 @@ import ritzow.sandbox.client.network.Client.Status;
 import ritzow.sandbox.client.network.GameTalker;
 import ritzow.sandbox.client.util.SerializationProvider;
 import ritzow.sandbox.client.world.ClientWorldRenderer;
+import ritzow.sandbox.client.world.block.ClientBlockProperties;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
 import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.network.Protocol;
@@ -116,14 +118,18 @@ public class InWorldContext implements GameTalker {
 	}
 
 	private void processServerRemoveBlock(ByteBuffer data) {
-		world.getForeground().destroy(world, data.getInt(), data.getInt());
+		int x = data.getInt(), y = data.getInt();
+		ClientBlockProperties prev = (ClientBlockProperties)world.getForeground().set(x, y, null);
+		if(prev != null) prev.onBreak(world, world.getForeground(), cameraGrip.getCamera(), x, y);
 	}
 	
 	private void processServerPlaceBlock(ByteBuffer data) {
 		int x = data.getInt(), y = data.getInt();
 		byte[] block = new byte[data.remaining()];
 		data.get(block);
-		world.getForeground().place(world, x, y, deserialize(true, block));
+		ClientBlockProperties newBlock = deserialize(true, block);
+		world.getForeground().set(x, y, newBlock);
+		newBlock.onPlace(world, world.getForeground(), cameraGrip.getCamera(), x, y);
 	}
 
 	private void processReceivePlayerEntityID(ByteBuffer data) {
@@ -221,7 +227,11 @@ public class InWorldContext implements GameTalker {
 			cameraGrip.resetZoom();
 		}
 
-		interactionControls.update(StartClient.display, cameraGrip.getCamera(), this, world, player); //block breaking/"bomb throwing"
+		interactionControls.update(
+			StartClient.display, 
+			cameraGrip.getCamera(), 
+			this, world, player
+		); //block breaking/"bomb throwing"
 		client.update(this::process);
 		if(!StartClient.display.minimized()) {
 			updateVisuals();
@@ -242,13 +252,20 @@ public class InWorldContext implements GameTalker {
 	private void updateVisuals() {
 		long start = System.nanoTime();
 		if(start - lastWorldUpdate < StartClient.UPDATE_SKIP_THRESHOLD_NANOSECONDS) {
-			Utility.updateWorld(world, lastWorldUpdate, Protocol.MAX_UPDATE_TIMESTEP, Protocol.TIME_SCALE_NANOSECONDS);
+			Utility.updateWorld(world, lastWorldUpdate, Protocol.MAX_UPDATE_TIMESTEP);
 		}
+		Display display = StartClient.display;
 		lastWorldUpdate = start;
 		long camUpdateStart = System.nanoTime();
-		cameraGrip.update(StartClient.display, player, StartClient.audio, camUpdateStart - lastCameraUpdate); //update camera position and zoom
+		cameraGrip.update(display, player, 
+				StartClient.audio, camUpdateStart - lastCameraUpdate); //update camera position and zoom
 		lastCameraUpdate = camUpdateStart;
-		RenderManager.run(StartClient.display, worldRenderer);
+		int width = display.width(), height = display.height();
+		RenderManager.preRender(width, height);
+		worldRenderer.render(RenderManager.DISPLAY_BUFFER, width, height);
+		interactionControls.render(display, StartClient.shaderProgram, 
+				cameraGrip.getCamera(), world.getForeground(), player);
+		display.refresh();
 	}
 	
 	@Override
@@ -313,7 +330,7 @@ public class InWorldContext implements GameTalker {
 		@Override
 		public void windowRefresh() {
 			sendPlayerState(player, false, false);
-			interactionControls.update(StartClient.display, 
+			interactionControls.update(StartClient.display,
 					cameraGrip.getCamera(), InWorldContext.this, world, player); //block breaking/"bomb throwing"
 			client.update(InWorldContext.this::process);
 			updateVisuals();
