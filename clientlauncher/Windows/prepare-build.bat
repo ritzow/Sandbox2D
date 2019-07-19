@@ -1,3 +1,5 @@
+::Windows build
+
 set "output=x64\Release\Output"
 
 ::clean up previous version
@@ -32,7 +34,7 @@ move "%output%\jvm\include" "include"
 copy "include\win32" "include"
 rmdir /S /Q "include\win32"
 
-::copy resources to output 
+::copy resources to output
 xcopy /E /Y /Q "%client%\resources" "%output%\resources\"
 
 ::copy natives

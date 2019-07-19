@@ -1,4 +1,5 @@
 #include <windows.h>
+#include <iostream>
 #include "../../Shared/shared.cpp"
 
 constexpr bool SHOW_CONSOLE = false;
@@ -13,7 +14,8 @@ INT WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 		AllocConsole();
 		FILE* file;
 		_wfreopen_s(&file, L"CONOUT$", L"w", stdout);
-		wprintf(L"Command Line Arguments: \"%s\"\n", lpCmdLine);
+		if(wcslen(lpCmdLine) > 0)
+			std::wcout << "Command Line Arguments: \"" << lpCmdLine << '"' << std::endl;
 	}
 
 	HMODULE dll = LoadLibraryW(L"jvm\\bin\\server\\jvm.dll");
