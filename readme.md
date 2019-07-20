@@ -32,5 +32,5 @@ Provides bindings to GLFW, OpenGL, and OpenAL. The program currently uses versio
 }
 ```
 ### TWL's PNGDecoder:
-http://twl.l33tlabs.org/dist/   
-Used for loading textures from files so they can be sent to OpenGL. Just add to the classpath.
+Used for loading textures from files so they can be sent to OpenGL.
+Does not seem to be available directly as the official website seems to be in use by scammers.
