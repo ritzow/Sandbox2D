@@ -6,7 +6,9 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.util.ArrayDeque;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Queue;
 import java.util.function.Predicate;
@@ -33,7 +35,7 @@ import static ritzow.sandbox.network.Protocol.*;
 /** The server manages connected game clients, sends game updates, 
  * receives client input, and broadcasts information for clients. */
 public class Server {
-	private static final long NETWORK_SEND_INTERVAL_NANOSECONDS = Utility.millisToNanos(100);
+	private static final long NETWORK_SEND_INTERVAL_NANOSECONDS = Utility.millisToNanos(200);
 	private static final float BOMB_THROW_VELOCITY = Utility.convertPerSecondToPerNano(25);
 
 	private final DatagramChannel channel;
@@ -85,7 +87,9 @@ public class Server {
 	}
 
 	public String[] listClients() {
-		return clients.values().stream().map(client -> client.formattedName()).toArray(count -> new String[count]);
+		return clients.values().stream()
+				.map(client -> client.formattedName())
+				.toArray(count -> new String[count]);
 	}
 
 	public int getClientCount() {
@@ -107,7 +111,7 @@ public class Server {
 		try {
 			short type = packet.getShort();
 			switch(type) {
-				case TYPE_CLIENT_CONNECT_REQUEST -> sendClientConnectReply(client);
+				case TYPE_CLIENT_CONNECT_REQUEST -> processClientConnectRequest(client);
 				case TYPE_CLIENT_DISCONNECT -> processClientDisconnect(client);
 				case TYPE_CLIENT_BREAK_BLOCK -> processClientBreakBlock(client, packet);
 				case TYPE_CLIENT_PLACE_BLOCK -> processClientPlaceBlock(client, packet);
@@ -122,38 +126,59 @@ public class Server {
 			log("Server received bad data from client: " + e.getMessage());
 		}
 	}
-
+	
+	private long lastClientsUpdate;
+	private static final int ENTITY_UPDATE_HEADER_SIZE = 6;
+	private static final int BYTES_PER_ENTITY = 20;
+	private static final int MAX_ENTITIES_PER_PACKET = 
+			(MAX_MESSAGE_LENGTH - ENTITY_UPDATE_HEADER_SIZE)/BYTES_PER_ENTITY;
+	private static final SendPacket PING_PACKET = new SendPacket(Bytes.of(TYPE_SERVER_PING), true);
+	
 	public void update() throws IOException {
 		receive();
 		removeDisconnectedClients();
-		if(world != null) {
+		if(world == null) close();
+		else {
 			lastWorldUpdateTime = Utility.updateWorld(
 				world, 
 				lastWorldUpdateTime,
 				MAX_UPDATE_TIMESTEP
 			);
 			
-			if(Utility.nanosSince(lastClientsUpdate) > NETWORK_SEND_INTERVAL_NANOSECONDS) {
-				//TODO optimize entity packet format and sending (batch entity updates)
-				for(Entity e : world) {
-					populateEntityUpdate(ENTITY_UPDATE_BUFFER, e);
-					broadcastUnreliable(ENTITY_UPDATE_BUFFER, client -> client.status == ClientState.STATUS_IN_GAME);
-					if(e instanceof PlayerEntity) {
-						broadcastPlayerState(null, (PlayerEntity)e);
+			if(getClientCount() > 0 && Utility.nanosSince(lastClientsUpdate) > NETWORK_SEND_INTERVAL_NANOSECONDS) {
+				int entitiesRemaining = world.entities();
+				Iterator<Entity> iterator = world.iterator();
+				while(iterator.hasNext()) {
+					int count = Math.min(entitiesRemaining, MAX_ENTITIES_PER_PACKET);
+					int index = 0;
+					byte[] packet = new byte[ENTITY_UPDATE_HEADER_SIZE + count * BYTES_PER_ENTITY];
+					Bytes.putShort(packet, 0, TYPE_SERVER_ENTITY_UPDATE);
+					Bytes.putInteger(packet, 2, count);
+					while(index < count) {
+						Entity entity = iterator.next();
+						populateEntityUpdate(packet, ENTITY_UPDATE_HEADER_SIZE + index * BYTES_PER_ENTITY, entity);
+						entitiesRemaining--;
+						index++;
+						if(entity instanceof PlayerEntity) {
+							broadcastPlayerState(null, (PlayerEntity)entity);
+						}
 					}
-				}
-			
-				for(ClientState client : clients.values()) {
-					if(client.status == ClientState.STATUS_IN_GAME) {
-						client.sendQueue.add(PING_PACKET); //TODO send ping only if necessary (already timing out)
-					}
-				}
+					broadcastUnsafe(packet, false, client -> client.status == ClientState.STATUS_IN_GAME);
+				}	
+				pingClients();			
 				lastClientsUpdate = System.nanoTime();
-			}	
-		} else {
-			close();
+			}
+		
 		}
 		sendAccumulated();
+	}
+	
+	private void pingClients() {
+		for(ClientState client : clients.values()) {
+			if(client.status == ClientState.STATUS_IN_GAME) {
+				client.sendQueue.add(PING_PACKET); //TODO send ping only if necessary (already timing out)
+			}
+		}
 	}
 
 	public void removeDisconnectedClients() {
@@ -191,100 +216,20 @@ public class Server {
 		return packet;
 	}
 	
-	private long lastClientsUpdate;
-
-	/** Reuseable entity update buffer **/
-	byte[] ENTITY_UPDATE_BUFFER = new byte[22]; //protocol, id, posX, posY, velX, velY
-	{
-		Bytes.putShort(ENTITY_UPDATE_BUFFER, 0, TYPE_SERVER_ENTITY_UPDATE);
-	}
-
-	private static final SendPacket PING_PACKET = new SendPacket(Bytes.of(TYPE_SERVER_PING), true);
-
-	private static void populateEntityUpdate(byte[] packet, Entity e) {
-		Bytes.putInteger(packet, 2, e.getID());
-		Bytes.putFloat(packet, 6, e.getPositionX());
-		Bytes.putFloat(packet, 10, e.getPositionY());
-		Bytes.putFloat(packet, 14, e.getVelocityX());
-		Bytes.putFloat(packet, 18, e.getVelocityY());
-	}
-
-//	/**
-//	 * Keep clients up to date with the latest state. (includes message sending)
-//	 */
-//	public void updateClients() {
-//		if(Utility.nanosSince(lastClientsUpdate) > NETWORK_SEND_INTERVAL_NANOSECONDS) {
-//			Collection<SendPacket> updates = buildEntityUpdates(world);
-//			for(ClientState client : clients.values()) {
-//				if(client.status == ClientState.STATUS_IN_GAME) {
-//					client.sendQueue.addAll(updates);
-//				}
-//				client.sendQueue.add(PING_PACKET);
-//				lastClientsUpdate = System.nanoTime();
-//			}
-//
-//			for(Entity e : world) {
-//				populateEntityUpdate(ENTITY_UPDATE_BUFFER, e);
-//				SendPacket packet = new SendPacket(ENTITY_UPDATE_BUFFER.clone(), false);
-//				for(ClientState client : clients.values()) {
-//					if(client.status == ClientState.STATUS_IN_GAME) {
-//						client.sendQueue.add(packet);
-//					}
-//				}
-//			}
-//			broadcastPing();
-//			lastClientsUpdate = System.nanoTime();
-//		}
-//	}
-//
-//	private static final int ENTITY_UPDATE_SIZE = 20;
-//
-//	private static Collection<SendPacket> buildEntityUpdates(World world) {
-//
-//		SendPacket[] updates = new SendPacket[Utility.splitQuantity(
-//				Protocol.MAX_MESSAGE_LENGTH/ENTITY_UPDATE_SIZE, world.entities())];
-//
-//		Iterator<Entity> entities = world.iterator();
-//
-//		for(int i = 0; i < updates.length - 1; i++) { //for all full packets
-//			byte[] update = new byte[Protocol.MAX_MESSAGE_LENGTH];
-//			for(int e = 0; e < ) {
-//
-//			}
-//			updates[i] = update;
-//		}
-//
-//		byte[] last = new byte[];
-//		for(int e = 0; e < remaining; e++) {
-//			populateEntityUpdate(last, 2 + e * ENTITY_UPDATE_SIZE; entities.next());
-//		}
-//
-//		int index = 2;
-//		for(Entity e : world) {
-//			populateEntityUpdate(update, index, e);
-//			index += ENTITY_UPDATE_SIZE;
-//		}
-//		return Arrays.asList(updates);
-//	}
-//
-//	private static void populateEntityUpdate(byte[] packet, int index, Entity e) {
-//		Bytes.putInteger(packet, index + 0, e.getID());
-//		Bytes.putFloat(packet, index + 4, e.getPositionX());
-//		Bytes.putFloat(packet, index + 8, e.getPositionY());
-//		Bytes.putFloat(packet, index + 12, e.getVelocityX());
-//		Bytes.putFloat(packet, index + 16, e.getVelocityY());
-//	}
-
-	public void broadcastPing() {
-		broadcastReliable(Bytes.of(TYPE_SERVER_PING));
+	private static void populateEntityUpdate(byte[] packet, int index, Entity e) {
+		Bytes.putInteger(packet, index + 0, e.getID());
+		Bytes.putFloat(packet, index + 4, e.getPositionX());
+		Bytes.putFloat(packet, index + 8, e.getPositionY());
+		Bytes.putFloat(packet, index + 12, e.getVelocityX());
+		Bytes.putFloat(packet, index + 16, e.getVelocityY());
 	}
 
 	public void broadcastConsoleMessage(String message) {
-		broadcastUnsafe(Protocol.buildConsoleMessage(message), true);
+		broadcastUnsafe(Protocol.buildConsoleMessage(message), true, c -> true);
 	}
 
 	private void broadcastAndPrint(String consoleMessage) {
-		broadcastReliable(Protocol.buildConsoleMessage(consoleMessage));
+		broadcastUnsafe(Protocol.buildConsoleMessage(consoleMessage), true, c -> true);
 		log(consoleMessage);
 	}
 
@@ -310,7 +255,7 @@ public class Server {
 		Bytes.putShort(message, 0, TYPE_CLIENT_PLAYER_STATE);
 		Bytes.putInteger(message, 2, player.getID());
 		Bytes.putShort(message, 6, Protocol.PlayerState.getState(player, false, false));
-		broadcastUnreliable(message, recipient -> !recipient.equals(client));
+		broadcastUnreliable(message, message.length, recipient -> !recipient.equals(client));
 	}
 
 	public void printDebug(PrintStream out) {
@@ -363,7 +308,7 @@ public class Server {
 		Bytes.putShort(packet, 0, TYPE_SERVER_REMOVE_BLOCK);
 		Bytes.putInteger(packet, 2, x);
 		Bytes.putInteger(packet, 6, y);
-		broadcastUnsafe(packet, true);
+		broadcastUnsafe(packet, true, c -> true);
 	}
 	
 	private void broadcastPlaceBlock(Block block, int x, int y) {
@@ -373,7 +318,7 @@ public class Server {
 		Bytes.putInteger(packet, 2, x);
 		Bytes.putInteger(packet, 6, y);
 		Bytes.copy(blockData, packet, 10);
-		broadcastUnsafe(packet, true);
+		broadcastUnsafe(packet, true, c -> true);
 	}
 	
 	private static final float 
@@ -404,7 +349,7 @@ public class Server {
 		}
 	}
 
-	private void sendClientConnectReply(ClientState client) {
+	private void processClientConnectRequest(ClientState client) {
 		if(world != null) {
 			//TODO don't send world size in ack, takes to long to serialize entire world
 			for(byte[] packet : buildAcknowledgementWorldPackets(world)) {
@@ -480,39 +425,26 @@ public class Server {
 		Bytes.putShort(packet, 0, TYPE_SERVER_ADD_ENTITY);
 		Bytes.putBoolean(packet, 2, compress);
 		Bytes.copy(entity, packet, 3);
-		broadcastUnsafe(packet, true);
+		broadcastUnsafe(packet, true, c -> true);
 	}
 
 	public void broadcastRemoveEntity(Entity e) {
 		byte[] packet = new byte[2 + 4];
 		Bytes.putShort(packet, 0, TYPE_SERVER_REMOVE_ENTITY);
 		Bytes.putInteger(packet, 2, e.getID());
-		broadcastUnsafe(packet, true);
+		broadcastUnsafe(packet, true, c -> true);
 	}
 
-	private void sendResponse(InetSocketAddress recipient, ByteBuffer sendBuffer, int receivedMessageID) throws IOException {
-		channel.send(sendBuffer.put(RESPONSE_TYPE).putInt(receivedMessageID).flip(), recipient);
-		sendBuffer.clear();
-	}
-
-	public void broadcastReliable(byte[] data) {
-		broadcastUnsafe(data.clone(), true);
-	}
-
-	public void broadcastUnreliable(byte[] data) {
-		broadcastUnsafe(data.clone(), false);
-	}
-
-	private void broadcastUnsafe(byte[] data, boolean reliable) {
+	private void broadcastUnsafe(byte[] data, boolean reliable, Predicate<ClientState> sendToClient) {
 		SendPacket packet = new SendPacket(data, reliable);
 		for(ClientState client : clients.values()) {
-			if(!client.isDisconnectState())
+			if(!client.isDisconnectState() && sendToClient.test(client))
 				client.sendQueue.add(packet);
 		}
 	}
 
-	private void broadcastUnreliable(byte[] data, Predicate<ClientState> sendToClient) {
-		SendPacket packet = new SendPacket(data.clone(), false);
+	private void broadcastUnreliable(byte[] data, int length, Predicate<ClientState> sendToClient) {
+		SendPacket packet = new SendPacket(Arrays.copyOfRange(data, 0, length), false);
 		for(ClientState client : clients.values()) {
 			if(sendToClient.test(client) && !client.isDisconnectState()) {
 				client.sendQueue.add(packet);
@@ -522,10 +454,6 @@ public class Server {
 
 	public void sendReliable(ClientState client, byte[] data) {
 		sendUnsafe(client, data.clone(), true);
-	}
-
-	public void sendUnreliable(ClientState client, byte[] data) {
-		sendUnsafe(client, data.clone(), false);
 	}
 
 	private static void sendUnsafe(ClientState client, byte[] data, boolean reliable) {
@@ -559,6 +487,11 @@ public class Server {
 		if(state == null)
 			clients.put(address, state = new ClientState(address));
 		return state;
+	}
+	
+	private void sendResponse(InetSocketAddress recipient, ByteBuffer sendBuffer, int receivedMessageID) throws IOException {
+		channel.send(sendBuffer.put(RESPONSE_TYPE).putInt(receivedMessageID).flip(), recipient);
+		sendBuffer.clear();
 	}
 
 	private void processPacket(InetSocketAddress sender, ByteBuffer buffer, ByteBuffer sendBuffer) throws IOException {

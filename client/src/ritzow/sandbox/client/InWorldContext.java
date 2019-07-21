@@ -163,6 +163,8 @@ public class InWorldContext implements GameTalker {
 	}
 
 	private void processUpdateEntity(ByteBuffer data) {
+		int count = data.getInt();
+		while(count > 0) {
 		int entityID = data.getInt();
 		Entity e = getEntity(entityID);
 		if(e != null) {
@@ -170,6 +172,8 @@ public class InWorldContext implements GameTalker {
 			e.setPositionY(data.getFloat());
 			e.setVelocityX(data.getFloat());
 			e.setVelocityY(data.getFloat());
+		}
+			--count;
 		}
 	}
 
