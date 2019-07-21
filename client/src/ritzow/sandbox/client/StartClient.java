@@ -38,7 +38,7 @@ public class StartClient {
 		USE_OPENGL_4_6 = false, 
 		LIMIT_FPS = true, 
 		PRINT_FPS = false;
-
+	
 	public static final long 
 		FRAME_RATE_LIMIT = 120,
 		FRAME_TIME_LIMIT = ClientUtility.frameRateToFrameTimeNanos(FRAME_RATE_LIMIT),
@@ -116,6 +116,7 @@ public class StartClient {
 		glfwTerminate();
 	}
 
+	//only takes about 23 milliseconds out of entire startup time
 	private static ModelRenderProgram setupGraphics(Display display) throws IOException {
 		display.setGraphicsContextOnThread();
 		RenderManager.initializeContext();
@@ -134,10 +135,10 @@ public class StartClient {
 			grass = Textures.loadTextureName("grass"),
 			face = Textures.loadTextureName("greenFace"),
 			red = Textures.loadTextureName("redSquare"),
-			sky = Textures.loadTextureName("clouds");
-		
+			sky = Textures.loadTextureName("clouds_online");
 		TextureAtlas atlas = Textures.buildAtlas(sky, grass, dirt, face, red);
 		
+		//TODO look into using https://github.com/javagl/JglTF with Blender
 		ModelData[] models = {
 			new ModelData(RenderConstants.MODEL_DIRT_BLOCK, positions, atlas.getCoordinates(dirt), indices),
 			new ModelData(RenderConstants.MODEL_GRASS_BLOCK, positions, atlas.getCoordinates(grass), indices),

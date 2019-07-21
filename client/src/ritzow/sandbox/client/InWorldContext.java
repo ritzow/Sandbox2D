@@ -146,7 +146,7 @@ public class InWorldContext implements GameTalker {
 
 	private void processRemoveEntity(ByteBuffer data) {
 		int id = data.getInt();
-		world.removeIf(e -> e.getID() == id);
+		world.remove(world.getEntityFromID(id));
 	}
 
 	private static <T> T deserialize(boolean compress, byte[] data) {
@@ -166,14 +166,14 @@ public class InWorldContext implements GameTalker {
 	private void processUpdateEntity(ByteBuffer data) {
 		int count = data.getInt();
 		while(count > 0) {
-		int entityID = data.getInt();
-		Entity e = getEntity(entityID);
-		if(e != null) {
-			e.setPositionX(data.getFloat());
-			e.setPositionY(data.getFloat());
-			e.setVelocityX(data.getFloat());
-			e.setVelocityY(data.getFloat());
-		}
+			int entityID = data.getInt();
+			Entity e = getEntity(entityID);
+			if(e != null) {
+				e.setPositionX(data.getFloat());
+				e.setPositionY(data.getFloat());
+				e.setVelocityX(data.getFloat());
+				e.setVelocityY(data.getFloat());
+			}
 			--count;
 		}
 	}
@@ -197,7 +197,7 @@ public class InWorldContext implements GameTalker {
 	}
 
 	private void onWorldJoin() {
-		cameraGrip = new TrackingCameraController(2.5f, 0.05f / player.getWidth(), 0.6f / player.getWidth());
+		cameraGrip = new TrackingCameraController(2.5f, player.getWidth() / 20f, player.getWidth() / 2f);
 		worldRenderer = new ClientWorldRenderer(StartClient.shaderProgram, cameraGrip.getCamera(), world);
 		interactionControls = new InteractionController();
 		StartClient.display.setCursor(StartClient.pickaxeCursor);
@@ -332,7 +332,7 @@ public class InWorldContext implements GameTalker {
 		public Map<Button, Runnable> buttonControls() {
 			return controls;
 		}
-
+		
 		int slotOffset = 0;
 
 		@Override

@@ -1,6 +1,7 @@
 package ritzow.sandbox.client;
 
 import java.io.IOException;
+import java.net.PortUnreachableException;
 import java.nio.ByteBuffer;
 import ritzow.sandbox.client.input.InputContext;
 import ritzow.sandbox.client.network.Client;
@@ -39,8 +40,12 @@ class ServerJoinContext {
 
 	private void onException(IOException e) {
 		try {
-			System.out.println("An exception occurred: " + 
-				(e.getMessage() == null ? e.getClass().getName() : e.getMessage()));
+			if(e instanceof PortUnreachableException) {
+				System.out.println("server port unreachable.");
+			} else {
+				System.out.println("An exception occurred: " + 
+						(e.getMessage() == null ? e.getClass().getName() : e.getMessage()));	
+			}
 			abort();
 		} catch (IOException e1) {
 			e1.printStackTrace();

@@ -19,6 +19,7 @@ import org.lwjgl.openal.AL;
 import org.lwjgl.openal.ALC;
 import org.lwjgl.openal.ALCCapabilities;
 
+//TODO use http://www.softsynth.com/jsyn/ some day to create cool sound effects
 public final class OpenALAudioSystem implements AudioSystem {
 	private static long alContext;
 	private static long device;
@@ -29,6 +30,7 @@ public final class OpenALAudioSystem implements AudioSystem {
 		return audio == null ? audio = initialize() : audio;
 	}
 	
+	//TODO this takes 500 ms to load, mainly device initialization and context creation
 	private static OpenALAudioSystem initialize() {
 		device = alcOpenDevice((ByteBuffer)null);
 		alContext = alcCreateContext(device, (IntBuffer)null);
@@ -79,6 +81,7 @@ public final class OpenALAudioSystem implements AudioSystem {
 		sounds = new HashMap<>();
 	}
 	
+	@Override
 	public void close() {
 		for(int buffer : sounds.values()) {
 			alDeleteBuffers(buffer);
@@ -86,6 +89,7 @@ public final class OpenALAudioSystem implements AudioSystem {
 		OpenALAudioSystem.shutdown();
 	}
 	
+	@Override
 	public void registerSound(int id, SoundInfo data) {
 		Objects.requireNonNull(data);
     	int format = AL_FORMAT_STEREO16;
@@ -140,10 +144,12 @@ public final class OpenALAudioSystem implements AudioSystem {
 		throw new UnsupportedOperationException("global playback not supported");
 	}
 
+	@Override
 	public void setVolume(float gain) {
 		alListenerf(AL_GAIN, gain);
 	}
 
+	@Override
 	public void setPosition(float x, float y) {
 		alListener3f(AL_POSITION, x, y, 0);
 	}

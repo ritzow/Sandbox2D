@@ -45,11 +45,10 @@ public final class Display implements InputProvider {
 	private void setIcons(GLFWImage... icons) {
 		try(MemoryStack stack = MemoryStack.stackPush()) {
 			var buffer = GLFWImage.mallocStack(icons.length, stack);
-			for(int i = 0; i < icons.length; i++) {
-				buffer.put(icons[i]);
+			for(GLFWImage icon : icons) {
+				buffer.put(icon);
 			}
-			buffer.flip();
-			glfwSetWindowIcon(displayID, buffer);
+			glfwSetWindowIcon(displayID, buffer.flip());
 		}
 	}
 

@@ -19,8 +19,7 @@ class MainMenuContext {
 
 	MainMenuContext(ModelRenderProgram program) {
 		this.ui = UserInterface.of(program,
-			Map.entry(new Icon(RenderConstants.MODEL_RED_SQUARE), Position.of(0, 0)),
-			Map.entry(new Icon(RenderConstants.MODEL_GRASS_BLOCK), Position.of(0.5f, 0)),
+			Map.entry(new Icon(RenderConstants.MODEL_RED_SQUARE), Position.of(0.5f, 0)),
 			Map.entry(new Icon(RenderConstants.MODEL_GREEN_FACE), Position.of(-0.5f, 0))
 		);
 		
