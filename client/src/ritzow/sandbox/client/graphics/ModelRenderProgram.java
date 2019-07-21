@@ -126,7 +126,10 @@ public final class ModelRenderProgram extends ShaderProgram {
 			FloatBuffer instanceData = stack.mallocFloat(16);
 			prepInstanceData(instanceData, posX, posY, scaleX, scaleY, rotation);
 			glUniformMatrix4fv(uniform_transform, false, instanceData.flip());
-			setFloat(uniform_opacity, opacity);
+			if(lastOpacity != opacity) {
+				setFloat(uniform_opacity, opacity);
+				lastOpacity = opacity;
+			}
 			glBindVertexArray(vaoID);
 			glDrawElements(GL_TRIANGLES, model.indexCount, GL_UNSIGNED_INT, model.indexOffset * Integer.BYTES);		
 		}
@@ -370,6 +373,8 @@ public final class ModelRenderProgram extends ShaderProgram {
 		renderQueue.addAll(models);
 	}
 	
+	private float lastOpacity = 0;
+	
 	//TODO something is causing a crash
 	/** Render queued RenderInstances **/
 	public void render() {
@@ -385,7 +390,10 @@ public final class ModelRenderProgram extends ShaderProgram {
 				ModelAttributes model = modelProperties.get(render.modelID);
 				prepInstanceData(instanceData, render.posX, render.posY, render.scaleX, render.scaleY, render.rotation);
 				glUniformMatrix4fv(uniform_transform, false, instanceData.flip());
-				setFloat(uniform_opacity, render.opacity);
+				if(render.opacity != lastOpacity) {
+					setFloat(uniform_opacity, render.opacity);
+					lastOpacity = render.opacity;
+				}
 				glDrawElements(GL_TRIANGLES, model.indexCount, GL_UNSIGNED_INT, model.indexOffset * Integer.BYTES);	
 			}
 		}
