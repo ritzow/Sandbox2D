@@ -7,3 +7,5 @@ Use or create proper logging system
 create user interface system/renderer
 Optimize texture atlas space usage
 Rewrite rendering to use a single draw command, multi/indirect/instanced etc.
+Implement Vulkan renderer
+Add binary glTF support
