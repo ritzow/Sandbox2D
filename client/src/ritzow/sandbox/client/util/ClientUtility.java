@@ -10,10 +10,24 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.glfw.GLFWImage;
+import ritzow.sandbox.client.StartClient;
 import ritzow.sandbox.client.graphics.Camera;
 import ritzow.sandbox.util.Utility;
 
 public class ClientUtility {
+	public static void limitFramerate(long frameStart) {
+		if(StartClient.LIMIT_FPS) {
+			Utility.sleep(Math.max(1, Utility.nanosToMillis(StartClient.FRAME_TIME_LIMIT 
+					- Utility.nanosSince(frameStart))));	
+		} else {
+			Utility.sleep(1);
+		}
+	}
+	
+	public static long frameRateToFrameTimeNanos(long fps) {
+		return 1_000_000_000/fps;
+	}
+	
 	public static long loadGLFWCursor(GLFWImage image, float ratioX, float ratioY) {
 		return glfwCreateCursor(image, (int)(image.width() * ratioX), (int)(image.height() * ratioY));
 	}

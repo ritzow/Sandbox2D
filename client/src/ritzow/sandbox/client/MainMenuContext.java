@@ -12,7 +12,7 @@ import ritzow.sandbox.client.input.InputContext;
 import ritzow.sandbox.client.ui.UserInterface;
 import ritzow.sandbox.client.ui.UserInterface.Position;
 import ritzow.sandbox.client.ui.element.Icon;
-import ritzow.sandbox.util.Utility;
+import ritzow.sandbox.client.util.ClientUtility;
 
 class MainMenuContext {
 	final UserInterface ui;
@@ -30,8 +30,9 @@ class MainMenuContext {
 	private long previousTime = 0;
 	
 	public void update() {
+		long frameStart = System.nanoTime();
 		refresh().poll(input);
-		Utility.sleep(1); //reduce CPU usage TODO add frame rate limit
+		ClientUtility.limitFramerate(frameStart);
 	}
 	
 	private Display refresh() {

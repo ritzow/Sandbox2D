@@ -14,6 +14,7 @@ import ritzow.sandbox.client.input.controller.TrackingCameraController;
 import ritzow.sandbox.client.network.Client;
 import ritzow.sandbox.client.network.Client.Status;
 import ritzow.sandbox.client.network.GameTalker;
+import ritzow.sandbox.client.util.ClientUtility;
 import ritzow.sandbox.client.util.SerializationProvider;
 import ritzow.sandbox.client.world.ClientWorldRenderer;
 import ritzow.sandbox.client.world.block.ClientBlockProperties;
@@ -202,7 +203,7 @@ public class InWorldContext implements GameTalker {
 		StartClient.display.setCursor(StartClient.pickaxeCursor);
 		lastWorldUpdate = System.nanoTime();
 		lastCameraUpdate = System.nanoTime();
-		GameLoop.setContext(this::updateGame);
+		GameLoop.setContext(this::updateClient);
 	}
 	
 	public void listenForServer() {
@@ -210,7 +211,8 @@ public class InWorldContext implements GameTalker {
 		client.update(this::process);
 	}
 
-	private void updateGame() {
+	private void updateClient() {
+		long frameStart = System.nanoTime();
 		StartClient.display.poll(input);
 
 		boolean isLeft = StartClient.display.isControlActivated(Control.MOVE_LEFT);
@@ -243,7 +245,7 @@ public class InWorldContext implements GameTalker {
 			lastWorldUpdate = System.nanoTime();
 			lastCameraUpdate = System.nanoTime();
 		}
-		Utility.sleep(1); //reduce CPU usage
+		ClientUtility.limitFramerate(frameStart);
 	}
 	
 	public void sendPlayerState(PlayerEntity player, boolean primary, boolean secondary) {
