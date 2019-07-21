@@ -301,7 +301,12 @@ public class InWorldContext implements GameTalker {
 	}
 	
 	private void selectSlot(int slot) {
+		long cursor = switch(slot) {
+			case 1, 2 -> StartClient.malletCursor;
+			default -> StartClient.pickaxeCursor;
+		};
 		player.setSlot(slot);
+		StartClient.display.setCursor(cursor);
 	}
 	
 	InputContext input = new InputContext() {
@@ -328,9 +333,18 @@ public class InWorldContext implements GameTalker {
 			return controls;
 		}
 
+		int slotOffset = 0;
+
 		@Override
 		public void mouseScroll(double xoffset, double yoffset) {
-			if(cameraGrip != null) cameraGrip.mouseScroll(xoffset, yoffset);
+			if(StartClient.display.isControlActivated(Control.SCROLL_MODIFIER)) {
+				slotOffset -= yoffset;
+				if(Math.abs(slotOffset) >= 1) {
+					int slot = Math.max(0, Math.min(player.selected() + slotOffset, player.inventory().getSize()-1));
+					selectSlot(slot);	
+					slotOffset = 0;
+				}
+			} else if(cameraGrip != null) cameraGrip.mouseScroll(xoffset, yoffset);
 		}
 
 		@Override

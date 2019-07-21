@@ -45,7 +45,7 @@ public class StartClient {
 		UPDATE_SKIP_THRESHOLD_NANOSECONDS = Utility.millisToNanos(100);
 
 	static Display display;
-	static long pickaxeCursor;
+	static long pickaxeCursor, malletCursor;
 	static AudioSystem audio;
 	static ModelRenderProgram shaderProgram;
 	static InetSocketAddress localAddress, serverAddress;
@@ -175,7 +175,9 @@ public class StartClient {
 		GLFWImage icon = ClientUtility.loadGLFWImage(Path.of("resources/assets/textures/redSquare.png"));
 		Display display = new Display(4, USE_OPENGL_4_6 ? 6 : 1, true, "Sandbox2D", icon);
 		var cursor = ClientUtility.loadGLFWImage(Path.of("resources/assets/textures/cursors/pickaxe32.png"));
+		var mallet = ClientUtility.loadGLFWImage(Path.of("resources/assets/textures/cursors/mallet32.png"));
 		pickaxeCursor = ClientUtility.loadGLFWCursor(cursor, 0, 0.66f);
+		malletCursor = ClientUtility.loadGLFWCursor(mallet, 0, 0.66f);
 		return display;
 	}
 
