@@ -10,6 +10,8 @@ import ritzow.sandbox.world.block.Block;
 public abstract class Entity implements Transportable {
 	protected final int entityID;
 	
+	protected long lastCollision;
+	
 	protected float 
 		positionX,
 		positionY,
@@ -99,7 +101,15 @@ public abstract class Entity implements Transportable {
 	public final float getVelocityY() {
 		return velocityY;
 	}
-
+	
+	public final long lastCollision() {
+		return lastCollision;
+	}
+	
+	public final void setLastCollision(long time) {
+		lastCollision = time;
+	}
+	
 	public final void setPositionX(float positionX) {
 		this.positionX = positionX;
 	}
@@ -116,23 +126,16 @@ public abstract class Entity implements Transportable {
 		this.velocityY = velocityY;
 	}
 	
-	public final void setSpeed(float speed) {
-		float delta = speed / getSpeed();
-		velocityX *= delta;
-		velocityY *= delta;
-	}
-	
 	@Override
 	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append("positionX = ");
-		builder.append(positionX);
-		builder.append(", positionY = ");
-		builder.append(positionY);
-		builder.append(", velocityX = ");
-		builder.append(velocityX);
-		builder.append(", velocityY = ");
-		builder.append(velocityY);
-		return builder.toString();
+		return new StringBuilder()
+			.append("positionX = ")
+			.append(positionX)
+			.append(", positionY = ")
+			.append(positionY)
+			.append(", velocityX = ")
+			.append(velocityX)
+			.append(", velocityY = ")
+			.append(velocityY).toString();
 	}
 }

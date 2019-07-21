@@ -187,8 +187,11 @@ public class World implements Transportable, Iterable<Entity> {
 	public void removeIf(Predicate<Entity> predicate) {
 		Iterator<Entity> it = entities.iterator();
 		while(it.hasNext()) {
-			if(predicate.test(it.next()))
+			Entity next = it.next();
+			if(predicate.test(next)) {
 				it.remove();
+				if(onRemove != null) onRemove.accept(next);
+			}
 		}
 	}
 
@@ -323,7 +326,8 @@ public class World implements Transportable, Iterable<Entity> {
 		int topBound = Utility.clampUpperBound(worldTop, e.getPositionY() + e.getHeight());
 		int rightBound = Utility.clampUpperBound(worldRight, e.getPositionX() + e.getWidth());
 		int bottomBound = Utility.clampLowerBound(0, e.getPositionY() - e.getHeight());
-
+		//TODO is there redundancy between this and resolveBlockCollision
+		//System.out.println(leftBound + ", " + bottomBound + ", " + rightBound + ", " + topBound);
 		for(int row = bottomBound; row < topBound; row++) {
 			for(int column = leftBound; column < rightBound; column++) {
 				Block block = foreground.get(column, row);
@@ -390,48 +394,56 @@ public class World implements Transportable, Iterable<Entity> {
 	}
 
 	private void resolveBlockCollision(Entity e, Block block, int blockX, int blockY, long nanoseconds) {
-		float width = 0.5f * (e.getWidth() + 1); //mid-point between entity and block
-		float height = 0.5f * (e.getHeight() + 1);
+		float centroidX = 0.5f * (e.getWidth() + 1); //average between entity and block
+		float centroidY = 0.5f * (e.getHeight() + 1);
 		float deltaX = blockX - e.getPositionX();
 		float deltaY = blockY - e.getPositionY();
-		if (Math.abs(deltaX) < width && Math.abs(deltaY) < height) { /* collision! */
+		if (Math.abs(deltaX) < centroidX && Math.abs(deltaY) < centroidY) { /* collision! */
 			e.onCollision(this, block, blockX, blockY, nanoseconds);
-		    float wy = width * deltaY;
-		    float hx = height * deltaX;
+		    float wy = centroidX * deltaY;
+		    float hx = centroidY * deltaX;
 		    if (wy > hx) {
 		        if (wy > -hx) { /* collision on the bottom of block, top of entity */
-		        	e.setPositionY(blockY - height);
+		        	e.setPositionY(blockY - centroidY);
 		        	onCollisionEntity(e, block.getFriction(), nanoseconds);
 		        } else { /* collision on right of block */
-		        	e.setPositionX(blockX + width);
+		        	e.setPositionX(blockX + centroidX);
 		        	if(e.getVelocityX() < 0) {
 						e.setVelocityX(0);
 					}
 		        }
 		    } else {
 		        if (wy > -hx) { /* collision on left of block, right of entity */
-		        	e.setPositionX(blockX - width);
+		        	e.setPositionX(blockX - centroidX);
 		        	if(e.getVelocityX() > 0) {
 						e.setVelocityX(0);
 					}
 		        } else { /* collision on top of block, bottom of entity */
-		        	e.setPositionY(blockY + height);
+		        	e.setPositionY(blockY + centroidY);
 		        	onCollisionEntity(e, block.getFriction(), nanoseconds);
 		        }
 		    }
-		}	
+		}
 	}
 
 	private static void onCollisionEntity(Entity e, float surfaceFriction, long nanoseconds) {
+		//friction force = normal force * friction
+		//TODO maybe implement normal forces some time (for when entities are stacked)?
+		//TODO must be independent of number of collisions, rely on Entity state (lastCollision)?
+//		float friction = Utility.average(e.getFriction(), surfaceFriction);
+//		long collisionTime = System.nanoTime();
+//		long duration = Math.max(nanoseconds, collisionTime - e.lastCollision());
+//    	if(e.getVelocityX() > 0) {
+//    		//float left = Math.fma(-friction, duration, e.getVelocityX());
+//    		float left = -friction / duration + e.getVelocityX();
+//    		e.setVelocityX(Math.max(0, left));
+//    	} else if(e.getVelocityX() < 0) {
+//    		//float right = Math.fma(friction, duration, e.getVelocityX());
+//    		float right = friction / duration + e.getVelocityX();
+//    		e.setVelocityX(Math.min(0, right));
+//    	}
+//		e.setLastCollision(collisionTime);
+		
 		e.setVelocityY(0);
-    	if(e.getVelocityX() > 0) {
-    		float friction = -Utility.average(e.getFriction(), surfaceFriction);
-    		float left = Math.fma(friction, nanoseconds/16_000_000_0f, e.getVelocityX());
-    		e.setVelocityX(Math.max(0, left));
-    	} else if(e.getVelocityX() < 0) {
-    		float friction = Utility.average(e.getFriction(), surfaceFriction);
-    		float right = Math.fma(friction, nanoseconds/16_000_000_0f, e.getVelocityX());
-    		e.setVelocityX(Math.min(0, right));
-    	}
 	}
 }

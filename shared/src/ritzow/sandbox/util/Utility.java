@@ -275,8 +275,8 @@ public final class Utility {
 		return milliseconds * 1_000_000;
 	}
 
-	public static double nanosToMillis(long nanoseconds) {
-		return nanoseconds / 1_000_000D;
+	public static long nanosToMillis(long nanoseconds) {
+		return nanoseconds / 1_000_000;
 	}
 
 	public static long nanosSince(long nanosStart) {

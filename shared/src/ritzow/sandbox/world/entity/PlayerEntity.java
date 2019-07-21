@@ -1,5 +1,6 @@
 package ritzow.sandbox.world.entity;
 
+import java.util.Objects;
 import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.data.Serializer;
 import ritzow.sandbox.data.TransportableDataReader;
@@ -30,7 +31,7 @@ public abstract class PlayerEntity extends Entity implements Living {
 
 	public PlayerEntity(int entityID) {
 		super(entityID);
-		this.inventory = new Inventory<>(9);
+		this.inventory = new Inventory<>(3);
 	}
 
 	public PlayerEntity(TransportableDataReader input) {
@@ -153,9 +154,7 @@ public abstract class PlayerEntity extends Entity implements Living {
 	}
 
 	public void setSlot(int slot) {
-		if(slot > inventory.getSize() - 1 || slot < 0)
-			throw new IllegalArgumentException("slot out of bounds");
-		selected = (byte)slot;
+		selected = (byte)Objects.checkIndex(slot, inventory.getSize());
 	}
 	
 	@Override

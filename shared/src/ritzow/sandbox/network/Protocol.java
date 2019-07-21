@@ -15,7 +15,7 @@ public final class Protocol {
 
 	public static final float BLOCK_INTERACT_RANGE = 1000;
 	public static final long BLOCK_INTERACT_COOLDOWN_NANOSECONDS = Utility.millisToNanos(0);
-	public static final long THROW_COOLDOWN_NANOSECONDS = Utility.millisToNanos(100);
+	public static final long THROW_COOLDOWN_NANOSECONDS = Utility.millisToNanos(0);
 
 	/** The Charset for text encoding used by the client and server **/
 	public static final Charset CHARSET = StandardCharsets.UTF_8;
