@@ -32,10 +32,15 @@ import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.util.Utility;
 
 public class StartClient {
-	static final long UPDATE_SKIP_THRESHOLD_NANOSECONDS = Utility.millisToNanos(100);
-	public static final int FRAME_RATE_LIMIT = 120;
-	private static final boolean USE_OPENGL_4_6 = false; 
-	public static final boolean PRINT_FPS = false;
+	public static final boolean 
+		USE_OPENGL_4_6 = false, 
+		LIMIT_FPS = true, 
+		PRINT_FPS = false;
+
+	public static final long 
+		FRAME_RATE_LIMIT = 120,
+		FRAME_TIME_LIMIT = ClientUtility.frameRateToFrameTimeNanos(FRAME_RATE_LIMIT),
+		UPDATE_SKIP_THRESHOLD_NANOSECONDS = Utility.millisToNanos(100);
 
 	static Display display;
 	static long pickaxeCursor;
