@@ -11,11 +11,13 @@ import java.net.InetSocketAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Map;
 import java.util.regex.Pattern;
+import org.lwjgl.BufferUtils;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import org.lwjgl.glfw.GLFWImage;
 import ritzow.sandbox.client.audio.AudioSystem;
@@ -159,15 +161,10 @@ public class StartClient {
 	}
 	
 	private static Shader spirv(String file, ShaderType type) throws IOException {
-		return Shader.fromSPIRV(readFile(file), type);
-	}
-
-	private static ByteBuffer readFile(String file) throws IOException {
-		Path path = Path.of(file);
-		ByteBuffer out = ByteBuffer.allocateDirect((int)Files.size(path));
-		try(var channel = Files.newByteChannel(path, StandardOpenOption.READ)) {
-			channel.read(out);
-			return out.flip();
+		try(FileChannel reader = FileChannel.open(Path.of(file), StandardOpenOption.READ)) {
+			ByteBuffer dest = BufferUtils.createByteBuffer((int)reader.size());
+			reader.read(dest);
+			return Shader.fromSPIRV(dest.flip(), type);	
 		}
 	}
 
