@@ -14,6 +14,7 @@ import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.block.DirtBlock;
 import ritzow.sandbox.world.block.GrassBlock;
+import ritzow.sandbox.world.entity.ItemEntity;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
 public final class StartServer {
@@ -21,7 +22,7 @@ public final class StartServer {
 	private static boolean save = true;
 	private static final Path saveFile = Path.of("data/worlds/world.dat");
 
-	private static final int WORLD_WIDTH = 200, WORLD_BASE_HEIGHT = 50, WORLD_AMPLITUDE = 50;
+	private static final int WORLD_WIDTH = 1000, WORLD_BASE_HEIGHT = 50, TERRAIN_AMPLITUDE = 100, SKY_HEIGHT = 10;
 	private static final float WORLD_FREQUENCY = 0.15f;
 
 	public static void main(String[] args) throws SocketException, IOException {
@@ -79,10 +80,10 @@ public final class StartServer {
 	}
 
 	private static World generateWorld() {
-		World world = new World(WORLD_WIDTH, WORLD_BASE_HEIGHT + WORLD_AMPLITUDE, 0.016f);
+		World world = new World(WORLD_WIDTH, WORLD_BASE_HEIGHT + TERRAIN_AMPLITUDE + SKY_HEIGHT, 0.016f);
 		for(int column = 0; column < WORLD_WIDTH; column++) {
-			int amplitude = WORLD_BASE_HEIGHT + WORLD_AMPLITUDE/2
-					+ Math.round(WORLD_AMPLITUDE/2 * (float)Math.sin(column * WORLD_FREQUENCY)) - 1;
+			int amplitude = WORLD_BASE_HEIGHT + TERRAIN_AMPLITUDE/2
+					+ Math.round(TERRAIN_AMPLITUDE/2 * (float)Math.sin(column * WORLD_FREQUENCY)) - 1;
 			for(int row = 0; row < amplitude; row++) {
 				world.getForeground().set(column, row, new DirtBlock());
 				world.getBackground().set(column, row, new DirtBlock());
@@ -114,6 +115,11 @@ public final class StartServer {
 		runner.register("debug",	StartServer::debugCommand);
 		runner.register("kill", 	StartServer::killCommand);
 		runner.register("printworld", StartServer::printworldCommand);
+		runner.register("killitems", StartServer::killItemsCommand);
+	}
+	
+	private static void killItemsCommand(String args) {
+		server.world().removeIf(e -> e instanceof ItemEntity);
 	}
 	
 	private static void printworldCommand(String args) {
