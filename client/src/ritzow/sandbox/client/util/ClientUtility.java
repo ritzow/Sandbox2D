@@ -10,7 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.glfw.GLFWImage;
-import ritzow.sandbox.client.StartClient;
+import static ritzow.sandbox.client.data.StandardClientOptions.*;
 import ritzow.sandbox.client.graphics.Camera;
 import ritzow.sandbox.util.Utility;
 
@@ -39,17 +39,14 @@ public class ClientUtility {
 	
 	public static float pixelHorizontalToWorld(Camera camera, int mouseX, int frameWidth, int frameHeight) {
 		float worldX = (2f * mouseX) / frameWidth - 1f; //normalize the mouse coordinate
-		worldX /= frameHeight/(float)frameWidth; 		//apply aspect ratio
+		worldX *= (float)frameWidth/frameHeight; 		//apply aspect ratio
 		worldX /= camera.getZoom(); 					//apply zoom
 		worldX += camera.getPositionX(); 				//apply camera position
 		return worldX;
 	}
 	
 	public static float pixelVerticalToWorld(Camera camera, int mouseY, int framebufferHeight) {
-		float worldY = -((2f * mouseY) / framebufferHeight - 1f);
-		worldY /= camera.getZoom();
-		worldY += camera.getPositionY();
-		return worldY;
+		return (1f - (2f * mouseY) / framebufferHeight) / camera.getZoom() + camera.getPositionY();
 	}
 	
 	public static float getViewRightBound(Camera camera, int framebufferWidth, int framebufferHeight) {
@@ -64,15 +61,16 @@ public class ClientUtility {
 	
 	//width and height for any future need
 	public static float getViewTopBound(Camera camera, int framebufferWidth, int framebufferHeight) {
-		return 1/camera.getZoom() + camera.getPositionY();
+		return 1f / camera.getZoom() + camera.getPositionY();
 	}
 	
 	//width and height for any future need
 	public static float getViewBottomBound(Camera camera, int framebufferWidth, int framebufferHeight) {
-		return -1/camera.getZoom() + camera.getPositionY();
+		return -1f / camera.getZoom() + camera.getPositionY();
 	}
 	
 	public static void printFrameRate(long frameStart) {
-		System.out.print((long)(1/(0.000000001 * Utility.nanosSince(frameStart)))); System.out.println(" FPS");
+		System.out.print(1_000_000_000 * Utility.nanosSince(frameStart)); 
+		System.out.println(" FPS");
 	}
 }
