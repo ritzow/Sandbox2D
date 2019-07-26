@@ -21,8 +21,8 @@ public class ServerBombEntity extends BombEntity {
 	}
 	
 	@Override
-	public void onCollision(World world, Block block, int blockX, int blockY, long nanoseconds) {
-		super.onCollision(world, block, blockX, blockY, nanoseconds);
+	public void onCollision(World world, Block block, Side side, int blockX, int blockY, long nanoseconds) {
+		super.onCollision(world, block, side, blockX, blockY, nanoseconds);
 		world.getForeground().destroy(world, blockX, blockY);
 		server.broadcastRemoveBlock(blockX, blockY);
 		exploded = true;

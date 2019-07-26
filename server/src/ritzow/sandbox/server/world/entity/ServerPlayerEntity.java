@@ -26,7 +26,7 @@ public class ServerPlayerEntity extends PlayerEntity {
 	}
 
 	@Override
-	public boolean hasCollision() {
+	public boolean interactsWithEntities() {
 		return true;
 	}
 }
