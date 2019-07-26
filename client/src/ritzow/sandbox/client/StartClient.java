@@ -6,16 +6,14 @@ import static org.lwjgl.glfw.GLFW.glfwTerminate;
 import static org.lwjgl.glfw.GLFW.glfwDestroyCursor;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.SocketException;
-import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Map;
+import java.util.regex.MatchResult;
 import java.util.regex.Pattern;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.glfw.GLFWErrorCallback;
@@ -24,26 +22,16 @@ import ritzow.sandbox.client.audio.AudioSystem;
 import ritzow.sandbox.client.audio.DefaultAudioSystem;
 import ritzow.sandbox.client.audio.OpenALAudioSystem;
 import ritzow.sandbox.client.audio.Sound;
-import ritzow.sandbox.client.audio.WAVEDecoder;
+import ritzow.sandbox.client.audio.WAVEDecoderNIO;
+import ritzow.sandbox.client.data.StandardClientOptions;
 import ritzow.sandbox.client.graphics.*;
 import ritzow.sandbox.client.graphics.ModelRenderProgram.ModelData;
 import ritzow.sandbox.client.graphics.Shader.ShaderType;
 import ritzow.sandbox.client.util.ClientUtility;
 import ritzow.sandbox.network.NetworkUtility;
-import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.util.Utility;
 
 public class StartClient {
-	public static final boolean 
-		USE_OPENGL_4_6 = false, 
-		LIMIT_FPS = true, 
-		PRINT_FPS = false;
-	
-	public static final long 
-		FRAME_RATE_LIMIT = 120,
-		FRAME_TIME_LIMIT = ClientUtility.frameRateToFrameTimeNanos(FRAME_RATE_LIMIT),
-		UPDATE_SKIP_THRESHOLD_NANOSECONDS = Utility.millisToNanos(100);
-
 	static Display display;
 	static long pickaxeCursor, malletCursor;
 	static AudioSystem audio;
@@ -53,14 +41,13 @@ public class StartClient {
 	
 	/** For use by native launcher **/
 	public static void start(String args) throws Exception {
-		//Pattern: all character sequences split by whitespace
-		String[] formatted = Pattern
-			.compile("\\S+")
+		main(Pattern
+			.compile("\\S+") //Pattern: all character sequences split by whitespace
 			.matcher(args)
 			.results()
-			.map(result -> result.group())
-			.toArray(length -> new String[length]);
-		main(formatted);
+			.map(MatchResult::group)
+			.toArray(String[]::new)
+		);
 	}
 	
 	public static void main(String[] args) throws Exception {
@@ -70,39 +57,13 @@ public class StartClient {
 		display = setupGLFW();
 		shaderProgram = setupGraphics(display);
 		mainMenu = new MainMenuContext(shaderProgram);
-		configureAddresses(args);
+		localAddress = StandardClientOptions.LAST_LOCAL_ADDRESS;
+		serverAddress = StandardClientOptions.LAST_SERVER_ADDRESS;
 		System.out.println("took " + Utility.formatTime(Utility.nanosSince(startupStart)));
-		System.out.println("Local Address: " + Utility.formatAddress(localAddress));
-		System.out.println("Server Address: " + Utility.formatAddress(serverAddress));
+		System.out.println(NetworkUtility.formatAddress(localAddress) + " → " + NetworkUtility.formatAddress(serverAddress));
 		display.show();
 		GameLoop.start(mainMenu::update);
-		System.out.println("done!");
-	}
-	
-	private static void configureAddresses(String[] args) throws SocketException, UnknownHostException {
-		if(args.length > 0) {
-			switch(args[0]) {
-				case "local" -> {
-					localAddress = new InetSocketAddress(NetworkUtility.getLoopbackAddress(), 0);
-					serverAddress = new InetSocketAddress(NetworkUtility.getLoopbackAddress(), 
-							Protocol.DEFAULT_SERVER_PORT_UDP);
-				}
-				
-				case "public" -> {
-					serverAddress = new InetSocketAddress(InetAddress.getByName(args[1]), 
-							Protocol.DEFAULT_SERVER_PORT_UDP);
-					localAddress = NetworkUtility.socketAddress(
-							NetworkUtility.getPrimaryAddress(
-							NetworkUtility.isIPv6(serverAddress.getAddress())));
-				}
-				
-				default -> throw new UnsupportedOperationException("Unknown address type");
-			}
-		} else {
-			localAddress = new InetSocketAddress(NetworkUtility.getLoopbackAddress(), 0);
-			serverAddress = new InetSocketAddress(NetworkUtility.getLoopbackAddress(), 
-					Protocol.DEFAULT_SERVER_PORT_UDP);
-		}
+		System.out.println("done!");		
 	}
 	
 	static void exit() {
@@ -113,6 +74,7 @@ public class StartClient {
 		display.destroy();
 		audio.close();
 		glfwDestroyCursor(pickaxeCursor);
+		glfwDestroyCursor(malletCursor);
 		glfwTerminate();
 	}
 
@@ -147,10 +109,10 @@ public class StartClient {
 			new ModelData(RenderConstants.MODEL_SKY, positions, atlas.getCoordinates(sky), indices)
 		};
 		
-		Shader vertex = USE_OPENGL_4_6 ? 
+		Shader vertex = StandardClientOptions.USE_OPENGL_4_6 ? 
 			spirv("resources/shaders/model.vert.spv", ShaderType.VERTEX) :
 			source("resources/shaders/newmodel.vert", ShaderType.VERTEX);
-		Shader fragment = USE_OPENGL_4_6 ? 
+		Shader fragment = StandardClientOptions.USE_OPENGL_4_6 ? 
 			spirv("resources/shaders/model.frag.spv", ShaderType.FRAGMENT) :
 			source("resources/shaders/newmodel.frag", ShaderType.FRAGMENT);
 			
@@ -170,16 +132,14 @@ public class StartClient {
 	}
 
 	private static Display setupGLFW() throws IOException {
-		if(!glfwInit())
-			throw new RuntimeException("GLFW failed to initialize");
 		glfwSetErrorCallback(GLFWErrorCallback.createPrint(System.err));
+		if(!glfwInit()) throw new RuntimeException("GLFW failed to initialize");
 		GLFWImage icon = ClientUtility.loadGLFWImage(Path.of("resources/assets/textures/redSquare.png"));
-		Display display = new Display(4, USE_OPENGL_4_6 ? 6 : 1, true, "Sandbox2D", icon);
 		var cursor = ClientUtility.loadGLFWImage(Path.of("resources/assets/textures/cursors/pickaxe32.png"));
 		var mallet = ClientUtility.loadGLFWImage(Path.of("resources/assets/textures/cursors/mallet32.png"));
 		pickaxeCursor = ClientUtility.loadGLFWCursor(cursor, 0, 0.66f);
 		malletCursor = ClientUtility.loadGLFWCursor(mallet, 0, 0.66f);
-		return display;
+		return new Display(4, StandardClientOptions.USE_OPENGL_4_6 ? 6 : 1, true, "Sandbox2D", icon);
 	}
 
 	private static AudioSystem setupAudio() throws IOException {
