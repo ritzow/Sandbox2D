@@ -12,6 +12,7 @@ import java.util.Objects;
 import java.util.Queue;
 import java.util.function.Consumer;
 import ritzow.sandbox.data.Bytes;
+import ritzow.sandbox.network.NetworkUtility;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.util.Utility;
 
@@ -23,19 +24,12 @@ public class Client {
 	private final Map<SendPacket, Runnable> messageSentActions;
 	private int receiveReliableID, receiveUnreliableID, sendReliableID, sendUnreliableID;
 	
-	private Status status;
+	private boolean isUp;
 	private long ping; //rount trip time in nanoseconds
 
 	//reliable message send state
 	private int sendAttempts;
 	private long sendTime;
-
-	public static enum Status {
-		CONNECTING,
-		CONNECTED,
-		DISCONNECTING,
-		DISCONNECTED;
-	}
 	
 	public static interface MessageProcessor {
 		void process(short messageType, ByteBuffer data);
@@ -61,8 +55,7 @@ public class Client {
 	}
 
 	public <T> void setEventListener(ClientEvent<T> eventType, T action) {
-		Objects.requireNonNull(action);
-		events[eventType.index] = action;
+		events[eventType.index] = Objects.requireNonNull(action);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -88,17 +81,13 @@ public class Client {
 	private Client(InetSocketAddress bindAddress, 
 			InetSocketAddress serverAddress) throws IOException {
 		this.channel = DatagramChannel
-				.open(Utility.getProtocolFamily(bindAddress.getAddress()))
+				.open(NetworkUtility.protocolOf(bindAddress.getAddress()))
 				.bind(bindAddress)
 				.connect(serverAddress);
 		this.channel.configureBlocking(false);
 		this.sendQueue = new ArrayDeque<>();
 		this.messageSentActions = new HashMap<>();
-		this.status = Status.CONNECTING;
-	}
-
-	public Status getStatus() {
-		return status;
+		this.isUp = true;
 	}
 
 	public InetSocketAddress getLocalAddress() {
@@ -142,16 +131,17 @@ public class Client {
 		sendQueue.add(new SendPacket(data.clone(), false));
 	}
 
-	public void setStatus(Status status) {
-		this.status = status;
-	}
-
 	/**
 	 * Abruptly close the client without notifying a connected server
 	 * @throws IOException if an exception occurs when closing the networking socket
 	 */
 	public void close() throws IOException {
+		isUp = false;
 		channel.close();
+	}
+	
+	public void startClose() {
+		isUp = false;
 	}
 
 	private static class SendPacket {
@@ -182,14 +172,15 @@ public class Client {
 	public void update(int maxReceive, MessageProcessor processor) {
 		try {
 			//already connected to server so no need to check SocketAddress
-			while(status != Status.DISCONNECTED && maxReceive > 0 && channel.receive(receiveBuffer) != null) {
+			while(isUp && maxReceive > 0 && channel.receive(receiveBuffer) != null) {
 				receiveBuffer.flip(); //flip to set limit and prepare to read packet data
 				processReceived(processor); //process messages from the server
 				receiveBuffer.clear(); //clear to prepare for next receive
-				maxReceive--;
+				--maxReceive;
 			}
 
-			if(status != Status.DISCONNECTED) {
+			//TODO create interface type for SendPackets that writes directly to send buffer
+			if(isUp) {
 				//send unreliable messages
 				while(!sendQueue.isEmpty() && !sendQueue.peek().reliable) {
 					setupSendBuffer(sendBuffer, Protocol.UNRELIABLE_TYPE, sendUnreliableID++, sendQueue.poll().data);
@@ -207,7 +198,7 @@ public class Client {
 						if(sendAttempts <= Protocol.RESEND_COUNT) {
 							sendReliableInternal(sendBuffer);
 						} else {
-							status = Status.DISCONNECTED;
+							isUp = false;
 							var action = getAction(ClientEvent.TIMED_OUT);
 							if(action != null) action.run();
 						}
@@ -215,7 +206,7 @@ public class Client {
 				}
 			}
 		} catch(IOException e) {
-			status = Status.DISCONNECTED;
+			isUp = false;
 			var action = getAction(ClientEvent.EXCEPTION_OCCURRED);
 			if(action != null) action.accept(e);
 		}
