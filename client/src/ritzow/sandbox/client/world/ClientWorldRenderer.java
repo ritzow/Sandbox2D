@@ -6,13 +6,11 @@ import ritzow.sandbox.client.graphics.Camera;
 import ritzow.sandbox.client.graphics.Framebuffer;
 import ritzow.sandbox.client.graphics.GraphicsUtility;
 import ritzow.sandbox.client.graphics.ModelRenderProgram;
-import ritzow.sandbox.client.graphics.ModelRenderProgram.RenderInstance;
 import ritzow.sandbox.client.graphics.RenderConstants;
 import ritzow.sandbox.client.graphics.Renderable;
 import ritzow.sandbox.client.graphics.Renderer;
 import ritzow.sandbox.client.util.ClientUtility;
 import ritzow.sandbox.client.world.block.ClientBlockProperties;
-import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.Entity;
@@ -63,10 +61,10 @@ public final class ClientWorldRenderer implements Renderer {
 		BlockGrid background = world.getBackground();
 
 		//get visible block grid bounds
-		int leftBound = 	Utility.clampLowerBound(0, worldLeft);
-		int rightBound = 	Utility.clampUpperBound(foreground.getWidth()-1, worldRight);
-		int topBound = 		Utility.clampUpperBound(foreground.getHeight()-1, worldTop);
-		int bottomBound =	Utility.clampLowerBound(0, worldBottom);
+		int leftBound = Math.max(0, (int)worldLeft);
+		int bottomBound = Math.max(0, (int)worldBottom);
+		int topBound = Math.min(Math.round(worldTop), foreground.getHeight() - 1);
+		int rightBound = Math.min(Math.round(worldRight), foreground.getWidth() - 1);
 
 		//render the blocks visible in the viewport
 		for(int row = bottomBound; row <= topBound; row++) {
