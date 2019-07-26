@@ -20,9 +20,9 @@ import ritzow.sandbox.world.entity.PlayerEntity;
 public final class StartServer {
 	private static Server server;
 	private static boolean save = true;
-	private static final Path saveFile = Path.of("data/worlds/world.dat");
+	private static final Path saveFile = Path.of("world.dat");
 
-	private static final int WORLD_WIDTH = 1000, WORLD_BASE_HEIGHT = 50, TERRAIN_AMPLITUDE = 100, SKY_HEIGHT = 10;
+	private static final int WORLD_WIDTH = 200, WORLD_BASE_HEIGHT = 20, TERRAIN_AMPLITUDE = 20, SKY_HEIGHT = 20;
 	private static final float WORLD_FREQUENCY = 0.15f;
 
 	public static void main(String[] args) throws SocketException, IOException {
@@ -44,7 +44,7 @@ public final class StartServer {
 	public static void run(InetSocketAddress bindAddress) throws IOException {
 		try {
 			server = Server.start(bindAddress);
-			System.out.println("Started server on " + Utility.formatAddress(server.getAddress()) + ".");
+			System.out.println("Started server on " + NetworkUtility.formatAddress(server.getAddress()) + ".");
 			long time = System.nanoTime();
 			System.out.print((Files.exists(saveFile) ? "Loading" : "Generating") + " world... ");
 			World world = Files.exists(saveFile) ? loadWorld(saveFile) : generateWorld();
@@ -57,9 +57,9 @@ public final class StartServer {
 				while(server.isOpen()) {
 					parser.update();
 					server.update();
-					Utility.sleep(1);
+					Utility.sleepMillis(1);
 				}
-			} catch(Exception e) {
+			} catch(IOException e) {
 				e.printStackTrace();
 			} finally {
 				if(save) {
@@ -71,7 +71,7 @@ public final class StartServer {
 				System.exit(0); //kill the console thread
 			}
 		} catch(BindException e) {
-			System.out.println("Couldn't start server on address " + Utility.formatAddress(bindAddress));
+			System.out.println("Couldn't start server on address " + NetworkUtility.formatAddress(bindAddress));
 		}
 	}
 
@@ -81,10 +81,10 @@ public final class StartServer {
 
 	private static World generateWorld() {
 		World world = new World(WORLD_WIDTH, WORLD_BASE_HEIGHT + TERRAIN_AMPLITUDE + SKY_HEIGHT, 0.016f);
-		for(int column = 0; column < WORLD_WIDTH; column++) {
+		for(int column = 0; column < WORLD_WIDTH; ++column) {
 			int amplitude = WORLD_BASE_HEIGHT + TERRAIN_AMPLITUDE/2
 					+ Math.round(TERRAIN_AMPLITUDE/2 * (float)Math.sin(column * WORLD_FREQUENCY)) - 1;
-			for(int row = 0; row < amplitude; row++) {
+			for(int row = 0; row < amplitude; ++row) {
 				world.getForeground().set(column, row, new DirtBlock());
 				world.getBackground().set(column, row, new DirtBlock());
 			}
@@ -102,20 +102,21 @@ public final class StartServer {
 			Files.write(file, serialized);
 			System.out.println("world saved to " + Utility.formatSize(serialized.length) + ".");
 		} catch (IOException e) {
-			System.out.println("Error while saving world to file '" + saveFile + "':" + e.getClass().getTypeName() + ":" + e.getMessage());
+			System.out.println("Error while saving world to file '" + saveFile + "':" 
+					+ e.getClass().getTypeName() + ":" + e.getMessage());
 		}
 	}
 
 	private static void registerCommands(CommandParser runner) {
-		runner.register("stop", 	StartServer::stopCommand);
-		runner.register("abort", 	StartServer::abortCommand);
-		runner.register("list", 	StartServer::listCommmand);
-		runner.register("say", 		StartServer::sayCommand);
-		runner.register("reset", 	StartServer::resetCommand);
-		runner.register("debug",	StartServer::debugCommand);
-		runner.register("kill", 	StartServer::killCommand);
-		runner.register("printworld", StartServer::printworldCommand);
-		runner.register("killitems", StartServer::killItemsCommand);
+		runner.register("stop", 		StartServer::stopCommand);
+		runner.register("abort", 		StartServer::abortCommand);
+		runner.register("list", 		StartServer::listCommmand);
+		runner.register("say", 			StartServer::sayCommand);
+		runner.register("reset", 		StartServer::resetCommand);
+		runner.register("debug",		StartServer::debugCommand);
+		runner.register("kill", 		StartServer::killCommand);
+		runner.register("printworld", 	StartServer::printworldCommand);
+		runner.register("killitems", 	StartServer::killItemsCommand);
 	}
 	
 	private static void killItemsCommand(String args) {
