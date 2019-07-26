@@ -1,8 +1,9 @@
-#don't include eclipse output in git repo
+#don't include output directories
 bin/
+jvm/
 
 #don't include server data storage
-/server/data/
+/server/world.dat
 
 #don't include fonts
 /serverlauncher/resources/font/
@@ -13,15 +14,14 @@ bin/
 #don't include outdated code
 /oldcode/
 
-#don't include packaged binaries
-/build/
-
 #don't include eclipse project settings
 .classpath
 .project
 .settings
 
 #native launcher/visual studio files
+natives/
+build/
 /clientlauncher/Windows/natives
 /clientlauncher/**/lib
 /clientlauncher/**/include
