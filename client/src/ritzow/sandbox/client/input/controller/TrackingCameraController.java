@@ -5,15 +5,16 @@ import ritzow.sandbox.client.graphics.Camera;
 import ritzow.sandbox.client.graphics.Display;
 import ritzow.sandbox.client.input.Control;
 import ritzow.sandbox.client.input.handler.ScrollHandler;
+import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.entity.Entity;
 
 public final class TrackingCameraController implements ScrollHandler {
 	private final Camera camera;
-	private final float zoomSpeed, minZoom, maxZoom;
+	private final float zoomSpeedNanos, minZoom, maxZoom;
 
 	public TrackingCameraController(float zoomSpeed, float minZoom, float maxZoom) {
 		this.camera = new Camera(0, 0, minZoom);
-		this.zoomSpeed = zoomSpeed;
+		this.zoomSpeedNanos = Utility.convertPerSecondToPerNano(zoomSpeed);
 		this.minZoom = minZoom;
 		this.maxZoom = maxZoom;
 	}
@@ -22,28 +23,29 @@ public final class TrackingCameraController implements ScrollHandler {
 		if(display.isControlActivated(Control.RESET_ZOOM)) {
 			resetZoom();
 		} else if(display.isControlActivated(Control.INCREASEZOOM)) {
-			computeZoom(zoomSpeed, nanoseconds);
+			computeZoom(zoomSpeedNanos, nanoseconds);
 		} else if(display.isControlActivated(Control.DECREASEZOOM)) {
-			computeZoom(-zoomSpeed, nanoseconds);
+			computeZoom(-zoomSpeedNanos, nanoseconds);
 		}
 		
-		float posX = target.getPositionX(), posY = target.getPositionY();
+		float posX = target.getPositionX();
+		float posY = target.getPositionY();
 		camera.setPositionX(posX);
 		camera.setPositionY(posY);
 		audio.setPosition(posX, posY);
 	}
 	
-	private void computeZoom(float zoomSpeed, long nanoseconds) {
-		camera.setZoom((Math.max(Math.min(maxZoom, camera.getZoom() + camera.getZoom() * nanoseconds * zoomSpeed / 1_000_000_000f), minZoom)));
-	}
-	
 	public void resetZoom() {
-		camera.setZoom(minZoom + maxZoom * 0.1f);
+		camera.setZoom(Math.fma(0.1f, maxZoom, minZoom));
 	}
 
 	@Override
 	public void mouseScroll(double xoffset, double yoffset) {
-		camera.setZoom((Math.max(Math.min(maxZoom, camera.getZoom() + camera.getZoom() * (float)yoffset * 0.2f), minZoom)));
+		computeZoom(0.2f, (float)yoffset);
+	}
+	
+	private void computeZoom(float scale, float offset) {
+		camera.setZoom(Utility.clamp(minZoom, camera.getZoom() * Math.fma(scale, offset, 1.0f), maxZoom));
 	}
 
 	public Camera getCamera() {
