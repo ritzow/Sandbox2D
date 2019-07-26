@@ -1,7 +1,6 @@
 package ritzow.sandbox.client.world.entity;
 
 import ritzow.sandbox.client.graphics.ModelRenderProgram;
-import ritzow.sandbox.client.graphics.ModelRenderProgram.RenderInstance;
 import ritzow.sandbox.client.graphics.RenderConstants;
 import ritzow.sandbox.client.graphics.Renderable;
 import ritzow.sandbox.data.DataReader;

@@ -48,7 +48,7 @@ public final class ClientItemEntity<I extends Item> extends ItemEntity<I> implem
 			g.getScaleX() * 0.5f,
 			g.getScaleY() * 0.5f,
 			g.getRotation() + rotation
-			//TODO choppy spinning animation (infrequent updates?)
+			//TODO use Utility.oscillateRange
 		);
 	}
 	
