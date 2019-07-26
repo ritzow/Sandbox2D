@@ -14,7 +14,6 @@ import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 import org.lwjgl.openal.AL;
 import org.lwjgl.openal.ALC;
 import org.lwjgl.openal.ALCCapabilities;
@@ -91,7 +90,6 @@ public final class OpenALAudioSystem implements AudioSystem {
 	
 	@Override
 	public void registerSound(int id, SoundInfo data) {
-		Objects.requireNonNull(data);
     	int format = AL_FORMAT_STEREO16;
     	
     	if(data.getBitsPerSample() == 8) {

@@ -1,10 +1,14 @@
 package ritzow.sandbox.client.audio;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.lwjgl.BufferUtils;
 
+//TODO improve/rewrite WAVEDecoder using java.nio and perhaps enums
 /** Instances of WAVEDecoder will decode a .wav file from an InputStream **/
 public final class WAVEDecoder implements SoundInfo {
 	private final InputStream input;
@@ -19,6 +23,12 @@ public final class WAVEDecoder implements SoundInfo {
 	
 	public static SoundInfo decode(InputStream wavData) throws IOException {
 		WAVEDecoder dec = new WAVEDecoder(wavData);
+		dec.decode();
+		return dec;
+	}
+	
+	public static SoundInfo decode(Path file) throws IOException {
+		WAVEDecoder dec = new WAVEDecoder(new ByteArrayInputStream(Files.readAllBytes(file)));
 		dec.decode();
 		return dec;
 	}
