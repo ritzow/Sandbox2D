@@ -5,8 +5,8 @@ import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.data.Serializer;
 import ritzow.sandbox.data.TransportableDataReader;
 import ritzow.sandbox.util.Utility;
-import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
+import ritzow.sandbox.world.block.Block;
 import ritzow.sandbox.world.component.Inventory;
 import ritzow.sandbox.world.component.Living;
 import ritzow.sandbox.world.item.Item;
@@ -19,7 +19,7 @@ public abstract class PlayerEntity extends Entity implements Living {
 	protected final Inventory<Item> inventory;
 	protected byte selected;
 	protected int health;
-	protected boolean left, right, up, down;
+	protected boolean left, right, up, down, isGrounded;
 
 	protected static boolean JETPACK_MODE = false;
 	protected static final float
@@ -55,7 +55,7 @@ public abstract class PlayerEntity extends Entity implements Living {
 
 	@Override
 	public void update(World world, long ns) {
-		if(blockBelow(world.getForeground())) {
+		if(isGrounded) {
 			if(left && right) {
 				velocityX = 0;
 			} else if(left) {
@@ -76,29 +76,13 @@ public abstract class PlayerEntity extends Entity implements Living {
 			velocityY = Math.fma(AIR_MOVEMENT, ns, velocityY);
 		}
 
+		isGrounded = false; //in case there might not be blocks below during next update
 		super.update(world, ns);
 	}
-
-	private boolean blockBelow(BlockGrid blocks) {
-		return blockInRectangle(blocks,
-				Math.fma(getWidth(), -0.5f, positionX + 0.1f), 	//x1 positionX - getWidth()/2 + 0.1f
-				Math.fma(getHeight(), -0.5f, positionY - 0.1f),	//y1 positionY - getHeight()/2 - 0.1f
-				Math.fma(getWidth(), 0.5f, positionX - 0.1f),	//x2 positionX + getWidth()/2 - 0.1f
-				Math.fma(getHeight(), -0.5f, positionY));		//y2 positionY - getHeight()/2
-	}
-
-	private static boolean blockInRectangle(BlockGrid blocks, float x1, float y1, float x2, float y2) {
-		int a1 = Utility.clampLowerBound(0, Math.round(x1)),
-			b1 = Utility.clampLowerBound(0, Math.round(y1)),
-			a2 = Utility.clampUpperBound(blocks.getWidth() - 1, Math.round(x2)),
-			b2 = Utility.clampUpperBound(blocks.getHeight() - 1, Math.round(y2));
-		for(int x = a1; x <= a2; x++) {
-			for(int y = b1; y <= b2; y++) {
-				if(blocks.isBlock(x, y) && blocks.get(x, y).isSolid())
-					return true;
-			}
-		}
-		return false;
+	
+	@Override
+	public void onCollision(World world, Block block, Side side, int blockX, int blockY, long ns) {
+		isGrounded = isGrounded || side == Side.BOTTOM;
 	}
 
 	public void setLeft(boolean left) {
@@ -114,10 +98,7 @@ public abstract class PlayerEntity extends Entity implements Living {
 	}
 
 	public void setDown(boolean down) {
-		if(!this.down && down) 
-			positionY = Math.fma(SIZE_SCALE, -0.5f, positionY);
-		else if(this.down && !down) 
-			positionY = Math.fma(SIZE_SCALE, 0.5f, positionY);
+		if(this.down ^ down) positionY = Math.fma(SIZE_SCALE, down ? -0.5f : 0.5f, positionY);
 		this.down = down;
 	}
 
@@ -180,7 +161,7 @@ public abstract class PlayerEntity extends Entity implements Living {
 	}
 
 	@Override
-	public boolean hasCollision() {
+	public boolean interactsWithEntities() {
 		return false;
 	}
 

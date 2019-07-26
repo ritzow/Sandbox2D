@@ -18,7 +18,7 @@ public class BombEntity extends Entity {
 	}
 
 	@Override
-	public boolean hasCollision() {
+	public boolean interactsWithEntities() {
 		return false;
 	}
 

@@ -10,8 +10,6 @@ import ritzow.sandbox.world.block.Block;
 public abstract class Entity implements Transportable {
 	protected final int entityID;
 	
-	protected long lastCollision;
-	
 	protected float 
 		positionX,
 		positionY,
@@ -50,20 +48,27 @@ public abstract class Entity implements Transportable {
 		 return entityID;
 	}
 	
+	public static enum Side {
+		TOP,
+		BOTTOM,
+		LEFT,
+		RIGHT;
+	}
+	
 	public void onCollision(World world, Entity e, long ns) {/* optional implementation */}
-	public void onCollision(World world, Block block, int blockX, int blockY, long ns) {/* optional implementation */}
+	public void onCollision(World world, Block block, Side side, int blockX, int blockY, long ns) {/* optional implementation */}
 
 	/** @return true if the entity should be removed from the world **/
 	public abstract boolean getShouldDelete();
-	
-	/** @return true if the entity has any form of collision **/
-	public abstract boolean hasCollision();
 	
 	/** @return true if the entity should collide with solid blocks rather than fall through them **/
 	public abstract boolean collidesWithBlocks();
 	
 	/** @return true if the entity should collide with other entities rather than passing through them **/
 	public abstract boolean collidesWithEntities();
+	
+	/** @return true if the entity has physics or custom collision logic with other entities **/
+	public abstract boolean interactsWithEntities();
 	
 	/** @return the roughness of the surface of the entity **/
 	public abstract float getFriction();
@@ -76,11 +81,6 @@ public abstract class Entity implements Transportable {
 	
 	/** @return the mass of the entity **/
 	public abstract float getMass();
-	
-	/** @return the speed of the Entity based on the velocity in the x and y directions **/
-	public final float getSpeed() {
-		return (float)Math.abs(Math.sqrt(velocityX * velocityX + velocityY * velocityY));
-	}
 
 	/** @return the horizontal position of the of the entity in the world **/
 	public final float getPositionX() {
@@ -100,14 +100,6 @@ public abstract class Entity implements Transportable {
 	/** @return the distance the entity should move in the vertical direction each game update **/
 	public final float getVelocityY() {
 		return velocityY;
-	}
-	
-	public final long lastCollision() {
-		return lastCollision;
-	}
-	
-	public final void setLastCollision(long time) {
-		lastCollision = time;
 	}
 	
 	public final void setPositionX(float positionX) {
