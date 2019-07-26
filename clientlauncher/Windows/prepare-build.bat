@@ -1,7 +1,9 @@
 ::Windows build
+@echo off
 
 set "output=x64\Release\Output"
 
+@echo Removing previous build files
 ::clean up previous version
 rmdir /S /Q "include"
 rmdir /S /Q "%output%"
@@ -12,6 +14,7 @@ set "client=..\..\client"
 set "shared=..\..\shared"
 set "lwjgl=%client%\libraries\lwjgl"
 
+@echo Running jlink
 ::create the java runtime TODO call Build.java and move the resulting files instead of relying on Eclipse IDE build for client/shared modules
 "C:\Program Files\Java\jdk-12\bin\jlink.exe" ^
 	--compress=2 ^
@@ -22,6 +25,7 @@ set "lwjgl=%client%\libraries\lwjgl"
 	--add-modules java.base,jdk.unsupported,ritzow.sandbox.client,ritzow.sandbox.shared,org.lwjgl,org.lwjgl.glfw,org.lwjgl.opengl,org.lwjgl.openal ^
 	--output "%output%\jvm"
 
+@echo Deleting unnecessary jvm files
 ::delete unecessary files kept by jlink
 set "jvmbin=%output%\jvm\bin"
 del "%jvmbin%\java.exe"
@@ -29,17 +33,22 @@ del "%jvmbin%\javaw.exe"
 del "%jvmbin%\keytool.exe"
 del "%output%\jvm\lib\jvm.lib"
 
+@echo Copying header files to include directory
 ::copy files required to compile
 move "%output%\jvm\include" "include"
 copy "include\win32" "include"
 rmdir /S /Q "include\win32"
 
+@echo Copying game files to output
 ::copy resources to output
 xcopy /E /Y /Q "%client%\resources" "%output%\resources\"
+xcopy /Y /Q "%client%\options.txt" "%output%\"
 
+@echo Copying native LWJGL libraries
 ::copy natives
 xcopy /E /Y "natives" "%output%\"
 
+@echo Cloning Release output to Development output
 ::clone for development Build
 xcopy /E /Y /Q "x64\Release" "x64\Development\"
 
