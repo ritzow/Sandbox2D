@@ -9,7 +9,6 @@ import ritzow.sandbox.client.network.GameTalker;
 import ritzow.sandbox.client.util.ClientUtility;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
 import ritzow.sandbox.util.Utility;
-import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.Entity;
 import ritzow.sandbox.world.entity.PlayerEntity;
@@ -18,7 +17,7 @@ public final class InteractionController {
 	private long lastThrow, lastBreak, lastPlace;
 	
 	public void render(Display display, ModelRenderProgram renderer, 
-			Camera camera, BlockGrid grid, ClientPlayerEntity player) {
+			Camera camera, World world, ClientPlayerEntity player, long nanoseconds) {
 		int modelID = switch(player.selected()) {
 			case 1 -> RenderConstants.MODEL_GRASS_BLOCK;
 			case 2 -> RenderConstants.MODEL_DIRT_BLOCK;
@@ -30,18 +29,23 @@ public final class InteractionController {
 		int blockY = Math.round(ClientUtility.pixelVerticalToWorld(
 				camera, display.getCursorY(), height));
 		renderer.loadViewMatrix(camera, width, height);
-		if(modelID != -1) {
+		if(modelID == -1) {
 			renderer.render(
-				modelID,
-				Utility.canPlace(player, lastPlace, grid, blockX, blockY) ? 0.75f : 0.25f,
-				blockX, blockY, 1.0f, 1.0f, 0.0f
-			);	
-		} else if(Utility.canBreak(player, lastBreak, grid, blockX, blockY)) {
+					RenderConstants.MODEL_RED_SQUARE,
+					computeOpacity(Utility.canBreak(player, lastPlace, world, blockX, blockY)),
+					blockX, blockY, 1.0f, 1.0f, 0.0f
+				);
+		} else {
 			renderer.render(
-				RenderConstants.MODEL_RED_SQUARE,
-				0.5f, blockX, blockY, 1.0f, 1.0f, 0.0f
-			);
+					modelID,
+					computeOpacity(Utility.canPlace(player, lastPlace, world, blockX, blockY)),
+					blockX, blockY, 1.0f, 1.0f, 0.0f
+				);	
 		}
+	}
+	
+	private static float computeOpacity(boolean active) {
+		return active ? Utility.oscillateRange(0.5f, 1.0f, (float)Math.PI*2) : 0.25f;
 	}
 
 	//TODO wait for server response before sending more block break packets
@@ -51,16 +55,15 @@ public final class InteractionController {
 		if(display.isControlActivated(Control.USE_HELD_ITEM)) {
 			int blockX = Math.round(ClientUtility.pixelHorizontalToWorld(camera, mouseX, frameWidth, frameHeight));
 			int blockY = Math.round(ClientUtility.pixelVerticalToWorld(camera, mouseY, frameHeight));
-			BlockGrid grid = world.getForeground();
 			if(player.selected() == 0) {
-				if(Utility.canBreak(player, lastBreak, grid, blockX, blockY)) {
+				if(Utility.canBreak(player, lastBreak, world, blockX, blockY)) {
 					client.sendBlockBreak(blockX, blockY);
 					//TODO comm. with server, only reset cooldown to server provided value if a block is actually broken
 					//requires a different approach, lastBreak won't be set here
 					lastBreak = System.nanoTime();
 				}
 			} else {
-				if(Utility.canPlace(player, lastPlace, grid, blockX, blockY)) {
+				if(Utility.canPlace(player, lastPlace, world, blockX, blockY)) {
 					client.sendBlockPlace(blockX, blockY);
 					lastPlace = System.nanoTime();
 					//TODO comm. with server, only reset cooldown to server provided value if a block is actually broken
