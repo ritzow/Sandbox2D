@@ -3,12 +3,6 @@ package ritzow.sandbox.util;
 import static ritzow.sandbox.network.Protocol.BLOCK_INTERACT_COOLDOWN_NANOSECONDS;
 import static ritzow.sandbox.network.Protocol.BLOCK_INTERACT_RANGE;
 
-import java.net.Inet4Address;
-import java.net.Inet6Address;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.ProtocolFamily;
-import java.net.StandardProtocolFamily;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
@@ -34,52 +28,20 @@ public final class Utility {
 	}
 
 	public static boolean resendIntervalElapsed(long startTime, int attempts) {
-		return System.nanoTime() >= Math.fma(Utility.millisToNanos(Protocol.RESEND_INTERVAL), attempts, startTime);
+		return System.nanoTime() >= Utility.millisToNanos(Protocol.RESEND_INTERVAL) * attempts + startTime;
 	}
 
 	public static int splitQuantity(int bucketSize, int itemCount) {
 		return itemCount/bucketSize + itemCount%bucketSize;
 	}
-
-	public static String formatAddress(InetSocketAddress address) {
-		return "[" + address.getAddress().getHostAddress() + "]:" + 
-				(address.getPort() == 0 ? "any" : address.getPort());
-	}
-
-	public static ProtocolFamily getProtocolFamily(InetAddress address) {
-		if(address instanceof Inet6Address) {
-			return StandardProtocolFamily.INET6;
-		} else if(address instanceof Inet4Address) {
-			return StandardProtocolFamily.INET;
-		} else {
-			throw new IllegalArgumentException("InetAddress of unknown protocol");
-		}
-	}
-
-	public static int clampLowerBound(int min, float value) {
-		return Math.max(min, (int)Math.floor(value));
-	}
-
-	public static int clampUpperBound(int max, float value) {
-		return Math.min(max, (int)Math.ceil(value));
+	
+	public static float clamp(float min, float value, float max) {
+		float first = (value <= max) ? value : max;
+		return (min >= first) ? min : first;
 	}
 
 	public interface GridAction {
 		void perform(int x, int y);
-	}
-
-	public static void forEachBlock(BlockGrid grid, float leftX, float rightX, 
-			float bottomY, float topY, GridAction action) {
-		int leftBound = 	clampLowerBound(0, leftX);
-		int rightBound = 	clampUpperBound(grid.getWidth()-1, rightX);
-		int topBound = 		clampUpperBound(grid.getHeight()-1, topY);
-		int bottomBound = 	clampLowerBound(0, bottomY);
-
-		for(int row = bottomBound; row <= topBound; row++) {
-			for(int column = leftBound; column <= rightBound; column++) {
-				action.perform(column, row);
-			}
-		}
 	}
 
 	/**
@@ -87,12 +49,27 @@ public final class Utility {
 	 * @param milliseconds the number of milliseconds to sleep for
 	 * @throws IllegalStateException if the thread is interrupted while sleeping
 	 */
-	public static void sleep(long milliseconds) {
+	public static void sleepMillis(long milliseconds) {
+		//LockSupport.parkNanos(milliseconds * 1_000_000);
 		try {
-			Thread.sleep(milliseconds);
-		} catch(InterruptedException e) {
-			throwInterrupted(e);
+			Thread.sleep(Math.max(0, milliseconds));
+		} catch (InterruptedException e) {
+			throw new RuntimeException(e);
 		}
+	}
+	
+	public static void sleepNanos(long nanoseconds) {
+		try {
+			Thread.sleep(Math.max(0, nanoseconds)/1_000_000);
+		} catch (InterruptedException e) {
+			throw new RuntimeException(e);
+		}
+	}
+	
+	public static void waitNanos(long nanoseconds) {
+		long start = System.nanoTime();
+		while(System.nanoTime() - start < nanoseconds)
+			Thread.onSpinWait();
 	}
 
 	private static void throwInterrupted(InterruptedException cause) {
@@ -128,19 +105,22 @@ public final class Utility {
 		return Utility.nanosSince(lastThrowTime) > Protocol.THROW_COOLDOWN_NANOSECONDS;
 	}
 	
-	public static boolean canBreak(PlayerEntity player, long lastBreakTime, BlockGrid blocks, int blockX, int blockY) {
+	public static boolean canBreak(PlayerEntity player, long lastBreakTime, World world, int blockX, int blockY) {
 		return Utility.nanosSince(lastBreakTime) > BLOCK_INTERACT_COOLDOWN_NANOSECONDS && 
-			blocks.isValid(blockX, blockY) &&	
-			blocks.isBlock(blockX, blockY) &&
+			world.getForeground().isValid(blockX, blockY) &&	
+			world.getForeground().isBlock(blockX, blockY) &&
 			Utility.withinDistance(player.getPositionX(), player.getPositionY(), blockX, blockY, BLOCK_INTERACT_RANGE);
 	}
 	
-	public static boolean canPlace(PlayerEntity player, long lastPlaceTime, BlockGrid blocks, int blockX, int blockY) {
+	public static boolean canPlace(PlayerEntity player, long lastPlaceTime, World world, int blockX, int blockY) {
+		BlockGrid front = world.getForeground();
+		BlockGrid back = world.getBackground();
 		return Utility.nanosSince(lastPlaceTime) > Protocol.BLOCK_INTERACT_COOLDOWN_NANOSECONDS &&
 				inRange(player, blockX, blockY) && 
-				blocks.isValid(blockX, blockY) && 
-				!blocks.isBlock(blockX, blockY) &&
-				blocks.isSolidBlockAdjacent(blockX, blockY);
+				front.isValid(blockX, blockY) && 
+				!front.isBlock(blockX, blockY) &&
+				(front.isSolidBlockAdjacent(blockX, blockY) ||
+				back.isSolidBlockAdjacent(blockX, blockY));
 	}
 	
 	public static boolean inRange(Entity player, int blockX, int blockY) {
@@ -188,6 +168,10 @@ public final class Utility {
 
 	public static float convertRange(float oldMin, float oldMax, float newMin, float newMax, float value) {
 		return (((value - oldMin) * (newMax - newMin)) / (oldMax - oldMin)) + newMin;
+	}
+	
+	public static float oscillateRange(float min, float max, float frequency /* in Hz */) {
+		return ((((float)Math.cos(frequency * System.nanoTime() * 0.000000001) + 1) * (max - min)) / 2) + min;
 	}
 
 	/** Returns an rotation in radians that represents the change in angle after rotating around a point **/
@@ -268,7 +252,7 @@ public final class Utility {
 	}
 	
 	public static float convertPerSecondToPerNano(float value) {
-		return value / 1_000_000_000;
+		return value * 0.000000001f;
 	}
 
 	public static long millisToNanos(long milliseconds) {
@@ -283,7 +267,7 @@ public final class Utility {
 		return System.nanoTime() - nanosStart;
 	}
 
-	public static double millisSince(long nanosStart) {
+	public static long millisSince(long nanosStart) {
 		return nanosToMillis(nanosSince(nanosStart));
 	}
 
@@ -293,7 +277,7 @@ public final class Utility {
 		else if(number > 0)
 			return Math.max(0, number + magnitude);
 		else
-			return 0;
+			return magnitude;
 	}
 	
 	public static float random(double min, double max) {

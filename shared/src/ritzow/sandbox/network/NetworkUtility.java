@@ -1,15 +1,26 @@
 package ritzow.sandbox.network;
 
-import java.net.Inet6Address;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.InterfaceAddress;
-import java.net.NetworkInterface;
-import java.net.SocketException;
-import java.net.UnknownHostException;
+import java.net.*;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.stream.Collectors;
 
 public class NetworkUtility {
+
+	public static String formatAddress(InetSocketAddress address) {
+		return "[" + address.getAddress().getHostAddress() + "]:" + 
+				(address.getPort() == 0 ? "any" : address.getPort());
+	}
+
+	public static ProtocolFamily protocolOf(InetAddress address) {
+		if(address instanceof Inet6Address) {
+			return StandardProtocolFamily.INET6;
+		} else if(address instanceof Inet4Address) {
+			return StandardProtocolFamily.INET;
+		} else {
+			throw new IllegalArgumentException("InetAddress of unknown protocol");
+		}
+	}
 
 	public static InetSocketAddress getAddressFromProgramArgumentsOrDefault(String[] args, int index, InetAddress defaultAddress, int defaultPort) throws NumberFormatException, UnknownHostException {
 		return new InetSocketAddress((args.length > index && !args[index].isEmpty()) ? InetAddress.getByName(args[index]) : defaultAddress,
@@ -50,6 +61,12 @@ public class NetworkUtility {
 			.filter(NetworkUtility::filterAdresses) //filter out special addresses
 			.sorted((a, b) -> compareAddresses(preferIPv6, a, b)) //put best addresses first
 			.findFirst().map(address -> address.getAddress()).orElseThrow(); //get the best address
+	}
+	
+	public static Collection<InetAddress> getAllAddresses() throws SocketException {
+		return NetworkInterface.networkInterfaces()
+				.flatMap(NetworkInterface::inetAddresses)
+				.collect(Collectors.toList());
 	}
 
 	private static int compareAddresses(boolean preferIPv6, InterfaceAddress a, InterfaceAddress b) {

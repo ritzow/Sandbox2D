@@ -2,6 +2,7 @@ package ritzow.sandbox.data;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Collection;
@@ -204,6 +205,16 @@ public final class Bytes {
 	
 	public static int putString(byte[] array, int index, String str, Charset charset) {
 		return putBytesWithLength(array, index, str.getBytes(charset));
+	}
+	
+	public static byte[] get(ByteBuffer in, int length) {
+		byte[] data = new byte[length];
+		in.get(data);
+		return data;
+	}
+	
+	public static String getString(ByteBuffer in, int length, Charset charset) {
+		return new String(get(in, length), charset);
 	}
 	
 	//TODO add custom optimized huffman-coding compression, especially regarding World/Entity data.
