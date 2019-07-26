@@ -16,12 +16,9 @@ import ritzow.sandbox.util.Utility;
 
 public class ClientUtility {
 	public static void limitFramerate(long frameStart) {
-		if(StartClient.LIMIT_FPS) {
-			Utility.sleep(Math.max(1, Utility.nanosToMillis(StartClient.FRAME_TIME_LIMIT 
-					- Utility.nanosSince(frameStart))));	
-		} else {
-			Utility.sleep(1);
-		}
+//		if(LIMIT_FPS) LockSupport.parkNanos(FRAME_TIME_LIMIT + frameStart - System.nanoTime());
+		if(LIMIT_FPS) Utility.sleepNanos(FRAME_TIME_LIMIT + frameStart - System.nanoTime());
+//		if(LIMIT_FPS) Utility.waitNanos(FRAME_TIME_LIMIT + frameStart - System.nanoTime());
 	}
 	
 	public static long frameRateToFrameTimeNanos(long fps) {

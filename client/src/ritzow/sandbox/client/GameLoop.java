@@ -1,8 +1,7 @@
 package ritzow.sandbox.client;
 
+import ritzow.sandbox.client.data.StandardClientOptions;
 import ritzow.sandbox.util.Utility;
-
-//import ritzow.sandbox.util.Utility;
 
 public class GameLoop {
 	private static GameContext current;
@@ -11,7 +10,7 @@ public class GameLoop {
 		if(current != null)
 			throw new IllegalStateException("GameLoop already started");
 		current = initial;
-		if(StartClient.PRINT_FPS) {
+		if(StandardClientOptions.PRINT_FPS) {
 			while(current != null) {
 				long start = System.nanoTime();
 				current.run();
