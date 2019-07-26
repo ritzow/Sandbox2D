@@ -1,6 +1,5 @@
 package ritzow.sandbox.client;
 
-import java.io.IOException;
 import java.util.Map;
 import ritzow.sandbox.client.graphics.Display;
 import ritzow.sandbox.client.graphics.ModelRenderProgram;
@@ -61,22 +60,12 @@ class MainMenuContext {
 		private final Map<Button, Runnable> controls = Map.ofEntries(
 			Map.entry(Control.FULLSCREEN, StartClient.display::toggleFullscreen),
 			Map.entry(Control.QUIT,  StartClient::exit),
-			Map.entry(Control.CONNECT, this::connect)
+			Map.entry(Control.CONNECT, ServerJoinContext::start)
 		);
 
 		@Override
 		public Map<Button, Runnable> buttonControls() {
 			return controls;
-		}
-		
-		private void connect() {
-			GameLoop.setContext(() -> {
-				try {
-					new ServerJoinContext().listenForServer();
-				} catch (IOException e) {
-					throw new RuntimeException(e);
-				}
-			});
 		}
 	};
 }
