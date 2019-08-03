@@ -251,7 +251,6 @@ public class PNGDecoder {
 		final int lineSize = ((width * bitdepth + 7) / 8) * bytesPerPixel;
 		byte[] curLine = new byte[lineSize+1];
 		byte[] prevLine = new byte[lineSize+1];
-		@SuppressWarnings("unused")
 		byte[] palLine = (bitdepth < 8) ? new byte[width+1] : null;
 
 		final Inflater inflater = new Inflater();
@@ -541,7 +540,7 @@ public class PNGDecoder {
 		}
 	}
 
-	private void unfilter(byte[] curLine, byte[] prevLine) throws IOException {
+	private void unfilter(byte[] curLine, @SuppressWarnings("unused") byte[] prevLine) throws IOException {
 		switch (curLine[0]) {
 		case 0 -> {} // none
 		case 1 -> unfilterSub(curLine);

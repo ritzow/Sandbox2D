@@ -4,11 +4,10 @@ import ritzow.sandbox.client.audio.AudioSystem;
 import ritzow.sandbox.client.graphics.Camera;
 import ritzow.sandbox.client.graphics.Display;
 import ritzow.sandbox.client.input.Control;
-import ritzow.sandbox.client.input.handler.ScrollHandler;
 import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.entity.Entity;
 
-public final class TrackingCameraController implements ScrollHandler {
+public final class TrackingCameraController {
 	private final Camera camera;
 	private final float zoomSpeedNanos, minZoom, maxZoom;
 
@@ -39,7 +38,7 @@ public final class TrackingCameraController implements ScrollHandler {
 		camera.setZoom(Math.fma(0.1f, maxZoom, minZoom));
 	}
 
-	@Override
+	@SuppressWarnings("unused")
 	public void mouseScroll(double xoffset, double yoffset) {
 		computeZoom(0.2f, (float)yoffset);
 	}

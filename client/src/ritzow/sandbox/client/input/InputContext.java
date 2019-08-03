@@ -4,6 +4,7 @@ import java.util.Map;
 import ritzow.sandbox.client.input.Control.Button;
 
 /** Handles window events **/
+@SuppressWarnings(value="unused")
 public interface InputContext {
 	public static final InputContext EMPTY_CONTEXT = new InputContext() {};
 	

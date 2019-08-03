@@ -54,8 +54,9 @@ public class Client {
 		}
 	}
 
-	public <T> void setEventListener(ClientEvent<T> eventType, T action) {
+	public <T> Client setEventListener(ClientEvent<T> eventType, T action) {
 		events[eventType.index] = Objects.requireNonNull(action);
+		return this;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -66,6 +67,8 @@ public class Client {
 	/**
 	 * Creates a client bound to the provided address.
 	 * @param bindAddress the local address to bind to.
+	 * @param serverAddress the address of the game server to connect to.
+	 * @return a new game client to communicate with the server at {@code serverAddress}.
 	 * @throws IOException if an internal I/O error occurrs.
 	 * @throws SocketException if the local address could not be bound to.
 	 */
@@ -74,8 +77,9 @@ public class Client {
 		return new Client(bindAddress, serverAddress);
 	}
 
-	public void beginConnect() {
+	public Client beginConnect() {
 		sendReliable(Bytes.of(Protocol.TYPE_CLIENT_CONNECT_REQUEST));
+		return this;
 	}
 
 	private Client(InetSocketAddress bindAddress, 
@@ -114,19 +118,23 @@ public class Client {
 		return ping;
 	}
 
-	/** Queues a reliable message **/
+	/** Queues a reliable message 
+	 * @param data the packet message, including message type, to send **/
 	public void sendReliable(byte[] data) {
 		sendQueue.add(new SendPacket(data.clone(), true));
 	}
 
-	/** Queues a reliable message, and runs an action after the message is received by the server **/
+	/** Queues a reliable message, and runs an action after the message is received by the server 
+	 * @param data the packet message, including message type, to send
+	 * @param action an action to run when the message is acknowledged by the server **/
 	public void sendReliable(byte[] data, Runnable action) {
 		SendPacket packet = new SendPacket(data.clone(), true);
 		sendQueue.add(packet);
 		messageSentActions.put(packet, action);
 	}
 
-	/** Queues an unreliable messager **/
+	/** Queues an unreliable message
+	 * @param data the packet message, including message type, to send **/
 	public void sendUnreliable(byte[] data) {
 		sendQueue.add(new SendPacket(data.clone(), false));
 	}
