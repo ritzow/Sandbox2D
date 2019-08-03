@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Objects;
+import ritzow.sandbox.client.audio.DefaultAudioSystem;
+import ritzow.sandbox.client.data.StandardClientOptions;
 import ritzow.sandbox.client.graphics.Display;
 import ritzow.sandbox.client.graphics.RenderManager;
 import ritzow.sandbox.client.input.Control;
@@ -27,7 +29,9 @@ import ritzow.sandbox.world.entity.Entity;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
 public class InWorldContext implements GameTalker {
-	Client client;
+	private final Client client;
+	private final InputContext input;
+	private final GameState state;
 	InteractionController interactionControls;
 	ClientWorldRenderer worldRenderer;
 	TrackingCameraController cameraGrip;
@@ -36,21 +40,26 @@ public class InWorldContext implements GameTalker {
 	World world;
 	byte[] worldData;
 	int worldBytesReceived;
+	int playerID;
 	long lastGameUpdate;
 	
-	public InWorldContext(Client client, int downloadSize) {
+	public InWorldContext(GameState state, Client client, int downloadSize, int playerID) {
+		this.state = state;
 		this.client = client;
+		this.input = new InWorldInputContext();
 		this.worldData = new byte[downloadSize];
+		this.playerID = playerID;
 	}
 	
 	private void update() {
+		Display display = state.display;
 		long frameStart = System.nanoTime();
 		client.update(this::process);
-		Display display = StartClient.display;
 		display.poll(input);
 		
 		if(isPaused()) {
 			lastGameUpdate = System.nanoTime();
+			sendPing();
 		} else {
 			if(display.isControlActivated(Control.RESET_ZOOM)) cameraGrip.resetZoom();
 			boolean isLeft = display.isControlActivated(Control.MOVE_LEFT);
@@ -74,24 +83,23 @@ public class InWorldContext implements GameTalker {
 		long deltaTime = start - lastGameUpdate;
 		lastGameUpdate = start;
 		world.update(deltaTime);
-		cameraGrip.update(display, player, StartClient.audio, deltaTime);
+		cameraGrip.update(display, player, DefaultAudioSystem.getDefault(), deltaTime);
 		int width = display.width(), height = display.height();
 		RenderManager.preRender(width, height);
 		worldRenderer.render(RenderManager.DISPLAY_BUFFER, width, height);
 		interactionControls.update(display, cameraGrip.getCamera(), this, world, player);
-		interactionControls.render(display, StartClient.shaderProgram, 
-				cameraGrip.getCamera(), world, player, deltaTime);
+		interactionControls.render(display, state.shader, 
+				cameraGrip.getCamera(), world, player);
 		display.refresh();		
 	}
 	
-	private void process(short messageType, ByteBuffer data) {
+	private void process(short messageType, @SuppressWarnings("unused") ByteBuffer data) {
 		switch(messageType) {
 			case Protocol.TYPE_CONSOLE_MESSAGE -> processServerConsoleMessage(data);
 			case Protocol.TYPE_SERVER_WORLD_DATA -> processReceiveWorldData(data);
 			case Protocol.TYPE_SERVER_ENTITY_UPDATE -> processUpdateEntity(data);
 			case Protocol.TYPE_SERVER_ADD_ENTITY -> processAddEntity(data);
 			case Protocol.TYPE_SERVER_REMOVE_ENTITY -> processRemoveEntity(data);
-			case Protocol.TYPE_SERVER_PLAYER_ID -> processReceivePlayerEntityID(data);
 			case Protocol.TYPE_SERVER_REMOVE_BLOCK -> processServerRemoveBlock(data);
 			case Protocol.TYPE_SERVER_PLACE_BLOCK -> processServerPlaceBlock(data);
 			case Protocol.TYPE_CLIENT_PLAYER_STATE -> processPlayerState(data);
@@ -116,8 +124,6 @@ public class InWorldContext implements GameTalker {
 	/**
 	 * Notifies the server, disconnects, and stops the client. May block
 	 * while disconnect is occuring.
-	 * @throws IOException if an internal I/O socket error occurs
-	 * @throws InterruptedException if the client is interrupted while disconnecting
 	 */
 	public void startDisconnect() {
 		client.sendReliable(Bytes.of(Protocol.TYPE_CLIENT_DISCONNECT), this::onDisconnected);
@@ -134,12 +140,11 @@ public class InWorldContext implements GameTalker {
 		} catch (IOException e) {
 			e.printStackTrace();
 		} finally {
-			System.out.println("Disconnected from server.");
-			StartClient.display.resetCursor();
-			if(StartClient.display.wasClosed()) {
-				StartClient.exit();
+			state.display.resetCursor();
+			if(state.display.wasClosed()) {
+				GameLoop.stop();
 			} else {
-				GameLoop.setContext(StartClient.mainMenu::update);
+				GameLoop.setContext(state.menuContext::update);
 			}
 		}
 	}
@@ -162,11 +167,6 @@ public class InWorldContext implements GameTalker {
 		ClientBlockProperties newBlock = deserialize(true, Bytes.get(data, data.remaining()));
 		world.getForeground().set(x, y, newBlock);
 		newBlock.onPlace(world, world.getForeground(), cameraGrip.getCamera(), x, y);
-	}
-
-	private void processReceivePlayerEntityID(ByteBuffer data) {
-		this.player = getEntity(data.getInt());
-		onWorldJoin();
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -207,27 +207,25 @@ public class InWorldContext implements GameTalker {
 		System.out.print("received. Building world... ");
 		long start = System.nanoTime();
 		world = deserialize(Protocol.COMPRESS_WORLD_DATA, worldData);
-		worldData = null; //release the raw data to the garbage collector
-		client.sendReliable(Bytes.of(Protocol.TYPE_CLIENT_WORLD_BUILT));
 		System.out.println("took " + Utility.formatTime(Utility.nanosSince(start)) + ".");
-	}
-
-	private void onWorldJoin() {
+		worldData = null; //release the raw data to the garbage collector
+		player = getEntity(playerID);
 		cameraGrip = new TrackingCameraController(2.5f, player.getWidth() / 20f, player.getWidth() / 2f);
-		worldRenderer = new ClientWorldRenderer(StartClient.shaderProgram, cameraGrip.getCamera(), world);
+		worldRenderer = new ClientWorldRenderer(state.shader, cameraGrip.getCamera(), world);
 		interactionControls = new InteractionController();
-		StartClient.display.setCursor(StartClient.pickaxeCursor);
+		state.display.setCursor(state.cursorPick);
+		client.sendReliable(Bytes.of(Protocol.TYPE_CLIENT_WORLD_BUILT));
 		lastGameUpdate = System.nanoTime();
 		GameLoop.setContext(this::update);
 	}
 	
 	public void listenForServer() {
-		StartClient.display.poll(input);
+		state.display.poll(input);
 		client.update(this::process);
 	}
 	
-	private static boolean isPaused() {
-		return StartClient.display.minimized();
+	private boolean isPaused() {
+		return state.display.minimized();
 	}
 	
 	public void sendPlayerState(PlayerEntity player, boolean primary, boolean secondary) {
@@ -264,29 +262,29 @@ public class InWorldContext implements GameTalker {
 	}
 	
 	private void sendPing() {
-		client.sendReliable(Bytes.of(Protocol.TYPE_SERVER_PING));
+		client.sendReliable(Bytes.of(Protocol.TYPE_PING));
 	}
 	
 	private void selectSlot(int slot) {
 		long cursor = switch(slot) {
-			case 1, 2 -> StartClient.malletCursor;
-			default -> StartClient.pickaxeCursor;
+			case 1, 2 -> state.cursorMallet;
+			default -> state.cursorPick;
 		};
 		player.setSlot(slot);
-		StartClient.display.setCursor(cursor);
+		state.display.setCursor(cursor);
 	}
 	
-	InputContext input = new InputContext() {
+	private final class InWorldInputContext implements InputContext {
 		@Override
 		public void windowFocus(boolean focused) {
-			StartClient.audio.setVolume(focused ? 1.0f : 0.0f);
+			DefaultAudioSystem.getDefault().setVolume(focused ? 1.0f : 0.0f);
 		}
 		
 		@Override
 		public void windowRefresh() {
 			sendPing();
 			client.update(InWorldContext.this::process);
-			updateRender(StartClient.display);
+			updateRender(state.display);
 		}
 
 		@Override
@@ -295,11 +293,11 @@ public class InWorldContext implements GameTalker {
 		}
 
 		private final Map<Button, Runnable> controls = Map.ofEntries(
-				Map.entry(Control.FULLSCREEN, StartClient.display::toggleFullscreen),
-				Map.entry(Control.QUIT,  InWorldContext.this::leaveServer),
-				Map.entry(Control.SLOT_SELECT_1, () -> selectSlot(0)),
-				Map.entry(Control.SLOT_SELECT_2, () -> selectSlot(1)),
-				Map.entry(Control.SLOT_SELECT_3, () -> selectSlot(2))
+			Map.entry(Control.FULLSCREEN, state.display::toggleFullscreen),
+			Map.entry(Control.QUIT,  InWorldContext.this::leaveServer),
+			Map.entry(Control.SLOT_SELECT_1, () -> selectSlot(0)),
+			Map.entry(Control.SLOT_SELECT_2, () -> selectSlot(1)),
+			Map.entry(Control.SLOT_SELECT_3, () -> selectSlot(2))
 		);
 
 		@Override
@@ -307,28 +305,27 @@ public class InWorldContext implements GameTalker {
 			return controls;
 		}
 		
-		private static final double SELECT_SENSITIVITY = 1.0;
 		double slotOffset = 0;
 
 		@Override
 		public void mouseScroll(double xoffset, double yoffset) {
-			if(StartClient.display.isControlActivated(Control.SCROLL_MODIFIER)) {
+			if(state.display.isControlActivated(Control.SCROLL_MODIFIER)) {
 				if(slotOffset == 0) slotOffset += yoffset;
 				
 				if(slotOffset > 0) {
 					slotOffset = yoffset >= 0 ? slotOffset + yoffset : 0;
-					if(slotOffset > SELECT_SENSITIVITY) {
+					if(slotOffset > StandardClientOptions.SELECT_SENSITIVITY) {
 						selectSlot(Math.max(player.selected() - 1, 0));
 						slotOffset = 0;
 					}
 				} else if(slotOffset < 0) {
 					slotOffset = yoffset <= 0 ? slotOffset + yoffset : 0;
-					if(slotOffset < -SELECT_SENSITIVITY) {
+					if(slotOffset < -StandardClientOptions.SELECT_SENSITIVITY) {
 						selectSlot(Math.min(player.selected() + 1, player.inventory().getSize() - 1));
 						slotOffset = 0;
 					}
 				}
 			} else if(cameraGrip != null) cameraGrip.mouseScroll(xoffset, yoffset);
 		}
-	};
+	}
 }
