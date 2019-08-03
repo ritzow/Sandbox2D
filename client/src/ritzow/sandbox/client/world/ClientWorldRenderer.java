@@ -1,7 +1,5 @@
 package ritzow.sandbox.client.world;
 
-import static org.lwjgl.opengl.GL46C.*;
-
 import ritzow.sandbox.client.graphics.Camera;
 import ritzow.sandbox.client.graphics.Framebuffer;
 import ritzow.sandbox.client.graphics.GraphicsUtility;
@@ -33,9 +31,6 @@ public final class ClientWorldRenderer implements Renderer {
 		ModelRenderProgram program = this.modelProgram;
 		Camera camera = this.camera;
 		World world = this.world;
-		
-		//set the blending mode to allow transparency
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		
 		//set the current shader program
 		program.setCurrent();
