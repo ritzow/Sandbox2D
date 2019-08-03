@@ -1,6 +1,7 @@
 package ritzow.sandbox.client;
 
 import java.io.IOException;
+import java.net.BindException;
 import java.net.PortUnreachableException;
 import java.nio.ByteBuffer;
 import ritzow.sandbox.client.input.InputContext;
@@ -9,29 +10,35 @@ import ritzow.sandbox.client.network.Client.ClientEvent;
 import ritzow.sandbox.network.NetworkUtility;
 import ritzow.sandbox.network.Protocol;
 
+import static ritzow.sandbox.client.data.StandardClientOptions.*;
+
 class ServerJoinContext {
+	private final GameState state;
 	private final Client client;
 	
-	public static void start() {
+	public static void start(GameState state) throws IOException {
 		try {
-			new ServerJoinContext();
-		} catch (IOException e) {
-			throw new RuntimeException(e);
+			System.out.print("Connecting to " + NetworkUtility.formatAddress(LAST_SERVER_ADDRESS)
+			+ " from " + NetworkUtility.formatAddress(LAST_LOCAL_ADDRESS) + "... ");
+			Client client = Client.create(LAST_LOCAL_ADDRESS, LAST_SERVER_ADDRESS);
+			ServerJoinContext context = new ServerJoinContext(state, client);
+			client.setEventListener(ClientEvent.TIMED_OUT, context::onTimeout)
+				.setEventListener(ClientEvent.EXCEPTION_OCCURRED, context::onException)
+				.beginConnect();
+			GameLoop.setContext(context::listen);	
+		} catch(BindException e) {
+			System.out.println("bind error: " + e.getMessage() + ".");
+			GameLoop.setContext(state.menuContext::update);	
 		}
 	}
 	
-	private ServerJoinContext() throws IOException {
-		System.out.print("Connecting to " + NetworkUtility.formatAddress(StartClient.serverAddress)
-		+ " from " + NetworkUtility.formatAddress(StartClient.localAddress) + "... ");
-		client = Client.create(StartClient.localAddress, StartClient.serverAddress);
-		client.setEventListener(ClientEvent.TIMED_OUT, this::onTimeout);
-		client.setEventListener(ClientEvent.EXCEPTION_OCCURRED, this::onException);
-		client.beginConnect();
-		GameLoop.setContext(this::listen);
+	private ServerJoinContext(GameState state, Client client) {
+		this.state = state;
+		this.client = client;
 	}
 	
 	private void listen() {
-		StartClient.display.poll(InputContext.EMPTY_CONTEXT);
+		state.display.poll(InputContext.EMPTY_CONTEXT);
 		client.update(1, this::process);
 	}
 	
@@ -53,9 +60,9 @@ class ServerJoinContext {
 	private void returnToMenu() {
 		try {
 			client.close();
-			GameLoop.setContext(StartClient.mainMenu::update);	
+			GameLoop.setContext(state.menuContext::update);	
 		} catch(IOException e) {
-			e.printStackTrace();
+			throw new RuntimeException(e);
 		}
 	}
 
@@ -65,18 +72,19 @@ class ServerJoinContext {
 			switch(response) {
 				case Protocol.CONNECT_STATUS_REJECTED -> {
 					System.out.println("rejected.");
-					StartClient.display.resetCursor();
+					state.display.resetCursor();
 					returnToMenu();
 				}
 
 				case Protocol.CONNECT_STATUS_WORLD -> {
 					System.out.print("connected.\nReceiving world data... ");
-					InWorldContext worldContext = new InWorldContext(client, data.getInt());
+					//worldSize and playerID integers
+					InWorldContext worldContext = new InWorldContext(state, client, data.getInt(), data.getInt());
 					GameLoop.setContext(worldContext::listenForServer);
 				}
 
 				case Protocol.CONNECT_STATUS_LOBBY ->
-					throw new UnsupportedOperationException("CONNECT_STATUS_LOBBY not supported");
+					throw new UnsupportedOperationException("CONNECT_STATUS_LOBBY not supported.");
 
 				default -> throw new UnsupportedOperationException("unknown connect ack type " + response);
 			}
