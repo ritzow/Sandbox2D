@@ -48,7 +48,7 @@ xcopy /Y /Q "%client%\options.txt" "%output%\"
 ::copy natives
 xcopy /E /Y "natives" "%output%\"
 
-@echo Cloning Release output to Development output
+@echo Copying Release output to Development output
 ::clone for development Build
 xcopy /E /Y /Q "x64\Release" "x64\Development\"
 
