@@ -22,17 +22,16 @@ public final class Protocol {
 
 	public static final boolean COMPRESS_WORLD_DATA = true;
 
-	public static final int
-		TIMEOUT_DISCONNECT = 1000,
+	public static final int DEFAULT_SERVER_PORT = 50000;
+	
+	public static final long
+		TIMEOUT_DISCONNECT = Utility.millisToNanos(1000),
 		RESEND_COUNT = 10,
 		RESEND_INTERVAL = TIMEOUT_DISCONNECT/RESEND_COUNT;
 
-	public static final int DEFAULT_SERVER_PORT_UDP = 50000;
-	public static final int STARTING_SEND_ID = 0;
-
 	public static final int
 		HEADER_SIZE = 5,
-		MAX_PACKET_SIZE = 512,
+		MAX_PACKET_SIZE = 1024,
 		MAX_MESSAGE_LENGTH = MAX_PACKET_SIZE - HEADER_SIZE;
 
 	public static final byte
@@ -47,17 +46,18 @@ public final class Protocol {
 		TYPE_SERVER_WORLD_HEAD = 2,
 		TYPE_SERVER_WORLD_DATA = 3,
 		TYPE_SERVER_ENTITY_UPDATE = 4,
-		TYPE_SERVER_ADD_ENTITY = 5, //TODO separate receiving entity and adding to world (TYPE_RECEIVE_AND_ADD_ENTITY vs TYPE_RECEIVE_ENTITY and TYPE_ADD_ENTITY?)
-		TYPE_SERVER_REMOVE_ENTITY = 6,  //TODO separate removing entity from world and deleting entity
+		//TODO separate receiving entity and adding to world 
+		//(TYPE_RECEIVE_AND_ADD_ENTITY vs TYPE_RECEIVE_ENTITY and TYPE_ADD_ENTITY?)
+		TYPE_SERVER_ADD_ENTITY = 5, 
+		//TODO separate removing entity from world and deleting entity
+		TYPE_SERVER_REMOVE_ENTITY = 6,
 		TYPE_SERVER_CLIENT_DISCONNECT = 7,
-		TYPE_SERVER_PLAYER_ID = 8,
 		TYPE_SERVER_REMOVE_BLOCK = 9,
 		TYPE_CLIENT_CONNECT_REQUEST = 10,
 		TYPE_CLIENT_DISCONNECT = 11,
 		TYPE_CLIENT_PLAYER_STATE = 12,
 		TYPE_CLIENT_BREAK_BLOCK = 13,
-		TYPE_SERVER_PING = 14,
-		TYPE_SERVER_PLAYER_ACTION = 15,
+		TYPE_PING = 14,
 		TYPE_CLIENT_BOMB_THROW = 16,
 		TYPE_CLIENT_WORLD_BUILT = 17,
 		TYPE_CLIENT_PLACE_BLOCK = 18,

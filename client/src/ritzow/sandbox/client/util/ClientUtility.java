@@ -6,8 +6,10 @@ import de.matthiasmann.twl.utils.PNGDecoder;
 import de.matthiasmann.twl.utils.PNGDecoder.Format;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.glfw.GLFWImage;
 import static ritzow.sandbox.client.data.StandardClientOptions.*;
@@ -25,16 +27,28 @@ public class ClientUtility {
 		return 1_000_000_000/fps;
 	}
 	
+	public static ByteBuffer load(Path file) throws IOException {
+		try(FileChannel reader = FileChannel.open(file, StandardOpenOption.READ)) {
+			ByteBuffer dest = BufferUtils.createByteBuffer((int)reader.size());
+			reader.read(dest);
+			return dest.flip();
+		}
+	}
+
+	public static long loadGLFWCursor(GLFWImage image, int hotspotX, int hotspotY) {
+		return glfwCreateCursor(image, hotspotX, hotspotY);
+	}
+	
 	public static long loadGLFWCursor(GLFWImage image, float ratioX, float ratioY) {
 		return glfwCreateCursor(image, (int)(image.width() * ratioX), (int)(image.height() * ratioY));
 	}
 	
 	public static GLFWImage loadGLFWImage(Path file) throws IOException {
 		PNGDecoder decoder = new PNGDecoder(Files.newInputStream(file));
-		ByteBuffer pixels = BufferUtils.createByteBuffer(decoder.getWidth() * decoder.getHeight() * 4);
-		decoder.decode(pixels, decoder.getWidth() * 4, Format.RGBA);
-		pixels.flip();
-		return GLFWImage.create().set(decoder.getWidth(), decoder.getHeight(), pixels);
+		int stride = decoder.getWidth() * 4;
+		ByteBuffer pixels = BufferUtils.createByteBuffer(stride * decoder.getHeight());
+		decoder.decode(pixels, stride, Format.RGBA);
+		return GLFWImage.create().set(decoder.getWidth(), decoder.getHeight(), pixels.flip());
 	}
 	
 	public static float pixelHorizontalToWorld(Camera camera, int mouseX, int frameWidth, int frameHeight) {
@@ -60,11 +74,13 @@ public class ClientUtility {
 	}
 	
 	//width and height for any future need
+	@SuppressWarnings("unused")
 	public static float getViewTopBound(Camera camera, int framebufferWidth, int framebufferHeight) {
 		return 1f / camera.getZoom() + camera.getPositionY();
 	}
 	
 	//width and height for any future need
+	@SuppressWarnings("unused")
 	public static float getViewBottomBound(Camera camera, int framebufferWidth, int framebufferHeight) {
 		return -1f / camera.getZoom() + camera.getPositionY();
 	}

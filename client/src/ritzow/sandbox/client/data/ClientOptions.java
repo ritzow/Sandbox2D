@@ -3,18 +3,17 @@ package ritzow.sandbox.client.data;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 class ClientOptions {
-	private static final Path OPTIONS_PATH = Path.of("options.txt");
 	private static final Map<String, String> OPTIONS = loadOptions();
 	
 	private static Map<String, String> loadOptions() {
 		try {
-			return Files.lines(OPTIONS_PATH, StandardCharsets.UTF_8)
+			return Files.lines(StandardClientProperties.OPTIONS_PATH, StandardCharsets.UTF_8)
+				.filter(line -> !line.stripLeading().startsWith("#") && !line.isBlank())
 				.collect(Collectors.toMap(
 					line -> line.substring(0, line.indexOf('=')).strip(), 
 					line -> line.substring(line.indexOf('=') + 1).strip()

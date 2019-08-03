@@ -3,9 +3,46 @@ package ritzow.sandbox.network;
 import java.net.*;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class NetworkUtility {
+	
+	private static final Pattern 
+		ADDRESS_PARSER = Pattern.compile("(?!\\[).+(?=\\])"),
+		PORT_PARSER = Pattern.compile("(?<=\\]\\:)[0-9]+");
+	
+	public static InetSocketAddress parseSocket(String address, int defaultPort) {
+		Matcher addressMatcher = ADDRESS_PARSER.matcher(address);
+		Matcher portMatcher = PORT_PARSER.matcher(address);
+		try { //TODO handle cases: IPv4 with no brackets with/without port, IPv6 with no brackets
+			if(addressMatcher.find()) {
+				return new InetSocketAddress(
+					InetAddress.getByName(addressMatcher.group()),
+					portMatcher.find() ? Integer.parseUnsignedInt(portMatcher.group()) : defaultPort
+				);	
+			} else {
+				int colonIndex = address.indexOf(':');
+				if(address.lastIndexOf(':') == colonIndex) { //IPv4 address with or without port
+					if(colonIndex > -1) {
+						return new InetSocketAddress(
+							InetAddress.getByName(address.substring(0, colonIndex)),
+							Integer.parseInt(address.substring(colonIndex + 1))
+						);
+					} else {
+						return new InetSocketAddress(InetAddress.getByName(address), defaultPort);
+					}
+				} else { //IPv6 address no port
+					return new InetSocketAddress(InetAddress.getByName(address), defaultPort);
+				}
+			}
+		} catch(UnknownHostException e) {
+			throw new RuntimeException("Illegal adddress", e);
+		} catch(NumberFormatException e) {
+			throw new RuntimeException("Unreadable port number", e);
+		}
+	}
 
 	public static String formatAddress(InetSocketAddress address) {
 		return "[" + address.getAddress().getHostAddress() + "]:" + 

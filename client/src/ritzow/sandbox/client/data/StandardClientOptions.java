@@ -1,11 +1,7 @@
 package ritzow.sandbox.client.data;
 
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
-import java.net.UnknownHostException;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import ritzow.sandbox.client.util.ClientUtility;
 import ritzow.sandbox.network.NetworkUtility;
 import ritzow.sandbox.network.Protocol;
@@ -20,15 +16,14 @@ public class StandardClientOptions extends ClientOptions {
 	public static final boolean	LIMIT_FPS = FRAME_TIME_LIMIT > 0;
 	
 	//Networking
-	private static final Pattern 
-		ADDRESS_PARSER = Pattern.compile("(?!\\[).+(?=\\])"),
-		PORT_PARSER = Pattern.compile("(?<=\\]\\:)[0-9]+");
-	
 	public static final InetSocketAddress LAST_SERVER_ADDRESS =
-			get("address_server", defaultAddress(Protocol.DEFAULT_SERVER_PORT_UDP), 
-					string -> parseAddress(string, Protocol.DEFAULT_SERVER_PORT_UDP));
+			get("address_server", defaultAddress(Protocol.DEFAULT_SERVER_PORT), 
+					string -> NetworkUtility.parseSocket(string, Protocol.DEFAULT_SERVER_PORT));
 	public static final InetSocketAddress LAST_LOCAL_ADDRESS =
-			get("address_local", defaultAddress(0), string -> parseAddress(string, 0));
+			get("address_local", defaultAddress(0), string -> NetworkUtility.parseSocket(string, 0));
+	
+	//Input
+	public static final double SELECT_SENSITIVITY = get("scroll_sensitivity", 1.0, Double::parseDouble);
 	
 	private static InetSocketAddress defaultAddress(int port) {
 		try {
@@ -39,20 +34,7 @@ public class StandardClientOptions extends ClientOptions {
 		}
 	}
 	
-	private static InetSocketAddress parseAddress(String option, int defaultPort) {
-		Matcher addressMatcher = ADDRESS_PARSER.matcher(option);
-		Matcher portMatcher = PORT_PARSER.matcher(option);
-		try {
-			return new InetSocketAddress(
-				addressMatcher.find() ? InetAddress.getByName(addressMatcher.group()) : null,
-				portMatcher.find() 	  ? Integer.parseUnsignedInt(portMatcher.group()) : defaultPort
-			);
-		} catch(UnknownHostException e) {
-			throw new RuntimeException("Illegal adddress", e);
-		} catch(NumberFormatException e) {
-			throw new RuntimeException("Unreadable port number", e);
-		}
-	}
+
 	
 //	private static void configureAddresses(String[] args) throws Exception {
 //	InetSocketAddress localAddress, serverAddress;
