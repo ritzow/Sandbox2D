@@ -1,0 +1,7 @@
+#Options file
+
+use_new_opengl 	= false
+fps_print		= false
+fps_limit		= 120
+address_local	=
+address_server	=
