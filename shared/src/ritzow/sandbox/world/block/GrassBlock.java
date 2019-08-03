@@ -1,19 +1,14 @@
 package ritzow.sandbox.world.block;
 
 import ritzow.sandbox.data.Bytes;
-import ritzow.sandbox.data.DataReader;
 import ritzow.sandbox.data.Serializer;
 
 public class GrassBlock implements Block {
 	
-	public GrassBlock() {
-		
-	}
+	public static final GrassBlock INSTANCE = new GrassBlock();
 	
-	public GrassBlock(DataReader input) {
-		
-	}
-
+	protected GrassBlock() {}
+	
 	@Override
 	public float getFriction() {
 		return 0.04f;

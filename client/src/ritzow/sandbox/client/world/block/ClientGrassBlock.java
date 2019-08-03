@@ -1,14 +1,16 @@
 package ritzow.sandbox.client.world.block;
 
 import ritzow.sandbox.client.graphics.RenderConstants;
-import ritzow.sandbox.data.DataReader;
+import ritzow.sandbox.data.TransportableDataReader;
 import ritzow.sandbox.world.block.GrassBlock;
 
 public class ClientGrassBlock extends GrassBlock implements ClientBlockProperties {
 	
-	public ClientGrassBlock() {}
+	public static final ClientGrassBlock SINGLETON = new ClientGrassBlock();
 	
-	public ClientGrassBlock(DataReader input) {}
+	public static final ClientGrassBlock getSingleton(@SuppressWarnings("unused") TransportableDataReader reader) {
+		return SINGLETON;
+	}
 
 	@Override
 	public int getModelIndex() {

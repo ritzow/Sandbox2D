@@ -17,12 +17,12 @@ public class SerializationProvider {
 			.register(Protocol.DATA_BLOCK_GRID, BlockGrid.class, BlockGrid::new)
 			.register(Protocol.DATA_WORLD, World.class, World::new)
 			.register(Protocol.DATA_BLOCK_ITEM, BlockItem.class, BlockItem::new)
-			.register(Protocol.DATA_DIRT_BLOCK, DirtBlock.class, DirtBlock::new)
-			.register(Protocol.DATA_GRASS_BLOCK, GrassBlock.class, GrassBlock::new)
-			.register(Protocol.DATA_PLAYER_ENTITY, ServerPlayerEntity.class, ServerPlayerEntity::new)
-			.register(Protocol.DATA_INVENTORY, Inventory.class, Inventory::new)
+			.register(Protocol.DATA_DIRT_BLOCK, DirtBlock.class, reader -> DirtBlock.INSTANCE)
+			.register(Protocol.DATA_GRASS_BLOCK, GrassBlock.class, reader -> GrassBlock.INSTANCE)
 			.register(Protocol.DATA_ITEM_ENTITY, ItemEntity.class, ItemEntity::new)
-			.register(Protocol.DATA_BOMB_ENTITY, ServerBombEntity.class, ServerBombEntity::new);
+			.register(Protocol.DATA_BOMB_ENTITY, ServerBombEntity.class, ServerBombEntity::new)
+			.registerWrite(Protocol.DATA_INVENTORY, Inventory.class)
+			.registerWrite(Protocol.DATA_PLAYER_ENTITY, ServerPlayerEntity.class);
 	
 	public static SerializerReaderWriter getProvider() {
 		return provider;

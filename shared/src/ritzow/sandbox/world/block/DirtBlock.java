@@ -1,18 +1,13 @@
 package ritzow.sandbox.world.block;
 
 import ritzow.sandbox.data.Bytes;
-import ritzow.sandbox.data.DataReader;
 import ritzow.sandbox.data.Serializer;
 
 public class DirtBlock implements Block {
 	
-	public DirtBlock() {
-		
-	}
+	public static final DirtBlock INSTANCE = new DirtBlock();
 	
-	public DirtBlock(DataReader data) {
-		
-	}
+	protected DirtBlock() {}
 
 	@Override
 	public float getFriction() {
