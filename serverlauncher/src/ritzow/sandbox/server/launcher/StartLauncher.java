@@ -91,7 +91,7 @@ public final class StartLauncher {
 
 	private static void runServer(InetAddress ip, int port) {
 		try {
-			StartServer.run(new InetSocketAddress(ip, port));
+			StartServer.startServer(new InetSocketAddress(ip, port));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -104,15 +104,15 @@ public final class StartLauncher {
 			InetAddress ip = InetAddress.getByName(controller.ipField.getText().isEmpty() ? controller.ipField.getPromptText() : controller.ipField.getText());
 			int port = Integer.parseUnsignedInt(controller.portField.getText().isEmpty() ? controller.portField.getPromptText() : controller.portField.getText());
 			new Thread(() -> runServer(ip, port), "Server Update Thread").start();
-		} catch(UnknownHostException e) {
+		} catch(@SuppressWarnings("unused") UnknownHostException e) {
 			controller.errorMessageText.setText("Invalid IP address");
 			//controller.ipField.setBorder(new Border(new BorderStroke(Color.RED, BorderStrokeStyle.SOLID, new CornerRadii(4), BorderWidths.DEFAULT)));
-		} catch(NumberFormatException e) {
+		} catch(@SuppressWarnings("unused") NumberFormatException e) {
 			controller.errorMessageText.setText("Invalid port number");
 		}
 	}
 
-	private static void onBrowseButtonPress(ActionEvent event) {
+	private static void onBrowseButtonPress(@SuppressWarnings("unused") ActionEvent event) {
 		FileChooser chooser = new FileChooser();
 		chooser.setTitle("Select World File");
 		chooser.setInitialDirectory(Path.of(".").toFile());
