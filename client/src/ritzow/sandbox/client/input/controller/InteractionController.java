@@ -17,7 +17,7 @@ public final class InteractionController {
 	private long lastThrow, lastBreak, lastPlace;
 	
 	public void render(Display display, ModelRenderProgram renderer, 
-			Camera camera, World world, ClientPlayerEntity player, long nanoseconds) {
+			Camera camera, World world, ClientPlayerEntity player) {
 		int modelID = switch(player.selected()) {
 			case 1 -> RenderConstants.MODEL_GRASS_BLOCK;
 			case 2 -> RenderConstants.MODEL_DIRT_BLOCK;
@@ -31,16 +31,16 @@ public final class InteractionController {
 		renderer.loadViewMatrix(camera, width, height);
 		if(modelID == -1) {
 			renderer.render(
-					RenderConstants.MODEL_RED_SQUARE,
-					computeOpacity(Utility.canBreak(player, lastPlace, world, blockX, blockY)),
-					blockX, blockY, 1.0f, 1.0f, 0.0f
-				);
-		} else {
+				RenderConstants.MODEL_RED_SQUARE,
+				computeOpacity(Utility.canBreak(player, lastPlace, world, blockX, blockY)),
+				blockX, blockY, 1.0f, 1.0f, 0.0f
+			);
+		} else if(!world.getForeground().isValid(blockX, blockY) || !world.getForeground().isBlock(blockX, blockY)) {
 			renderer.render(
-					modelID,
-					computeOpacity(Utility.canPlace(player, lastPlace, world, blockX, blockY)),
-					blockX, blockY, 1.0f, 1.0f, 0.0f
-				);	
+				modelID,
+				computeOpacity(Utility.canPlace(player, lastPlace, world, blockX, blockY)),
+				blockX, blockY, 1.0f, 1.0f, 0.0f
+			);
 		}
 	}
 	
