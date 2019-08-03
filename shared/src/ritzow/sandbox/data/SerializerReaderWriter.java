@@ -2,7 +2,7 @@ package ritzow.sandbox.data;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Consumer;
+import java.util.Objects;
 import java.util.function.Function;
 
 public class SerializerReaderWriter implements Serializer, Deserializer {
@@ -16,17 +16,27 @@ public class SerializerReaderWriter implements Serializer, Deserializer {
 
 	public <T extends Transportable> SerializerReaderWriter 
 		register(short identifier, Class<T> returnType, Function<TransportableDataReader, T> deserializer) {
-		deserializeLookup.put(identifier, deserializer);
-		serializeLookup.put(returnType, identifier);
+		registerWrite(identifier, returnType);
+		registerRead(identifier, deserializer);
 		return this;
 	}
 	
-	public void register(short identifier, Consumer<TransportableDataReader> deserializer) {
+	public <T extends Transportable> SerializerReaderWriter 
+		registerWrite(short identifier, Class<T> returnType) {
 		if(identifier == 0)
-			throw new IllegalArgumentException("identifier 0 reserved for null values");
-		
-		//when the function has no return type, this method will take a consumer and return null
-		deserializeLookup.put(identifier, in -> {deserializer.accept(in); return null;});
+			throw new IllegalArgumentException("0 is a reserved identifier");
+		if(serializeLookup.putIfAbsent(Objects.requireNonNull(returnType), identifier) != null) {
+			throw new IllegalArgumentException(returnType + " already has an identifier");
+		}
+		return this;
+	}
+	
+	public <T extends Transportable> SerializerReaderWriter 
+		registerRead(short identifier, Function<TransportableDataReader, T> deserializer) {
+		if(deserializeLookup.putIfAbsent(identifier, Objects.requireNonNull(deserializer)) != null) {
+			throw new IllegalArgumentException(identifier + " already has a deserializer");
+		}
+		return this;
 	}
 	
 	@Override
@@ -62,7 +72,7 @@ public class SerializerReaderWriter implements Serializer, Deserializer {
 		int length = Bytes.getInteger(object, 0);
 		
 		if(length == 0) {
-			return null;	
+			return null;
 		}
 		
 		//get type, associated with a method to deserialize the object
@@ -81,10 +91,12 @@ public class SerializerReaderWriter implements Serializer, Deserializer {
 		return new TransportableDataReader() {
 			private int index = 6; //skip past object size and type
 			
+			@Override
 			public int remaining() {
 				return Bytes.getInteger(bytes, index - 4) - index + 4; //TODO is this implemented correctly?
 			}
 			
+			@Override
 			public void skip(int bytes) {
 				checkIndex(index += bytes);
 			}

@@ -26,6 +26,7 @@ public final class Display implements InputProvider {
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, GLVersionMinor);
 		glfwWindowHint(GLFW_OPENGL_PROFILE, core ? GLFW_OPENGL_CORE_PROFILE : GLFW_OPENGL_ANY_PROFILE);
 		glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
+		glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 		glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 		glfwWindowHint(GLFW_FOCUS_ON_SHOW, GLFW_TRUE);
 
@@ -192,13 +193,13 @@ public final class Display implements InputProvider {
 			focus();
 		}
 	}
-
+	
 	public void poll(InputContext input) {
 		handler = input;
 		glfwPollEvents();
 	}
 
-	private InputContext handler = new InputContext() {};
+	private InputContext handler = InputContext.EMPTY_CONTEXT;
 
 	private void setupCallbacks() {
 		glfwSetKeyCallback(displayID, (windowID, key, scancode, action, mods) -> {
