@@ -20,7 +20,10 @@ import ritzow.sandbox.world.entity.Entity;
  */
 public class World implements Transportable, Iterable<Entity> {
 	
-	private static final float GRAVITY = Utility.convertAccelerationSecondsNanos(9.8f * 3);
+	private static final float 
+		GRAVITY = Utility.convertAccelerationSecondsNanos(9.8f * 3),
+		TERMINAL_VELOCITY = Utility.convertPerSecondToPerNano(1/*53*/),
+		TERMINAL_VELOCITY_SQUARED = TERMINAL_VELOCITY * TERMINAL_VELOCITY;
 
 	//Entity operations:
 	//Get an entity by ID
@@ -51,7 +54,7 @@ public class World implements Transportable, Iterable<Entity> {
 	 * @param height the height of the foreground and background
 	 * @param gravity the amount of gravity
 	 */
-	public World(int width, int height, float gravity) {
+	public World(int width, int height) {
 		entities = new ArrayList<>();
 		entitiesID = new HashMap<>();
 		foreground = new BlockGrid(width, height);
@@ -297,7 +300,16 @@ public class World implements Transportable, Iterable<Entity> {
 				e.update(this, nanoseconds);
 
 				//apply gravity e.getVelocityY() - GRAVITY * nanoseconds
-				e.setVelocityY(Math.fma(-GRAVITY, nanoseconds, e.getVelocityY()));
+				float velocityY = Math.fma(-GRAVITY, nanoseconds, e.getVelocityY());
+				e.setVelocityY(velocityY);
+//				float velocityX = e.getVelocityX();
+//				float speedSquared = velocityX*velocityX + velocityY*velocityY;
+//				if(speedSquared > TERMINAL_VELOCITY_SQUARED) {
+//					float scale = (float)(TERMINAL_VELOCITY / Math.sqrt(speedSquared));
+//					e.setVelocityY(velocityY * scale);
+//					e.setVelocityX(velocityX * scale);
+//				}
+//				e.setVelocityY(velocityY);
 				
 				//check for entity vs. entity collisions with all entities that have not already been
 				//collision checked with (for first element, all entites, for last, no entities)

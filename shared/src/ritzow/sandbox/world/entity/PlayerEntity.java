@@ -21,13 +21,13 @@ public abstract class PlayerEntity extends Entity implements Living {
 	protected int health;
 	protected boolean left, right, up, down, isGrounded;
 
-	protected static boolean JETPACK_MODE = false;
+	protected static final boolean JETPACK_MODE = false;
 	protected static final float
 			SIZE_SCALE		= 1f,
 			MOVEMENT_SPEED	= Utility.convertPerSecondToPerNano(12.5f /* human running speed meters */) * SIZE_SCALE,
 			JUMP_VELOCITY	= Utility.convertPerSecondToPerNano(11),
-			AIR_MOVEMENT	= Utility.convertAccelerationSecondsNanos(50),
-			AIR_MOVEMENT_SPEED = MOVEMENT_SPEED;
+			AIR_ACCELERATION	= Utility.convertAccelerationSecondsNanos(50),
+			AIR_MAX_SPEED = 0.5f * MOVEMENT_SPEED;
 
 	public PlayerEntity(int entityID) {
 		super(entityID);
@@ -53,6 +53,7 @@ public abstract class PlayerEntity extends Entity implements Living {
 		return bytes;
 	}
 
+	@SuppressWarnings("unused")
 	@Override
 	public void update(World world, long ns) {
 		if(isGrounded) {
@@ -67,13 +68,13 @@ public abstract class PlayerEntity extends Entity implements Living {
 				velocityY = JUMP_VELOCITY;
 			}
 		} else if(left && !right) {
-			velocityX = Math.max(-AIR_MOVEMENT_SPEED, Math.fma(-AIR_MOVEMENT, ns, velocityX));
+			velocityX = Math.max(Math.min(-AIR_MAX_SPEED, velocityX), Math.fma(-AIR_ACCELERATION, ns, velocityX));
 		} else if(right && !left) {
-			velocityX = Math.min(AIR_MOVEMENT_SPEED, Math.fma(AIR_MOVEMENT, ns, velocityX));
+			velocityX = Math.min(Math.max(AIR_MAX_SPEED, velocityX), Math.fma(AIR_ACCELERATION, ns, velocityX));
 		}
 
 		if(JETPACK_MODE && up) {
-			velocityY = Math.fma(AIR_MOVEMENT, ns, velocityY);
+			velocityY = Math.fma(AIR_ACCELERATION, ns, velocityY);
 		}
 
 		isGrounded = false; //in case there might not be blocks below during next update
