@@ -8,25 +8,49 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
-public class CommandParser {
-	private final Map<String, Consumer<String>> commands = new HashMap<>();
-	private final Queue<Runnable> commandQueue = new ConcurrentLinkedQueue<>();
-	private volatile boolean run = true;
+public class CommandParser implements Runnable {
 	private static final Pattern nameMatcher = Pattern.compile("\\w+");
-
-	public void register(String name, Consumer<String> action) {
-		if(commands.putIfAbsent(name, action) != null)
+	private static final CommandEntry UNKNOWN_COMMAND = 
+			new CommandEntry(args -> System.out.println("Unknown command."), false);
+	
+	private final Map<String, CommandEntry> commands;
+	private final Queue<Runnable> commandQueue;
+	
+	private static final class CommandEntry {
+		final Consumer<String> action;
+		final boolean terminateParser;
+		
+		private CommandEntry(Consumer<String> action, boolean terminateParser) {
+			super();
+			this.action = action;
+			this.terminateParser = terminateParser;
+		}
+	}
+	
+	public CommandParser() {
+		commands = new HashMap<>();
+		commandQueue = new ConcurrentLinkedQueue<>();
+	}
+	
+	public CommandParser register(String name, Consumer<String> action, boolean terminateParser) {
+		if(commands.putIfAbsent(name.toLowerCase(), new CommandEntry(action, terminateParser)) != null)
 			throw new IllegalArgumentException(name + " already registered");
+		return this;
 	}
 
+	@Override
 	public void run() {
-		System.out.println("Enter commands (" + String.join(", ", commands.keySet()) + "): ");
+		System.out.println("Available Commands: (" + String.join(", ", commands.keySet()) + ")");
 		try(var scan = new Scanner(System.in)) {
-			while(run) {
-				Consumer<String> command = getCommand(scan.next(nameMatcher).toLowerCase());
-				String args = scan.nextLine().stripLeading();
+			CommandEntry entry;
+			do {
+				entry = scan.hasNext(nameMatcher) ? 
+					commands.getOrDefault(scan.next(nameMatcher).toLowerCase(), UNKNOWN_COMMAND) :
+					UNKNOWN_COMMAND;
+				Consumer<String> command = entry.action;
+				String args = scan.nextLine().strip();
 				commandQueue.add(() -> command.accept(args));
-			}
+			} while(!entry.terminateParser);
 		}
 	}
 
@@ -34,17 +58,5 @@ public class CommandParser {
 		while(!commandQueue.isEmpty()) {
 			commandQueue.remove().run();
 		}
-	}
-
-	public void quit() {
-		run = false;
-	}
-
-	public Consumer<String> getCommand(String name) {
-		return commands.getOrDefault(name, CommandParser::unknownCommand);
-	}
-
-	private static void unknownCommand(String args) {
-		System.out.println("Unknown command.");
 	}
 }
