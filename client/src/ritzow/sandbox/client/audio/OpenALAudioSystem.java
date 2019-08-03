@@ -1,14 +1,7 @@
 package ritzow.sandbox.client.audio;
 
 import static org.lwjgl.openal.AL10.*;
-import static org.lwjgl.openal.ALC10.ALC_ALL_ATTRIBUTES;
-import static org.lwjgl.openal.ALC10.ALC_ATTRIBUTES_SIZE;
-import static org.lwjgl.openal.ALC10.alcCloseDevice;
-import static org.lwjgl.openal.ALC10.alcCreateContext;
-import static org.lwjgl.openal.ALC10.alcDestroyContext;
-import static org.lwjgl.openal.ALC10.alcGetIntegerv;
-import static org.lwjgl.openal.ALC10.alcMakeContextCurrent;
-import static org.lwjgl.openal.ALC10.alcOpenDevice;
+import static org.lwjgl.openal.ALC10.*;
 
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
@@ -17,6 +10,7 @@ import java.util.Map;
 import org.lwjgl.openal.AL;
 import org.lwjgl.openal.ALC;
 import org.lwjgl.openal.ALCCapabilities;
+import org.lwjgl.system.MemoryStack;
 
 //TODO use http://www.softsynth.com/jsyn/ some day to create cool sound effects
 public final class OpenALAudioSystem implements AudioSystem {
@@ -37,26 +31,32 @@ public final class OpenALAudioSystem implements AudioSystem {
 		alcMakeContextCurrent(alContext);
 		
 		if(!AL.createCapabilities(alcCaps).OpenAL11) {
-			System.err.println("OpenAL 1.1 not supported");
-			shutdown();
-			return null;
+			alcMakeContextCurrent(0);
+			alcDestroyContext(alContext);
+			alcCloseDevice(device);
+			ALC.destroy();
+			throw new UnsupportedOperationException("OpenAL 1.1 not supported");
 		}
 		checkErrors();
-		sources = new int[50];
+		sources = new int[16];
 		alGenSources(sources);
 		return new OpenALAudioSystem();
 	}
 	
 	public static Map<Integer, Integer> getAttributes() {
-		int[] attributes = new int[1];
-		alcGetIntegerv(device, ALC_ATTRIBUTES_SIZE, attributes);
-		attributes = new int[attributes[0]];
-		alcGetIntegerv(device, ALC_ALL_ATTRIBUTES, attributes);
-		Map<Integer, Integer> attributePairs = new HashMap<>();
-		for(int i = 0; i < attributes.length-1; i += 2) {
-			attributePairs.put(attributes[i], attributes[i+1]);
+		try(MemoryStack stack = MemoryStack.stackPush()) {
+			var attributes = stack.mallocInt(1);
+			alcGetIntegerv(device, ALC_ATTRIBUTES_SIZE, attributes);
+			int attributesCount = attributes.get();
+			attributes = stack.mallocInt(attributesCount * 2);
+			alcGetIntegerv(device, ALC_ALL_ATTRIBUTES, attributes);
+			Map<Integer, Integer> attributePairs = new HashMap<>(attributesCount);
+			while(attributes.hasRemaining()) {
+				attributePairs.put(attributes.get(), attributes.get());
+			}
+			
+			return attributePairs;	
 		}
-		return attributePairs;
 	}
 	
 	public static void shutdown() {
@@ -89,7 +89,7 @@ public final class OpenALAudioSystem implements AudioSystem {
 	}
 	
 	@Override
-	public void registerSound(int id, SoundInfo data) {
+	public void registerSound(int id, AudioData data) {
     	int format = AL_FORMAT_STEREO16;
     	
     	if(data.getBitsPerSample() == 8) {
@@ -108,7 +108,9 @@ public final class OpenALAudioSystem implements AudioSystem {
     		} else {
     			throw new UnsupportedOperationException("invalid channel count");
     		}
-    	} 
+    	} else {
+    		throw new UnsupportedOperationException("unsupported bits per sample");
+    	}
     	
     	int buffer = alGenBuffers();
     	alBufferData(buffer, format, data.getData(), data.getSampleRate());

@@ -22,11 +22,11 @@ public final class JavaxAudioSystem implements ritzow.sandbox.client.audio.Audio
 	private final Mixer mixer;
 	private final Map<Integer, byte[]> sounds;
 	
-	public static JavaxAudioSystem create(SoundInfo init) throws IOException {
+	public static JavaxAudioSystem create(AudioData init) throws IOException {
 		return new JavaxAudioSystem(init);
 	}
 
-	public JavaxAudioSystem(SoundInfo init) throws IOException {
+	public JavaxAudioSystem(AudioData init) throws IOException {
 		try {
 			mixer = AudioSystem.getMixer(null); //get default mixer
 			mixer.open();
@@ -42,19 +42,19 @@ public final class JavaxAudioSystem implements ritzow.sandbox.client.audio.Audio
 	}
 	
 	@Override
-	public void registerSound(int id, SoundInfo data) {
+	public void registerSound(int id, AudioData data) {
 		if(sounds.containsKey(id))
 			throw new IllegalStateException(id + " already registered");
 		sounds.put(id, getData(data));
 	}
 	
-	private static byte[] getData(SoundInfo info) {
+	private static byte[] getData(AudioData info) {
 		byte[] data = new byte[info.getData().capacity()];
 		info.getData().get(data);
 		return data;
 	}
 	
-	private static AudioFormat getFormat(SoundInfo info) {
+	private static AudioFormat getFormat(AudioData info) {
 		return new AudioFormat(
 			info.getSampleRate(), 
 			info.getBitsPerSample(), 

@@ -10,7 +10,7 @@ import org.lwjgl.BufferUtils;
 
 //TODO improve/rewrite WAVEDecoder using java.nio and perhaps enums
 /** Instances of WAVEDecoder will decode a .wav file from an InputStream **/
-public final class WAVEDecoder implements SoundInfo {
+public final class WAVEDecoder implements AudioData {
 	private final InputStream input;
 	private ByteBuffer data;
 	
@@ -21,13 +21,13 @@ public final class WAVEDecoder implements SoundInfo {
 	private short blockAlign; //numChannels * bitsPerSample/8
 	private short bitsPerSample; //8 bits = 8, 16 bits = 16, etc.
 	
-	public static SoundInfo decode(InputStream wavData) throws IOException {
+	public static AudioData decode(InputStream wavData) throws IOException {
 		WAVEDecoder dec = new WAVEDecoder(wavData);
 		dec.decode();
 		return dec;
 	}
 	
-	public static SoundInfo decode(Path file) throws IOException {
+	public static AudioData decode(Path file) throws IOException {
 		WAVEDecoder dec = new WAVEDecoder(new ByteArrayInputStream(Files.readAllBytes(file)));
 		dec.decode();
 		return dec;

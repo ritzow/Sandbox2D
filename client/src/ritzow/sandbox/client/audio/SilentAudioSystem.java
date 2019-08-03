@@ -19,7 +19,7 @@ public class SilentAudioSystem implements AudioSystem {
 	}
 
 	@Override
-	public void registerSound(int id, SoundInfo data) {
+	public void registerSound(int id, AudioData data) {
 		
 	}
 
