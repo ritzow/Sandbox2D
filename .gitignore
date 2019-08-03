@@ -10,6 +10,7 @@ jvm/
 
 #don't include library binaries or documentation
 /client/libraries/
+/serverlauncher/libraries/
 
 #don't include outdated code
 /oldcode/
