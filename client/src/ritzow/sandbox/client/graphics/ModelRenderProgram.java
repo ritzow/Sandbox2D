@@ -106,6 +106,9 @@ public final class ModelRenderProgram extends ShaderProgram {
 		glUseProgram(programID);
 		glActiveTexture(ATLAS_TEXTURE_UNIT);
 		glBindTexture(GL_TEXTURE_2D, atlasTexture);
+		//set the blending mode to allow transparency
+		glBlendFunci(RenderManager.MAIN_DRAW_BUFFER_INDEX, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glBlendEquationi(RenderManager.MAIN_DRAW_BUFFER_INDEX, GL_FUNC_ADD);
 	}
 	
 	/**

@@ -6,18 +6,18 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
-import java.nio.file.Paths;
 import org.lwjgl.BufferUtils;
+import ritzow.sandbox.client.data.StandardClientProperties;
 
 public final class Textures {
-
+	
 	public static final float[] FULL_TEXTURE_COORDS = {
 			0f, 1f,
 			0f, 0f,
 			1f, 0f,
 			1f, 1f
 	};
-
+	
 	public static TextureAtlas buildAtlas(TextureData... textures) {
 		return new TextureAtlas(textures);
 	}
@@ -31,7 +31,7 @@ public final class Textures {
 	}
 
 	public static TextureData loadTextureName(String name) throws IOException {
-		try(var in = Files.newInputStream(Paths.get("resources/assets/textures", name + ".png"))) {
+		try(var in = Files.newInputStream(StandardClientProperties.TEXTURES_PATH.resolve(name + ".png"))) {
 			PNGDecoder decoder = new PNGDecoder(in);
 			ByteBuffer pixels = BufferUtils.createByteBuffer(decoder.getWidth() * decoder.getHeight() * 4);
 			decoder.decode(pixels, decoder.getWidth() * 4, Format.RGBA);
