@@ -1,5 +1,6 @@
 package ritzow.sandbox.world;
 
+import java.util.Arrays;
 import java.util.Objects;
 import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.data.Serializer;
@@ -99,6 +100,15 @@ public final class BlockGrid implements Transportable {
 			return previous;
 		} catch(ArrayIndexOutOfBoundsException e) {
 			throw new IllegalArgumentException("invalid coordinates " + x + ", " + y);
+		}
+	}
+	
+	public void fill(Block block, int x1, int y1, int width, int height) {
+		int x2 = x1 + width;
+		int y2 = y1 + height;
+		for(int row = y1; row < y2; ++row) {
+			int rowStart = this.width * row;
+			Arrays.fill(blocks, rowStart + x1, rowStart + x2, block);
 		}
 	}
 
