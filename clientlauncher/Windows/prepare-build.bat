@@ -1,37 +1,37 @@
 ::Windows build
 @echo off
 
-set "output=x64\Release\Output"
+set "arch=x64"
+
+set "output=%arch%\Release\Output"
 
 @echo Removing previous build files
 ::clean up previous version
 rmdir /S /Q "include"
 rmdir /S /Q "%output%"
-rmdir /S /Q "x64\Development\Output"
+rmdir /S /Q "%arch%\Development\Output"
 mkdir "%output%"
 
 set "client=..\..\client"
 set "shared=..\..\shared"
 set "lwjgl=%client%\libraries\lwjgl"
+set "jvmdir=%output%\jvm"
 
-@echo Running jlink
-::create the java runtime TODO call Build.java and move the resulting files instead of relying on Eclipse IDE build for client/shared modules
-"C:\Program Files\Java\jdk-12\bin\jlink.exe" ^
-	--compress=2 ^
-	--no-man-pages ^
-	--strip-debug ^
-	--endian little ^
-	--module-path "%client%\bin;%shared%\bin;%lwjgl%\lwjgl.jar;%lwjgl%\lwjgl-glfw.jar;%lwjgl%\lwjgl-opengl.jar;%lwjgl%\lwjgl-openal.jar;" ^
-	--add-modules java.base,jdk.unsupported,ritzow.sandbox.client,ritzow.sandbox.shared,org.lwjgl,org.lwjgl.glfw,org.lwjgl.opengl,org.lwjgl.openal ^
-	--output "%output%\jvm"
+::Run javac and jlink
+"%JAVA_HOME%\bin\java.exe" --source 14 ^
+"..\Shared\src\ritzow\sandbox\build\Build.java" "..\..\shared" "..\..\client" "%output%"
+
+if not exist "%jvmdir%" (
+	pause 
+	exit /B
+)
 
 @echo Deleting unnecessary jvm files
 ::delete unecessary files kept by jlink
-set "jvmbin=%output%\jvm\bin"
-del "%jvmbin%\java.exe"
-del "%jvmbin%\javaw.exe"
-del "%jvmbin%\keytool.exe"
-del "%output%\jvm\lib\jvm.lib"
+del "%jvmdir%\bin\java.exe"
+del "%jvmdir%\bin\javaw.exe"
+del "%jvmdir%\bin\keytool.exe"
+del "%jvmdir%\lib\jvm.lib"
 
 @echo Copying header files to include directory
 ::copy files required to compile
@@ -44,12 +44,23 @@ rmdir /S /Q "include\win32"
 xcopy /E /Y /Q "%client%\resources" "%output%\resources\"
 xcopy /Y /Q "%client%\options.txt" "%output%\"
 
-@echo Copying native LWJGL libraries
-::copy natives
-xcopy /E /Y "natives" "%output%\"
+@echo Copying native LWJGL libraries to output
+::copy natives using 7-zip to extract dlls from jars
+7z e "%lwjgl%\lwjgl-glfw-natives-windows.jar" -o%output% -bso0 -bsp0 "windows\%arch%\org\lwjgl\glfw\*.dll"
+7z e "%lwjgl%\lwjgl-natives-windows.jar" -o%output% -bso0 -bsp0 "windows\%arch%\org\lwjgl\*.dll"
+7z e "%lwjgl%\lwjgl-openal-natives-windows.jar" -o%output% -bso0 -bsp0 "windows\%arch%\org\lwjgl\openal\*.dll"
+7z e "%lwjgl%\lwjgl-opengl-natives-windows.jar" -o%output% -bso0 -bsp0 "windows\%arch%\org\lwjgl\opengl\*.dll"
 
 @echo Copying Release output to Development output
 ::clone for development Build
-xcopy /E /Y /Q "x64\Release" "x64\Development\"
+xcopy /E /Y /Q "%arch%\Release" "%arch%\Development\"
+
+@echo Copying licenses to Release output
+move "%output%\jvm\legal" "%output%"
+xcopy /Y /Q "%lwjgl%\*license*" "%output%\legal"
+xcopy /Y /Q "%lwjgl%\LICENSE" "%output%\legal"
+rename "%output%\legal\LICENSE" "lwjgl_license.txt"
+xcopy /Y /Q "%client%\libraries\json\LICENSE" "%output%\legal"
+rename "%output%\legal\LICENSE" "json_license.txt"
 
 PAUSE

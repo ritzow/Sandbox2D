@@ -3,68 +3,125 @@ package ritzow.sandbox.build;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
-import java.util.ArrayList;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.List;
 import java.util.Locale;
-import javax.tools.*;
-import javax.tools.JavaCompiler.CompilationTask;
+import java.util.spi.ToolProvider;
+import javax.tools.Diagnostic;
+import javax.tools.DiagnosticListener;
+import javax.tools.JavaCompiler;
+import javax.tools.JavaFileObject;
+import javax.tools.StandardJavaFileManager;
 
 public class Build {
-	public static final Path SHARED_DIR = Path.of("../../shared");
-	public static final Path CLIENT_DIR = Path.of("../../client");
-	public static final Path LIBRARY_DIR = CLIENT_DIR.resolve("libraries");
-	public static final Path SOURCE_DIR = CLIENT_DIR.resolve("src");
-	public static final Path OUTPUT_DIR = Path.of("built-bin");
+	private static final PathMatcher SRC_MATCHER = FileSystems.getDefault().getPathMatcher("glob:*.java");
+	
+	private static final String[] MODULES = {
+		"java.base",
+		"ritzow.sandbox.client",
+		"ritzow.sandbox.shared",
+		"jdk.unsupported",
+		"org.lwjgl",
+		"org.lwjgl.glfw",
+		"org.lwjgl.opengl",
+		"org.lwjgl.openal"
+	};
 	
 	public static void main(String... args) throws IOException {
-		if(Files.notExists(OUTPUT_DIR))
-			Files.createDirectory(OUTPUT_DIR);
-		JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-		try(var fileManager = compiler.getStandardFileManager(System.err::print, Locale.ENGLISH, StandardCharsets.UTF_8)) {
-			PathMatcher matcher = FileSystems.getDefault().getPathMatcher("glob:*.java");
-			List<Path> classFiles = new ArrayList<Path>();
-			Files.walk(SOURCE_DIR).forEach(file -> {
-				System.out.print(file);
-				if(!Files.isDirectory(file, LinkOption.NOFOLLOW_LINKS) && matcher.matches(file.getFileName())) {
-					System.out.print(" ADDED");
-					classFiles.add(file);
-				}
-				System.out.println();
-			});
-			
-			Path LWJGL = LIBRARY_DIR.resolve("lwjgl");
-			String[] libraries = {
-				LWJGL.resolve("lwjgl.jar").toString(),
-				LWJGL.resolve("lwjgl-glfw.jar").toString(),
-				LWJGL.resolve("lwjgl-opengl.jar").toString(),
-				LWJGL.resolve("lwjgl-openal.jar").toString(),
-				LIBRARY_DIR.resolve("PNGDecoder").resolve("PNGDecoder.jar").toString(),
-				SHARED_DIR.resolve("bin").toString()
-			};
-			
-			List<String> options = List.of(
-				"-d", OUTPUT_DIR.toString(),
-				"--enable-preview",
-				"--release", "12",
-				"--module-path", String.join(";", libraries),
-				"-Xlint:preview"
-			);
-			
-			DiagnosticListener<JavaFileObject> listener = message -> {
-				switch(message.getKind()) {
-					case ERROR, WARNING, MANDATORY_WARNING, OTHER -> {
-						System.err.println(message);
-					}
-					case NOTE -> {
-						System.out.println(message.getMessage(Locale.ENGLISH));
-					}
-					default -> throw new UnsupportedOperationException("Unknown enum value " + message.getKind());
-				}
-			};
-
-			var files = fileManager.getJavaFileObjectsFromPaths(classFiles);
-			CompilationTask task = compiler.getTask(null, fileManager, listener, options, null, files);	
-			task.call();
+		Path SHARED_DIR = Path.of(args[0]);
+		Path CLIENT_DIR = Path.of(args[1]);
+		Path OUTPUT_DIR = Path.of(args[2]);
+		Path LIBRARY_DIR = CLIENT_DIR.resolve("libraries");
+		Path LWJGL_DIR = LIBRARY_DIR.resolve("lwjgl");
+		
+		System.out.println("Collecting and compiling classes...");
+		
+		//Search for all the java files to compile and put them in a list
+		Path[] classFiles = Files.walk(CLIENT_DIR.resolve("src"))
+			.filter(file -> !Files.isDirectory(file) && SRC_MATCHER.matches(file.getFileName()))
+			.peek(file -> System.out.println("ADDED " + CLIENT_DIR.relativize(file)))
+			.toArray(Path[]::new);
+		
+		String[] libraries = {
+			LWJGL_DIR.resolve("lwjgl.jar").toString(),
+			LWJGL_DIR.resolve("lwjgl-glfw.jar").toString(),
+			LWJGL_DIR.resolve("lwjgl-opengl.jar").toString(),
+			LWJGL_DIR.resolve("lwjgl-openal.jar").toString(),
+			SHARED_DIR.resolve("bin").toString()
+		};
+		
+		Path OUTPUT_TEMP = Files.createTempDirectory(OUTPUT_DIR, "bin");		
+	
+		if(compile(OUTPUT_TEMP, CLIENT_DIR, classFiles, libraries)) {
+			System.out.print("Compilation successful.\nRunning jlink...");
+			int result = jlink(OUTPUT_TEMP, CLIENT_DIR, libraries);
+			System.out.println(result == 0 ? "jlink successful." : "jlink failed with error " + result + ".");
+		} else {
+			System.out.println("Compilation failed.");
 		}
+		delete(OUTPUT_TEMP);
+	}
+	
+	private static boolean compile(Path temp, Path clientDir,
+			Path[] classes, String[] modules) throws IOException {
+		DiagnosticListener<JavaFileObject> LISTENER = diagnostic -> {
+			StringBuilder msg = new StringBuilder(diagnostic.getKind().name()).append(" ");
+			if(diagnostic.getSource() == null) {
+				msg.append(diagnostic.getMessage(Locale.getDefault()));
+			} else {
+				msg.append(clientDir.relativize(Path.of(diagnostic.getSource().getName())));
+				if(diagnostic.getLineNumber() != Diagnostic.NOPOS) {
+					msg.append(":" + diagnostic.getLineNumber());
+				}
+				msg.append("\n\t").append(diagnostic.getMessage(Locale.getDefault()));
+			}
+			System.out.println(msg);
+		};
+		
+		JavaCompiler compiler = javax.tools.ToolProvider.getSystemJavaCompiler();
+		try(StandardJavaFileManager fileManager = 
+			compiler.getStandardFileManager(System.err::print, null, StandardCharsets.UTF_8)) {
+			return compiler.getTask(
+					null,
+					fileManager,
+					LISTENER, 
+					List.of(
+						"--enable-preview",
+						"--release", "14",
+						"--module-path", String.join(";", modules),
+						"-d", temp.toString()
+					),
+					null,
+					fileManager.getJavaFileObjects(classes)
+			).call();
+		}
+	}
+	
+	private static int jlink(Path temp, Path output, String... libraries) {
+		return ToolProvider.findFirst("jlink").get().run(System.out, System.err, 
+			"--compress", "2",
+			"--no-man-pages",
+			"--endian", "little",
+			"--strip-debug",
+			"--module-path", String.join(";", libraries).concat(";").concat(temp.toString()),
+			"--add-modules", String.join(",", MODULES),
+			"--output", output.resolve("jvm").toString()
+		);
+	}
+	
+	private static void delete(Path file) throws IOException {
+		Files.walkFileTree(file, new SimpleFileVisitor<Path>() {
+			@Override
+			public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+				Files.delete(file);
+				return FileVisitResult.CONTINUE;
+			}
+			
+			@Override
+			public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+				Files.delete(dir);
+				return FileVisitResult.CONTINUE;
+			}
+		});
 	}
 }
