@@ -15,6 +15,7 @@ import javax.tools.StandardJavaFileManager;
 
 public class Build {
 	private static final PathMatcher SRC_MATCHER = FileSystems.getDefault().getPathMatcher("glob:*.java");
+	private static final String RELEASE_VERSION = Integer.toString(Runtime.version().feature());
 	
 	private static final String[] MODULES = {
 		"java.base",
@@ -54,7 +55,7 @@ public class Build {
 	
 		if(compile(OUTPUT_TEMP, CLIENT_DIR, classFiles, libraries)) {
 			System.out.print("Compilation successful.\nRunning jlink...");
-			int result = jlink(OUTPUT_TEMP, CLIENT_DIR, libraries);
+			int result = jlink(OUTPUT_TEMP, OUTPUT_DIR, libraries);
 			System.out.println(result == 0 ? "jlink successful." : "jlink failed with error " + result + ".");
 		} else {
 			System.out.println("Compilation failed.");
@@ -84,10 +85,10 @@ public class Build {
 			return compiler.getTask(
 					null,
 					fileManager,
-					LISTENER, 
+					LISTENER,
 					List.of(
 						"--enable-preview",
-						"--release", "14",
+						"--release", RELEASE_VERSION,
 						"--module-path", String.join(";", modules),
 						"-d", temp.toString()
 					),

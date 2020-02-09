@@ -10,7 +10,7 @@
 JavaVMInitArgs GetJavaInitArgs() noexcept {
 	static JavaVMOption options[] = {
 		{(char*)"-Djdk.module.main=ritzow.sandbox.client"},
-		{(char*)"--enable-preview"}, //Java 12 switch expressions
+		{(char*)"--enable-preview"}, //switch expressions
 		{(char*)"vfprintf", *vfprintf}
 	};
 

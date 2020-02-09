@@ -2,8 +2,11 @@
 @echo off
 
 set "arch=x64"
-
 set "output=%arch%\Release\Output"
+set "client=..\..\client"
+set "shared=..\..\shared"
+set "lwjgl=%client%\libraries\lwjgl"
+set "jvmdir=%output%\jvm"
 
 @echo Removing previous build files
 ::clean up previous version
@@ -12,17 +15,12 @@ rmdir /S /Q "%output%"
 rmdir /S /Q "%arch%\Development\Output"
 mkdir "%output%"
 
-set "client=..\..\client"
-set "shared=..\..\shared"
-set "lwjgl=%client%\libraries\lwjgl"
-set "jvmdir=%output%\jvm"
-
 ::Run javac and jlink
 "%JAVA_HOME%\bin\java.exe" --source 14 ^
 "..\Shared\src\ritzow\sandbox\build\Build.java" "..\..\shared" "..\..\client" "%output%"
 
 if not exist "%jvmdir%" (
-	pause 
+	pause
 	exit /B
 )
 
