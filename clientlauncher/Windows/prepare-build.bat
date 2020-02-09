@@ -61,4 +61,7 @@ rename "%output%\legal\LICENSE" "lwjgl_license.txt"
 xcopy /Y /Q "%client%\libraries\json\LICENSE" "%output%\legal"
 rename "%output%\legal\LICENSE" "json_license.txt"
 
+MSBuild Sandbox2DClientLauncher.vcxproj /p:Configuration=Release /p:Platform=x64
+MSBuild Sandbox2DClientLauncher.vcxproj /p:Configuration=Development /p:Platform=x64
+
 PAUSE
