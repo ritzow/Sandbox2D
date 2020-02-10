@@ -130,21 +130,6 @@
       </Command>
     </PreLinkEvent>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="src\launch.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="src\greenFace.ico" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="src\resource.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="src\resource.rc" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="prepare-build.bat" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

@@ -2,9 +2,12 @@
 @echo off
 
 set "arch=x64"
-set "output=%arch%\Release\Output"
-set "client=..\..\client"
-set "shared=..\..\shared"
+set "os_arch=Windows\%arch%"
+set "output=%os_arch%\Release\Output"
+set "dev=%os_arch%\Development\Output"
+set "client=..\client"
+set "shared=..\shared"
+set "launcher_shared=Shared"
 set "lwjgl=%client%\libraries\lwjgl"
 set "jvmdir=%output%\jvm"
 
@@ -12,12 +15,13 @@ set "jvmdir=%output%\jvm"
 ::clean up previous version
 rmdir /S /Q "include"
 rmdir /S /Q "%output%"
-rmdir /S /Q "%arch%\Development\Output"
+rmdir /S /Q "%dev%"
 mkdir "%output%"
 
+@echo Building java program
 ::Run javac and jlink
 "%JAVA_HOME%\bin\java.exe" --source 14 ^
-"..\Shared\src\ritzow\sandbox\build\Build.java" "..\..\shared" "..\..\client" "%output%"
+"%launcher_shared%\src\ritzow\sandbox\build\Build.java" "%shared%" "%client%" "%output%"
 
 if not exist "%jvmdir%" (
 	pause
@@ -51,7 +55,7 @@ xcopy /Y /Q "%client%\options.txt" "%output%\"
 
 @echo Copying Release output to Development output
 ::clone for development Build
-xcopy /E /Y /Q "%arch%\Release" "%arch%\Development\"
+xcopy /E /Y /Q "%os_arch%\Release" "%os_arch%\Development\"
 
 @echo Copying licenses to Release output
 move "%output%\jvm\legal" "%output%"
@@ -61,7 +65,8 @@ rename "%output%\legal\LICENSE" "lwjgl_license.txt"
 xcopy /Y /Q "%client%\libraries\json\LICENSE" "%output%\legal"
 rename "%output%\legal\LICENSE" "json_license.txt"
 
-MSBuild Sandbox2DClientLauncher.vcxproj /p:Configuration=Release /p:Platform=x64
-MSBuild Sandbox2DClientLauncher.vcxproj /p:Configuration=Development /p:Platform=x64
+@echo Building launcher executable
+msbuild Sandbox2DClientLauncher.vcxproj -p:Configuration=Release;Platform=x64
+msbuild Sandbox2DClientLauncher.vcxproj -p:Configuration=Development;Platform=x64
 
 PAUSE
