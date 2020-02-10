@@ -1,8 +1,6 @@
 To-do list:
-Improve portability
-Improve client data processing "pipeline"
 Add chunk loading and generation to BlockGrid and Client/Server
-Client world mesh generation
+Client world mesh generation for faster graphics
 Use or create proper logging system
 create user interface system/renderer
 Optimize texture atlas space usage
