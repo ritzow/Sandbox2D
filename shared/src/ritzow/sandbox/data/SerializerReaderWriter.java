@@ -188,7 +188,7 @@ public class SerializerReaderWriter implements Serializer, Deserializer {
 				try {
 					T object = (T)func.apply(this);
 					return checkSize(length, index - beginIndex, object);
-				} catch(IndexOutOfBoundsException e) {
+				} catch(@SuppressWarnings("unused") IndexOutOfBoundsException e) {
 					throw new SerializationException("object read too many bytes and reached the end of the data");
 				}
 			}

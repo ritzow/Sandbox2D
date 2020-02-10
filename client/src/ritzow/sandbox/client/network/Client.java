@@ -152,16 +152,7 @@ public class Client {
 		isUp = false;
 	}
 
-	private static class SendPacket {
-		final byte[] data;
-		final boolean reliable;
-
-		public SendPacket(byte[] data, boolean reliable) {
-			this.data = data;
-			this.reliable = reliable;
-		}
-
-		@Override
+	private static record SendPacket(byte[] data, boolean reliable) {
 		public String toString() {
 			return "SendPacket[" + (reliable ? "reliable" : "unreliable") + ", size:" + data.length + "]";
 		}

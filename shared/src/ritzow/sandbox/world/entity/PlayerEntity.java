@@ -203,6 +203,6 @@ public abstract class PlayerEntity extends Entity implements Living {
 	
 	@Override
 	public boolean equals(Object other) {
-		return other instanceof PlayerEntity && ((PlayerEntity)other).entityID == entityID;
+		return other instanceof PlayerEntity p && p.entityID == entityID;
 	}
 }

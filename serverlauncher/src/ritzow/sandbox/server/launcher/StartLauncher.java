@@ -22,6 +22,7 @@ import javafx.scene.image.Image;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.CornerRadii;
+import javafx.scene.layout.HBox;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
 import javafx.stage.FileChooser;
@@ -29,7 +30,6 @@ import javafx.stage.FileChooser.ExtensionFilter;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
-import javafx.stage.WindowEvent;
 import ritzow.sandbox.server.StartServer;
 
 public final class StartLauncher {
@@ -78,11 +78,6 @@ public final class StartLauncher {
 			stage.setHeight(screenSize.getHeight()/2);
 			stage.setScene(new Scene(root));
 			stage.setTitle("Sandbox2D Server");
-			stage.setOnCloseRequest(event -> {
-				if(event.getEventType() == WindowEvent.WINDOW_CLOSE_REQUEST) {
-
-				}
-			});
 			stage.show();
 		} catch(IOException e) {
 			e.printStackTrace();

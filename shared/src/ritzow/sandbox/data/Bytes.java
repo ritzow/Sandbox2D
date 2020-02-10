@@ -221,9 +221,7 @@ public final class Bytes {
 	/**
 	 * Compressed byte data using the deflate algorithm provided by java
 	 * @param data the byte array to compress
-	 * @param times the number of times to compress the data, two times is ideal
 	 * @return a new compressed byte array
-	 * @throws IOException
 	 */
 	public static byte[] compress(byte[] data) {
 		try {

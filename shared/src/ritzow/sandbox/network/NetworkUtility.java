@@ -72,7 +72,9 @@ public class NetworkUtility {
 		return address instanceof Inet6Address;
 	}
 
-	/** Returns the computer's loopback address for same-machine communication **/
+	/** Returns the computer's loopback address for same-machine communication 
+	 * @return The loopback address or null.
+	 * @throws SocketException if there is an error querying the loopback address. **/
 	public static InetAddress getLoopbackAddress() throws SocketException {
 		return NetworkInterface.networkInterfaces()
 				.filter(adapter -> {
@@ -89,7 +91,10 @@ public class NetworkUtility {
 				.findFirst().map(address -> address.getAddress()).get(); //get the best address
 	}
 
-	/** Returns a suitable IP address if available and null if not available **/
+	/** Returns a suitable IP address if available and null if not available 
+	 * @param preferIPv6 if IPv6 should be used when possible.
+	 * @return The primary network-facing IP address of this computer.
+	 * @throws SocketException if there is an error querying the IP address. **/
 	public static InetAddress getPrimaryAddress(boolean preferIPv6) throws SocketException {
 		return NetworkInterface.networkInterfaces()
 			.filter(NetworkUtility::filterInterfaces).findAny() //get main network interface

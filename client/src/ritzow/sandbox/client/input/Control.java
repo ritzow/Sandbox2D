@@ -48,9 +48,10 @@ public class Control {
 
 		@Override
 		public boolean equals(Object obj) {
-			return this == obj || (obj instanceof Button &&
-					buttonType == ((Button)obj).buttonType &&
-					buttonCode == ((Button)obj).buttonCode);
+			return this == obj || (
+					obj instanceof Button b &&
+					buttonType == b.buttonType &&
+					buttonCode == b.buttonCode);
 		}
 	}
 }

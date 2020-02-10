@@ -29,8 +29,8 @@ public class BlockItem extends Item {
 	public boolean canStack(Item item) {
 		if(this == item) {
 			return true;
-		} else if(item instanceof BlockItem) {
-			return block.equals(((BlockItem)item).block);
+		} else if(item instanceof BlockItem i) {
+			return block.equals(i.block);
 		} else {
 			return false;
 		}

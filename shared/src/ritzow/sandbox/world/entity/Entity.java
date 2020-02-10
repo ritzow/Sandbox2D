@@ -16,6 +16,10 @@ public abstract class Entity implements Transportable {
 		velocityX,
 		velocityY;
 	
+	/**
+	 * @param world The world the entity belongs to.
+	 * @param nanoseconds The amount of time to update the entity.
+	 */
 	public void update(World world, long nanoseconds) {
 		positionX = Math.fma(velocityX, nanoseconds, positionX);
 		positionY = Math.fma(velocityY, nanoseconds, positionY);
@@ -55,7 +59,20 @@ public abstract class Entity implements Transportable {
 		RIGHT;
 	}
 	
+	/**
+	 * @param world The world the entity belongs to.
+	 * @param e The entity that this entity collided with.
+	 * @param ns The time since last collision check.
+	 */
 	public void onCollision(World world, Entity e, long ns) {/* optional implementation */}
+	/**
+	 * @param world The world the entity belongs to.
+	 * @param block The block the entity collided with.
+	 * @param side The side of the block the entity collided with.
+	 * @param blockX The x coordinate of the block.
+	 * @param blockY The y coordinate of the block.
+	 * @param ns The time since last collision check.
+	 */
 	public void onCollision(World world, Block block, Side side, int blockX, int blockY, long ns) {/* optional implementation */}
 
 	/** @return true if the entity should be removed from the world **/

@@ -23,8 +23,7 @@ class MainMenuContext {
 		this.state = state;
 		this.context = new MenuInputContext();
 		this.ui = UserInterface.of(state.shader,
-			Map.entry(new Icon(RenderConstants.MODEL_RED_SQUARE), Position.of(0.5f, 0)),
-			Map.entry(new Icon(RenderConstants.MODEL_GREEN_FACE), Position.of(-0.5f, 0))
+			Map.entry(new Icon(RenderConstants.MODEL_GREEN_FACE), Position.of(0, 0))
 		);
 		
 		previousTime = System.nanoTime();
@@ -43,7 +42,7 @@ class MainMenuContext {
 		long time = System.nanoTime();
 		ui.update(display, time - previousTime);
 		RenderManager.preRender(width, height);
-		ui.render(RenderManager.DISPLAY_BUFFER, display.width(), display.height());
+		ui.render(RenderManager.DISPLAY_BUFFER, width, height);
 		previousTime = time;
 		display.refresh();
 	}

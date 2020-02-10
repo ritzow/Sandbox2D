@@ -20,11 +20,8 @@ import ritzow.sandbox.world.entity.Entity;
  */
 public class World implements Transportable, Iterable<Entity> {
 	
-	private static final float 
-		GRAVITY = Utility.convertAccelerationSecondsNanos(9.8f * 3),
-		TERMINAL_VELOCITY = Utility.convertPerSecondToPerNano(1/*53*/),
-		TERMINAL_VELOCITY_SQUARED = TERMINAL_VELOCITY * TERMINAL_VELOCITY;
-
+	private static final float GRAVITY = Utility.convertAccelerationSecondsNanos(9.8f * 3);
+	
 	//Entity operations:
 	//Get an entity by ID
 	//Remove an entity by ID or by object
@@ -52,7 +49,6 @@ public class World implements Transportable, Iterable<Entity> {
 	 * Initializes a new World object with a foreground, background, entity storage, and gravity.
 	 * @param width the width of the foreground and background
 	 * @param height the height of the foreground and background
-	 * @param gravity the amount of gravity
 	 */
 	public World(int width, int height) {
 		entities = new ArrayList<>();
@@ -157,6 +153,7 @@ public class World implements Transportable, Iterable<Entity> {
 
 	/**
 	 * Get the foreground {@code BlockGrid} of the world, which interacts physically with entities.
+	 * @return The foreground terrain.
 	 */
 	public final BlockGrid getForeground() {
 		return foreground;
@@ -164,6 +161,7 @@ public class World implements Transportable, Iterable<Entity> {
 
 	/**
 	 * Get the background {@code BlockGrid} of the world.
+	 * @return the background terrain.
 	 */
 	public final BlockGrid getBackground() {
 		return background;
@@ -179,7 +177,6 @@ public class World implements Transportable, Iterable<Entity> {
 
 	/**
 	 * Enables entity removal.
-	 * @see setRemoveEntities(Consumer)
 	 */
 	public void setRemoveEntities() {
 		this.onRemove = e -> {};
@@ -229,7 +226,7 @@ public class World implements Transportable, Iterable<Entity> {
 	 * @param y the center y coordinate
 	 * @param width the width of the rectangle
 	 * @param height the height of the rectangle
-	 * @return
+	 * @return A collection of all the entities in the defined rectangle.
 	 */
 	public Collection<Entity> getEntitiesInRectangle(float x, float y, float width, float height) {
 		Collection<Entity> col = null;
@@ -283,7 +280,7 @@ public class World implements Transportable, Iterable<Entity> {
 	 * and entity vs block collisions are resolved. If {@code setRemoveEntities has been called},
 	 * entities that are below the bottom of the world will be removed and, if provided, the entity
 	 * remove handler will be called.
-	 * @param time the amount of time to simulate.
+	 * @param nanoseconds the amount of time to simulate.
 	 */
 	public final void update(long nanoseconds) {
 		isEntitiesModifiable = false;
@@ -362,7 +359,6 @@ public class World implements Transportable, Iterable<Entity> {
 	 * @param otherHeight the height of the hitbox
 	 * @param otherFriction the friction of the hitbox
 	 * @param time the amount of time that the resolution should simulate
-	 * @return true if a collision occurred
 	 */
 	private void resolveEntityCollision(Entity e, Entity o, long nanoseconds) {
 		if(e.interactsWithEntities() || o.interactsWithEntities()) {
@@ -443,6 +439,10 @@ public class World implements Transportable, Iterable<Entity> {
 		}
 	}
 
+	/**
+	 * @param surfaceFriction The friction of the object the entity e is colliding with. 
+	 * @param nanoseconds The duration of the collision?
+	 */
 	private static void onCollisionEntity(Entity e, float surfaceFriction, long nanoseconds) {
 		//friction force = normal force * friction
 		//TODO maybe implement normal forces some time (for when entities are stacked)?

@@ -14,6 +14,6 @@ public abstract class Item implements Transportable {
 	
 	@Override
 	public boolean equals(Object object) {
-		return object instanceof Item && canStack((Item)object);
+		return object instanceof Item i && canStack(i);
 	}
 }

@@ -133,7 +133,6 @@ public class Server {
 		}
 	}
 	
-	@SuppressWarnings("unused")
 	private void onReceive(short type, ClientState client, ByteBuffer packet) {
 		switch(type) {
 			case TYPE_CLIENT_CONNECT_REQUEST -> processClientConnectRequest(client);
@@ -241,8 +240,8 @@ public class Server {
 				populateEntityUpdate(packet, ENTITY_UPDATE_HEADER_SIZE + index * BYTES_PER_ENTITY, entity);
 				entitiesRemaining--;
 				index++;
-				if(entity instanceof PlayerEntity) {
-					broadcastPlayerState(null, (PlayerEntity)entity);
+				if(entity instanceof PlayerEntity p) {
+					broadcastPlayerState(null, p);
 				}
 			}
 			broadcastUnsafe(packet, false, client -> client.status == ClientState.STATUS_IN_GAME);
@@ -483,7 +482,7 @@ public class Server {
 		}
 	}
 
-	public void sendReliable(ClientState client, byte[] data) {
+	private static void sendReliable(ClientState client, byte[] data) {
 		sendUnsafe(client, data.clone(), true);
 	}
 

@@ -81,7 +81,6 @@ public final class Utility {
 	 * @param world the world to update
 	 * @param previousTime the previous update start time
 	 * @param maxTimestep the maximum amount of game time to update the world at once
-	 * @param timeScale the time conversion (from nanoseconds to game time)
 	 * @return the start time for the world update (should replace the previous time)
 	 */
 	public static long updateWorld(World world, long previousTime, long maxTimestep) {
@@ -138,6 +137,7 @@ public final class Utility {
 	 * Waits on {@code lock} and returns once {@code condition} returns {@code true}.
 	 * @param lock the object to wait to be notified by.
 	 * @param condition the condition to check.
+	 * @throws InterruptedException if the thread is interrupted while waiting.
 	 */
 	public static void waitOnCondition(Object lock, BooleanSupplier condition) throws InterruptedException {
 		if(!condition.getAsBoolean()) {
@@ -175,6 +175,7 @@ public final class Utility {
 	}
 
 	/** Returns an rotation in radians that represents the change in angle after rotating around a point **/
+	@SuppressWarnings("javadoc")
 	public static float rotateAround(float x, float y, float centerX, float centerY) {
 		return (float)Math.atan2(x-centerX, y-centerY);
 	}
@@ -308,10 +309,6 @@ public final class Utility {
 		return (Math.abs(x - x2) * 2 < (width + width2)) && (Math.abs(y - y2) * 2 < (height + height2));
 	}
 
-	public static float average(float val1, float val2) {
-		return (val1 + val1) * 0.5f;
-	}
-
 	public static double distance(double x1, double y1, double x2, double y2) {
 		return Math.sqrt(Math.fma((x1-x2), (x1-x2), (y1-y2)*(y1-y2)));
 	}
@@ -328,7 +325,10 @@ public final class Utility {
 		return Math.fma((x1-x2), (x1-x2), (y1-y2)*(y1-y2));
 	}
 
-	/** Returns the maximum value of the component opposite the one passed in (x if y given) within a given radius **/
+	/** Returns the maximum value of the component opposite the one passed in (x if y given) within a given radius 
+	 * @param otherComp x or y component
+	 * @param radius radius from given component
+	 * @return the other component **/
 	public static float maxComponentInRadius(float otherComp, float radius) {
 		return (float)Math.sqrt(Math.fma(radius, radius, -otherComp * otherComp));
 	}

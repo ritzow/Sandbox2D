@@ -84,7 +84,7 @@ public final class BlockGrid implements Transportable {
 		try {
 			//return blocks[blocks.length - 1 - y][x];
 			return blocks[width * y + x];
-		} catch(ArrayIndexOutOfBoundsException e) {
+		} catch(@SuppressWarnings("unused") ArrayIndexOutOfBoundsException e) {
 			throw new IllegalArgumentException("invalid coordinates " + x + ", " + y);
 		}
 	}
@@ -98,7 +98,7 @@ public final class BlockGrid implements Transportable {
 			Block previous = blocks[width * y + x];
 			blocks[width * y + x] = block;
 			return previous;
-		} catch(ArrayIndexOutOfBoundsException e) {
+		} catch(@SuppressWarnings("unused") ArrayIndexOutOfBoundsException e) {
 			throw new IllegalArgumentException("invalid coordinates " + x + ", " + y);
 		}
 	}
@@ -146,7 +146,10 @@ public final class BlockGrid implements Transportable {
 		return get(x, y) != null;
 	}
 
-	/** Returns whether or not there is a block at the specified world coordinates **/
+	/** Returns whether or not there is a block at the specified world coordinates 
+	 * @param worldX The world x coordinate to check.
+	 * @param worldY The world y coordinate to check.
+	 * @return true if there is a block at the specified coordinates. **/
 	public boolean isBlock(float worldX, float worldY) {
 		return isBlock(Math.round(worldX), Math.round(worldY));
 	}

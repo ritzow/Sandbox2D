@@ -56,26 +56,29 @@ public class InWorldContext implements GameTalker {
 		long frameStart = System.nanoTime();
 		client.update(this::process);
 		display.poll(input);
-		
 		if(isPaused()) {
 			lastGameUpdate = System.nanoTime();
 			sendPing();
 		} else {
-			if(display.isControlActivated(Control.RESET_ZOOM)) cameraGrip.resetZoom();
-			boolean isLeft = display.isControlActivated(Control.MOVE_LEFT);
-			boolean isRight = display.isControlActivated(Control.MOVE_RIGHT);
-			boolean isUp = display.isControlActivated(Control.MOVE_UP);
-			boolean isDown = display.isControlActivated(Control.MOVE_DOWN);
-			boolean isPrimary = display.isControlActivated(Control.USE_HELD_ITEM);
-			boolean isSecondary = display.isControlActivated(Control.THROW_BOMB);
-			player.setLeft(isLeft);
-			player.setRight(isRight);
-			player.setUp(isUp);
-			player.setDown(isDown);
-			sendPlayerState(player, isPrimary, isSecondary);
-			updateRender(display);
+			updateRunning(display);
 		}
 		ClientUtility.limitFramerate(frameStart);
+	}
+	
+	private void updateRunning(Display display) {
+		if(display.isControlActivated(Control.RESET_ZOOM)) cameraGrip.resetZoom();
+		boolean isLeft = display.isControlActivated(Control.MOVE_LEFT);
+		boolean isRight = display.isControlActivated(Control.MOVE_RIGHT);
+		boolean isUp = display.isControlActivated(Control.MOVE_UP);
+		boolean isDown = display.isControlActivated(Control.MOVE_DOWN);
+		boolean isPrimary = display.isControlActivated(Control.USE_HELD_ITEM);
+		boolean isSecondary = display.isControlActivated(Control.THROW_BOMB);
+		player.setLeft(isLeft);
+		player.setRight(isRight);
+		player.setUp(isUp);
+		player.setDown(isDown);
+		sendPlayerState(player, isPrimary, isSecondary);
+		updateRender(display);
 	}
 	
 	private void updateRender(Display display) {
@@ -93,7 +96,7 @@ public class InWorldContext implements GameTalker {
 		display.refresh();		
 	}
 	
-	private void process(short messageType, @SuppressWarnings("unused") ByteBuffer data) {
+	private void process(short messageType, ByteBuffer data) {
 		switch(messageType) {
 			case Protocol.TYPE_CONSOLE_MESSAGE -> processServerConsoleMessage(data);
 			case Protocol.TYPE_SERVER_WORLD_DATA -> processReceiveWorldData(data);
