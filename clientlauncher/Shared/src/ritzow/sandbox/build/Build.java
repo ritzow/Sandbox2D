@@ -104,17 +104,17 @@ public class Build {
 		JavaCompiler compiler = javax.tools.ToolProvider.getSystemJavaCompiler();
 		try(var fileManager = compiler.getStandardFileManager(System.err::print, null, StandardCharsets.UTF_8)) {
 			return compiler.getTask(
-					null,
-					fileManager,
-					listener,
-					List.of(
-						"--enable-preview",
-						"--release", RELEASE_VERSION,
-						"--module-path", listModules(modules),
-						"-d", output.toString()
-					),
-					null,
-					fileManager.getJavaFileObjects(sources)
+				null,
+				fileManager,
+				listener,
+				List.of(
+				"--enable-preview",
+				"--release", RELEASE_VERSION,
+				"--module-path", listModules(modules),
+				"-d", output.toString()
+				),
+				null,
+				fileManager.getJavaFileObjects(sources)
 			).call();
 		}
 	}

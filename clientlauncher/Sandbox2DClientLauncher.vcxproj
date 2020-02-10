@@ -10,6 +10,38 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Shared\shared.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Windows\src\launch.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="Windows\resources\greenFace.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Windows\resources\resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Windows\resources\resource.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="prepare-build.bat">
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Development|x64'">false</DeploymentContent>
+      <FileType>Document</FileType>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</DeploymentContent>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </CustomBuild>
+    <CustomBuild Include="Shared\src\ritzow\sandbox\build\Build.java">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Development|x64'">false</DeploymentContent>
+      <FileType>Document</FileType>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</DeploymentContent>
+    </CustomBuild>
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <ProjectGuid>{B3B9DC8E-8FD5-456F-B43F-CA4C58C6E150}</ProjectGuid>
@@ -46,14 +78,14 @@
   </ImportGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <TargetName>Sandbox2D</TargetName>
-    <OutDir>$(Platform)\$(Configuration)\Output\</OutDir>
-    <IntDir>$(Platform)\$(Configuration)\Build\</IntDir>
+    <OutDir>Windows\$(Platform)\$(Configuration)\Output\</OutDir>
+    <IntDir>Windows\$(Platform)\$(Configuration)\Build\</IntDir>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Development|x64'">
     <TargetName>Sandbox2D</TargetName>
-    <OutDir>$(Platform)\$(Configuration)\Output\</OutDir>
-    <IntDir>$(Platform)\$(Configuration)\Build\</IntDir>
+    <OutDir>Windows\$(Platform)\$(Configuration)\Output\</OutDir>
+    <IntDir>Windows\$(Platform)\$(Configuration)\Build\</IntDir>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
