@@ -14,15 +14,14 @@ set "jvmdir=%output%\jvm"
 
 @echo Removing previous build files
 ::clean up previous version
-rmdir /S /Q "include"
+rmdir /S /Q "Windows\include"
 rmdir /S /Q "%output%"
 rmdir /S /Q "%dev%"
 mkdir "%output%"
 
 @echo Building java program
 ::Run javac and jlink
-"%JAVA_HOME%\bin\java.exe" --source 14 ^
-"%launcher_shared%\src\ritzow\sandbox\build\Build.java" "%shared%" "%client%" "%output%"
+java "%launcher_shared%\src\ritzow\sandbox\build\Build.java" "%shared%" "%client%" "%output%"
 
 if not exist "%jvmdir%" (
 	pause
@@ -32,7 +31,7 @@ if not exist "%jvmdir%" (
 @echo Copying header files to include directory
 ::copy files required to compile
 move "%output%\jvm\include" "%os%\include"
-copy "%os%\include\win32" "%os%\include"
+copy "%os%\include\win32\" "%os%\include"
 rmdir /S /Q "%os%\include\win32"
 
 @echo Deleting unnecessary jvm files
