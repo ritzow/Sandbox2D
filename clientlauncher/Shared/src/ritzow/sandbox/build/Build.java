@@ -13,6 +13,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.spi.ToolProvider;
 import java.util.stream.Collectors;
 import javax.lang.model.element.Modifier;
@@ -25,6 +26,7 @@ public class Build {
 	private static final PathMatcher SRC_MATCHER = FileSystems.getDefault().getPathMatcher("glob:*.java");
 	private static final String RELEASE_VERSION = Integer.toString(Runtime.version().feature());
 	private static final Charset CHARSET = StandardCharsets.UTF_8;
+	private static final String OS = "windows", ARCH = "x64";
 	
 	private static final String[] MODULE_NAMES = {
 		"java.base",
@@ -48,6 +50,7 @@ public class Build {
 		Path SHARED_DIR = Path.of(args[0]);
 		Path CLIENT_DIR = Path.of(args[1]);
 		Path OUTPUT_DIR = Path.of(args[2]);
+		Path INCLUDE_DIR = Path.of(args[3]);
 
 		Path temp = Files.createTempDirectory(OUTPUT_DIR, "classes_");
 		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -71,9 +74,10 @@ public class Build {
 		);
 		
 		if(sharedSuccess) {
+			Path LWJGL_DIR = CLIENT_DIR.resolve("libraries").resolve("lwjgl");
 			System.out.println("Shared code compiled.");
 			Collection<Path> modules = LWJGL_MODULES.stream()
-				.map(CLIENT_DIR.resolve("libraries").resolve("lwjgl")::resolve)
+				.map(LWJGL_DIR::resolve)
 				.collect(Collectors.toList());
 			modules.add(sharedOut);
 			Path clientSrc = CLIENT_DIR.resolve("src");
@@ -91,8 +95,26 @@ public class Build {
 			if(clientSuccess) {
 				System.out.print("Client code compiled.\nRunning jlink...");
 				modules.add(clientOut);
-				int result = jlink(OUTPUT_DIR.resolve("jvm"), MODULE_NAMES, modules);
-				System.out.println(result == 0 ? "jlink successful." : "jlink failed with error " + result + ".");
+				Path jlinkDir = OUTPUT_DIR.resolve("jvm");
+				int result = jlink(jlinkDir, MODULE_NAMES, modules);
+				if(result == 0) {
+					onJlinkSuccess(jlinkDir, INCLUDE_DIR);
+					Files.copy(CLIENT_DIR.resolve("resources"), OUTPUT_DIR.resolve("resources"));
+					Files.copy(CLIENT_DIR.resolve("options.txt"), OUTPUT_DIR.resolve("options.txt"));
+					extractNatives(LWJGL_DIR, OUTPUT_DIR, OS + "/" + ARCH, Map.of(
+						"lwjgl-natives-windows.jar", "org/lwjgl",
+						"lwjgl-glfw-natives-windows.jar", "org/lwjgl/glfw",
+						"lwjgl-openal-natives-windows.jar", "org/lwjgl/openal",
+						"lwjgl-opengl-natives-windows.jar", "org/lwjgl/opengl"
+					));
+					
+//					ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c"); 
+//					for(String name : jarNames) {
+//						Runtime.getRuntime().
+//					}
+				} else {
+					System.out.println("jlink failed with error " + result + ".");
+				}
 			} else {
 				System.out.println("Client compilation failed.");
 			}
@@ -101,9 +123,57 @@ public class Build {
 		}
 	}
 	
+	private static void onJlinkSuccess(Path jvmDir, Path includeDir) throws IOException {
+		System.out.println("jlink successful.\nMoving header files.");
+		if(!Files.exists(includeDir))
+			Files.createDirectory(includeDir);
+		Files.walkFileTree(jvmDir.resolve("include"), new SimpleFileVisitor<Path>() {
+			@Override
+			public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+				Files.move(file, includeDir.resolve(file.getFileName()), StandardCopyOption.REPLACE_EXISTING);
+				return FileVisitResult.CONTINUE;
+			}
+
+			@Override
+			public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+				if(exc != null) throw exc;
+				Files.delete(dir);
+				return FileVisitResult.CONTINUE;
+			}
+		});
+		
+		Files.delete(jvmDir.resolve("bin").resolve("java.exe"));
+		Files.delete(jvmDir.resolve("bin").resolve("javaw.exe"));
+		Files.delete(jvmDir.resolve("bin").resolve("keytool.exe"));
+		Files.delete(jvmDir.resolve("lib").resolve("jvm.lib"));
+	}
+	
+	private static void extractNatives(Path libDir, Path outDir, 
+			String startDir, Map<String, String> jarNames) throws IOException {
+		for(var entry : jarNames.entrySet()) {
+			URI file = URI.create("jar:" + libDir.resolve(entry.getKey()).toUri());
+			try(FileSystem jar = FileSystems.newFileSystem(file, Map.of())) {
+				extract(jar, jar.getPath(startDir, entry.getValue()), outDir);
+			}
+		}
+	}
+	
+	private static void extract(FileSystem jar, Path subDir, Path outDir) throws IOException {
+		PathMatcher DLL_MATCHER  = jar.getPathMatcher("glob:*.dll");
+		Files.find(subDir, 1, (path, attr) -> !attr.isDirectory() &&
+			DLL_MATCHER.matches(path.getFileName()))
+			.forEach(file -> {
+				try {
+					Files.copy(file, outDir.resolve(file.getFileName().toString()));
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			});
+	}
+	
 	private static Iterable<JavaFileObject> getSourceFiles(Path src) throws IOException {
-		return Files.walk(src)
-			.filter(file -> !Files.isDirectory(file) && SRC_MATCHER.matches(file.getFileName()))
+		return Files.find(src, Integer.MAX_VALUE, (path, attr) -> 
+			!attr.isDirectory() && SRC_MATCHER.matches(path.getFileName()))
 			.peek(file -> System.out.println("ADDED " + src.relativize(file)))
 			.map(PathSourceFile::new)
 			.collect(Collectors.toList());
@@ -163,8 +233,7 @@ public class Build {
 			
 			@Override
 			public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-		        if (exc != null)
-		            throw exc;
+		        if (exc != null) throw exc;
 				Files.delete(dir);
 				return FileVisitResult.CONTINUE;
 			}

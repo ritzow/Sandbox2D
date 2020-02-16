@@ -21,37 +21,12 @@ mkdir "%output%"
 
 @echo Building java program
 ::Run javac and jlink
-java "%launcher_shared%\src\ritzow\sandbox\build\Build.java" "%shared%" "%client%" "%output%"
+java "%launcher_shared%\src\ritzow\sandbox\build\Build.java" "%shared%" "%client%" "%output%" "%os%\include"
 
 if not exist "%jvmdir%" (
 	pause
 	exit /B
 )
-
-@echo Copying header files to include directory
-::copy files required to compile
-move "%output%\jvm\include" "%os%\include"
-copy "%os%\include\win32\" "%os%\include"
-rmdir /S /Q "%os%\include\win32"
-
-@echo Deleting unnecessary jvm files
-::delete unecessary files kept by jlink
-del "%jvmdir%\bin\java.exe"
-del "%jvmdir%\bin\javaw.exe"
-del "%jvmdir%\bin\keytool.exe"
-del "%jvmdir%\lib\jvm.lib"
-
-@echo Copying native LWJGL libraries to output
-::copy natives using 7-zip to extract dlls from jars
-7z e "%lwjgl%\lwjgl-glfw-natives-windows.jar" -o%output% -bso0 -bsp0 "windows\%arch%\org\lwjgl\glfw\*.dll"
-7z e "%lwjgl%\lwjgl-natives-windows.jar" -o%output% -bso0 -bsp0 "windows\%arch%\org\lwjgl\*.dll"
-7z e "%lwjgl%\lwjgl-openal-natives-windows.jar" -o%output% -bso0 -bsp0 "windows\%arch%\org\lwjgl\openal\*.dll"
-7z e "%lwjgl%\lwjgl-opengl-natives-windows.jar" -o%output% -bso0 -bsp0 "windows\%arch%\org\lwjgl\opengl\*.dll"
-
-@echo Copying game files to output
-::copy resources to output
-xcopy /E /Y /Q "%client%\resources" "%output%\resources\"
-xcopy /Y /Q "%client%\options.txt" "%output%\"
 
 @echo Building release launcher
 msbuild Sandbox2DClientLauncher.vcxproj -p:Platform=%arch%;Configuration=Release
