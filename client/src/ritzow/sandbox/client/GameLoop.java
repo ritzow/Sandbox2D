@@ -4,7 +4,7 @@ import java.util.Objects;
 import ritzow.sandbox.client.data.StandardClientOptions;
 import ritzow.sandbox.util.Utility;
 
-public class GameLoop {
+class GameLoop {
 	public interface GameContext {
 		void run() throws Exception;
 	}

@@ -28,7 +28,7 @@ import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.Entity;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
-public class InWorldContext implements GameTalker {
+class InWorldContext implements GameTalker {
 	private final Client client;
 	private final InputContext input;
 	private final GameState state;
