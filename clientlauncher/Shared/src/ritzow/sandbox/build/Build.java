@@ -16,13 +16,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
-import java.util.function.BiConsumer;
-import java.util.function.BinaryOperator;
-import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.spi.ToolProvider;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.NestingKind;
@@ -190,13 +184,13 @@ public class Build {
 	private static Iterable<? extends JavaFileObject> getSourceFiles(Path src) throws IOException {
 		PathMatcher match = src.getFileSystem().getPathMatcher("glob:*.java");
 		Path diagDir = src.getParent();
-		//List<JavaFileObject> list = new ArrayList<JavaFileObject>();
-		return Files.find(src, Integer.MAX_VALUE, (path, attr) -> 
+		List<JavaFileObject> list = new ArrayList<JavaFileObject>();
+		Files.find(src, Integer.MAX_VALUE, (path, attr) -> 
 				!attr.isDirectory() && match.matches(path.getFileName()))
 			.peek(file -> System.out.println("FOUND " + diagDir.relativize(file)))
 			.map(PathSourceFile::new)
-			//.forEach(list::add);
-			.collect(SourceCollector.COLLECTOR);
+			.forEach(list::add);
+		return list;
 	}
 	
 	private static DiagnosticListener<JavaFileObject> createDiagnostic(Path baseDir) {
@@ -264,41 +258,6 @@ public class Build {
 				return FileVisitResult.CONTINUE;
 			}
 		});
-	}
-	
-	private static final class SourceCollector implements 
-			Collector<PathSourceFile, ArrayList<PathSourceFile>, List<PathSourceFile>> {
-		public static final SourceCollector COLLECTOR = new SourceCollector();
-		private static final Set<Characteristics> chars = 
-				Set.of(Characteristics.UNORDERED, Characteristics.IDENTITY_FINISH);
-		
-		@Override
-		public Supplier<ArrayList<PathSourceFile>> supplier() {
-			return ArrayList<PathSourceFile>::new;
-		}
-
-		@Override
-		public BiConsumer<ArrayList<PathSourceFile>, PathSourceFile> accumulator() {
-			return ArrayList::add;
-		}
-
-		@Override
-		public BinaryOperator<ArrayList<PathSourceFile>> combiner() {
-			return (left, right) -> {
-				left.addAll(right);
-				return left;
-			};
-		}
-
-		@Override
-		public Function<ArrayList<PathSourceFile>, List<PathSourceFile>> finisher() {
-			return arg -> arg;
-		}
-
-		@Override
-		public Set<Characteristics> characteristics() {
-			return chars;
-		}
 	}
 	
 	private static final class PathSourceFile implements JavaFileObject {
