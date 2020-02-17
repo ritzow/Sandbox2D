@@ -10,19 +10,18 @@
 <?import javafx.scene.text.Font?>
 <?import javafx.scene.text.Text?>
 
-<ScrollPane fitToHeight="true" fitToWidth="true" prefHeight="239.0" prefWidth="502.0" xmlns="http://javafx.com/javafx/10.0.1" xmlns:fx="http://javafx.com/fxml/1">
+<ScrollPane fitToHeight="true" fitToWidth="true" prefHeight="239.0" prefWidth="502.0" 
+	xmlns="http://javafx.com/javafx/10.0.1" xmlns:fx="http://javafx.com/fxml/1">
    <content>
       <AnchorPane minHeight="190.0" prefHeight="190.0">
          <children>
-            <VBox spacing="10.0" AnchorPane.bottomAnchor="10.0" AnchorPane.leftAnchor="10.0" AnchorPane.rightAnchor="10.0" AnchorPane.topAnchor="10.0">
+            <VBox spacing="10.0" AnchorPane.bottomAnchor="10.0" AnchorPane.leftAnchor="10.0" 
+            	AnchorPane.rightAnchor="10.0" AnchorPane.topAnchor="10.0">
                <children>
                   <Text strokeType="OUTSIDE" strokeWidth="0.0" text="Sandbox2D Dedicated Server">
                      <font>
-                        <Font name="Open Sans Bold" size="31.0" />
+                        <Font name="Open Sans Bold" size="24.0" />
                      </font>
-                     <VBox.margin>
-                        <Insets bottom="10.0" />
-                     </VBox.margin>
                   </Text>
                   <HBox alignment="CENTER_LEFT" prefHeight="10.0" spacing="10.0">
                      <children>
