@@ -7,8 +7,6 @@ import static org.lwjgl.glfw.GLFW.glfwDestroyCursor;
 import static ritzow.sandbox.client.data.StandardClientProperties.*;
 
 import java.io.IOException;
-import java.util.regex.MatchResult;
-import java.util.regex.Pattern;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import ritzow.sandbox.client.audio.AudioSystem;
 import ritzow.sandbox.client.audio.DefaultAudioSystem;
@@ -20,23 +18,21 @@ import ritzow.sandbox.util.Utility;
 /** Entry point to Sandbox2D game client **/
 public class StartClient {
 	
-	/** For use by native launcher
-	 * @param args command line arguments as a single String
+	/** Native launcher entry point.
+	 * @param args command line arguments as a single String.
 	 * @throws Exception if an exception occurrs during program execution **/
 	public static void start(String args) throws Exception {
-		main(Pattern
-			.compile("\\S+") //Pattern: all character sequences split by whitespace
-			.matcher(args)
-			.results()
-			.map(MatchResult::group)
-			.toArray(String[]::new)
-		);
+		start();
 	}
 	
-	/** Command line entry point 
-	 * @param args command line arguments
-	 * @throws Exception if the program encounters an error **/
+	/** Command line entry point.
+	 * @param args command line arguments.
+	 * @throws Exception if the program encounters an error. **/
 	public static void main(String[] args) throws Exception {
+		start();
+	}
+	
+	private static void start() throws Exception {
 		long startupStart = System.nanoTime();
 		System.out.print("Starting game... ");
 		AudioSystem.load();
@@ -70,6 +66,6 @@ public class StartClient {
 		var cursorMallet = ClientUtility.loadGLFWImage(CURSORS_PATH.resolve("mallet32.png"));
 		state.cursorPick = ClientUtility.loadGLFWCursor(cursorPickaxe, 0, 0.66f);
 		state.cursorMallet = ClientUtility.loadGLFWCursor(cursorMallet, 0, 0.66f);
-		state.display = new Display(4, StandardClientOptions.USE_OPENGL_4_6 ? 6 : 1, true, "Sandbox2D", appIcon);
+		state.display = new Display(4, StandardClientOptions.USE_OPENGL_4_6 ? 6 : 1, "Sandbox2D", appIcon);
 	}
 }
