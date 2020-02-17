@@ -9,20 +9,17 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import javafx.application.Platform;
+import javafx.beans.value.ObservableValue;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
-import javafx.geometry.Insets;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Control;
 import javafx.scene.control.TextField;
+import javafx.scene.effect.DropShadow;
 import javafx.scene.image.Image;
-import javafx.scene.layout.Background;
-import javafx.scene.layout.BackgroundFill;
-import javafx.scene.layout.CornerRadii;
-import javafx.scene.layout.HBox;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
 import javafx.stage.FileChooser;
@@ -33,88 +30,83 @@ import javafx.stage.StageStyle;
 import ritzow.sandbox.server.StartServer;
 
 public final class StartLauncher {
-	private static Stage stage;
-	private static Control root;
-	private static LauncherController controller;
 
 	public static void main(String[] args) {
-		Platform.startup(StartLauncher::start);
+		Platform.startup(new LauncherController()::start);
 	}
 
+	private static void runServer(InetAddress ip, int port) throws IOException {
+		StartServer.startServer(new InetSocketAddress(ip, port));
+	}
+	
 	private static final class LauncherController {
-		@FXML TextField ipField, portField;
+		@FXML TextField ipField, portField, worldFileField;
 		@FXML Button startButton, browseButton;
 		@FXML Text errorMessageText;
-	}
-
-	private static void start() {
-		try {
-//			try(var in = Files.newInputStream(Path.of("bin/font/OpenSans-Bold.ttf"))) {
-//				Font.loadFont(in, 18);
-//			}
-
-			//Font.loadFont("https://fonts.googleapis.com/css?family=Open+Sans:700", 18);
-			
+		
+		private Stage stage;
+		
+		private void start() {
 			var loader = new FXMLLoader();
-			controller = new LauncherController();
-			loader.setController(controller);
-			try(var in = Files.newInputStream(Path.of("bin/launcher_main.fxml"))) {
-				root = loader.load(in);
-			}
-
-			root.setBackground(new Background(new BackgroundFill(Color.WHITESMOKE, CornerRadii.EMPTY, Insets.EMPTY)));
-			//controller.startButton.setBackground(new Background(new BackgroundFill(Color.GREEN, new CornerRadii(5), Insets.EMPTY)));
-			controller.startButton.addEventHandler(ActionEvent.ACTION, StartLauncher::onStartButtonPress);
-			controller.browseButton.addEventHandler(ActionEvent.ACTION, StartLauncher::onBrowseButtonPress);
-
-			stage = new Stage(StageStyle.DECORATED);
-
-			try(var iconIn = Files.newInputStream(Path.of("bin/greenFace.png"))) {
+			loader.setController(this);
+			try(var in = Files.newInputStream(Path.of("bin/launcher_main.fxml"));
+				var iconIn = Files.newInputStream(Path.of("bin/greenFace.png"))) {
+				Control root = loader.load(in);
+				stage = new Stage(StageStyle.DECORATED);
+				stage.setForceIntegerRenderScale(true);
 				stage.getIcons().add(new Image(iconIn));
+				ipField.textProperty().addListener(this::onIpFieldChange);
+				startButton.addEventHandler(ActionEvent.ACTION, this::onStartButtonPress);
+				browseButton.addEventHandler(ActionEvent.ACTION, this::onBrowseButtonPress);
+				Rectangle2D screenSize = Screen.getPrimary().getBounds();
+				stage.setWidth(screenSize.getWidth()/2);
+				stage.setHeight(screenSize.getHeight()/2);
+				stage.setScene(new Scene(root));
+				stage.setTitle("Sandbox2D Server");
+				stage.show();
+			} catch(IOException e) {
+				e.printStackTrace();
+				System.exit(-1);
 			}
-
-			Rectangle2D screenSize = Screen.getPrimary().getBounds();
-			stage.setWidth(screenSize.getWidth()/2);
-			stage.setHeight(screenSize.getHeight()/2);
-			stage.setScene(new Scene(root));
-			stage.setTitle("Sandbox2D Server");
-			stage.show();
-		} catch(IOException e) {
-			e.printStackTrace();
 		}
-	}
 
-	private static void runServer(InetAddress ip, int port) {
-		try {
-			StartServer.startServer(new InetSocketAddress(ip, port));
-		} catch (IOException e) {
-			e.printStackTrace();
+		@SuppressWarnings("unused")
+		private void onIpFieldChange(ObservableValue<? extends String> change, String oldText, String newText) {
+			if(ipField.getEffect() != null)
+				ipField.setEffect(null);
 		}
-	}
-
-	private static void onStartButtonPress(ActionEvent event) {
-		try {
-			System.out.println("start button pressed");
-			((Button)event.getSource()).setDisable(true);
-			InetAddress ip = InetAddress.getByName(controller.ipField.getText().isEmpty() ? controller.ipField.getPromptText() : controller.ipField.getText());
-			int port = Integer.parseUnsignedInt(controller.portField.getText().isEmpty() ? controller.portField.getPromptText() : controller.portField.getText());
-			new Thread(() -> runServer(ip, port), "Server Update Thread").start();
-		} catch(@SuppressWarnings("unused") UnknownHostException e) {
-			controller.errorMessageText.setText("Invalid IP address");
-			//controller.ipField.setBorder(new Border(new BorderStroke(Color.RED, BorderStrokeStyle.SOLID, new CornerRadii(4), BorderWidths.DEFAULT)));
-		} catch(@SuppressWarnings("unused") NumberFormatException e) {
-			controller.errorMessageText.setText("Invalid port number");
+		
+		private void onStartButtonPress(@SuppressWarnings("unused") ActionEvent event) {
+			try {
+				startButton.setDisable(true);
+				InetAddress ip = InetAddress.getByName(ipField.getText().isEmpty() ? 
+						ipField.getPromptText() : ipField.getText());
+				int port = Integer.parseUnsignedInt(portField.getText().isEmpty() ? 
+						portField.getPromptText() : portField.getText());
+				new Thread(() -> {
+					try {
+						runServer(ip, port);
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}, "Server Update Thread").start();
+			} catch(@SuppressWarnings("unused") UnknownHostException e) {
+				errorMessageText.setText("Invalid IP address");
+				ipField.setEffect(new DropShadow(5, Color.RED));
+			} catch(@SuppressWarnings("unused") NumberFormatException e) {
+				errorMessageText.setText("Invalid port number");
+			}
 		}
-	}
 
-	private static void onBrowseButtonPress(@SuppressWarnings("unused") ActionEvent event) {
-		FileChooser chooser = new FileChooser();
-		chooser.setTitle("Select World File");
-		chooser.setInitialDirectory(Path.of(".").toFile());
-		chooser.getExtensionFilters().add(new ExtensionFilter("World Files", List.of("*.dat","*.world")));
-		File worldFile = chooser.showOpenDialog(stage);
-		if(worldFile != null) {
-			((TextField)root.lookup("#worldFileField")).setText(worldFile.getAbsolutePath());
+		private void onBrowseButtonPress(@SuppressWarnings("unused") ActionEvent event) {
+			FileChooser chooser = new FileChooser();
+			chooser.setTitle("Select World File");
+			chooser.setInitialDirectory(Path.of(".").toFile());
+			chooser.getExtensionFilters().add(new ExtensionFilter("World Files", List.of("*.dat","*.world")));
+			File worldFile = chooser.showOpenDialog(stage);
+			if(worldFile != null) {
+				worldFileField.setText(worldFile.getAbsolutePath());
+			}
 		}
 	}
 }
