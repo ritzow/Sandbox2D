@@ -10,14 +10,20 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.function.Consumer;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.function.BiConsumer;
+import java.util.function.BinaryOperator;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.spi.ToolProvider;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.NestingKind;
 import javax.tools.Diagnostic;
@@ -72,9 +78,9 @@ public class Build {
 		
 		Path sharedOut = temp.resolve("shared");
 		Path sharedSrc = SHARED_DIR.resolve("src");
-		System.out.println("Searching for shared code...");
+		System.out.println("Searching for shared code.");
 		var sharedFiles = getSourceFiles(sharedSrc);
-		System.out.println("Compiling shared code...");
+		System.out.println("Compiling shared code.");
 		boolean sharedSuccess = compile(
 			sharedOut, 
 			sharedSrc, 
@@ -91,9 +97,9 @@ public class Build {
 			modules.add(sharedOut);
 			Path clientSrc = CLIENT_DIR.resolve("src");
 			Path clientOut = temp.resolve("client");
-			System.out.println("Searching for client code...");
+			System.out.println("Searching for client code.");
 			var clientFiles = getSourceFiles(clientSrc);
-			System.out.println("Compiling client code...");
+			System.out.println("Compiling client code.");
 			boolean clientSuccess = compile(
 				clientOut, 
 				clientSrc,
@@ -107,7 +113,7 @@ public class Build {
 				Path JVM_DIR = OUTPUT_DIR.resolve("jvm");
 				int result = jlink(JVM_DIR, MODULE_NAMES, modules);
 				if(result == 0) {
-					System.out.println("jlink successful.\nMoving header files and deleting unecessary files.");
+					System.out.println("done.\nMoving header files and deleting unecessary files.");
 					traverse(INCLUDE_DIR, Files::delete, Files::delete);
 					Files.createDirectories(INCLUDE_DIR);
 					traverse(JVM_DIR.resolve("include"), file -> 
@@ -129,28 +135,30 @@ public class Build {
 					});
 					
 					Files.copy(CLIENT_DIR.resolve("options.txt"), OUTPUT_DIR.resolve("options.txt"));
-					extractNatives(LWJGL_DIR, OUTPUT_DIR, OS + "/" + ARCH, Map.of(
-						"lwjgl-natives-windows.jar", "org/lwjgl",
-						"lwjgl-glfw-natives-windows.jar", "org/lwjgl/glfw",
-						"lwjgl-openal-natives-windows.jar", "org/lwjgl/openal",
-						"lwjgl-opengl-natives-windows.jar", "org/lwjgl/opengl"
+					extractNatives(LWJGL_DIR, OUTPUT_DIR, OS + "/" + ARCH, List.of(
+						Map.entry("lwjgl-natives-windows.jar", "org/lwjgl"),
+						Map.entry("lwjgl-glfw-natives-windows.jar", "org/lwjgl/glfw"),
+						Map.entry("lwjgl-openal-natives-windows.jar", "org/lwjgl/openal"),
+						Map.entry("lwjgl-opengl-natives-windows.jar", "org/lwjgl/opengl")
 					));
 					
 					//copy legal files to a single output location
 					System.out.print("done.\nCopying legal files... ");
 					Path LEGAL_DIR = OUTPUT_DIR.resolve("legal");
 					Files.move(JVM_DIR.resolve("legal"), LEGAL_DIR);
-					traverseFiles(LWJGL_DIR, false, "glob:*license.txt", copier(LEGAL_DIR));
+					for(Path file : Files.newDirectoryStream(LWJGL_DIR, "*license.txt")) {
+						Files.copy(file, LEGAL_DIR.resolve(file.getFileName().toString()));
+					}
 					Files.copy(LWJGL_DIR.resolve("LICENSE"), LEGAL_DIR.resolve("lwjgl_license.txt"));
 					Files.copy(CLIENT_DIR.resolve("libraries").resolve("json").resolve("LICENSE"), 
 							LEGAL_DIR.resolve("json_license.txt"));
 					
 					//run launcher executable build script
-					System.out.println("copied.\nBuilding launcher executable...");
+					System.out.println("done.\nBuilding launcher executable.");
 					Process msbuild = new ProcessBuilder(
 						"msbuild", 
-						"-interactive:False", 
 						"-nologo",
+						"-verbosity:minimal",
 						"Sandbox2DClientLauncher.vcxproj",
 						"-p:Platform=" + ARCH + ";Configuration=Release"
 					).inheritIO().start();
@@ -169,20 +177,26 @@ public class Build {
 	}
 	
 	private static void extractNatives(Path libDir, Path outDir, 
-			String startDir, Map<String, String> jarNames) throws IOException {
-		for(var entry : jarNames.entrySet()) {
-			URI file = URI.create("jar:" + libDir.resolve(entry.getKey()).toUri());
-			try(FileSystem jar = FileSystems.newFileSystem(file, Map.of())) {
-				traverseFiles(jar.getPath(startDir, entry.getValue()), false, "glob:*.dll", copier(outDir));
+			String startDir, List<Entry<String, String>> jarNames) throws IOException {
+		for(var entry : jarNames) {
+			try(FileSystem jar = FileSystems.newFileSystem(libDir.resolve(entry.getKey()))) {
+				for(Path file : Files.newDirectoryStream(jar.getPath(startDir, entry.getValue()), "*.dll")) {
+					Files.copy(file, outDir.resolve(file.getFileName().toString()));	
+				}
 			}
 		}
 	}
 	
-	private static Iterable<JavaFileObject> getSourceFiles(Path src) throws IOException {
-		return streamFiles(src, true, "glob:*.java")
-			.peek(file -> System.out.println("ADDED " + src.relativize(file)))
+	private static Iterable<? extends JavaFileObject> getSourceFiles(Path src) throws IOException {
+		PathMatcher match = src.getFileSystem().getPathMatcher("glob:*.java");
+		Path diagDir = src.getParent();
+		//List<JavaFileObject> list = new ArrayList<JavaFileObject>();
+		return Files.find(src, Integer.MAX_VALUE, (path, attr) -> 
+				!attr.isDirectory() && match.matches(path.getFileName()))
+			.peek(file -> System.out.println("FOUND " + diagDir.relativize(file)))
 			.map(PathSourceFile::new)
-			.collect(Collectors.toList());
+			//.forEach(list::add);
+			.collect(SourceCollector.COLLECTOR);
 	}
 	
 	private static DiagnosticListener<JavaFileObject> createDiagnostic(Path baseDir) {
@@ -201,7 +215,7 @@ public class Build {
 		};	
 	}
 	
-	private static boolean compile(Path output, Path diag, Iterable<JavaFileObject> sources, 
+	private static boolean compile(Path output, Path diag, Iterable<? extends JavaFileObject> sources, 
 			Collection<Path> modules) {
 		return javax.tools.ToolProvider.getSystemJavaCompiler().getTask(
 			null,
@@ -252,25 +266,39 @@ public class Build {
 		});
 	}
 	
-	private static Stream<Path> streamFiles(Path dir, boolean recurse, String matcher) throws IOException {
-		PathMatcher match = dir.getFileSystem().getPathMatcher(matcher);
-		return Files.find(dir, recurse ? Integer.MAX_VALUE : 1,
-			(path, attr) -> !attr.isDirectory() && match.matches(path.getFileName()));
-	}
-	
-	private static void traverseFiles(Path dir, boolean recurse, 
-			String matcher, Consumer<Path> action) throws IOException {
-		streamFiles(dir, recurse, matcher).forEach(action);
-	}
-	
-	private static Consumer<Path> copier(Path outDir) {
-		return file -> {
-			try {
-				Files.copy(file, outDir.resolve(file.getFileName().toString()));
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		};
+	private static final class SourceCollector implements 
+			Collector<PathSourceFile, ArrayList<PathSourceFile>, List<PathSourceFile>> {
+		public static final SourceCollector COLLECTOR = new SourceCollector();
+		private static final Set<Characteristics> chars = 
+				Set.of(Characteristics.UNORDERED, Characteristics.IDENTITY_FINISH);
+		
+		@Override
+		public Supplier<ArrayList<PathSourceFile>> supplier() {
+			return ArrayList<PathSourceFile>::new;
+		}
+
+		@Override
+		public BiConsumer<ArrayList<PathSourceFile>, PathSourceFile> accumulator() {
+			return ArrayList::add;
+		}
+
+		@Override
+		public BinaryOperator<ArrayList<PathSourceFile>> combiner() {
+			return (left, right) -> {
+				left.addAll(right);
+				return left;
+			};
+		}
+
+		@Override
+		public Function<ArrayList<PathSourceFile>, List<PathSourceFile>> finisher() {
+			return arg -> arg;
+		}
+
+		@Override
+		public Set<Characteristics> characteristics() {
+			return chars;
+		}
 	}
 	
 	private static final class PathSourceFile implements JavaFileObject {
@@ -342,7 +370,7 @@ public class Build {
 
 		@Override
 		public NestingKind getNestingKind() {
-			return null;
+			return NestingKind.TOP_LEVEL;
 		}
 
 		@Override
