@@ -1,6 +1,5 @@
 #don't include output directories
 bin/
-jvm/
 
 #don't include server data storage
 /server/world.dat
@@ -12,21 +11,18 @@ jvm/
 /client/libraries/
 /serverlauncher/libraries/
 
-#don't include outdated code
-/oldcode/
-
 #don't include eclipse project settings
 .classpath
 .project
 .settings
 
-#native launcher/visual studio files
-natives/
-build/
-/clientlauncher/Windows/natives
-/clientlauncher/**/lib
+#Server launcher
+/serverlauncher/build
+
+#Client launcher/VS files
+/clientlauncher/**/jvm
 /clientlauncher/**/include
-/clientlauncher/**/*.vcxproj.user
-/clientlauncher/**/*.aps
+*.vcxproj.user
+*.aps
 /clientlauncher/**/x64
-/clientlauncher/**/.vs
+/clientlauncher/.vs
