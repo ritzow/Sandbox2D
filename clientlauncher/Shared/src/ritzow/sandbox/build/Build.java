@@ -14,8 +14,10 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.spi.ToolProvider;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.NestingKind;
 import javax.tools.Diagnostic;
@@ -23,7 +25,6 @@ import javax.tools.DiagnosticListener;
 import javax.tools.JavaFileObject;
 
 public class Build {
-	private static final PathMatcher SRC_MATCHER = FileSystems.getDefault().getPathMatcher("glob:*.java");
 	private static final String RELEASE_VERSION = Integer.toString(Runtime.version().feature());
 	private static final Charset CHARSET = StandardCharsets.UTF_8;
 	private static final String OS = "windows", ARCH = "x64";
@@ -46,16 +47,24 @@ public class Build {
 		Path.of("lwjgl-openal.jar")
 	);
 	
-	public static void main(String... args) throws IOException {
+	public static void main(String... args) throws IOException, InterruptedException {
+		System.out.println("Running Build.java.");
 		Path SHARED_DIR = Path.of(args[0]);
 		Path CLIENT_DIR = Path.of(args[1]);
 		Path OUTPUT_DIR = Path.of(args[2]);
 		Path INCLUDE_DIR = Path.of(args[3]);
 
+		if(Files.exists(OUTPUT_DIR)) {
+			System.out.println("Deleting output directory.");
+			traverse(OUTPUT_DIR, Files::delete, Files::delete);
+		}
+		
+		Thread.sleep(100);
+		Files.createDirectory(OUTPUT_DIR);
 		Path temp = Files.createTempDirectory(OUTPUT_DIR, "classes_");
 		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
 			try {
-				delete(temp);
+				traverse(temp, Files::delete, Files::delete);
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -93,13 +102,32 @@ public class Build {
 			);
 			
 			if(clientSuccess) {
-				System.out.print("Client code compiled.\nRunning jlink...");
+				System.out.print("Client code compiled.\nRunning jlink... ");
 				modules.add(clientOut);
-				Path jlinkDir = OUTPUT_DIR.resolve("jvm");
-				int result = jlink(jlinkDir, MODULE_NAMES, modules);
+				Path JVM_DIR = OUTPUT_DIR.resolve("jvm");
+				int result = jlink(JVM_DIR, MODULE_NAMES, modules);
 				if(result == 0) {
-					onJlinkSuccess(jlinkDir, INCLUDE_DIR);
-					Files.copy(CLIENT_DIR.resolve("resources"), OUTPUT_DIR.resolve("resources"));
+					System.out.println("jlink successful.\nMoving header files and deleting unecessary files.");
+					traverse(INCLUDE_DIR, Files::delete, Files::delete);
+					Files.createDirectories(INCLUDE_DIR);
+					traverse(JVM_DIR.resolve("include"), file -> 
+						Files.move(file, INCLUDE_DIR.resolve(file.getFileName())), Files::delete);
+					Files.delete(JVM_DIR.resolve("bin").resolve("java.exe"));
+					Files.delete(JVM_DIR.resolve("bin").resolve("javaw.exe"));
+					Files.delete(JVM_DIR.resolve("bin").resolve("keytool.exe"));
+					Files.delete(JVM_DIR.resolve("lib").resolve("jvm.lib"));
+					
+					System.out.print("Copying game files and natives... ");
+					Path RESOURCES_SRC_DIR = CLIENT_DIR.resolve("resources");
+					Path RESOURCES_DIR = OUTPUT_DIR.resolve("resources");
+					Files.walk(RESOURCES_SRC_DIR).forEach(path -> {
+						try {
+							Files.copy(path, RESOURCES_DIR.resolve(RESOURCES_SRC_DIR.relativize(path)));
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+					});
+					
 					Files.copy(CLIENT_DIR.resolve("options.txt"), OUTPUT_DIR.resolve("options.txt"));
 					extractNatives(LWJGL_DIR, OUTPUT_DIR, OS + "/" + ARCH, Map.of(
 						"lwjgl-natives-windows.jar", "org/lwjgl",
@@ -108,10 +136,27 @@ public class Build {
 						"lwjgl-opengl-natives-windows.jar", "org/lwjgl/opengl"
 					));
 					
-//					ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c"); 
-//					for(String name : jarNames) {
-//						Runtime.getRuntime().
-//					}
+					//copy legal files to a single output location
+					System.out.print("done.\nCopying legal files... ");
+					Path LEGAL_DIR = OUTPUT_DIR.resolve("legal");
+					Files.move(JVM_DIR.resolve("legal"), LEGAL_DIR);
+					traverseFiles(LWJGL_DIR, false, "glob:*license.txt", copier(LEGAL_DIR));
+					Files.copy(LWJGL_DIR.resolve("LICENSE"), LEGAL_DIR.resolve("lwjgl_license.txt"));
+					Files.copy(CLIENT_DIR.resolve("libraries").resolve("json").resolve("LICENSE"), 
+							LEGAL_DIR.resolve("json_license.txt"));
+					
+					//run launcher executable build script
+					System.out.println("copied.\nBuilding launcher executable...");
+					Process msbuild = new ProcessBuilder(
+						"msbuild", 
+						"-interactive:False", 
+						"-nologo",
+						"Sandbox2DClientLauncher.vcxproj",
+						"-p:Platform=" + ARCH + ";Configuration=Release"
+					).inheritIO().start();
+					int status = msbuild.waitFor();
+					System.out.println(status == 0 ? "Launcher built." : 
+						"Launcher build failed with code " + status);
 				} else {
 					System.out.println("jlink failed with error " + result + ".");
 				}
@@ -123,82 +168,45 @@ public class Build {
 		}
 	}
 	
-	private static void onJlinkSuccess(Path jvmDir, Path includeDir) throws IOException {
-		System.out.println("jlink successful.\nMoving header files.");
-		if(!Files.exists(includeDir))
-			Files.createDirectory(includeDir);
-		Files.walkFileTree(jvmDir.resolve("include"), new SimpleFileVisitor<Path>() {
-			@Override
-			public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-				Files.move(file, includeDir.resolve(file.getFileName()), StandardCopyOption.REPLACE_EXISTING);
-				return FileVisitResult.CONTINUE;
-			}
-
-			@Override
-			public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-				if(exc != null) throw exc;
-				Files.delete(dir);
-				return FileVisitResult.CONTINUE;
-			}
-		});
-		
-		Files.delete(jvmDir.resolve("bin").resolve("java.exe"));
-		Files.delete(jvmDir.resolve("bin").resolve("javaw.exe"));
-		Files.delete(jvmDir.resolve("bin").resolve("keytool.exe"));
-		Files.delete(jvmDir.resolve("lib").resolve("jvm.lib"));
-	}
-	
 	private static void extractNatives(Path libDir, Path outDir, 
 			String startDir, Map<String, String> jarNames) throws IOException {
 		for(var entry : jarNames.entrySet()) {
 			URI file = URI.create("jar:" + libDir.resolve(entry.getKey()).toUri());
 			try(FileSystem jar = FileSystems.newFileSystem(file, Map.of())) {
-				extract(jar, jar.getPath(startDir, entry.getValue()), outDir);
+				traverseFiles(jar.getPath(startDir, entry.getValue()), false, "glob:*.dll", copier(outDir));
 			}
 		}
 	}
 	
-	private static void extract(FileSystem jar, Path subDir, Path outDir) throws IOException {
-		PathMatcher DLL_MATCHER  = jar.getPathMatcher("glob:*.dll");
-		Files.find(subDir, 1, (path, attr) -> !attr.isDirectory() &&
-			DLL_MATCHER.matches(path.getFileName()))
-			.forEach(file -> {
-				try {
-					Files.copy(file, outDir.resolve(file.getFileName().toString()));
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			});
-	}
-	
 	private static Iterable<JavaFileObject> getSourceFiles(Path src) throws IOException {
-		return Files.find(src, Integer.MAX_VALUE, (path, attr) -> 
-			!attr.isDirectory() && SRC_MATCHER.matches(path.getFileName()))
+		return streamFiles(src, true, "glob:*.java")
 			.peek(file -> System.out.println("ADDED " + src.relativize(file)))
 			.map(PathSourceFile::new)
 			.collect(Collectors.toList());
 	}
 	
-	private static boolean compile(Path output, Path diag, Iterable<JavaFileObject> sources, 
-			Collection<Path> modules) {
-		DiagnosticListener<JavaFileObject> listener = diagnostic -> {
+	private static DiagnosticListener<JavaFileObject> createDiagnostic(Path baseDir) {
+		return diagnostic -> {
 			StringBuilder msg = new StringBuilder(diagnostic.getKind().name()).append(" ");
 			if(diagnostic.getSource() == null) {
 				msg.append(diagnostic.getMessage(Locale.getDefault()));
 			} else {
-				msg.append(diag.relativize(Path.of(diagnostic.getSource().getName())));
+				msg.append(baseDir.relativize(Path.of(diagnostic.getSource().getName())));
 				if(diagnostic.getLineNumber() != Diagnostic.NOPOS) {
 					msg.append(":" + diagnostic.getLineNumber());
 				}
 				msg.append("\n\t").append(diagnostic.getMessage(Locale.getDefault()));
 			}
 			System.out.println(msg);
-		};
-		
+		};	
+	}
+	
+	private static boolean compile(Path output, Path diag, Iterable<JavaFileObject> sources, 
+			Collection<Path> modules) {
 		return javax.tools.ToolProvider.getSystemJavaCompiler().getTask(
 			null,
 			null,
-			listener,
+			createDiagnostic(diag),
 			List.of(
 			"--enable-preview",
 			"--release", RELEASE_VERSION,
@@ -208,7 +216,6 @@ public class Build {
 			null,
 			sources
 		).call();
-	
 	}
 	
 	private static int jlink(Path output, String[] moduleNames, Collection<Path> modules) {
@@ -223,21 +230,47 @@ public class Build {
 		);
 	}
 	
-	private static void delete(Path directory) throws IOException {
+	private static interface PathConsumer {
+		void accept(Path path) throws IOException;
+	}
+	
+	private static void traverse(Path directory, 
+			PathConsumer fileAction, PathConsumer dirAction) throws IOException {
 		Files.walkFileTree(directory, new SimpleFileVisitor<Path>() {
 			@Override
 			public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-				Files.delete(file);
+				fileAction.accept(file);
 				return FileVisitResult.CONTINUE;
 			}
 			
 			@Override
 			public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
 		        if (exc != null) throw exc;
-				Files.delete(dir);
+				dirAction.accept(dir);
 				return FileVisitResult.CONTINUE;
 			}
 		});
+	}
+	
+	private static Stream<Path> streamFiles(Path dir, boolean recurse, String matcher) throws IOException {
+		PathMatcher match = dir.getFileSystem().getPathMatcher(matcher);
+		return Files.find(dir, recurse ? Integer.MAX_VALUE : 1,
+			(path, attr) -> !attr.isDirectory() && match.matches(path.getFileName()));
+	}
+	
+	private static void traverseFiles(Path dir, boolean recurse, 
+			String matcher, Consumer<Path> action) throws IOException {
+		streamFiles(dir, recurse, matcher).forEach(action);
+	}
+	
+	private static Consumer<Path> copier(Path outDir) {
+		return file -> {
+			try {
+				Files.copy(file, outDir.resolve(file.getFileName().toString()));
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		};
 	}
 	
 	private static final class PathSourceFile implements JavaFileObject {
