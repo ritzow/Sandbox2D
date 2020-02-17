@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.StringJoiner;
 import java.util.spi.ToolProvider;
 import java.util.stream.Collectors;
 import javax.lang.model.element.Modifier;
@@ -25,27 +26,12 @@ import javax.tools.DiagnosticListener;
 import javax.tools.JavaFileObject;
 
 public class Build {
-	private static final String RELEASE_VERSION = Integer.toString(Runtime.version().feature());
-	private static final Charset CHARSET = StandardCharsets.UTF_8;
-	private static final String OS = "windows", ARCH = "x64";
+	private static final String 
+		OS = "windows", 
+		ARCH = "x64", 
+		RELEASE_VERSION = Integer.toString(Runtime.version().feature());
 	
-	private static final String[] MODULE_NAMES = {
-		"java.base",
-		"ritzow.sandbox.client",
-		"ritzow.sandbox.shared",
-		"jdk.unsupported",
-		"org.lwjgl",
-		"org.lwjgl.glfw",
-		"org.lwjgl.opengl",
-		"org.lwjgl.openal"
-	};
-	
-	private static final List<Path> LWJGL_MODULES = List.of(
-		Path.of("lwjgl.jar"),
-		Path.of("lwjgl-glfw.jar"),
-		Path.of("lwjgl-opengl.jar"),
-		Path.of("lwjgl-openal.jar")
-	);
+	private static final Charset SRC_CHARSET = StandardCharsets.UTF_8;
 	
 	public static void main(String... args) throws IOException, InterruptedException {
 		System.out.println("Running Build.java.");
@@ -59,106 +45,45 @@ public class Build {
 			traverse(OUTPUT_DIR, Files::delete, Files::delete);
 		}
 		
-		Thread.sleep(100);
-		Files.createDirectory(OUTPUT_DIR);
-		Path temp = Files.createTempDirectory(OUTPUT_DIR, "classes_");
-		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-			try {
-				traverse(temp, Files::delete, Files::delete);
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}));
-		
-		Path sharedOut = temp.resolve("shared");
-		Path sharedSrc = SHARED_DIR.resolve("src");
+		Files.createDirectory(OUTPUT_DIR); //TODO could cause exception? Windows bug
+		Path temp = createTempDir(OUTPUT_DIR);
+		Path SHARED_SRC = SHARED_DIR.resolve("src");
+		Path SHARED_OUT = temp.resolve("shared");
 		System.out.println("Searching for shared code.");
-		var sharedFiles = getSourceFiles(sharedSrc);
+		var sharedFiles = getSourceFiles(SHARED_SRC);
 		System.out.println("Compiling shared code.");
-		boolean sharedSuccess = compile(
-			sharedOut, 
-			sharedSrc, 
-			sharedFiles, 
-			List.of()
-		);
-		
-		if(sharedSuccess) {
-			Path LWJGL_DIR = CLIENT_DIR.resolve("libraries").resolve("lwjgl");
+		if(compile(SHARED_OUT, SHARED_SRC, sharedFiles, List.of())) {
+			Path CLIENT_LIBS = CLIENT_DIR.resolve("libraries");
+			Path LWJGL_DIR = CLIENT_LIBS.resolve("lwjgl");
 			System.out.println("Shared code compiled.");
-			Collection<Path> modules = LWJGL_MODULES.stream()
-				.map(LWJGL_DIR::resolve)
-				.collect(Collectors.toList());
-			modules.add(sharedOut);
-			Path clientSrc = CLIENT_DIR.resolve("src");
-			Path clientOut = temp.resolve("client");
+			List<Path> modules = new ArrayList<Path>(6);
+			modules.add(LWJGL_DIR.resolve("lwjgl.jar"));
+			modules.add(LWJGL_DIR.resolve("lwjgl-glfw.jar"));
+			modules.add(LWJGL_DIR.resolve("lwjgl-opengl.jar"));
+			modules.add(LWJGL_DIR.resolve("lwjgl-openal.jar"));
+			modules.add(SHARED_OUT);
+			Path CLIENT_SRC = CLIENT_DIR.resolve("src");
+			Path CLIENT_OUT = temp.resolve("client");
 			System.out.println("Searching for client code.");
-			var clientFiles = getSourceFiles(clientSrc);
+			var clientFiles = getSourceFiles(CLIENT_SRC);
 			System.out.println("Compiling client code.");
-			boolean clientSuccess = compile(
-				clientOut, 
-				clientSrc,
-				clientFiles, 
-				modules
-			);
-			
-			if(clientSuccess) {
+			if(compile(CLIENT_OUT, CLIENT_SRC, clientFiles, modules)) {
 				System.out.print("Client code compiled.\nRunning jlink... ");
-				modules.add(clientOut);
+				modules.add(CLIENT_OUT);
 				Path JVM_DIR = OUTPUT_DIR.resolve("jvm");
-				int result = jlink(JVM_DIR, MODULE_NAMES, modules);
+				int result = jlink(JVM_DIR, modules, 
+					"java.base",
+					"ritzow.sandbox.client",
+					"ritzow.sandbox.shared",
+					"jdk.unsupported",
+					"org.lwjgl",
+					"org.lwjgl.glfw",
+					"org.lwjgl.opengl",
+					"org.lwjgl.openal"
+				);
+				
 				if(result == 0) {
-					System.out.println("done.\nMoving header files and deleting unecessary files.");
-					traverse(INCLUDE_DIR, Files::delete, Files::delete);
-					Files.createDirectories(INCLUDE_DIR);
-					traverse(JVM_DIR.resolve("include"), file -> 
-						Files.move(file, INCLUDE_DIR.resolve(file.getFileName())), Files::delete);
-					Files.delete(JVM_DIR.resolve("bin").resolve("java.exe"));
-					Files.delete(JVM_DIR.resolve("bin").resolve("javaw.exe"));
-					Files.delete(JVM_DIR.resolve("bin").resolve("keytool.exe"));
-					Files.delete(JVM_DIR.resolve("lib").resolve("jvm.lib"));
-					
-					System.out.print("Copying game files and natives... ");
-					Path RESOURCES_SRC_DIR = CLIENT_DIR.resolve("resources");
-					Path RESOURCES_DIR = OUTPUT_DIR.resolve("resources");
-					Files.walk(RESOURCES_SRC_DIR).forEach(path -> {
-						try {
-							Files.copy(path, RESOURCES_DIR.resolve(RESOURCES_SRC_DIR.relativize(path)));
-						} catch (IOException e) {
-							e.printStackTrace();
-						}
-					});
-					
-					Files.copy(CLIENT_DIR.resolve("options.txt"), OUTPUT_DIR.resolve("options.txt"));
-					extractNatives(LWJGL_DIR, OUTPUT_DIR, OS + "/" + ARCH, List.of(
-						Map.entry("lwjgl-natives-windows.jar", "org/lwjgl"),
-						Map.entry("lwjgl-glfw-natives-windows.jar", "org/lwjgl/glfw"),
-						Map.entry("lwjgl-openal-natives-windows.jar", "org/lwjgl/openal"),
-						Map.entry("lwjgl-opengl-natives-windows.jar", "org/lwjgl/opengl")
-					));
-					
-					//copy legal files to a single output location
-					System.out.print("done.\nCopying legal files... ");
-					Path LEGAL_DIR = OUTPUT_DIR.resolve("legal");
-					Files.move(JVM_DIR.resolve("legal"), LEGAL_DIR);
-					for(Path file : Files.newDirectoryStream(LWJGL_DIR, "*license.txt")) {
-						Files.copy(file, LEGAL_DIR.resolve(file.getFileName().toString()));
-					}
-					Files.copy(LWJGL_DIR.resolve("LICENSE"), LEGAL_DIR.resolve("lwjgl_license.txt"));
-					Files.copy(CLIENT_DIR.resolve("libraries").resolve("json").resolve("LICENSE"), 
-							LEGAL_DIR.resolve("json_license.txt"));
-					
-					//run launcher executable build script
-					System.out.println("done.\nBuilding launcher executable.");
-					Process msbuild = new ProcessBuilder(
-						"msbuild", 
-						"-nologo",
-						"-verbosity:minimal",
-						"Sandbox2DClientLauncher.vcxproj",
-						"-p:Platform=" + ARCH + ";Configuration=Release"
-					).inheritIO().start();
-					int status = msbuild.waitFor();
-					System.out.println(status == 0 ? "Launcher built." : 
-						"Launcher build failed with code " + status);
+					postJlink(CLIENT_DIR, JVM_DIR, LWJGL_DIR, CLIENT_LIBS, OUTPUT_DIR, INCLUDE_DIR);
 				} else {
 					System.out.println("jlink failed with error " + result + ".");
 				}
@@ -168,6 +93,67 @@ public class Build {
 		} else {
 			System.out.println("Shared compilation failed.");
 		}
+	}
+	
+	private static void postJlink(Path CLIENT_DIR, Path JVM_DIR, 
+			Path LWJGL_DIR, Path CLIENT_LIBS, Path OUTPUT_DIR, Path INCLUDE_DIR) 
+					throws IOException, InterruptedException {
+		System.out.println("done.\nMoving header files and deleting unecessary files.");
+		traverse(INCLUDE_DIR, Files::delete, Files::delete);
+		Files.createDirectories(INCLUDE_DIR);
+		traverse(JVM_DIR.resolve("include"), file -> 
+			Files.move(file, INCLUDE_DIR.resolve(file.getFileName())), Files::delete);
+		Files.delete(JVM_DIR.resolve("bin").resolve("java.exe"));
+		Files.delete(JVM_DIR.resolve("bin").resolve("javaw.exe"));
+		Files.delete(JVM_DIR.resolve("bin").resolve("keytool.exe"));
+		Files.delete(JVM_DIR.resolve("lib").resolve("jvm.lib"));
+		
+		System.out.print("Copying game files and natives... ");
+		Path RESOURCES_SRC_DIR = CLIENT_DIR.resolve("resources");
+		Path RESOURCES_DIR = OUTPUT_DIR.resolve("resources");
+		Files.walk(RESOURCES_SRC_DIR).forEach(path -> {
+			try {
+				Files.copy(path, RESOURCES_DIR.resolve(RESOURCES_SRC_DIR.relativize(path)));
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		});
+		
+		//copy options.txt and .dll files into output directory
+		Files.copy(CLIENT_DIR.resolve("options.txt"), OUTPUT_DIR.resolve("options.txt"));
+		extractNatives(LWJGL_DIR, OUTPUT_DIR, OS + "/" + ARCH, List.of(
+			Map.entry("lwjgl-natives-windows.jar", "org/lwjgl"),
+			Map.entry("lwjgl-glfw-natives-windows.jar", "org/lwjgl/glfw"),
+			Map.entry("lwjgl-openal-natives-windows.jar", "org/lwjgl/openal"),
+			Map.entry("lwjgl-opengl-natives-windows.jar", "org/lwjgl/opengl")
+		));
+		
+		//copy legal files to a single output location
+		System.out.print("done.\nCopying legal files... ");
+		Path LEGAL_DIR = OUTPUT_DIR.resolve("legal");
+		Files.move(JVM_DIR.resolve("legal"), LEGAL_DIR);
+		for(Path file : Files.newDirectoryStream(LWJGL_DIR, "*license.txt")) {
+			Files.copy(file, LEGAL_DIR.resolve(file.getFileName().toString()));
+		}
+		Files.copy(LWJGL_DIR.resolve("LICENSE"), LEGAL_DIR.resolve("lwjgl_license.txt"));
+		Files.copy(CLIENT_LIBS.resolve("json").resolve("LICENSE"), LEGAL_DIR.resolve("json_license.txt"));
+		
+		//run launcher executable build script
+		System.out.println("done.\nBuilding launcher executable.");
+		msbuild();
+	}
+	
+	private static void msbuild() throws IOException, InterruptedException {
+		Process msbuild = new ProcessBuilder(
+			"msbuild", 
+			"-nologo",
+			"-verbosity:minimal",
+			"Sandbox2DClientLauncher.vcxproj",
+			"-p:Platform=" + ARCH + ";Configuration=Release"
+		).inheritIO().start();
+		int status = msbuild.waitFor();
+		System.out.println(status == 0 ? "Launcher built." : 
+			"Launcher build failed with code " + status);
 	}
 	
 	private static void extractNatives(Path libDir, Path outDir, 
@@ -193,6 +179,36 @@ public class Build {
 		return list;
 	}
 	
+	private static boolean compile(Path output, Path diag, Iterable<? extends JavaFileObject> sources, 
+			Iterable<Path> modules) {
+		return javax.tools.ToolProvider.getSystemJavaCompiler().getTask(
+			null,
+			null,
+			createDiagnostic(diag),
+			List.of(
+			"-g:none",
+			"--enable-preview",
+			"--release", RELEASE_VERSION,
+			"--module-path", join(modules, ';'),
+			"-d", output.toString()
+			),
+			null,
+			sources
+		).call();
+	}
+	
+	private static int jlink(Path output, Iterable<Path> modules, String... moduleNames) {
+		return ToolProvider.findFirst("jlink").get().run(System.out, System.err, 
+			"--compress", "2",
+			"--no-man-pages",
+			"--endian", "little",
+			//"--strip-debug",
+			"--module-path", join(modules, ';'),
+			"--add-modules", String.join(",", moduleNames),
+			"--output", output.toString()
+		);
+	}
+	
 	private static DiagnosticListener<JavaFileObject> createDiagnostic(Path baseDir) {
 		return diagnostic -> {
 			StringBuilder msg = new StringBuilder(diagnostic.getKind().name()).append(" ");
@@ -209,33 +225,24 @@ public class Build {
 		};	
 	}
 	
-	private static boolean compile(Path output, Path diag, Iterable<? extends JavaFileObject> sources, 
-			Collection<Path> modules) {
-		return javax.tools.ToolProvider.getSystemJavaCompiler().getTask(
-			null,
-			null,
-			createDiagnostic(diag),
-			List.of(
-			"--enable-preview",
-			"--release", RELEASE_VERSION,
-			"--module-path", modules.stream().map(Path::toString).collect(Collectors.joining(";")),
-			"-d", output.toString()
-			),
-			null,
-			sources
-		).call();
+	private static Path createTempDir(Path output) throws IOException {
+		Path temp = Files.createTempDirectory(output, "classes_");
+		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+			try {
+				traverse(temp, Files::delete, Files::delete);
+			} catch (IOException e) {
+				throw new RuntimeException("Error while deleting temp directory.", e);
+			}
+		}));
+		return temp;
 	}
 	
-	private static int jlink(Path output, String[] moduleNames, Collection<Path> modules) {
-		return ToolProvider.findFirst("jlink").get().run(System.out, System.err, 
-			"--compress", "2",
-			"--no-man-pages",
-			"--endian", "little",
-			//"--strip-debug",
-			"--module-path", modules.stream().map(Path::toString).collect(Collectors.joining(";")),
-			"--add-modules", String.join(",", moduleNames),
-			"--output", output.toString()
-		);
+	private static <T> String join(Iterable<T> elements, char joinChar) {
+		StringJoiner joiner = new StringJoiner(Character.toString(joinChar));
+		for(T t : elements) {
+			joiner.add(t.toString());
+		}
+		return joiner.toString();
 	}
 	
 	private static interface PathConsumer {
@@ -289,12 +296,12 @@ public class Build {
 
 		@Override
 		public Reader openReader(boolean ignoreEncodingErrors) throws IOException {
-			return Files.newBufferedReader(path, CHARSET);
+			return Files.newBufferedReader(path, SRC_CHARSET);
 		}
 
 		@Override
 		public CharSequence getCharContent(boolean ignoreEncodingErrors) throws IOException {
-			return Files.readString(path, CHARSET);
+			return Files.readString(path, SRC_CHARSET);
 		}
 
 		@Override
