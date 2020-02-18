@@ -11,14 +11,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.StringJoiner;
 import java.util.spi.ToolProvider;
-import java.util.stream.Collectors;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.NestingKind;
 import javax.tools.Diagnostic;
@@ -46,9 +44,9 @@ public class Build {
 		}
 		
 		Files.createDirectory(OUTPUT_DIR); //TODO could cause exception? Windows bug
-		Path temp = createTempDir(OUTPUT_DIR);
+		Path TEMPORARY_OUT = createTempDir(OUTPUT_DIR);
 		Path SHARED_SRC = SHARED_DIR.resolve("src");
-		Path SHARED_OUT = temp.resolve("shared");
+		Path SHARED_OUT = TEMPORARY_OUT.resolve("shared");
 		System.out.println("Searching for shared code.");
 		var sharedFiles = getSourceFiles(SHARED_SRC);
 		System.out.println("Compiling shared code.");
@@ -63,7 +61,7 @@ public class Build {
 			modules.add(LWJGL_DIR.resolve("lwjgl-openal.jar"));
 			modules.add(SHARED_OUT);
 			Path CLIENT_SRC = CLIENT_DIR.resolve("src");
-			Path CLIENT_OUT = temp.resolve("client");
+			Path CLIENT_OUT = TEMPORARY_OUT.resolve("client");
 			System.out.println("Searching for client code.");
 			var clientFiles = getSourceFiles(CLIENT_SRC);
 			System.out.println("Compiling client code.");
@@ -95,12 +93,11 @@ public class Build {
 		}
 	}
 	
-	private static void postJlink(Path CLIENT_DIR, Path JVM_DIR, 
-			Path LWJGL_DIR, Path CLIENT_LIBS, Path OUTPUT_DIR, Path INCLUDE_DIR) 
-					throws IOException, InterruptedException {
+	private static void postJlink(Path CLIENT_DIR, Path JVM_DIR, Path LWJGL_DIR, 
+			Path CLIENT_LIBS, Path OUTPUT_DIR, Path INCLUDE_DIR) throws IOException, InterruptedException {
 		System.out.println("done.\nMoving header files and deleting unecessary files.");
 		traverse(INCLUDE_DIR, Files::delete, Files::delete);
-		Files.createDirectories(INCLUDE_DIR);
+		Files.createDirectory(INCLUDE_DIR);
 		traverse(JVM_DIR.resolve("include"), file -> 
 			Files.move(file, INCLUDE_DIR.resolve(file.getFileName())), Files::delete);
 		Files.delete(JVM_DIR.resolve("bin").resolve("java.exe"));
@@ -283,6 +280,21 @@ public class Build {
 		public String getName() {
 			return path.toString();
 		}
+		
+		@Override
+		public Kind getKind() {
+			return Kind.SOURCE;
+		}
+		
+		@Override
+		public CharSequence getCharContent(boolean ignoreEncodingErrors) throws IOException {
+			return Files.readString(path, SRC_CHARSET);
+		}
+		
+		@Override
+		public Reader openReader(boolean ignoreEncodingErrors) throws IOException {
+			return Files.newBufferedReader(path, SRC_CHARSET);
+		}
 
 		@Override
 		public InputStream openInputStream() throws IOException {
@@ -292,16 +304,6 @@ public class Build {
 		@Override
 		public OutputStream openOutputStream() throws IOException {
 			throw new UnsupportedOperationException("writes to source files not allowed");
-		}
-
-		@Override
-		public Reader openReader(boolean ignoreEncodingErrors) throws IOException {
-			return Files.newBufferedReader(path, SRC_CHARSET);
-		}
-
-		@Override
-		public CharSequence getCharContent(boolean ignoreEncodingErrors) throws IOException {
-			return Files.readString(path, SRC_CHARSET);
 		}
 
 		@Override
@@ -322,11 +324,6 @@ public class Build {
 		@Override
 		public boolean delete() {
 			throw new UnsupportedOperationException("source file modifications not allowed");
-		}
-
-		@Override
-		public Kind getKind() {
-			return Kind.SOURCE;
 		}
 
 		@Override
