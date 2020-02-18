@@ -1,5 +1,7 @@
 package ritzow.sandbox.build;
 
+import static java.util.Map.entry;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -13,7 +15,6 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.StringJoiner;
 import java.util.spi.ToolProvider;
@@ -43,7 +44,7 @@ public class Build {
 			traverse(OUTPUT_DIR, Files::delete, Files::delete);
 		}
 		
-		Files.createDirectory(OUTPUT_DIR); //TODO could cause exception? Windows bug
+		Files.createDirectory(OUTPUT_DIR);
 		Path TEMPORARY_OUT = createTempDir(OUTPUT_DIR);
 		Path SHARED_SRC = SHARED_DIR.resolve("src");
 		Path SHARED_OUT = TEMPORARY_OUT.resolve("shared");
@@ -69,19 +70,10 @@ public class Build {
 				System.out.print("Client code compiled.\nRunning jlink... ");
 				modules.add(CLIENT_OUT);
 				Path JVM_DIR = OUTPUT_DIR.resolve("jvm");
-				int result = jlink(JVM_DIR, modules, 
-					"java.base",
-					"ritzow.sandbox.client",
-					"ritzow.sandbox.shared",
-					"jdk.unsupported",
-					"org.lwjgl",
-					"org.lwjgl.glfw",
-					"org.lwjgl.opengl",
-					"org.lwjgl.openal"
-				);
+				int result = jlink(JVM_DIR, modules, "ritzow.sandbox.client");
 				
 				if(result == 0) {
-					postJlink(CLIENT_DIR, JVM_DIR, LWJGL_DIR, CLIENT_LIBS, OUTPUT_DIR, INCLUDE_DIR);
+					postJlink(CLIENT_DIR, JVM_DIR, LWJGL_DIR, CLIENT_LIBS.resolve("json"), OUTPUT_DIR, INCLUDE_DIR);
 				} else {
 					System.out.println("jlink failed with error " + result + ".");
 				}
@@ -94,74 +86,80 @@ public class Build {
 	}
 	
 	private static void postJlink(Path CLIENT_DIR, Path JVM_DIR, Path LWJGL_DIR, 
-			Path CLIENT_LIBS, Path OUTPUT_DIR, Path INCLUDE_DIR) throws IOException, InterruptedException {
+			Path JSON_DIR, Path OUTPUT_DIR, Path INCLUDE_DIR) throws IOException, InterruptedException {
 		System.out.println("done.\nMoving header files and deleting unecessary files.");
 		traverse(INCLUDE_DIR, Files::delete, Files::delete);
+		
+		//create include directory
 		Files.createDirectory(INCLUDE_DIR);
+		
+		//move header files to Windows directory
 		traverse(JVM_DIR.resolve("include"), file -> 
 			Files.move(file, INCLUDE_DIR.resolve(file.getFileName())), Files::delete);
+		
+		//delete unnecessary java.base files
 		Files.delete(JVM_DIR.resolve("bin").resolve("java.exe"));
 		Files.delete(JVM_DIR.resolve("bin").resolve("javaw.exe"));
 		Files.delete(JVM_DIR.resolve("bin").resolve("keytool.exe"));
 		Files.delete(JVM_DIR.resolve("lib").resolve("jvm.lib"));
 		
 		System.out.print("Copying game files and natives... ");
+		
+		//copy resources while preserving file system structure
 		Path RESOURCES_SRC_DIR = CLIENT_DIR.resolve("resources");
-		Path RESOURCES_DIR = OUTPUT_DIR.resolve("resources");
+		Path RESOURCES_OUT_DIR = OUTPUT_DIR.resolve("resources");
 		Files.walk(RESOURCES_SRC_DIR).forEach(path -> {
 			try {
-				Files.copy(path, RESOURCES_DIR.resolve(RESOURCES_SRC_DIR.relativize(path)));
+				Files.copy(path, RESOURCES_OUT_DIR.resolve(RESOURCES_SRC_DIR.relativize(path)));
 			} catch (IOException e) {
-				e.printStackTrace();
+				throw new RuntimeException(e);
 			}
 		});
 		
 		//copy options.txt and .dll files into output directory
 		Files.copy(CLIENT_DIR.resolve("options.txt"), OUTPUT_DIR.resolve("options.txt"));
-		extractNatives(LWJGL_DIR, OUTPUT_DIR, OS + "/" + ARCH, List.of(
-			Map.entry("lwjgl-natives-windows.jar", "org/lwjgl"),
-			Map.entry("lwjgl-glfw-natives-windows.jar", "org/lwjgl/glfw"),
-			Map.entry("lwjgl-openal-natives-windows.jar", "org/lwjgl/openal"),
-			Map.entry("lwjgl-opengl-natives-windows.jar", "org/lwjgl/opengl")
-		));
+		List<Entry<String, String>> natives = List.of(
+			entry("lwjgl-natives-windows.jar", "org/lwjgl"),
+			entry("lwjgl-glfw-natives-windows.jar", "org/lwjgl/glfw"),
+			entry("lwjgl-openal-natives-windows.jar", "org/lwjgl/openal"),
+			entry("lwjgl-opengl-natives-windows.jar", "org/lwjgl/opengl")
+		);
+		
+		for(var entry : natives) {
+			try(FileSystem jar = FileSystems.newFileSystem(LWJGL_DIR.resolve(entry.getKey()));
+				var dllFiles = Files.newDirectoryStream(jar.getPath(OS + "/" + ARCH, entry.getValue()), "*.dll")) {
+				for(Path dll : dllFiles) {
+					Files.copy(dll, OUTPUT_DIR.resolve(dll.getFileName().toString()));	
+				}
+			}
+		}
 		
 		//copy legal files to a single output location
 		System.out.print("done.\nCopying legal files... ");
 		Path LEGAL_DIR = OUTPUT_DIR.resolve("legal");
 		Files.move(JVM_DIR.resolve("legal"), LEGAL_DIR);
-		for(Path file : Files.newDirectoryStream(LWJGL_DIR, "*license.txt")) {
-			Files.copy(file, LEGAL_DIR.resolve(file.getFileName().toString()));
-		}
 		Files.copy(LWJGL_DIR.resolve("LICENSE"), LEGAL_DIR.resolve("lwjgl_license.txt"));
-		Files.copy(CLIENT_LIBS.resolve("json").resolve("LICENSE"), LEGAL_DIR.resolve("json_license.txt"));
+		Files.copy(JSON_DIR.resolve("LICENSE"), LEGAL_DIR.resolve("json_license.txt"));
+		try(var stream = Files.newDirectoryStream(LWJGL_DIR, "*license.txt")) {
+			for(Path file : stream) {
+				Files.copy(file, LEGAL_DIR.resolve(file.getFileName()));
+			}	
+		}
 		
 		//run launcher executable build script
 		System.out.println("done.\nBuilding launcher executable.");
-		msbuild();
+		int result = msbuild();
+		System.out.println(result == 0 ? "Launcher built." : "Launcher build failed with code " + result);
 	}
 	
-	private static void msbuild() throws IOException, InterruptedException {
-		Process msbuild = new ProcessBuilder(
+	private static int msbuild() throws IOException, InterruptedException {
+		return new ProcessBuilder(
 			"msbuild", 
 			"-nologo",
 			"-verbosity:minimal",
 			"Sandbox2DClientLauncher.vcxproj",
 			"-p:Platform=" + ARCH + ";Configuration=Release"
-		).inheritIO().start();
-		int status = msbuild.waitFor();
-		System.out.println(status == 0 ? "Launcher built." : 
-			"Launcher build failed with code " + status);
-	}
-	
-	private static void extractNatives(Path libDir, Path outDir, 
-			String startDir, List<Entry<String, String>> jarNames) throws IOException {
-		for(var entry : jarNames) {
-			try(FileSystem jar = FileSystems.newFileSystem(libDir.resolve(entry.getKey()))) {
-				for(Path file : Files.newDirectoryStream(jar.getPath(startDir, entry.getValue()), "*.dll")) {
-					Files.copy(file, outDir.resolve(file.getFileName().toString()));	
-				}
-			}
-		}
+		).inheritIO().start().waitFor();
 	}
 	
 	private static Iterable<? extends JavaFileObject> getSourceFiles(Path src) throws IOException {
@@ -194,14 +192,14 @@ public class Build {
 		).call();
 	}
 	
-	private static int jlink(Path output, Iterable<Path> modules, String... moduleNames) {
+	private static int jlink(Path output, Iterable<Path> modules, String mainModule) {
 		return ToolProvider.findFirst("jlink").get().run(System.out, System.err, 
 			"--compress", "2",
+			//"--strip-debug",
 			"--no-man-pages",
 			"--endian", "little",
-			//"--strip-debug",
 			"--module-path", join(modules, ';'),
-			"--add-modules", String.join(",", moduleNames),
+			"--add-modules", mainModule,
 			"--output", output.toString()
 		);
 	}
