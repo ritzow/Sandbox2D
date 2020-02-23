@@ -8,7 +8,6 @@ import java.nio.channels.DatagramChannel;
 import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Queue;
 import java.util.function.Consumer;
 import ritzow.sandbox.data.Bytes;
@@ -36,32 +35,22 @@ public class Client {
 	}
 
 	public static final class ConnectionFailedException extends Exception {
-		ConnectionFailedException(String message) {
+		private ConnectionFailedException(String message) {
 			super(message);
 		}
 	}
-
-	private final Object[] events = new Object[6];
-
-	public static final class ClientEvent<T> {
-		public static final ClientEvent<Runnable> TIMED_OUT = new ClientEvent<>();
-		public static final ClientEvent<Consumer<IOException>> EXCEPTION_OCCURRED = new ClientEvent<>();
-		private static byte count;
-		int index;
-
-		ClientEvent() {
-			this.index = count++;
-		}
-	}
-
-	public <T> Client setEventListener(ClientEvent<T> eventType, T action) {
-		events[eventType.index] = Objects.requireNonNull(action);
+	
+	private Runnable onTimeout;
+	private Consumer<IOException> onException;
+	
+	public Client setOnTimeout(Runnable action) {
+		this.onTimeout = action;
 		return this;
 	}
-
-	@SuppressWarnings("unchecked")
-	public <T> T getAction(ClientEvent<T> eventType) {
-		return (T)events[eventType.index];
+	
+	public Client setOnException(Consumer<IOException> action) {
+		this.onException = action;
+		return this;
 	}
 
 	/**
@@ -153,6 +142,7 @@ public class Client {
 	}
 
 	private static record SendPacket(byte[] data, boolean reliable) {
+		@Override
 		public String toString() {
 			return "SendPacket[" + (reliable ? "reliable" : "unreliable") + ", size:" + data.length + "]";
 		}
@@ -198,16 +188,14 @@ public class Client {
 							sendReliableInternal(sendBuffer);
 						} else {
 							isUp = false;
-							var action = getAction(ClientEvent.TIMED_OUT);
-							if(action != null) action.run();
+							onTimeout.run();
 						}
 					} //else waiting for a response
 				}
 			}
 		} catch(IOException e) {
 			isUp = false;
-			var action = getAction(ClientEvent.EXCEPTION_OCCURRED);
-			if(action != null) action.accept(e);
+			onException.accept(e);
 		}
 	}
 	

@@ -6,7 +6,6 @@ import java.net.PortUnreachableException;
 import java.nio.ByteBuffer;
 import ritzow.sandbox.client.input.InputContext;
 import ritzow.sandbox.client.network.Client;
-import ritzow.sandbox.client.network.Client.ClientEvent;
 import ritzow.sandbox.network.NetworkUtility;
 import ritzow.sandbox.network.Protocol;
 
@@ -22,10 +21,8 @@ class ServerJoinContext {
 			+ " from " + NetworkUtility.formatAddress(LAST_LOCAL_ADDRESS) + "... ");
 			Client client = Client.create(LAST_LOCAL_ADDRESS, LAST_SERVER_ADDRESS);
 			ServerJoinContext context = new ServerJoinContext(state, client);
-			client.setEventListener(ClientEvent.TIMED_OUT, context::onTimeout)
-				.setEventListener(ClientEvent.EXCEPTION_OCCURRED, context::onException)
-				.beginConnect();
-			GameLoop.setContext(context::listen);	
+			client.setOnTimeout(context::onTimeout).setOnException(context::onException).beginConnect();
+			GameLoop.setContext(context::listen);
 		} catch(BindException e) {
 			System.out.println("bind error: " + e.getMessage() + ".");
 			GameLoop.setContext(state.menuContext::update);	
