@@ -9,7 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
-public class WAVEDecoderNIO implements AudioData {
+public class WAVEDecoder implements AudioData {
 	private short format; //1 for PCM audio, other numbers indicate compression
 	private short numChannels; //1 = mono, 2 = stereo
 	private int sampleRate; //8000, 44100
@@ -22,7 +22,7 @@ public class WAVEDecoderNIO implements AudioData {
 	private static final int FORMAT_PCM = 1;
 	private static final String RIFF_HEADER = "RIFF", WAVE_HEADER = "WAVE";
 	
-	private WAVEDecoderNIO() {
+	private WAVEDecoder() {
 		
 	}
 
@@ -37,7 +37,7 @@ public class WAVEDecoderNIO implements AudioData {
 			if(!readTypeString(headerBuffer.array(), 8).equals(WAVE_HEADER))
 				throw new IOException("file format is not WAVE");
 			
-			WAVEDecoderNIO decoder = new WAVEDecoderNIO();
+			WAVEDecoder decoder = new WAVEDecoder();
 			ByteBuffer chunkHeader = ByteBuffer.wrap(new byte[CHUNK_HEADER_SIZE])
 					.order(ByteOrder.LITTLE_ENDIAN);
 			while(channel.position() < channel.size() - CHUNK_HEADER_SIZE) {
@@ -67,7 +67,7 @@ public class WAVEDecoderNIO implements AudioData {
 		return new String(buffer, position, 4, StandardCharsets.US_ASCII);
 	}
 
-	private static void readFormat(SeekableByteChannel channel, WAVEDecoderNIO decoder) throws IOException {
+	private static void readFormat(SeekableByteChannel channel, WAVEDecoder decoder) throws IOException {
 		ByteBuffer data = ByteBuffer.allocate(16).order(ByteOrder.LITTLE_ENDIAN);
 		channel.read(data);
 		decoder.format = data.flip().getShort();

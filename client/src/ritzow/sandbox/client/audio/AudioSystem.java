@@ -40,7 +40,7 @@ public interface AudioSystem {
 
 				for(var entry : sounds) {
 					audio.registerSound(entry.getKey().code(), 
-							WAVEDecoderNIO.decode(AUDIO_PATH.resolve(entry.getValue())));
+							WAVEDecoder.decode(AUDIO_PATH.resolve(entry.getValue())));
 				}
 				return audio;
 			} catch(Exception e) {
