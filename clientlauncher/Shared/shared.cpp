@@ -7,22 +7,31 @@
 	#include <vector>
 #endif
 
+#if 0
+void LoadMainModule(JNIEnv* env) {
+	jclass classModuleLayer = env->FindClass("java/lang/ModuleLayer");
+	jmethodID mBootModule = env->GetStaticMethodID(classModuleLayer,
+		"boot", "()java/lang/ModuleLayer;");
+	jobject layer = env->CallStaticObjectMethod(classModuleLayer, mBootModule);
+}
+#endif
+
 JavaVMInitArgs GetJavaInitArgs() noexcept {
 	static JavaVMOption options[] = {
 		{(char*)"-Djdk.module.main=ritzow.sandbox.client"},
 		{(char*)"--enable-preview"}, //switch expressions
-		{(char*)"vfprintf", *vfprintf}
+		//{(char*)"vfprintf", *vfprintf}
 	};
 
-	JavaVMInitArgs args;
-	args.version = JNI_VERSION_10;
-	args.ignoreUnrecognized = false;
-	args.nOptions = sizeof(options)/sizeof(JavaVMOption);
-	args.options = options;
-	return args;
+	return {
+		.version = JNI_VERSION_10,
+		.nOptions = sizeof(options) / sizeof(JavaVMOption),
+		.options = options,
+		.ignoreUnrecognized = false
+	};
 }
 
-const wchar_t* getErrorString(jint result) noexcept {
+constexpr const wchar_t* GetErrorString(jint result) noexcept {
 	switch (result) {
 	case JNI_OK: return L"Success";
 	case JNI_ERR: return L"Unknown error";
@@ -37,7 +46,7 @@ const wchar_t* getErrorString(jint result) noexcept {
 
 inline void DisplayError(const wchar_t* title, const wchar_t* message);
 
-void DisplayException(JNIEnv* env) {
+const wchar_t* GetExceptionString(JNIEnv* env) noexcept {
 	jthrowable exception = env->ExceptionOccurred();
 	jclass throwableClass = env->FindClass("java/lang/Throwable");
 	jclass elementClass = env->FindClass("java/lang/StackTraceElement");
@@ -68,7 +77,7 @@ void DisplayException(JNIEnv* env) {
 		env->DeleteLocalRef(msg);
 	}
 	env->DeleteLocalRef(trace);
-	DisplayError(L"Java Exception Occurred on Main Thread", builder.str().c_str());
+	return builder.str().c_str();
 }
 
 void RunGame(JNIEnv* env, const wchar_t* args) {
@@ -78,7 +87,8 @@ void RunGame(JNIEnv* env, const wchar_t* args) {
 	env->CallStaticVoidMethod(classMain, methodMain, jargs);
 	env->DeleteLocalRef(classMain);
 	env->DeleteLocalRef(jargs);
-	if (env->ExceptionCheck()) DisplayException(env);
+	if (env->ExceptionCheck())
+		DisplayError(L"Java Exception Occurred on Main Thread", GetExceptionString(env));
 }
 
-typedef jint(JNICALL* CreateJavaVM)(JavaVM**, JNIEnv**, JavaVMInitArgs*);
+typedef jint(JNICALL* StartJVM)(JavaVM**, JNIEnv**, JavaVMInitArgs*);

@@ -30,15 +30,23 @@ public class Build {
 		ARCH = "x64", 
 		RELEASE_VERSION = Integer.toString(Runtime.version().feature());
 	
+	private static final Path SHARED_DIR = Path.of("..\\shared");
+	private static final Path CLIENT_DIR = Path.of("..\\client");
+	private static final Path OUTPUT_DIR = Path.of("Windows\\x64\\Release\\Output");
+	private static final Path INCLUDE_DIR = Path.of("Windows\\include");
+	
 	private static final Charset SRC_CHARSET = StandardCharsets.UTF_8;
 	
 	public static void main(String... args) throws IOException, InterruptedException {
 		System.out.println("Running Build.java.");
-		Path SHARED_DIR = Path.of(args[0]);
-		Path CLIENT_DIR = Path.of(args[1]);
-		Path OUTPUT_DIR = Path.of(args[2]);
-		Path INCLUDE_DIR = Path.of(args[3]);
-
+		if(args.length > 0 && args[0].equalsIgnoreCase("launcher")) {
+			msbuild();
+		} else {
+			buildAll();
+		}
+	}
+	
+	private static void buildAll() throws IOException, InterruptedException {
 		if(Files.exists(OUTPUT_DIR)) {
 			System.out.println("Deleting output directory.");
 			traverse(OUTPUT_DIR, Files::delete, Files::delete);
@@ -73,7 +81,8 @@ public class Build {
 				int result = jlink(JVM_DIR, modules, "ritzow.sandbox.client");
 				
 				if(result == 0) {
-					postJlink(CLIENT_DIR, JVM_DIR, LWJGL_DIR, CLIENT_LIBS.resolve("json"), OUTPUT_DIR, INCLUDE_DIR);
+					postJlink(CLIENT_DIR, JVM_DIR, LWJGL_DIR, 
+						CLIENT_LIBS.resolve("json"), OUTPUT_DIR, INCLUDE_DIR);
 				} else {
 					System.out.println("jlink failed with error " + result + ".");
 				}
@@ -127,7 +136,8 @@ public class Build {
 		
 		for(var entry : natives) {
 			try(FileSystem jar = FileSystems.newFileSystem(LWJGL_DIR.resolve(entry.getKey()));
-				var dllFiles = Files.newDirectoryStream(jar.getPath(OS + "/" + ARCH, entry.getValue()), "*.dll")) {
+				var dllFiles = Files.newDirectoryStream(
+						jar.getPath(OS + "/" + ARCH, entry.getValue()), "*.dll")) {
 				for(Path dll : dllFiles) {
 					Files.copy(dll, OUTPUT_DIR.resolve(dll.getFileName().toString()));	
 				}
@@ -312,7 +322,7 @@ public class Build {
 		@Override
 		public long getLastModified() {
 			try {
-				return Files.getLastModifiedTime(path).toInstant().toEpochMilli();
+				return Files.getLastModifiedTime(path).toMillis();
 			} catch (IOException e) {
 				e.printStackTrace();
 				return 0;

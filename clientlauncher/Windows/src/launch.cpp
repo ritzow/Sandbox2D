@@ -8,8 +8,7 @@ inline void DisplayError(const wchar_t* title, const wchar_t* message) {
 	MessageBoxW(nullptr, message, title, MB_OK | MB_ICONERROR);
 }
 
-INT WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
-	_In_ LPWSTR lpCmdLine, _In_ INT nShowCmd) {
+INT WINAPI wWinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPWSTR lpCmdLine, _In_ INT) {
 	if constexpr (SHOW_CONSOLE) {
 		AllocConsole();
 		FILE* file;
@@ -20,10 +19,8 @@ INT WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 
 	HMODULE dll = LoadLibraryW(L"jvm\\bin\\server\\jvm.dll");
 	if (dll != nullptr) {
-		JavaVM* vm; JNIEnv* env;
-		jint result = ((CreateJavaVM)GetProcAddress(dll, "JNI_CreateJavaVM"))
-			(&vm, &env, &GetJavaInitArgs());
-
+		JavaVM* vm; JNIEnv* env; JavaVMInitArgs args = GetJavaInitArgs();
+		jint result = ((StartJVM)GetProcAddress(dll, "JNI_CreateJavaVM"))(&vm, &env, &args);
 		if (result == JNI_OK) {
 			RunGame(env, lpCmdLine);
 			vm->DestroyJavaVM();
@@ -31,7 +28,7 @@ INT WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 			return EXIT_SUCCESS;
 		} else {
 			std::wstring message = L"Could not create JVM: ";
-			message += getErrorString(result);
+			message += GetErrorString(result);
 			DisplayError(L"Java Virtual Machine Creation Failed", message.c_str());
 			FreeLibrary(dll);
 			return EXIT_FAILURE;

@@ -33,16 +33,18 @@
     <ClCompile Include="Windows\src\launch.cpp">
       <Filter>Project\Windows</Filter>
     </ClCompile>
-    <ClCompile Include="Shared\shared.cpp">
-      <Filter>Project\Shared</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="prepare-build.bat">
-      <Filter>Project\Shared</Filter>
-    </CustomBuild>
     <CustomBuild Include="Shared\src\ritzow\sandbox\build\Build.java">
       <Filter>Project\Shared</Filter>
     </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="build.bat">
+      <Filter>Project\Shared</Filter>
+    </None>
+    <None Include="Shared\shared.cpp">
+      <Filter>Project\Shared</Filter>
+    </None>
   </ItemGroup>
 </Project>
