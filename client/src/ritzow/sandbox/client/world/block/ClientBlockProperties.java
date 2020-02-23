@@ -1,6 +1,6 @@
 package ritzow.sandbox.client.world.block;
 
-import ritzow.sandbox.client.audio.DefaultAudioSystem;
+import ritzow.sandbox.client.audio.AudioSystem;
 import ritzow.sandbox.client.audio.Sound;
 import ritzow.sandbox.client.graphics.Camera;
 import ritzow.sandbox.util.Utility;
@@ -12,10 +12,12 @@ public interface ClientBlockProperties extends Block {
 	int getModelIndex();
 	boolean isTransparent();
 	
+	@Override
 	public default void onBreak(World world, BlockGrid grid, float x, float y) {
 		throw new UnsupportedOperationException("client does not support default onBreak");
 	}
 
+	@Override
 	public default void onPlace(World world, BlockGrid grid, float x, float y) {
 		throw new UnsupportedOperationException("client does not support default onPlace");
 	}
@@ -29,7 +31,7 @@ public interface ClientBlockProperties extends Block {
 	 * @param y the world y position the block was at.
 	 */
 	public default void onBreak(World world, BlockGrid grid, Camera camera, float x, float y) {
-		DefaultAudioSystem.getDefault()
+		AudioSystem.getDefault()
 		.playSound(Sound.BLOCK_BREAK.code(), x, y, 0, 0, 
 				camera.getZoom() * 2 * Utility.random(0.75f, 1.5f), Utility.random(0.75f, 1.5f));
 	}
@@ -43,7 +45,7 @@ public interface ClientBlockProperties extends Block {
 	 * @param y the world y position the block was placed at.
 	 */
 	public default void onPlace(World world, BlockGrid grid, Camera camera, float x, float y) {
-		DefaultAudioSystem.getDefault()
+		AudioSystem.getDefault()
 			.playSound(Sound.BLOCK_PLACE.code(), x, y, 0, 0, camera.getZoom() * 2, Utility.random(0.9f, 1.1f));
 	}
 }

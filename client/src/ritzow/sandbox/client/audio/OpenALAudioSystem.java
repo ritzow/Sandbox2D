@@ -17,14 +17,10 @@ public final class OpenALAudioSystem implements AudioSystem {
 	private static long alContext;
 	private static long device;
 	private static int[] sources;
-	private static OpenALAudioSystem audio;
-	
-	public static OpenALAudioSystem getAudioSystem() {
-		return audio == null ? audio = initialize() : audio;
-	}
+	private static boolean created;
 	
 	//TODO this takes 500 ms to load, mainly device initialization and context creation
-	private static OpenALAudioSystem initialize() {
+	public static void initialize() {
 		device = alcOpenDevice((ByteBuffer)null);
 		alContext = alcCreateContext(device, (IntBuffer)null);
 		ALCCapabilities alcCaps = ALC.createCapabilities(device);
@@ -40,6 +36,11 @@ public final class OpenALAudioSystem implements AudioSystem {
 		checkErrors();
 		sources = new int[16];
 		alGenSources(sources);
+	}
+	
+	public static OpenALAudioSystem create() {
+		if(created) throw new IllegalStateException("already created");
+		created = true;
 		return new OpenALAudioSystem();
 	}
 	

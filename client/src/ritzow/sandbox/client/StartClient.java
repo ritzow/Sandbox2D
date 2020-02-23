@@ -9,7 +9,6 @@ import static ritzow.sandbox.client.data.StandardClientProperties.*;
 import java.io.IOException;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import ritzow.sandbox.client.audio.AudioSystem;
-import ritzow.sandbox.client.audio.DefaultAudioSystem;
 import ritzow.sandbox.client.data.StandardClientOptions;
 import ritzow.sandbox.client.graphics.*;
 import ritzow.sandbox.client.util.ClientUtility;
@@ -35,7 +34,7 @@ public class StartClient {
 	private static void start() throws Exception {
 		long startupStart = System.nanoTime();
 		System.out.print("Starting game... ");
-		AudioSystem.load();
+		AudioSystem audio = AudioSystem.getDefault(); //load default audio system
 		GameState state = new GameState();
 		setupGLFW(state);
 		state.display.setGraphicsContextOnThread();
@@ -50,7 +49,7 @@ public class StartClient {
 			state.shader.delete();
 			RenderManager.closeContext();
 			state.display.destroy();
-			DefaultAudioSystem.getDefault().close();
+			audio.close();
 			glfwDestroyCursor(state.cursorPick);
 			glfwDestroyCursor(state.cursorMallet);
 			glfwTerminate();

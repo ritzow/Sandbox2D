@@ -27,10 +27,12 @@ public final class ClientBlockItem extends BlockItem implements Graphical {
 		return ser.serialize(block);
 	}
 	
+	@Override
 	public ClientBlockProperties getBlock() {
 		return (ClientBlockProperties)block;
 	}
 
+	@Override
 	public Graphics getGraphics() {
 		return graphics;
 	}

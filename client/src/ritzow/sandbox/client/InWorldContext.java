@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Objects;
-import ritzow.sandbox.client.audio.DefaultAudioSystem;
+import ritzow.sandbox.client.audio.AudioSystem;
 import ritzow.sandbox.client.data.StandardClientOptions;
 import ritzow.sandbox.client.graphics.Display;
 import ritzow.sandbox.client.graphics.RenderManager;
@@ -86,7 +86,7 @@ class InWorldContext implements GameTalker {
 		long deltaTime = start - lastGameUpdate;
 		lastGameUpdate = start;
 		world.update(deltaTime);
-		cameraGrip.update(display, player, DefaultAudioSystem.getDefault(), deltaTime);
+		cameraGrip.update(display, player, AudioSystem.getDefault(), deltaTime);
 		int width = display.width(), height = display.height();
 		RenderManager.preRender(width, height);
 		worldRenderer.render(RenderManager.DISPLAY_BUFFER, width, height);
@@ -280,7 +280,7 @@ class InWorldContext implements GameTalker {
 	private final class InWorldInputContext implements InputContext {
 		@Override
 		public void windowFocus(boolean focused) {
-			DefaultAudioSystem.getDefault().setVolume(focused ? 1.0f : 0.0f);
+			AudioSystem.getDefault().setVolume(focused ? 1.0f : 0.0f);
 		}
 		
 		@Override
