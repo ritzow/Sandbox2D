@@ -65,13 +65,13 @@ public final class StartLauncher {
 				stage.setTitle("Sandbox2D Server");
 				stage.show();
 			} catch(IOException e) {
-				e.printStackTrace();
-				System.exit(-1);
+				throw new RuntimeException(e);
 			}
 		}
 
 		@SuppressWarnings("unused")
-		private void onIpFieldChange(ObservableValue<? extends String> change, String oldText, String newText) {
+		private void onIpFieldChange(ObservableValue<? extends String> change, 
+				String oldText, String newText) {
 			if(ipField.getEffect() != null)
 				ipField.setEffect(null);
 		}
@@ -90,10 +90,10 @@ public final class StartLauncher {
 						e.printStackTrace();
 					}
 				}, "Server Update Thread").start();
-			} catch(@SuppressWarnings("unused") UnknownHostException e) {
+			} catch(UnknownHostException e) {
 				errorMessageText.setText("Invalid IP address");
 				ipField.setEffect(new DropShadow(5, Color.RED));
-			} catch(@SuppressWarnings("unused") NumberFormatException e) {
+			} catch(NumberFormatException e) {
 				errorMessageText.setText("Invalid port number");
 			}
 		}

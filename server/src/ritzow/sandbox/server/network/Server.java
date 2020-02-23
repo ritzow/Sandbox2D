@@ -142,7 +142,7 @@ public class Server {
 			case TYPE_CLIENT_BOMB_THROW -> processClientThrowBomb(client, packet);
 			case TYPE_CLIENT_WORLD_BUILT -> client.status = ClientState.STATUS_IN_GAME;
 			case TYPE_CLIENT_PLAYER_STATE -> processClientPlayerState(client, packet);
-			case TYPE_PING -> {}
+			case TYPE_PING -> {} //do nothing
 			default -> throw new ClientBadDataException("received unknown protocol " + type);
 		}
 	}

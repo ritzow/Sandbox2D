@@ -20,7 +20,7 @@ import ritzow.sandbox.world.entity.PlayerEntity;
 @SuppressWarnings("unused")
 public final class StartServer {
 	private static final Path SAVE_FILE = Path.of("world.dat");
-	private static final int WORLD_WIDTH = 1000, WORLD_BASE_HEIGHT = 50, TERRAIN_AMPLITUDE = 50, SKY_HEIGHT = 50;
+	private static final int WORLD_WIDTH = 150, WORLD_BASE_HEIGHT = 15, TERRAIN_AMPLITUDE = 10, SKY_HEIGHT = 20;
 	private static final float WORLD_FREQUENCY = 0.05f;
 	
 	private static Server server;
