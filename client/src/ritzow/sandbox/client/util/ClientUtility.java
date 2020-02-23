@@ -10,6 +10,7 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.concurrent.locks.LockSupport;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.glfw.GLFWImage;
 import static ritzow.sandbox.client.data.StandardClientOptions.*;
@@ -18,9 +19,7 @@ import ritzow.sandbox.util.Utility;
 
 public class ClientUtility {
 	public static void limitFramerate(long frameStart) {
-//		if(LIMIT_FPS) LockSupport.parkNanos(FRAME_TIME_LIMIT + frameStart - System.nanoTime());
-		if(LIMIT_FPS) Utility.sleepNanos(FRAME_TIME_LIMIT + frameStart - System.nanoTime());
-//		if(LIMIT_FPS) Utility.waitNanos(FRAME_TIME_LIMIT + frameStart - System.nanoTime());
+		if(LIMIT_FPS) LockSupport.parkNanos(FRAME_TIME_LIMIT + frameStart - System.nanoTime());
 	}
 	
 	public static long frameRateToFrameTimeNanos(long fps) {
