@@ -1,6 +1,5 @@
 package ritzow.sandbox.client.world.entity;
 
-import ritzow.sandbox.client.graphics.Graphical;
 import ritzow.sandbox.client.graphics.Graphics;
 import ritzow.sandbox.client.graphics.ModelRenderProgram;
 import ritzow.sandbox.client.graphics.Renderable;
@@ -39,7 +38,7 @@ public final class ClientItemEntity<I extends Item> extends ItemEntity<I> implem
 
 	@Override
 	public void render(ModelRenderProgram renderer) {
-		Graphics g = ((Graphical)item).getGraphics();
+		Graphics g = ((Graphics)item);
 		renderer.queueRender(
 			g.getModelID(), 
 			g.getOpacity(), 
@@ -48,7 +47,6 @@ public final class ClientItemEntity<I extends Item> extends ItemEntity<I> implem
 			g.getScaleX() * 0.5f,
 			g.getScaleY() * 0.5f,
 			g.getRotation() + rotation
-			//TODO use Utility.oscillateRange
 		);
 	}
 	
