@@ -65,7 +65,7 @@ public final class GraphicsUtility {
 		glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
 		int status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 	    if (status != GL_FRAMEBUFFER_COMPLETE) {
-	      	System.out.println("OpenGL Framebuffer Error: " + status);
+	      	throw new OpenGLException("OpenGL Framebuffer Error: " + status);
 	    }
 	}
 
