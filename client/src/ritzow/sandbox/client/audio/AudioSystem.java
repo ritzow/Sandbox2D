@@ -1,9 +1,9 @@
 package ritzow.sandbox.client.audio;
 
+import static java.util.Map.entry;
 import static ritzow.sandbox.client.data.StandardClientProperties.AUDIO_PATH;
 
 import java.util.List;
-import java.util.Map;
 
 public interface AudioSystem {
 	default void playSound(int sound, float x, float y, float velocityX, float velocityY) {
@@ -31,11 +31,11 @@ public interface AudioSystem {
 				audio.setVolume(1.0f);
 
 				var sounds = List.of(
-					Map.entry(Sound.BLOCK_BREAK, "dig.wav"),
-					Map.entry(Sound.BLOCK_PLACE, "place.wav"),
-					Map.entry(Sound.POP, "pop.wav"),
-					Map.entry(Sound.THROW, "throw.wav"),
-					Map.entry(Sound.SNAP, "snap.wav")
+					entry(Sound.BLOCK_BREAK, "dig.wav"),
+					entry(Sound.BLOCK_PLACE, "place.wav"),
+					entry(Sound.POP, "pop.wav"),
+					entry(Sound.THROW, "throw.wav"),
+					entry(Sound.SNAP, "snap.wav")
 				);
 
 				for(var entry : sounds) {

@@ -129,9 +129,10 @@ public final class StartServer {
 		abortCommand(args);
 		try {
 			if(Files.deleteIfExists(SAVE_FILE))
-				System.out.println("Deleted saved world.");
+				System.out.println("Deleted world " + SAVE_FILE + ".");
 		} catch (IOException e) {
 			e.printStackTrace();
+			throw new RuntimeException(e);
 		}
 	}
 
