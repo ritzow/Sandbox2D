@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.net.BindException;
 import java.net.PortUnreachableException;
 import java.nio.ByteBuffer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import ritzow.sandbox.client.input.InputContext;
 import ritzow.sandbox.client.network.Client;
 import ritzow.sandbox.network.NetworkUtility;
@@ -15,16 +17,18 @@ class ServerJoinContext {
 	private final GameState state;
 	private final Client client;
 	
+	private static final Logger SERVER_JOIN_LOG = Logger.getLogger("server_join");
+	
 	public static void start(GameState state) throws IOException {
 		try {
-			System.out.print("Connecting to " + NetworkUtility.formatAddress(LAST_SERVER_ADDRESS)
+		SERVER_JOIN_LOG.info("Connecting to " + NetworkUtility.formatAddress(LAST_SERVER_ADDRESS)
 			+ " from " + NetworkUtility.formatAddress(LAST_LOCAL_ADDRESS) + "... ");
 			Client client = Client.create(LAST_LOCAL_ADDRESS, LAST_SERVER_ADDRESS);
 			ServerJoinContext context = new ServerJoinContext(state, client);
 			client.setOnTimeout(context::onTimeout).setOnException(context::onException).beginConnect();
 			GameLoop.setContext(context::listen);
 		} catch(BindException e) {
-			System.out.println("bind error: " + e.getMessage() + ".");
+			SERVER_JOIN_LOG.warning("bind error: " + e.getMessage() + ".");
 			GameLoop.setContext(state.menuContext::update);	
 		}
 	}
@@ -40,16 +44,15 @@ class ServerJoinContext {
 	}
 	
 	private void onTimeout() {
-		System.out.println("timed out.");
+		SERVER_JOIN_LOG.warning("timed out.");
 		returnToMenu();
 	}
 
 	private void onException(IOException e) {
 		if(e instanceof PortUnreachableException) {
-			System.out.println("server port unreachable.");
+			SERVER_JOIN_LOG.info("server port unreachable.");
 		} else {
-			System.out.println("an exception occurred: " + 
-					(e.getMessage() == null ? e.getClass().getName() : e.getMessage()));	
+			SERVER_JOIN_LOG.log(Level.SEVERE, "An IOException occurred while joining server", e);
 		}
 		returnToMenu();
 	}
@@ -68,13 +71,13 @@ class ServerJoinContext {
 			byte response = data.get();
 			switch(response) {
 				case Protocol.CONNECT_STATUS_REJECTED -> {
-					System.out.println("rejected.");
+					SERVER_JOIN_LOG.info("rejected.");
 					state.display.resetCursor();
 					returnToMenu();
 				}
 
 				case Protocol.CONNECT_STATUS_WORLD -> {
-					System.out.print("connected.\nReceiving world data... ");
+					SERVER_JOIN_LOG.info("connected.\nReceiving world data... ");
 					//worldSize and playerID integers
 					InWorldContext worldContext = new InWorldContext(state, client, data.getInt(), data.getInt());
 					GameLoop.setContext(worldContext::listenForServer);

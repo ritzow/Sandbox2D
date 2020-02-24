@@ -7,6 +7,7 @@ import static ritzow.sandbox.client.data.StandardClientProperties.*;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.logging.Logger;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GLCapabilities;
 import org.lwjgl.system.MemoryUtil;
@@ -77,11 +78,13 @@ public class RenderManager {
 		return Shader.fromSPIRV(ClientUtility.load(SHADERS_PATH.resolve(file)), type);
 	}
 	
+	private static final Logger RENDER_LOG = Logger.getLogger("opengl");
+	
 	@SuppressWarnings("unused")
 	private static void debugCallback(int source, int type, int id, int severity, 
 			int length, long message, long userParam) {
 		if(severity == GL_DEBUG_SEVERITY_NOTIFICATION) {
-			System.out.println(MemoryUtil.memASCII(message, length));
+			RENDER_LOG.info(MemoryUtil.memASCII(message, length));
 		} else {
 			throw new OpenGLException(MemoryUtil.memASCII(message, length));	
 		}

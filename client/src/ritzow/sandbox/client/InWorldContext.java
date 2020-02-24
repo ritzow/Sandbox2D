@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Objects;
+import java.util.logging.Logger;
 import ritzow.sandbox.client.audio.AudioSystem;
 import ritzow.sandbox.client.data.StandardClientOptions;
 import ritzow.sandbox.client.graphics.Display;
@@ -111,8 +112,10 @@ class InWorldContext implements GameTalker {
 		}
 	}
 
+	private static final Logger WORLD_CONTEXT_LOGGER = Logger.getLogger("world_context");
+	
 	private static void log(String message) {
-		System.out.println(Utility.formatCurrentTime() + " " + message);
+		WORLD_CONTEXT_LOGGER.info(Utility.formatCurrentTime() + " " + message);
 	}
 	
 	private static void processServerConsoleMessage(ByteBuffer data) {
@@ -207,10 +210,10 @@ class InWorldContext implements GameTalker {
 	}
 	
 	private void buildWorld() {
-		System.out.print("received. Building world... ");
+		WORLD_CONTEXT_LOGGER.info("received. Building world... ");
 		long start = System.nanoTime();
 		world = deserialize(Protocol.COMPRESS_WORLD_DATA, worldData);
-		System.out.println("took " + Utility.formatTime(Utility.nanosSince(start)) + ".");
+		WORLD_CONTEXT_LOGGER.info("took " + Utility.formatTime(Utility.nanosSince(start)) + ".");
 		worldData = null; //release the raw data to the garbage collector
 		player = getEntity(playerID);
 		cameraGrip = new TrackingCameraController(2.5f, player.getWidth() / 20f, player.getWidth() / 2f);

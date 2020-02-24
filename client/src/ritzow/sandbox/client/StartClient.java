@@ -7,6 +7,10 @@ import static org.lwjgl.glfw.GLFW.glfwDestroyCursor;
 import static ritzow.sandbox.client.data.StandardClientProperties.*;
 
 import java.io.IOException;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import ritzow.sandbox.client.audio.AudioSystem;
 import ritzow.sandbox.client.data.StandardClientOptions;
@@ -32,20 +36,21 @@ public class StartClient {
 	}
 	
 	private static void start() throws Exception {
+		setupLogging();
+		Logger.getGlobal().info("Starting game... ");
 		long startupStart = System.nanoTime();
-		System.out.print("Starting game... ");
 		AudioSystem audio = AudioSystem.getDefault(); //load default audio system
 		GameState state = new GameState();
 		setupGLFW(state);
 		state.display.setGraphicsContextOnThread();
 		state.shader = RenderManager.setup();
 		MainMenuContext mainMenu = new MainMenuContext(state);
-		System.out.println("took " + Utility.formatTime(Utility.nanosSince(startupStart)));
+		Logger.getGlobal().info("took " + Utility.formatTime(Utility.nanosSince(startupStart)));
 		state.display.show();
 		try {
 			GameLoop.start(mainMenu::update);
 		} finally {
-			System.out.print("Exiting... ");
+			Logger.getGlobal().info("Exiting... ");
 			state.shader.delete();
 			RenderManager.closeContext();
 			state.display.destroy();
@@ -66,5 +71,23 @@ public class StartClient {
 		state.cursorPick = ClientUtility.loadGLFWCursor(cursorPickaxe, 0, 0.66f);
 		state.cursorMallet = ClientUtility.loadGLFWCursor(cursorMallet, 0, 0.66f);
 		state.display = new Display(4, StandardClientOptions.USE_OPENGL_4_6 ? 6 : 1, "Sandbox2D", appIcon);
+	}
+	
+	private static void setupLogging() {
+		Logger.getGlobal().setUseParentHandlers(false);
+		Logger.getGlobal().addHandler(new Handler() {
+			@Override
+			public void publish(LogRecord record) {
+				if(record.getLevel().intValue() >= Level.WARNING.intValue())
+					System.err.print(record.getMessage());
+				else System.out.print(record.getMessage());
+			}
+			
+			@Override
+			public void flush() {}
+			
+			@Override
+			public void close() throws SecurityException {}
+		});
 	}
 }

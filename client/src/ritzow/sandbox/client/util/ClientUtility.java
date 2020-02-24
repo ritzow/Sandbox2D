@@ -11,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.concurrent.locks.LockSupport;
+import java.util.logging.Logger;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.glfw.GLFWImage;
 import static ritzow.sandbox.client.data.StandardClientOptions.*;
@@ -84,8 +85,9 @@ public class ClientUtility {
 		return -1f / camera.getZoom() + camera.getPositionY();
 	}
 	
-	public static void printFrameRate(long frameStart) {
-		System.out.print(1_000_000_000 * Utility.nanosSince(frameStart)); 
-		System.out.println(" FPS");
+	private static final Logger FPS_LOGGER = Logger.getLogger("framerate");
+	
+	public static void logFrameRate(long frameStart) {
+		FPS_LOGGER.info(1_000_000_000 * Utility.nanosSince(frameStart) + " FPS");
 	}
 }
