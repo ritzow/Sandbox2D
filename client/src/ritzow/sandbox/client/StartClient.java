@@ -19,7 +19,7 @@ import ritzow.sandbox.client.util.ClientUtility;
 import ritzow.sandbox.util.Utility;
 
 /** Entry point to Sandbox2D game client **/
-public class StartClient {
+class StartClient {
 	
 	/** Native launcher entry point.
 	 * @param args command line arguments as a single String.
@@ -58,7 +58,7 @@ public class StartClient {
 			glfwDestroyCursor(state.cursorPick);
 			glfwDestroyCursor(state.cursorMallet);
 			glfwTerminate();
-			System.out.println("done!");	
+			Logger.getGlobal().info("done!");	
 		}
 	}
 
