@@ -8,6 +8,8 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.InflaterOutputStream;
+import java.util.zip.Deflater;
+import java.util.zip.Inflater;
 
 /**
  * Contains various utility methods for reading and writing primitive and non-primitive types from and to byte arrays.
@@ -224,23 +226,22 @@ public final class Bytes {
 	 * @return a new compressed byte array
 	 */
 	public static byte[] compress(byte[] data) {
+		Deflater deflate = new Deflater(2, false);
 		try {
 			ByteArrayOutputStream out = new ByteArrayOutputStream();
-			DeflaterOutputStream deflater = new DeflaterOutputStream(new DeflaterOutputStream(out));
-			deflater.write(data);
-			deflater.close();
-			return out.toByteArray();
+			try(var deflater = new DeflaterOutputStream(new DeflaterOutputStream(out))) {
+				deflater.write(data);
+				return out.toByteArray();	
+			}
 		} catch(IOException e) {
 			throw new RuntimeException(e);
 		}
 	}
 	
 	public static byte[] decompress(byte[] data, int offset, int length) {
-		try {
-			ByteArrayOutputStream out = new ByteArrayOutputStream(length);
-			InflaterOutputStream inflater = new InflaterOutputStream(new InflaterOutputStream(out));
+		ByteArrayOutputStream out = new ByteArrayOutputStream(length);
+		try(var inflater = new InflaterOutputStream(new InflaterOutputStream(out))) {
 			inflater.write(data, offset, length);
-			inflater.close();
 			return out.toByteArray();
 		} catch (IOException e) {
 			throw new RuntimeException(e);
