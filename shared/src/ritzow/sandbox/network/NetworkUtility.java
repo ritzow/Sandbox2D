@@ -8,11 +8,11 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class NetworkUtility {
-	
-	private static final Pattern 
+
+	private static final Pattern
 		ADDRESS_PARSER = Pattern.compile("(?!\\[).+(?=\\])"),
 		PORT_PARSER = Pattern.compile("(?<=\\]\\:)[0-9]+");
-	
+
 	public static InetSocketAddress parseSocket(String address, int defaultPort) {
 		Matcher addressMatcher = ADDRESS_PARSER.matcher(address);
 		Matcher portMatcher = PORT_PARSER.matcher(address);
@@ -21,7 +21,7 @@ public class NetworkUtility {
 				return new InetSocketAddress(
 					InetAddress.getByName(addressMatcher.group()),
 					portMatcher.find() ? Integer.parseUnsignedInt(portMatcher.group()) : defaultPort
-				);	
+				);
 			} else {
 				int colonIndex = address.indexOf(':');
 				if(address.lastIndexOf(':') == colonIndex) { //IPv4 address with or without port
@@ -45,7 +45,7 @@ public class NetworkUtility {
 	}
 
 	public static String formatAddress(InetSocketAddress address) {
-		return "[" + address.getAddress().getHostAddress() + "]:" + 
+		return "[" + address.getAddress().getHostAddress() + "]:" +
 				(address.getPort() == 0 ? "any" : address.getPort());
 	}
 
@@ -63,48 +63,56 @@ public class NetworkUtility {
 		return new InetSocketAddress((args.length > index && !args[index].isEmpty()) ? InetAddress.getByName(args[index]) : defaultAddress,
 				args.length > 1 ? Integer.parseInt(args[index + 1]) : defaultPort);
 	}
-	
+
 	public static InetSocketAddress socketAddress(InetAddress address) {
 		return new InetSocketAddress(address, 0);
 	}
-	
+
 	public static boolean isIPv6(InetAddress address) {
 		return address instanceof Inet6Address;
 	}
 
-	/** Returns the computer's loopback address for same-machine communication 
+	/** Returns the computer's loopback address for same-machine communication
 	 * @return The loopback address or null.
 	 * @throws SocketException if there is an error querying the loopback address. **/
 	public static InetAddress getLoopbackAddress() throws SocketException {
+		//get main network interface
+		//get interface's addresses
+		//filter out special addresses
+		//put best addresses first
 		return NetworkInterface.networkInterfaces()
 				.filter(adapter -> {
 					try {
 						return adapter.isLoopback();
-					} catch (SocketException e) {
+					} catch(SocketException e) {
 						throw new RuntimeException(e);
 					}
 				}).findAny() //get main network interface
-				.map(network -> network.getInterfaceAddresses())
+				.map(NetworkInterface::getInterfaceAddresses)
 				.orElseGet(Collections::emptyList).stream() //get interface's addresses
-				.filter(NetworkUtility::filterAdresses) //filter out special addresses
-				.sorted((a, b) -> compareAddresses(true, a, b)) //put best addresses first
-				.findFirst().map(address -> address.getAddress()).get(); //get the best address
+				.filter(NetworkUtility::filterAdresses)
+				.min((a, b) -> compareAddresses(true, a, b))
+				.map(InterfaceAddress::getAddress).orElseThrow(); //get the best address
 	}
 
-	/** Returns a suitable IP address if available and null if not available 
+	/** Returns a suitable IP address if available and null if not available
 	 * @param preferIPv6 if IPv6 should be used when possible.
 	 * @return The primary network-facing IP address of this computer.
 	 * @throws SocketException if there is an error querying the IP address. **/
 	public static InetAddress getPrimaryAddress(boolean preferIPv6) throws SocketException {
+		//get main network interface
+		//get interface's addresses
+		//filter out special addresses
+		//put best addresses first
 		return NetworkInterface.networkInterfaces()
-			.filter(NetworkUtility::filterInterfaces).findAny() //get main network interface
-			.map(network -> network.getInterfaceAddresses())
-			.orElseGet(Collections::emptyList).stream() //get interface's addresses
-			.filter(NetworkUtility::filterAdresses) //filter out special addresses
-			.sorted((a, b) -> compareAddresses(preferIPv6, a, b)) //put best addresses first
-			.findFirst().map(address -> address.getAddress()).orElseThrow(); //get the best address
+				.filter(NetworkUtility::filterInterfaces).findAny() //get main network interface
+				.map(NetworkInterface::getInterfaceAddresses)
+				.orElseGet(Collections::emptyList).stream() //get interface's addresses
+				.filter(NetworkUtility::filterAdresses)
+				.min((a, b) -> compareAddresses(preferIPv6, a, b))
+				.map(InterfaceAddress::getAddress).orElseThrow(); //get the best address
 	}
-	
+
 	public static Collection<InetAddress> getAllAddresses() throws SocketException {
 		return NetworkInterface.networkInterfaces()
 				.flatMap(NetworkInterface::inetAddresses)
