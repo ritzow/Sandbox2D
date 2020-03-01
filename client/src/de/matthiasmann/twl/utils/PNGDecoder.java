@@ -259,111 +259,60 @@ public class PNGDecoder {
 				readChunkUnzip(inflater, curLine, 0, curLine.length);
 				unfilter(curLine, prevLine);
 				buffer.position(offset + y*stride);
-				
-                switch (colorType) {
-                case COLOR_TRUECOLOR:
-                    switch (fmt) {
-                    case ABGR: copyRGBtoABGR(buffer, curLine); break;
-                    case RGBA: copyRGBtoRGBA(buffer, curLine); break;
-                    case BGRA: copyRGBtoBGRA(buffer, curLine); break;
-                    case RGB: copy(buffer, curLine); break;
-                    default: throw new UnsupportedOperationException("Unsupported format for this image");
-                    }
-                    break;
-                case COLOR_TRUEALPHA:
-                    switch (fmt) {
-                    case ABGR: copyRGBAtoABGR(buffer, curLine); break;
-                    case RGBA: copy(buffer, curLine); break;
-                    case BGRA: copyRGBAtoBGRA(buffer, curLine); break;
-                    case RGB: copyRGBAtoRGB(buffer, curLine); break;
-                    default: throw new UnsupportedOperationException("Unsupported format for this image");
-                    }
-                    break;
-                case COLOR_GREYSCALE:
-                    switch (fmt) {
-                    case LUMINANCE:
-                    case ALPHA: copy(buffer, curLine); break;
-                    default: throw new UnsupportedOperationException("Unsupported format for this image");
-                    }
-                    break;
-                case COLOR_GREYALPHA:
-                    switch (fmt) {
-                    case LUMINANCE_ALPHA: copy(buffer, curLine); break;
-                    default: throw new UnsupportedOperationException("Unsupported format for this image");
-                    }
-                    break;
-                case COLOR_INDEXED:
-                    switch(bitdepth) {
-                        case 8: palLine = curLine; break;
-                        case 4: expand4(curLine, palLine); break;
-                        case 2: expand2(curLine, palLine); break;
-                        case 1: expand1(curLine, palLine); break;
-                        default: throw new UnsupportedOperationException("Unsupported bitdepth for this image");
-                    }
-                    switch (fmt) {
-                    case ABGR: copyPALtoABGR(buffer, palLine); break;
-                    case RGBA: copyPALtoRGBA(buffer, palLine); break;
-                    case BGRA: copyPALtoBGRA(buffer, palLine); break;
-                    default: throw new UnsupportedOperationException("Unsupported format for this image");
-                    }
-                    break;
-                default:
-                    throw new UnsupportedOperationException("Not yet implemented");
-                }
-				
-//				switch(colorType) {
-//					case COLOR_TRUECOLOR -> {
-//						switch (fmt) {
-//						case ABGR -> copyRGBtoABGR(buffer, curLine);
-//						case RGBA -> copyRGBtoRGBA(buffer, curLine);
-//						case BGRA -> copyRGBtoBGRA(buffer, curLine);
-//						case RGB -> copy(buffer, curLine);
-//						default -> throw new UnsupportedOperationException("Unsupported format for this image");
-//						}
-//					}
-//				
-//					case COLOR_TRUEALPHA -> {
-//						switch (fmt) {
-//						case ABGR -> copyRGBAtoABGR(buffer, curLine);
-//						case RGBA -> copy(buffer, curLine);
-//						case BGRA -> copyRGBAtoBGRA(buffer, curLine);
-//						case RGB -> copyRGBAtoRGB(buffer, curLine);
-//						default -> throw new UnsupportedOperationException("Unsupported format for this image");
-//						}
-//					}
-//				
-//					case COLOR_GREYSCALE -> {
-//						switch (fmt) {
-//						case LUMINANCE, ALPHA -> copy(buffer, curLine);
-//						default -> throw new UnsupportedOperationException("Unsupported format for this image");
-//						}
-//					}
-//				
-//					case COLOR_GREYALPHA -> {
-//						switch (fmt) {
-//						case LUMINANCE_ALPHA -> copy(buffer, curLine);
-//						default -> throw new UnsupportedOperationException("Unsupported format for this image");
-//						}
-//					}
-//				
-//				case COLOR_INDEXED -> {
-//					switch(bitdepth) {
-//						case 8 -> palLine = curLine;
-//						case 4 -> expand4(curLine, palLine);
-//						case 2 -> expand2(curLine, palLine);
-//						case 1 -> expand1(curLine, palLine);
-//						default -> throw new UnsupportedOperationException("Unsupported bitdepth for this image");
-//					}
-//				
-//					switch (fmt) {
-//						case ABGR -> copyPALtoABGR(buffer, palLine);
-//						case RGBA -> copyPALtoRGBA(buffer, palLine);
-//						case BGRA -> copyPALtoBGRA(buffer, palLine);
-//						default -> throw new UnsupportedOperationException("Unsupported format for this image");
-//					}
-//				}
-//				
-//				}
+				switch(colorType) {
+					case COLOR_TRUECOLOR -> {
+						switch (fmt) {
+						case ABGR -> copyRGBtoABGR(buffer, curLine);
+						case RGBA -> copyRGBtoRGBA(buffer, curLine);
+						case BGRA -> copyRGBtoBGRA(buffer, curLine);
+						case RGB -> copy(buffer, curLine);
+						default -> throw new UnsupportedOperationException("Unsupported format for this image");
+						}
+					}
+
+					case COLOR_TRUEALPHA -> {
+						switch (fmt) {
+						case ABGR -> copyRGBAtoABGR(buffer, curLine);
+						case RGBA -> copy(buffer, curLine);
+						case BGRA -> copyRGBAtoBGRA(buffer, curLine);
+						case RGB -> copyRGBAtoRGB(buffer, curLine);
+						default -> throw new UnsupportedOperationException("Unsupported format for this image");
+						}
+					}
+
+					case COLOR_GREYSCALE -> {
+						switch (fmt) {
+						case LUMINANCE, ALPHA -> copy(buffer, curLine);
+						default -> throw new UnsupportedOperationException("Unsupported format for this image");
+						}
+					}
+
+					case COLOR_GREYALPHA -> {
+						if(fmt == Format.LUMINANCE_ALPHA) {
+							copy(buffer, curLine);
+						} else {
+							throw new UnsupportedOperationException("Unsupported format for this image");
+						}
+					}
+
+				case COLOR_INDEXED -> {
+					switch(bitdepth) {
+						case 8 -> palLine = curLine;
+						case 4 -> expand4(curLine, palLine);
+						case 2 -> expand2(curLine, palLine);
+						case 1 -> expand1(curLine, palLine);
+						default -> throw new UnsupportedOperationException("Unsupported bitdepth for this image");
+					}
+
+					switch (fmt) {
+						case ABGR -> copyPALtoABGR(buffer, palLine);
+						case RGBA -> copyPALtoRGBA(buffer, palLine);
+						case BGRA -> copyPALtoBGRA(buffer, palLine);
+						default -> throw new UnsupportedOperationException("Unsupported format for this image");
+					}
+				}
+
+				}
 				byte[] tmp = curLine;
 				curLine = prevLine;
 				prevLine = tmp;
@@ -372,7 +321,7 @@ public class PNGDecoder {
 			inflater.end();
 		}
 	}
-	
+
 	/**
 	 * Decodes the image into the specified buffer. The last line is placed at
 	 * the current position. After decode the buffer position is at the end of
