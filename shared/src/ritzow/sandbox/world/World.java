@@ -1,7 +1,5 @@
 package ritzow.sandbox.world;
 
-import static ritzow.sandbox.util.Utility.intersection;
-
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -13,22 +11,24 @@ import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.block.Block;
 import ritzow.sandbox.world.entity.Entity;
 
+import static ritzow.sandbox.util.Utility.intersection;
+
 /**
  * A World instance manages a foreground and background BlockGrid, and a collection of entities.
  * @author Solomon Ritzow
  *
  */
 public class World implements Transportable, Iterable<Entity> {
-	
+
 	private static final float GRAVITY = Utility.convertAccelerationSecondsNanos(9.8f * 3);
-	
+
 	//Entity operations:
 	//Get an entity by ID
 	//Remove an entity by ID or by object
 	//Add an entity
 	//iterate over entities and remaining entities
 	//Remove entities while iterating
-	
+
 	/** collection of entities in the world **/
 	private final List<Entity> entities;
 	private final Map<Integer, Entity> entitiesID;
@@ -58,15 +58,15 @@ public class World implements Transportable, Iterable<Entity> {
 	}
 
 	public World(TransportableDataReader reader) {
-		foreground = Objects.requireNonNull(reader.readObject());
-		background = Objects.requireNonNull(reader.readObject());
+		foreground = Objects.requireNonNull(reader.readObject(), "Foreground can't be null.");
+		background = Objects.requireNonNull(reader.readObject(), "Background can't be null.");
 		int entityCount = reader.readInteger();
 		entities = new ArrayList<>(entityCount);
-		entitiesID = new HashMap<>();
+		entitiesID = new HashMap<>(entityCount);
 		for(int i = 0; i < entityCount; ++i) {
 			addEntity(Objects.requireNonNull(reader.readObject()));
 		}
-		lastEntityID = reader.readInteger();
+		lastEntityID = reader.readInteger(); //TODO can just get max id from readObjects
 	}
 
 	@Override
@@ -79,36 +79,16 @@ public class World implements Transportable, Iterable<Entity> {
 		byte[] foregroundBytes = ser.serialize(foreground);
 		byte[] backgroundBytes = ser.serialize(background);
 
-		int entityIDCounter = this.lastEntityID;
+		List<byte[]> elist = new ArrayList<>();
+		int totalEntityBytes = entities.stream()
+				.filter(entityFilter)
+				.map(ser::serialize)
+				.peek(elist::add)
+				.mapToInt(a -> a.length)
+				.sum();
 
-		//number of entities currently in the world
-		int numEntities = entities.size();
-
-		//number of bytes of entity data
-		int totalEntityBytes = 0;
-
-		//array of all of the serialized entities
-		byte[][] entityBytes = new byte[numEntities][];
-
-		for(int i = 0; i < numEntities; ++i) {
-			Entity e = entities.get(i);
-			if(entityFilter.test(e)) {
-				try {
-					byte[] bytes = ser.serialize(e);
-					entityBytes[i] = bytes;
-					totalEntityBytes += bytes.length;
-				} catch(Exception x) {
-					numEntities--;
-					i--;
-					System.err.println("couldn't serialize an entity: " + x.getLocalizedMessage());
-				}
-			} else {
-				numEntities--;
-			}
-		}
-
-		//gravity, foreground data, background data, number of entities, entity data (size), lastEntityID
-		byte[] bytes = new byte[4 + foregroundBytes.length + backgroundBytes.length + 4 + totalEntityBytes + 4];
+		//foreground data, background data, number of entities, entity data (size), lastEntityID
+		byte[] bytes = new byte[foregroundBytes.length + backgroundBytes.length + 4 + totalEntityBytes + 4];
 		int index = 0;
 
 		//write foreground data
@@ -120,15 +100,17 @@ public class World implements Transportable, Iterable<Entity> {
 		index += backgroundBytes.length;
 
 		//write number of entities
-		Bytes.putInteger(bytes, index, numEntities);
+		Bytes.putInteger(bytes, index, entities.size());
 		index += 4;
 
-		//append entity data to the end of the serialized array
-		int entityByteData = Bytes.concatenate(bytes, index, entityBytes);
-		index += entityByteData;
+		for(byte[] dat : elist) {
+			Bytes.copy(dat, bytes, index);
+			index += dat.length;
+		}
 
 		//write last entity id
-		Bytes.putInteger(bytes, index, entityIDCounter);
+		//TODO might not need this, can just get max of all entities plus one
+		Bytes.putInteger(bytes, index, lastEntityID);
 
 		return bytes;
 
@@ -215,7 +197,7 @@ public class World implements Transportable, Iterable<Entity> {
 	public void forEach(Consumer<? super Entity> consumer) {
 		entities.forEach(consumer);
 	}
-	
+
 	public Entity getEntityFromID(int id) {
 		return entitiesID.get(id);
 	}
@@ -245,12 +227,12 @@ public class World implements Transportable, Iterable<Entity> {
 		if(!isEntitiesModifiable)
 			throw new IllegalStateException("cannot add/remove from world: world is being updated");
 	}
-	
+
 	private void addEntity(Entity e) {
 		entities.add(e);
 		entitiesID.put(e.getID(), e);
 	}
-	
+
 	private void removeEntity(Entity e) {
 		entities.remove(e);
 		entitiesID.remove(e.getID());
@@ -307,7 +289,7 @@ public class World implements Transportable, Iterable<Entity> {
 //					e.setVelocityX(velocityX * scale);
 //				}
 //				e.setVelocityY(velocityY);
-				
+
 				//check for entity vs. entity collisions with all entities that have not already been
 				//collision checked with (for first element, all entites, for last, no entities)
 				for(int j = i + 1; j < size; j++) {
@@ -335,7 +317,7 @@ public class World implements Transportable, Iterable<Entity> {
 		int bottomBound = Math.max(0, (int)(posY - height));
 		int topBound = Math.min((int)(posY + height), foreground.getHeight() - 1);
 		int rightBound = Math.min((int)(posX + width), foreground.getWidth() - 1);
-		
+
 		//TODO is there redundancy between this and resolveBlockCollision
 		//System.out.println(leftBound + ", " + bottomBound + ", " + rightBound + ", " + topBound);
 		for(int row = bottomBound; row <= topBound; row++) {
@@ -350,15 +332,11 @@ public class World implements Transportable, Iterable<Entity> {
 	}
 
 	/**
-	 * Resolves a collision between an entity and a hitbox. 
+	 * Resolves a collision between an entity and a hitbox.
 	 * The entity passed into the first parameter will be moved if necessary.
 	 * @param e the entity to be resolved
-	 * @param otherX the x position of the hitbox
-	 * @param otherY the y position of the hitbox
-	 * @param otherWidth the width of the hitbox
-	 * @param otherHeight the height of the hitbox
-	 * @param otherFriction the friction of the hitbox
-	 * @param time the amount of time that the resolution should simulate
+	 * @param o the entity to check collision with
+	 * @param nanoseconds the amount of time that the resolution should simulate
 	 */
 	private void resolveEntityCollision(Entity e, Entity o, long nanoseconds) {
 		if(e.interactsWithEntities() || o.interactsWithEntities()) {
@@ -367,13 +345,13 @@ public class World implements Transportable, Iterable<Entity> {
 			float height = 0.5f * (e.getHeight() + o.getHeight());
 			float deltaX = o.getPositionX() - e.getPositionX();
 			float deltaY = o.getPositionY() - e.getPositionY();
-			
+
 			if(Math.abs(deltaX) < width && Math.abs(deltaY) < height) {
 				//collision! replace < in intersection detection with <= for previous behavior
-				
+
 				e.onCollision(this, o, nanoseconds);
 				o.onCollision(this, e, nanoseconds);
-				
+
 				if(e.collidesWithEntities() && o.collidesWithEntities()) {
 					float wy = width * deltaY;
 				    float hx = height * deltaX;
@@ -399,7 +377,7 @@ public class World implements Transportable, Iterable<Entity> {
 				        }
 				    }
 				}
-			}	
+			}
 		}
 	}
 
@@ -440,7 +418,7 @@ public class World implements Transportable, Iterable<Entity> {
 	}
 
 	/**
-	 * @param surfaceFriction The friction of the object the entity e is colliding with. 
+	 * @param surfaceFriction The friction of the object the entity e is colliding with.
 	 * @param nanoseconds The duration of the collision?
 	 */
 	private static void onCollisionEntity(Entity e, float surfaceFriction, long nanoseconds) {
@@ -460,7 +438,7 @@ public class World implements Transportable, Iterable<Entity> {
 //    		e.setVelocityX(Math.min(0, right));
 //    	}
 //		e.setLastCollision(collisionTime);
-		
+
 		e.setVelocityY(0);
 	}
 }
