@@ -58,13 +58,13 @@ public class RenderManager {
 			new ModelData(RenderConstants.MODEL_SKY, positions, atlas.getCoordinates(sky), indices)
 		};
 		
-		Shader vertex = StandardClientOptions.USE_OPENGL_4_6 ? 
+
+		Shader vertex = StandardClientOptions.USE_OPENGL_4_6 ?
 			spirv("model.vert.spv", ShaderType.VERTEX) :
-			source("newmodel.vert", ShaderType.VERTEX);
-		Shader fragment = StandardClientOptions.USE_OPENGL_4_6 ? 
+			source("model.vert", ShaderType.VERTEX);
+		Shader fragment = StandardClientOptions.USE_OPENGL_4_6 ?
 			spirv("model.frag.spv", ShaderType.FRAGMENT) :
-			source("newmodel.frag", ShaderType.FRAGMENT);
-			
+			source("model.frag", ShaderType.FRAGMENT);
 		var program = ModelRenderProgram.create(vertex, fragment, atlas.texture(), models);
 		GraphicsUtility.checkErrors();
 		return program;
