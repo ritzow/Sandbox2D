@@ -17,6 +17,12 @@ INT WINAPI wWinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPWSTR lpCmdLine, _
 			std::wcout << "Command Line Arguments: \"" << lpCmdLine << '"' << std::endl;
 	}
 
+	//TODO if started outside this directory, won't be able to find jvm.dll or resources
+	//LPWSTR path[MAX_PATH];
+	//DWORD length = GetModuleFileNameW(NULL, *path, MAX_PATH);
+	//LPWSTR dllpath = new wchar_t[length - wcslen(L"Sandbox2D.exe") + wcslen(relativeDLL)];
+	//std::copy(std::begin(path), std::end(path), dllpath);
+	//SetCurrentDirectoryW();
 	HMODULE dll = LoadLibraryW(L"jvm\\bin\\server\\jvm.dll");
 	if (dll != nullptr) {
 		JavaVM* vm; JNIEnv* env; JavaVMInitArgs args = GetJavaInitArgs();
