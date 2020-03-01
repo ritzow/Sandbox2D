@@ -24,12 +24,11 @@ public final class BlockGrid implements Transportable {
 		blocks = new Block[width * height];
 		for(int row = 0; row < height; row++) {
 			for(int column = 0; column < width; column++) {
-				set(column, row, data.readObject());
-				//blocks[row][column] = data.readObject();
+				blocks[width * row + column] = data.readObject();
 			}
 		}
-		data.readInteger(); //TODO figure out why this extra read is necessary?
-		data.readInteger(); //TODO figure out why this extra read is necessary?
+		data.readInteger(); //TODO WHYHYHYHYHYHYHY??
+		data.readInteger();
 	}
 
 	@Override
@@ -82,9 +81,8 @@ public final class BlockGrid implements Transportable {
 	 */
 	public Block get(int x, int y) {
 		try {
-			//return blocks[blocks.length - 1 - y][x];
 			return blocks[width * y + x];
-		} catch(@SuppressWarnings("unused") ArrayIndexOutOfBoundsException e) {
+		} catch(ArrayIndexOutOfBoundsException e) {
 			throw new IllegalArgumentException("invalid coordinates " + x + ", " + y);
 		}
 	}
@@ -98,11 +96,11 @@ public final class BlockGrid implements Transportable {
 			Block previous = blocks[width * y + x];
 			blocks[width * y + x] = block;
 			return previous;
-		} catch(@SuppressWarnings("unused") ArrayIndexOutOfBoundsException e) {
+		} catch(ArrayIndexOutOfBoundsException e) {
 			throw new IllegalArgumentException("invalid coordinates " + x + ", " + y);
 		}
 	}
-	
+
 	public void fill(Block block, int x1, int y1, int width, int height) {
 		int x2 = x1 + width;
 		int y2 = y1 + height;
@@ -146,14 +144,14 @@ public final class BlockGrid implements Transportable {
 		return get(x, y) != null;
 	}
 
-	/** Returns whether or not there is a block at the specified world coordinates 
+	/** Returns whether or not there is a block at the specified world coordinates
 	 * @param worldX The world x coordinate to check.
 	 * @param worldY The world y coordinate to check.
 	 * @return true if there is a block at the specified coordinates. **/
 	public boolean isBlock(float worldX, float worldY) {
 		return isBlock(Math.round(worldX), Math.round(worldY));
 	}
-	
+
 	public boolean isSolidBlockAdjacent(int blockX, int blockY) {
 		return 	(isValid(blockX + 1, blockY) && isBlock(blockX + 1, blockY)) ||
 				(isValid(blockX - 1, blockY) && isBlock(blockX - 1, blockY)) ||
