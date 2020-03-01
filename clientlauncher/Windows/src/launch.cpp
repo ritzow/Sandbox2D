@@ -1,6 +1,7 @@
 #include <windows.h>
+#include <PathCch.h>
 #include <iostream>
-#include "../../Shared/shared.cpp"
+#include <shared.cpp>
 
 constexpr bool SHOW_CONSOLE = false;
 
@@ -8,7 +9,7 @@ inline void DisplayError(const wchar_t* title, const wchar_t* message) {
 	MessageBoxW(nullptr, message, title, MB_OK | MB_ICONERROR);
 }
 
-INT WINAPI wWinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPWSTR lpCmdLine, _In_ INT) {
+INT WINAPI wWinMain(_In_ HINSTANCE module, _In_opt_ HINSTANCE, _In_ LPWSTR lpCmdLine, _In_ INT) {
 	if constexpr (SHOW_CONSOLE) {
 		AllocConsole();
 		FILE* file;
@@ -17,12 +18,10 @@ INT WINAPI wWinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPWSTR lpCmdLine, _
 			std::wcout << "Command Line Arguments: \"" << lpCmdLine << '"' << std::endl;
 	}
 
-	//TODO if started outside this directory, won't be able to find jvm.dll or resources
-	//LPWSTR path[MAX_PATH];
-	//DWORD length = GetModuleFileNameW(NULL, *path, MAX_PATH);
-	//LPWSTR dllpath = new wchar_t[length - wcslen(L"Sandbox2D.exe") + wcslen(relativeDLL)];
-	//std::copy(std::begin(path), std::end(path), dllpath);
-	//SetCurrentDirectoryW();
+	static WCHAR program_path[MAX_PATH];
+	DWORD length = GetModuleFileNameW(module, program_path, MAX_PATH);
+	PathCchRemoveFileSpec(program_path, length);
+	SetCurrentDirectoryW(program_path);
 	HMODULE dll = LoadLibraryW(L"jvm\\bin\\server\\jvm.dll");
 	if (dll != nullptr) {
 		JavaVM* vm; JNIEnv* env; JavaVMInitArgs args = GetJavaInitArgs();

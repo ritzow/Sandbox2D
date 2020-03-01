@@ -1,8 +1,10 @@
 #include <sstream>
 
 #ifdef WIN32
-	#include "../Windows/include/jni.h"
+	//#include "../Windows/include/jni.h"
 #endif
+
+#include <jni.h>
 
 #if 0
 void LoadMainModule(JNIEnv* env) {
