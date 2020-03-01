@@ -7,6 +7,7 @@ import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
 public final class Protocol {
+
 	private Protocol() {throw new UnsupportedOperationException("instantiation of Protocol not allowed");}
 
 	//gameplay
@@ -23,7 +24,7 @@ public final class Protocol {
 	public static final boolean COMPRESS_WORLD_DATA = true;
 
 	public static final int DEFAULT_SERVER_PORT = 50000;
-	
+
 	public static final long
 		TIMEOUT_DISCONNECT = Utility.millisToNanos(1000),
 		RESEND_COUNT = 10,
@@ -46,9 +47,9 @@ public final class Protocol {
 		TYPE_SERVER_WORLD_HEAD = 2,
 		TYPE_SERVER_WORLD_DATA = 3,
 		TYPE_SERVER_ENTITY_UPDATE = 4,
-		//TODO separate receiving entity and adding to world 
+		//TODO separate receiving entity and adding to world
 		//(TYPE_RECEIVE_AND_ADD_ENTITY vs TYPE_RECEIVE_ENTITY and TYPE_ADD_ENTITY?)
-		TYPE_SERVER_ADD_ENTITY = 5, 
+		TYPE_SERVER_ADD_ENTITY = 5,
 		//TODO separate removing entity from world and deleting entity
 		TYPE_SERVER_REMOVE_ENTITY = 6,
 		TYPE_SERVER_CLIENT_DISCONNECT = 7,
@@ -61,7 +62,8 @@ public final class Protocol {
 		TYPE_CLIENT_BOMB_THROW = 16,
 		TYPE_CLIENT_WORLD_BUILT = 17,
 		TYPE_CLIENT_PLACE_BLOCK = 18,
-		TYPE_SERVER_PLACE_BLOCK = 19;
+		TYPE_SERVER_PLACE_BLOCK = 19,
+		TYPE_SERVER_CLIENT_BREAK_BLOCK_COOLDOWN = 20;
 
 	/** Serialization Type ID **/
 	public static final short
@@ -108,11 +110,11 @@ public final class Protocol {
 		public static byte MOVE_DOWN = 			0b00001000;
 		public static byte PRIMARY_ACTION = 	0b00010000;
 		public static byte SECONDARY_ACTION = 	0b00100000;
-		
+
 		public static boolean isPrimary(short state) {
 			return (state & PRIMARY_ACTION) == PRIMARY_ACTION;
 		}
-		
+
 		public static boolean isSecondary(short state) {
 			return (state & SECONDARY_ACTION) == SECONDARY_ACTION;
 		}
