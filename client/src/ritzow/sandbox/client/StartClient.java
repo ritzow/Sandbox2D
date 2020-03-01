@@ -73,21 +73,4 @@ class StartClient {
 		state.display = new Display(4, StandardClientOptions.USE_OPENGL_4_6 ? 6 : 1, "Sandbox2D", appIcon);
 	}
 	
-	private static void setupLogging() {
-		Logger.getGlobal().setUseParentHandlers(false);
-		Logger.getGlobal().addHandler(new Handler() {
-			@Override
-			public void publish(LogRecord record) {
-				if(record.getLevel().intValue() >= Level.WARNING.intValue())
-					System.err.print(record.getMessage());
-				else System.out.print(record.getMessage());
-			}
-			
-			@Override
-			public void flush() {}
-			
-			@Override
-			public void close() throws SecurityException {}
-		});
-	}
 }

@@ -10,14 +10,7 @@ import org.lwjgl.BufferUtils;
 import ritzow.sandbox.client.data.StandardClientProperties;
 
 public final class Textures {
-	
-	public static final float[] FULL_TEXTURE_COORDS = {
-			0f, 1f,
-			0f, 0f,
-			1f, 0f,
-			1f, 1f
-	};
-	
+
 	public static TextureAtlas buildAtlas(TextureData... textures) {
 		return new TextureAtlas(textures);
 	}

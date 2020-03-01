@@ -34,12 +34,6 @@ public class Client {
 		void process(short messageType, ByteBuffer data);
 	}
 
-	public static final class ConnectionFailedException extends Exception {
-		private ConnectionFailedException(String message) {
-			super(message);
-		}
-	}
-	
 	private Runnable onTimeout;
 	private Consumer<IOException> onException;
 	
