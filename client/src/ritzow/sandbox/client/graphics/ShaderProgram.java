@@ -24,7 +24,7 @@ public class ShaderProgram {
 	public void setCurrent() {
 		glUseProgram(programID);
 	}
-	
+
 	protected final int getAttributeLocation(String name) {
 		return glGetAttribLocation(programID, name);
 	}
@@ -38,7 +38,7 @@ public class ShaderProgram {
 	 * @param textureUnit the texture unit
 	 * @param textureID the texture
 	 */
-	public static final void setCurrentTexture(int textureUnit, int textureID) {
+	public static void setCurrentTexture(int textureUnit, int textureID) {
 		glActiveTexture(GL_TEXTURE0 + textureUnit);
 		glBindTexture(GL_TEXTURE_2D, textureID);
 	}

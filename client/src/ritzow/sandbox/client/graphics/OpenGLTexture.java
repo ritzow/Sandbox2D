@@ -1,9 +1,9 @@
 package ritzow.sandbox.client.graphics;
 
+import java.nio.ByteBuffer;
+
 import static org.lwjgl.opengl.GL11C.*;
 import static org.lwjgl.opengl.GL12C.GL_CLAMP_TO_EDGE;
-
-import java.nio.ByteBuffer;
 
 /**
  * Represents an OpenGL texture
@@ -34,7 +34,7 @@ public final class OpenGLTexture {
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 	}
 
-	private static final void setup(int texture) {
+	private static void setup(int texture) {
 		glBindTexture(GL_TEXTURE_2D, texture);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
