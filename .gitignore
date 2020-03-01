@@ -1,8 +1,12 @@
+.gitignore
+/client/resources/test_gltf.glb
+/clientlauncher/macOS/.vs
+
 #don't include output directories
 bin/
 
 #don't include server data storage
-/server/world.dat
+world.dat
 
 #don't include fonts
 /serverlauncher/resources/font/
@@ -15,6 +19,7 @@ bin/
 .classpath
 .project
 .settings
+.idea/
 
 #Server launcher
 /serverlauncher/build
