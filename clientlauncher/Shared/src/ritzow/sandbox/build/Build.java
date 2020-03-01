@@ -7,12 +7,15 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
+import java.nio.file.attribute.FileTime;
+import java.text.NumberFormat;
+import java.time.Instant;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.StringJoiner;
 import java.util.spi.ToolProvider;
+import java.util.zip.Deflater;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.NestingKind;
 import javax.tools.Diagnostic;
@@ -36,8 +39,11 @@ public class Build {
 
 	public static void main(String... args) throws IOException, InterruptedException {
 		System.out.println("Running Build.java.");
-		if(args.length > 0 && args[0].equalsIgnoreCase("launcher")) {
-			msbuild();
+		if(args.length > 0) {
+			switch(args[0].toLowerCase()) {
+				case "launcher" -> msbuild();
+				case "zip" -> packageOutput(Path.of(args[1]));
+			}
 		} else {
 			buildAll();
 		}
@@ -60,7 +66,7 @@ public class Build {
 			Path CLIENT_LIBS = CLIENT_DIR.resolve("libraries");
 			Path LWJGL_DIR = CLIENT_LIBS.resolve("lwjgl");
 			System.out.println("Shared code compiled.");
-			List<Path> modules = new ArrayList<Path>(6);
+			Collection<Path> modules = new ArrayList<Path>(6);
 			modules.add(LWJGL_DIR.resolve("lwjgl.jar"));
 			modules.add(LWJGL_DIR.resolve("lwjgl-glfw.jar"));
 			modules.add(LWJGL_DIR.resolve("lwjgl-opengl.jar"));
@@ -171,6 +177,27 @@ public class Build {
 			"Sandbox2DClientLauncher.vcxproj",
 			"-p:Platform=" + ARCH + ";Configuration=Release"
 		).inheritIO().start().waitFor();
+	}
+
+	private static void packageOutput(Path outFile) throws IOException {
+		Instant compileTime = Instant.now();
+		System.out.println("Zipping program to " + outFile);
+		try(var zip  = new ZipOutputStream(Files.newOutputStream(outFile))) {
+			zip.setComment("Sandbox2D Game Client Binaries");
+			zip.setLevel(Deflater.BEST_COMPRESSION);
+			zip.setMethod(ZipOutputStream.DEFLATED);
+			traverse(OUTPUT_DIR, file -> {
+				ZipEntry entry = new ZipEntry(OUTPUT_DIR.relativize(file).toString().replace('\\', '/'));
+				entry.setCreationTime(FileTime.from(compileTime));
+				entry.setLastModifiedTime(FileTime.from(compileTime));
+				zip.putNextEntry(entry);
+				zip.write(Files.readAllBytes(file));
+				zip.closeEntry();
+			}, path -> {});
+		}
+		NumberFormat format = NumberFormat.getIntegerInstance();
+		format.setGroupingUsed(true);
+		System.out.println("Zipped to " + format.format(Files.size(outFile)) + " bytes.");
 	}
 
 	private static Iterable<? extends JavaFileObject> getSourceFiles(Path src) throws IOException {
