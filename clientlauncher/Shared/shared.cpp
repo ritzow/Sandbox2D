@@ -1,10 +1,7 @@
-#ifdef __APPLE__
-	#include "../macOS/include/jni.h"
-#elif _WIN32
+#include <sstream>
+
+#ifdef WIN32
 	#include "../Windows/include/jni.h"
-	#include <string>
-	#include <sstream>
-	#include <vector>
 #endif
 
 #if 0
@@ -19,8 +16,7 @@ void LoadMainModule(JNIEnv* env) {
 JavaVMInitArgs GetJavaInitArgs() noexcept {
 	static JavaVMOption options[] = {
 		{(char*)"-Djdk.module.main=ritzow.sandbox.client"},
-		{(char*)"--enable-preview"}, //switch expressions
-		//{(char*)"vfprintf", *vfprintf}
+		{(char*)"--enable-preview"}
 	};
 
 	return {
