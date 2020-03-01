@@ -252,33 +252,11 @@ public final class Bytes {
 			ByteBuffer out = ByteBuffer.allocate(data.remaining() * 2); //assume 50% compression
 			inflater.inflate(out);
 			while(!inflater.finished()) { //inflater.getRemaining() > 0
-				System.out.println("not finished, continue decompression");
 				inflater.inflate(out = ByteBuffer.allocate(out.flip().remaining() * 2).put(out));
 			}
 			inflater.end();
 			return out.flip();
 		} catch (DataFormatException e) {
-			throw new RuntimeException(e);
-		}
-	}
-
-	public static byte[] decompress(byte[] data, int offset, int length) {
-		try {
-			byte[] out = new byte[data.length + 50]; //assume 50% compression
-			Inflater inflater = new Inflater(true);
-			inflater.setInput(data, offset, length);
-			int pos = inflater.inflate(out);
-
-			while(!inflater.finished()) { //inflater.getRemaining() > 0
-				System.out.println("not finished, continue decompression");
-				byte[] next = new byte[out.length * 2];
-				Bytes.copy(out, next, pos);
-				pos += inflater.inflate(next);
-				out = next;
-			}
-			inflater.end();
-			return Bytes.subArray(out, 0, pos);
-		} catch(DataFormatException e) {
 			throw new RuntimeException(e);
 		}
 	}
