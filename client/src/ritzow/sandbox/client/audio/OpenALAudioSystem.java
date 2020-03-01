@@ -1,8 +1,5 @@
 package ritzow.sandbox.client.audio;
 
-import static org.lwjgl.openal.AL10.*;
-import static org.lwjgl.openal.ALC10.*;
-
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.HashMap;
@@ -12,20 +9,23 @@ import org.lwjgl.openal.ALC;
 import org.lwjgl.openal.ALCCapabilities;
 import org.lwjgl.system.MemoryStack;
 
+import static org.lwjgl.openal.AL10.*;
+import static org.lwjgl.openal.ALC10.*;
+
 //TODO use http://www.softsynth.com/jsyn/ some day to create cool sound effects
 public final class OpenALAudioSystem implements AudioSystem {
 	private static long alContext;
 	private static long device;
 	private static int[] sources;
 	private static boolean created;
-	
+
 	//TODO this takes 500 ms to load, mainly device initialization and context creation
 	public static void initialize() {
 		device = alcOpenDevice((ByteBuffer)null);
 		alContext = alcCreateContext(device, (IntBuffer)null);
 		ALCCapabilities alcCaps = ALC.createCapabilities(device);
 		alcMakeContextCurrent(alContext);
-		
+
 		if(!AL.createCapabilities(alcCaps).OpenAL11) {
 			alcMakeContextCurrent(0);
 			alcDestroyContext(alContext);
@@ -37,13 +37,13 @@ public final class OpenALAudioSystem implements AudioSystem {
 		sources = new int[16];
 		alGenSources(sources);
 	}
-	
+
 	public static OpenALAudioSystem create() {
 		if(created) throw new IllegalStateException("already created");
 		created = true;
 		return new OpenALAudioSystem();
 	}
-	
+
 	public static Map<Integer, Integer> getAttributes() {
 		try(MemoryStack stack = MemoryStack.stackPush()) {
 			var attributes = stack.mallocInt(1);
@@ -55,11 +55,11 @@ public final class OpenALAudioSystem implements AudioSystem {
 			while(attributes.hasRemaining()) {
 				attributePairs.put(attributes.get(), attributes.get());
 			}
-			
-			return attributePairs;	
+
+			return attributePairs;
 		}
 	}
-	
+
 	public static void shutdown() {
 		alDeleteSources(sources);
 		alcMakeContextCurrent(0);
@@ -67,20 +67,20 @@ public final class OpenALAudioSystem implements AudioSystem {
 		alcCloseDevice(device);
 		ALC.destroy();
 	}
-	
+
 	public static void checkErrors() {
 		int error = alGetError();
 		if(error != AL_NO_ERROR) {
 			throw new OpenALException("Last Error: " + error);
 		}
 	}
-	
+
 	private final Map<Integer, Integer> sounds;
-	
+
 	public OpenALAudioSystem() {
 		sounds = new HashMap<>();
 	}
-	
+
 	@Override
 	public void close() {
 		for(int buffer : sounds.values()) {
@@ -88,42 +88,34 @@ public final class OpenALAudioSystem implements AudioSystem {
 		}
 		OpenALAudioSystem.shutdown();
 	}
-	
+
 	@Override
 	public void registerSound(int id, AudioData data) {
-    	int format = AL_FORMAT_STEREO16;
-    	
-    	if(data.getBitsPerSample() == 8) {
-    		if(data.getChannels() == 1) {
-    			format = AL_FORMAT_MONO8;
-    		} else if(data.getChannels() == 2) {
-    			format = AL_FORMAT_STEREO8;
-    		} else {
-    			throw new UnsupportedOperationException("invalid channel count");
-    		}
-    	} else if(data.getBitsPerSample() == 16) {
-    		if(data.getChannels() == 1) {
-    			format = AL_FORMAT_MONO16;
-    		} else if(data.getChannels() == 2) {
-    			format = AL_FORMAT_STEREO16;
-    		} else {
-    			throw new UnsupportedOperationException("invalid channel count");
-    		}
-    	} else {
-    		throw new UnsupportedOperationException("unsupported bits per sample");
-    	}
-    	
+		if(sounds.containsKey(id))
+			throw new UnsupportedOperationException("already a sound associated with id " + id);
+    	int format = switch(data.getBitsPerSample()) {
+    		case 8 -> switch(data.getChannels()) {
+    			case 1 -> AL_FORMAT_MONO8;
+    			case 2 -> AL_FORMAT_STEREO8;
+				default ->  throw new UnsupportedOperationException("invalid channel count");
+			};
+			case 16 -> switch(data.getChannels()) {
+    			case 1 -> AL_FORMAT_MONO16;
+    			case 2 -> AL_FORMAT_STEREO16;
+				default -> throw new UnsupportedOperationException("invalid channel count");
+			};
+			default -> throw new UnsupportedOperationException("unsupported bits per sample");
+		};
+
     	int buffer = alGenBuffers();
     	alBufferData(buffer, format, data.getData(), data.getSampleRate());
-    	if(sounds.containsKey(id))
-    		throw new UnsupportedOperationException("already a sound associated with id " + id);
 		sounds.put(id, buffer);
 		checkErrors();
 	}
 
 	@Override
 	public void playSound(int soundID, float x, float y, float velocityX, float velocityY, float gain, float pitch) {
-		Integer bufferID = sounds.get(Integer.valueOf(soundID));
+		Integer bufferID = sounds.get(soundID);
 		if(bufferID == null)
 			throw new IllegalStateException("soundID " + soundID + " does not exist");
 		for(int source : sources) {
