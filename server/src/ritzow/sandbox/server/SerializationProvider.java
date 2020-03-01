@@ -14,8 +14,8 @@ import ritzow.sandbox.world.item.BlockItem;
 
 public class SerializationProvider {
 	private static final SerializerReaderWriter provider = new SerializerReaderWriter()
-			.register(Protocol.DATA_BLOCK_GRID, BlockGrid.class, BlockGrid::new)
 			.register(Protocol.DATA_WORLD, World.class, World::new)
+			.register(Protocol.DATA_BLOCK_GRID, BlockGrid.class, BlockGrid::new)
 			.register(Protocol.DATA_BLOCK_ITEM, BlockItem.class, BlockItem::new)
 			.register(Protocol.DATA_DIRT_BLOCK, DirtBlock.class, reader -> DirtBlock.INSTANCE)
 			.register(Protocol.DATA_GRASS_BLOCK, GrassBlock.class, reader -> GrassBlock.INSTANCE)

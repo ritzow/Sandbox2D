@@ -8,7 +8,7 @@ class GameLoop {
 	public interface GameContext {
 		void run() throws Exception;
 	}
-	
+
 	private static GameContext current;
 
 	public static void start(GameContext initial) throws Exception {

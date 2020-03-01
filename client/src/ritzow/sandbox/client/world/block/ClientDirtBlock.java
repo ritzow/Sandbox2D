@@ -5,13 +5,13 @@ import ritzow.sandbox.data.TransportableDataReader;
 import ritzow.sandbox.world.block.DirtBlock;
 
 public class ClientDirtBlock extends DirtBlock implements ClientBlockProperties {
-	
+
 	public static final ClientDirtBlock SINGLETON = new ClientDirtBlock();
-	
-	public static final ClientDirtBlock getSingleton(@SuppressWarnings("unused") TransportableDataReader reader) {
+
+	public static ClientDirtBlock getSingleton(@SuppressWarnings("unused") TransportableDataReader reader) {
 		return SINGLETON;
 	}
-	
+
 	public ClientDirtBlock() {}
 
 	@Override

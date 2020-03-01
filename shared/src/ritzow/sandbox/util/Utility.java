@@ -1,8 +1,5 @@
 package ritzow.sandbox.util;
 
-import static ritzow.sandbox.network.Protocol.BLOCK_INTERACT_COOLDOWN_NANOSECONDS;
-import static ritzow.sandbox.network.Protocol.BLOCK_INTERACT_RANGE;
-
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
@@ -14,9 +11,12 @@ import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.Entity;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
-/** 
-	Contains a number of static utility methods relating to various systems 
-	(matrix/random math, time, synchronization, hitboxes) 
+import static ritzow.sandbox.network.Protocol.BLOCK_INTERACT_COOLDOWN_NANOSECONDS;
+import static ritzow.sandbox.network.Protocol.BLOCK_INTERACT_RANGE;
+
+/**
+	Contains a number of static utility methods relating to various systems
+	(matrix/random math, time, synchronization, hitboxes)
 **/
 public final class Utility {
 	private Utility() {
@@ -24,7 +24,7 @@ public final class Utility {
 	}
 
 	public static String formatCurrentTime() {
-		return "[" + LocalTime.now().format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)) + "]";
+		return "[" + LocalTime.now().format(DateTimeFormatter.ofLocalizedTime(FormatStyle.MEDIUM)) + "]";
 	}
 
 	public static boolean resendIntervalElapsed(long startTime, int attempts) {
@@ -34,7 +34,7 @@ public final class Utility {
 	public static int splitQuantity(int bucketSize, int itemCount) {
 		return itemCount/bucketSize + itemCount%bucketSize;
 	}
-	
+
 	public static float clamp(float min, float value, float max) {
 		float first = (value <= max) ? value : max;
 		return (min >= first) ? min : first;
@@ -57,7 +57,7 @@ public final class Utility {
 			throw new RuntimeException(e);
 		}
 	}
-	
+
 	public static void sleepNanos(long nanoseconds) {
 		try {
 			Thread.sleep(Math.max(0, nanoseconds)/1_000_000);
@@ -65,7 +65,7 @@ public final class Utility {
 			throw new RuntimeException(e);
 		}
 	}
-	
+
 	public static void waitNanos(long nanoseconds) {
 		long start = System.nanoTime();
 		while(System.nanoTime() - start < nanoseconds)
@@ -87,7 +87,7 @@ public final class Utility {
 		long start = System.nanoTime(); //get the current time
 		long updateTimeRemaining = start - previousTime;
 		if(updateTimeRemaining > Protocol.MAX_UPDATE_TIME_ALLOWED)
-			throw new IllegalArgumentException(updateTimeRemaining + 
+			throw new IllegalArgumentException(updateTimeRemaining +
 					" is greater than the max allowed world update time");
 
 		//update the world with a timestep of at most maxTimestep until the world is up to date.
@@ -99,29 +99,29 @@ public final class Utility {
 
 		return start;
 	}
-	
+
 	public static boolean canThrow(long lastThrowTime) {
 		return Utility.nanosSince(lastThrowTime) > Protocol.THROW_COOLDOWN_NANOSECONDS;
 	}
-	
+
 	public static boolean canBreak(PlayerEntity player, long lastBreakTime, World world, int blockX, int blockY) {
-		return Utility.nanosSince(lastBreakTime) > BLOCK_INTERACT_COOLDOWN_NANOSECONDS && 
-			world.getForeground().isValid(blockX, blockY) &&	
+		return Utility.nanosSince(lastBreakTime) > BLOCK_INTERACT_COOLDOWN_NANOSECONDS &&
+			world.getForeground().isValid(blockX, blockY) &&
 			world.getForeground().isBlock(blockX, blockY) &&
 			Utility.withinDistance(player.getPositionX(), player.getPositionY(), blockX, blockY, BLOCK_INTERACT_RANGE);
 	}
-	
+
 	public static boolean canPlace(PlayerEntity player, long lastPlaceTime, World world, int blockX, int blockY) {
 		BlockGrid front = world.getForeground();
 		BlockGrid back = world.getBackground();
 		return Utility.nanosSince(lastPlaceTime) > Protocol.BLOCK_INTERACT_COOLDOWN_NANOSECONDS &&
-				inRange(player, blockX, blockY) && 
-				front.isValid(blockX, blockY) && 
+				inRange(player, blockX, blockY) &&
+				front.isValid(blockX, blockY) &&
 				!front.isBlock(blockX, blockY) &&
 				(front.isSolidBlockAdjacent(blockX, blockY) ||
 				back.isSolidBlockAdjacent(blockX, blockY));
 	}
-	
+
 	public static boolean inRange(Entity player, int blockX, int blockY) {
 		return Utility.withinDistance(player.getPositionX(), player.getPositionY(),
 				blockX, blockY, Protocol.BLOCK_INTERACT_RANGE);
@@ -166,12 +166,17 @@ public final class Utility {
 		}
 	}
 
+	public static double degreesPerSecToRadiansPerMillis(double degreesPerSec) {
+		return degreesPerSec * Math.PI/180d;
+	}
+
+	/** Put an angle, in radians, from 0 to 2 PI */
+	public static float normalizeAngle(double angle) {
+		return (float)(angle - 2*Math.PI * Math.floor(angle/(2*Math.PI)));
+	}
+
 	public static float convertRange(float oldMin, float oldMax, float newMin, float newMax, float value) {
 		return (((value - oldMin) * (newMax - newMin)) / (oldMax - oldMin)) + newMin;
-	}
-	
-	public static float oscillateRange(float min, float max, float frequency /* in Hz */) {
-		return ((((float)Math.cos(frequency * System.nanoTime() * 0.000000001) + 1) * (max - min)) / 2) + min;
 	}
 
 	/** Returns an rotation in radians that represents the change in angle after rotating around a point **/
@@ -195,7 +200,7 @@ public final class Utility {
 	public static void printTimeSince(long nanoseconds) {
 		System.out.println(formatTime(System.nanoTime() - nanoseconds));
 	}
-	
+
 	public static void printFramerate(long nanoseconds) {
 		System.out.println(1_000_000_000/(System.nanoTime() - nanoseconds) + " FPS");
 	}
@@ -239,7 +244,7 @@ public final class Utility {
 	public static String formatNumber(double value, int decimals) {
 		long asInteger = Math.round(value);
 		String number = Double.toString(value);
-		return asInteger == value ? Long.toString(asInteger) : (decimals > 0 ? 
+		return asInteger == value ? Long.toString(asInteger) : (decimals > 0 ?
 			number.substring(0, Math.min(number.length(),
 			number.indexOf('.') + decimals)) : ("~" + asInteger));
 	}
@@ -247,11 +252,11 @@ public final class Utility {
 	public static double millisBetween(long startNanos, long endNanos) {
 		return nanosToMillis(endNanos - startNanos);
 	}
-	
+
 	public static float convertAccelerationSecondsNanos(float acceleration) {
 		return acceleration / 1_000_000_000f / 1_000_000_000f;
 	}
-	
+
 	public static float convertPerSecondToPerNano(float value) {
 		return value * 0.000000001f;
 	}
@@ -280,31 +285,31 @@ public final class Utility {
 		else
 			return magnitude;
 	}
-	
+
 	public static float random(double min, double max) {
 		return (float)new SplittableRandom().nextDouble(min, max);
 	}
-	
+
 	public static void launchAtAngle(Entity e, float angle, float velocity) {
 		e.setVelocityX((float)Math.cos(angle) * velocity);
 		e.setVelocityY((float)Math.sin(angle) * velocity);
 	}
-	
+
 	public static void launchAtRandomRatio(Entity e, double minFraction, double maxFraction, float velocity) {
 		launchAtAngle(e, random(minFraction * 2 * Math.PI, maxFraction * 2 * Math.PI), velocity);
 	}
-	
+
 	public static float randomAngleRadians() {
 		return Utility.random(0, Math.PI * 2);
 	}
 
-	public static boolean intersection(float rectangleX, float rectangleY, 
+	public static boolean intersection(float rectangleX, float rectangleY,
 			float width, float height, float pointX, float pointY) {
-		return (pointX <= Math.fma(0.5f, width, rectangleX) && pointX >= Math.fma(width, 0.5f, -rectangleX)) && 
+		return (pointX <= Math.fma(0.5f, width, rectangleX) && pointX >= Math.fma(width, 0.5f, -rectangleX)) &&
 				(pointY <= Math.fma(height, 0.5f, rectangleY) && pointY >= Math.fma(height, 0.5f, -rectangleY));
 	}
 
-	public static boolean intersection(float x, float y, float width, float height, 
+	public static boolean intersection(float x, float y, float width, float height,
 			float x2, float y2, float width2, float height2) {
 		return (Math.abs(x - x2) * 2 < (width + width2)) && (Math.abs(y - y2) * 2 < (height + height2));
 	}
@@ -325,7 +330,7 @@ public final class Utility {
 		return Math.fma((x1-x2), (x1-x2), (y1-y2)*(y1-y2));
 	}
 
-	/** Returns the maximum value of the component opposite the one passed in (x if y given) within a given radius 
+	/** Returns the maximum value of the component opposite the one passed in (x if y given) within a given radius
 	 * @param otherComp x or y component
 	 * @param radius radius from given component
 	 * @return the other component **/

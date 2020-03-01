@@ -80,7 +80,7 @@ public abstract class PlayerEntity extends Entity implements Living {
 		isGrounded = false; //in case there might not be blocks below during next update
 		super.update(world, ns);
 	}
-	
+
 	@Override
 	public void onCollision(World world, Block block, Side side, int blockX, int blockY, long ns) {
 		isGrounded = isGrounded || side == Side.BOTTOM;
@@ -118,7 +118,7 @@ public abstract class PlayerEntity extends Entity implements Living {
 	public boolean isDown() {
 		return down;
 	}
-	
+
 	public byte selected() {
 		return selected;
 	}
@@ -138,7 +138,7 @@ public abstract class PlayerEntity extends Entity implements Living {
 	public void setSlot(int slot) {
 		selected = (byte)Objects.checkIndex(slot, inventory.getSize());
 	}
-	
+
 	@Override
 	public int getHealth() {
 		return health;
@@ -195,12 +195,12 @@ public abstract class PlayerEntity extends Entity implements Living {
 	public float getMass() {
 		return 0.2f * SIZE_SCALE;
 	}
-	
+
 	@Override
 	public int hashCode() {
 		return entityID;
 	}
-	
+
 	@Override
 	public boolean equals(Object other) {
 		return other instanceof PlayerEntity p && p.entityID == entityID;

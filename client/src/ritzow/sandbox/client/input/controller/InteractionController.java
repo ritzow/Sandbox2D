@@ -14,9 +14,15 @@ import ritzow.sandbox.world.entity.Entity;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
 public final class InteractionController {
+	private static final double ACTIVATE_INDICATOR_SPEED = Utility.degreesPerSecToRadiansPerMillis(10);
+
 	private long lastThrow, lastBreak, lastPlace;
-	
-	public void render(Display display, ModelRenderProgram renderer, 
+
+	public void setLastBreak(long time) {
+		this.lastBreak = time;
+	}
+
+	public void render(Display display, ModelRenderProgram renderer,
 			Camera camera, World world, ClientPlayerEntity player) {
 		int modelID = switch(player.selected()) {
 			case 1 -> RenderConstants.MODEL_GRASS_BLOCK;
@@ -43,9 +49,11 @@ public final class InteractionController {
 			);
 		}
 	}
-	
+
 	private static float computeOpacity(boolean active) {
-		return active ? Utility.oscillateRange(0.5f, 1.0f, (float)Math.PI*2) : 0.25f;
+		//float val = Utility.convertRange(0, 2*(float)Math.PI, 0.5f, 1.0f,
+		//		Utility.normalizeAngle(System.currentTimeMillis() * ACTIVATE_INDICATOR_SPEED));
+		return active ? 0.75f : 0.25f;
 	}
 
 	//TODO wait for server response before sending more block break packets
@@ -70,7 +78,7 @@ public final class InteractionController {
 				}
 			}
 		}
-		
+
 		if(display.isControlActivated(Control.THROW_BOMB) && Utility.canThrow(lastThrow)) {
 			float worldX = ClientUtility.pixelHorizontalToWorld(camera, mouseX, frameWidth, frameHeight);
 			float worldY = ClientUtility.pixelVerticalToWorld(camera, mouseY, frameHeight);

@@ -22,26 +22,26 @@ public class Client {
 	private final Queue<SendPacket> sendQueue;
 	private final Map<SendPacket, Runnable> messageSentActions;
 	private int receiveReliableID, receiveUnreliableID, sendReliableID, sendUnreliableID;
-	
+
 	private boolean isUp;
 	private long ping; //rount trip time in nanoseconds
 
 	//reliable message send state
 	private int sendAttempts;
 	private long sendTime;
-	
-	public static interface MessageProcessor {
+
+	public interface MessageProcessor {
 		void process(short messageType, ByteBuffer data);
 	}
 
 	private Runnable onTimeout;
 	private Consumer<IOException> onException;
-	
+
 	public Client setOnTimeout(Runnable action) {
 		this.onTimeout = action;
 		return this;
 	}
-	
+
 	public Client setOnException(Consumer<IOException> action) {
 		this.onException = action;
 		return this;
@@ -55,7 +55,7 @@ public class Client {
 	 * @throws IOException if an internal I/O error occurrs.
 	 * @throws SocketException if the local address could not be bound to.
 	 */
-	public static Client create(InetSocketAddress bindAddress, 
+	public static Client create(InetSocketAddress bindAddress,
 			InetSocketAddress serverAddress) throws IOException {
 		return new Client(bindAddress, serverAddress);
 	}
@@ -65,7 +65,7 @@ public class Client {
 		return this;
 	}
 
-	private Client(InetSocketAddress bindAddress, 
+	private Client(InetSocketAddress bindAddress,
 			InetSocketAddress serverAddress) throws IOException {
 		this.channel = DatagramChannel
 				.open(NetworkUtility.protocolOf(bindAddress.getAddress()))
@@ -101,13 +101,13 @@ public class Client {
 		return ping;
 	}
 
-	/** Queues a reliable message 
+	/** Queues a reliable message
 	 * @param data the packet message, including message type, to send **/
 	public void sendReliable(byte[] data) {
 		sendQueue.add(new SendPacket(data.clone(), true));
 	}
 
-	/** Queues a reliable message, and runs an action after the message is received by the server 
+	/** Queues a reliable message, and runs an action after the message is received by the server
 	 * @param data the packet message, including message type, to send
 	 * @param action an action to run when the message is acknowledged by the server **/
 	public void sendReliable(byte[] data, Runnable action) {
@@ -130,7 +130,7 @@ public class Client {
 		isUp = false;
 		channel.close();
 	}
-	
+
 	public void startClose() {
 		isUp = false;
 	}
@@ -151,7 +151,7 @@ public class Client {
 	public void update(MessageProcessor processor) {
 		update(Integer.MAX_VALUE, processor);
 	}
-	
+
 	public void update(int maxReceive, MessageProcessor processor) {
 		try {
 			//already connected to server so no need to check SocketAddress
@@ -170,7 +170,7 @@ public class Client {
 					channel.write(sendBuffer);
 					sendBuffer.clear();
 				}
-				
+
 				//start send/continue current reliable message
 				if(!sendQueue.isEmpty()) {
 					if(sendAttempts == 0) {
@@ -192,7 +192,7 @@ public class Client {
 			onException.accept(e);
 		}
 	}
-	
+
 	private static void setupSendBuffer(ByteBuffer sendBuffer, byte type, int id, byte[] data) {
 		sendBuffer.put(type).putInt(id).put(data).flip();
 	}
@@ -202,7 +202,7 @@ public class Client {
 		sendBuffer.rewind();
 		sendAttempts++;
 	}
-	
+
 	private void sendResponse(int receivedMessageID) throws IOException {
 		channel.write(responseBuffer.put(Protocol.RESPONSE_TYPE).putInt(receivedMessageID).flip());
 		responseBuffer.clear();
