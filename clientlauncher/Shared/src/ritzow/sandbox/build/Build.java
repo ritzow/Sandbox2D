@@ -1,15 +1,10 @@
 package ritzow.sandbox.build;
 
-import static java.util.Map.entry;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.Reader;
-import java.io.Writer;
+import java.io.*;
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystem;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
@@ -24,19 +19,21 @@ import javax.tools.Diagnostic;
 import javax.tools.DiagnosticListener;
 import javax.tools.JavaFileObject;
 
+import static java.util.Map.entry;
+
 public class Build {
-	private static final String 
-		OS = "windows", 
-		ARCH = "x64", 
+	private static final String
+		OS = "windows",
+		ARCH = "x64",
 		RELEASE_VERSION = Integer.toString(Runtime.version().feature());
-	
+
 	private static final Path SHARED_DIR = Path.of("..\\shared");
 	private static final Path CLIENT_DIR = Path.of("..\\client");
 	private static final Path OUTPUT_DIR = Path.of("Windows\\x64\\Release\\Output");
 	private static final Path INCLUDE_DIR = Path.of("Windows\\include");
-	
+
 	private static final Charset SRC_CHARSET = StandardCharsets.UTF_8;
-	
+
 	public static void main(String... args) throws IOException, InterruptedException {
 		System.out.println("Running Build.java.");
 		if(args.length > 0 && args[0].equalsIgnoreCase("launcher")) {
@@ -45,13 +42,13 @@ public class Build {
 			buildAll();
 		}
 	}
-	
+
 	private static void buildAll() throws IOException, InterruptedException {
 		if(Files.exists(OUTPUT_DIR)) {
 			System.out.println("Deleting output directory.");
 			traverse(OUTPUT_DIR, Files::delete, Files::delete);
 		}
-		
+
 		Files.createDirectory(OUTPUT_DIR);
 		Path TEMPORARY_OUT = createTempDir(OUTPUT_DIR);
 		Path SHARED_SRC = SHARED_DIR.resolve("src");
@@ -78,10 +75,14 @@ public class Build {
 				System.out.print("Client code compiled.\nRunning jlink... ");
 				modules.add(CLIENT_OUT);
 				Path JVM_DIR = OUTPUT_DIR.resolve("jvm");
-				int result = jlink(JVM_DIR, modules, "ritzow.sandbox.client");
-				
+				int result = jlink(JVM_DIR, modules, List.of(
+					"ritzow.sandbox.client",
+					"jdk.management.agent",
+					"jdk.management.jfr"
+				));
+
 				if(result == 0) {
-					postJlink(CLIENT_DIR, JVM_DIR, LWJGL_DIR, 
+					postJlink(CLIENT_DIR, JVM_DIR, LWJGL_DIR,
 						CLIENT_LIBS.resolve("json"), OUTPUT_DIR, INCLUDE_DIR);
 				} else {
 					System.out.println("jlink failed with error " + result + ".");
@@ -93,27 +94,27 @@ public class Build {
 			System.out.println("Shared compilation failed.");
 		}
 	}
-	
-	private static void postJlink(Path CLIENT_DIR, Path JVM_DIR, Path LWJGL_DIR, 
+
+	private static void postJlink(Path CLIENT_DIR, Path JVM_DIR, Path LWJGL_DIR,
 			Path JSON_DIR, Path OUTPUT_DIR, Path INCLUDE_DIR) throws IOException, InterruptedException {
 		System.out.println("done.\nMoving header files and deleting unecessary files.");
 		traverse(INCLUDE_DIR, Files::delete, Files::delete);
-		
+
 		//create include directory
 		Files.createDirectory(INCLUDE_DIR);
-		
+
 		//move header files to Windows directory
-		traverse(JVM_DIR.resolve("include"), file -> 
+		traverse(JVM_DIR.resolve("include"), file ->
 			Files.move(file, INCLUDE_DIR.resolve(file.getFileName())), Files::delete);
-		
+
 		//delete unnecessary java.base files
 		Files.delete(JVM_DIR.resolve("bin").resolve("java.exe"));
 		Files.delete(JVM_DIR.resolve("bin").resolve("javaw.exe"));
 		Files.delete(JVM_DIR.resolve("bin").resolve("keytool.exe"));
 		Files.delete(JVM_DIR.resolve("lib").resolve("jvm.lib"));
-		
+
 		System.out.print("Copying game files and natives... ");
-		
+
 		//copy resources while preserving file system structure
 		Path RESOURCES_SRC_DIR = CLIENT_DIR.resolve("resources");
 		Path RESOURCES_OUT_DIR = OUTPUT_DIR.resolve("resources");
@@ -124,7 +125,7 @@ public class Build {
 				throw new RuntimeException(e);
 			}
 		});
-		
+
 		//copy options.txt and .dll files into output directory
 		Files.copy(CLIENT_DIR.resolve("options.txt"), OUTPUT_DIR.resolve("options.txt"));
 		List<Entry<String, String>> natives = List.of(
@@ -133,17 +134,17 @@ public class Build {
 			entry("lwjgl-openal-natives-windows.jar", "org/lwjgl/openal"),
 			entry("lwjgl-opengl-natives-windows.jar", "org/lwjgl/opengl")
 		);
-		
+
 		for(var entry : natives) {
 			try(FileSystem jar = FileSystems.newFileSystem(LWJGL_DIR.resolve(entry.getKey()));
 				var dllFiles = Files.newDirectoryStream(
 						jar.getPath(OS + "/" + ARCH, entry.getValue()), "*.dll")) {
 				for(Path dll : dllFiles) {
-					Files.copy(dll, OUTPUT_DIR.resolve(dll.getFileName().toString()));	
+					Files.copy(dll, OUTPUT_DIR.resolve(dll.getFileName().toString()));
 				}
 			}
 		}
-		
+
 		//copy legal files to a single output location
 		System.out.print("done.\nCopying legal files... ");
 		Path LEGAL_DIR = OUTPUT_DIR.resolve("legal");
@@ -153,38 +154,38 @@ public class Build {
 		try(var stream = Files.newDirectoryStream(LWJGL_DIR, "*license.txt")) {
 			for(Path file : stream) {
 				Files.copy(file, LEGAL_DIR.resolve(file.getFileName()));
-			}	
+			}
 		}
-		
+
 		//run launcher executable build script
 		System.out.println("done.\nBuilding launcher executable.");
 		int result = msbuild();
 		System.out.println(result == 0 ? "Launcher built." : "Launcher build failed with code " + result);
 	}
-	
+
 	private static int msbuild() throws IOException, InterruptedException {
 		return new ProcessBuilder(
-			"msbuild", 
+			"msbuild",
 			"-nologo",
 			"-verbosity:minimal",
 			"Sandbox2DClientLauncher.vcxproj",
 			"-p:Platform=" + ARCH + ";Configuration=Release"
 		).inheritIO().start().waitFor();
 	}
-	
+
 	private static Iterable<? extends JavaFileObject> getSourceFiles(Path src) throws IOException {
 		PathMatcher match = src.getFileSystem().getPathMatcher("glob:*.java");
 		Path diagDir = src.getParent();
 		List<JavaFileObject> list = new ArrayList<JavaFileObject>();
-		Files.find(src, Integer.MAX_VALUE, (path, attr) -> 
+		Files.find(src, Integer.MAX_VALUE, (path, attr) ->
 				!attr.isDirectory() && match.matches(path.getFileName()))
 			.peek(file -> System.out.println("FOUND " + diagDir.relativize(file)))
 			.map(PathSourceFile::new)
 			.forEach(list::add);
 		return list;
 	}
-	
-	private static boolean compile(Path output, Path diag, Iterable<? extends JavaFileObject> sources, 
+
+	private static boolean compile(Path output, Path diag, Iterable<? extends JavaFileObject> sources,
 			Iterable<Path> modules) {
 		return javax.tools.ToolProvider.getSystemJavaCompiler().getTask(
 			null,
@@ -201,19 +202,19 @@ public class Build {
 			sources
 		).call();
 	}
-	
-	private static int jlink(Path output, Iterable<Path> modules, String mainModule) {
-		return ToolProvider.findFirst("jlink").get().run(System.out, System.err, 
+
+	private static int jlink(Path output, Iterable<Path> modules, Iterable<String> includeModules) {
+		return ToolProvider.findFirst("jlink").get().run(System.out, System.err,
 			"--compress", "2",
 			//"--strip-debug",
 			"--no-man-pages",
 			"--endian", "little",
 			"--module-path", join(modules, ';'),
-			"--add-modules", mainModule,
+			"--add-modules", join(includeModules, ','),
 			"--output", output.toString()
 		);
 	}
-	
+
 	private static DiagnosticListener<JavaFileObject> createDiagnostic(Path baseDir) {
 		return diagnostic -> {
 			StringBuilder msg = new StringBuilder(diagnostic.getKind().name()).append(" ");
@@ -222,14 +223,14 @@ public class Build {
 			} else {
 				msg.append(baseDir.relativize(Path.of(diagnostic.getSource().getName())));
 				if(diagnostic.getLineNumber() != Diagnostic.NOPOS) {
-					msg.append(":" + diagnostic.getLineNumber());
+					msg.append(":").append(diagnostic.getLineNumber());
 				}
 				msg.append("\n\t").append(diagnostic.getMessage(Locale.getDefault()));
 			}
 			System.out.println(msg);
-		};	
+		};
 	}
-	
+
 	private static Path createTempDir(Path output) throws IOException {
 		Path temp = Files.createTempDirectory(output, "classes_");
 		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -241,7 +242,7 @@ public class Build {
 		}));
 		return temp;
 	}
-	
+
 	private static <T> String join(Iterable<T> elements, char joinChar) {
 		StringJoiner joiner = new StringJoiner(Character.toString(joinChar));
 		for(T t : elements) {
@@ -249,12 +250,12 @@ public class Build {
 		}
 		return joiner.toString();
 	}
-	
-	private static interface PathConsumer {
+
+	private interface PathConsumer {
 		void accept(Path path) throws IOException;
 	}
-	
-	private static void traverse(Path directory, 
+
+	private static void traverse(Path directory,
 			PathConsumer fileAction, PathConsumer dirAction) throws IOException {
 		Files.walkFileTree(directory, new SimpleFileVisitor<Path>() {
 			@Override
@@ -262,7 +263,7 @@ public class Build {
 				fileAction.accept(file);
 				return FileVisitResult.CONTINUE;
 			}
-			
+
 			@Override
 			public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
 		        if (exc != null) throw exc;
@@ -271,14 +272,14 @@ public class Build {
 			}
 		});
 	}
-	
+
 	private static final class PathSourceFile implements JavaFileObject {
 		private final Path path;
-		
+
 		private PathSourceFile(Path path) {
 			this.path = path;
 		}
-		
+
 		@Override
 		public URI toUri() {
 			return path.toUri().normalize();
@@ -288,17 +289,17 @@ public class Build {
 		public String getName() {
 			return path.toString();
 		}
-		
+
 		@Override
 		public Kind getKind() {
 			return Kind.SOURCE;
 		}
-		
+
 		@Override
 		public CharSequence getCharContent(boolean ignoreEncodingErrors) throws IOException {
 			return Files.readString(path, SRC_CHARSET);
 		}
-		
+
 		@Override
 		public Reader openReader(boolean ignoreEncodingErrors) throws IOException {
 			return Files.newBufferedReader(path, SRC_CHARSET);
@@ -310,12 +311,12 @@ public class Build {
 		}
 
 		@Override
-		public OutputStream openOutputStream() throws IOException {
+		public OutputStream openOutputStream() {
 			throw new UnsupportedOperationException("writes to source files not allowed");
 		}
 
 		@Override
-		public Writer openWriter() throws IOException {
+		public Writer openWriter() {
 			throw new UnsupportedOperationException("writes to source files not allowed");
 		}
 
