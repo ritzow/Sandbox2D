@@ -1,0 +1,1 @@
+@start Windows\x64\Release\Output\Sandbox2d.exe
