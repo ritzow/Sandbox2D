@@ -12,28 +12,31 @@ import java.text.NumberFormat;
 import java.time.Instant;
 import java.util.*;
 import java.util.Map.Entry;
-import java.util.spi.ToolProvider;
+import java.util.stream.Collectors;
 import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.NestingKind;
-import javax.tools.Diagnostic;
-import javax.tools.DiagnosticListener;
-import javax.tools.JavaFileObject;
+import javax.tools.*;
 
 import static java.util.Map.entry;
 
 public class Build {
+
+	private static final boolean DEBUG = false;
+
 	private static final String
 		OS = "windows",
 		ARCH = "x64",
 		RELEASE_VERSION = Integer.toString(Runtime.version().feature());
 
-	private static final Path SHARED_DIR = Path.of("..\\shared");
-	private static final Path CLIENT_DIR = Path.of("..\\client");
-	private static final Path OUTPUT_DIR = Path.of("Windows\\x64\\Release\\Output");
-	private static final Path INCLUDE_DIR = Path.of("Windows\\include");
+	private static final Path
+		SHARED_DIR = Path.of("..\\shared"),
+		CLIENT_DIR = Path.of("..\\client"),
+		OUTPUT_DIR = Path.of("Windows\\x64\\Release\\Output"),
+		INCLUDE_DIR = Path.of("Windows\\include"),
+		LAUNCHER_PROJECT_FILE = Path.of("Sandbox2DClientLauncher.vcxproj");
 
 	private static final Charset SRC_CHARSET = StandardCharsets.UTF_8;
 
@@ -42,7 +45,8 @@ public class Build {
 		if(args.length > 0) {
 			switch(args[0].toLowerCase()) {
 				case "launcher" -> msbuild();
-				case "zip" -> packageOutput(Path.of(args[1]));
+				case "zip" -> packageOutput(args.length > 1 ? Path.of(args[1]) : Path.of("out.zip"));
+				default -> System.out.println("Uknown arguments.");
 			}
 		} else {
 			buildAll();
@@ -80,16 +84,16 @@ public class Build {
 			if(compile(CLIENT_OUT, CLIENT_SRC, clientFiles, modules)) {
 				System.out.print("Client code compiled.\nRunning jlink... ");
 				modules.add(CLIENT_OUT);
+				Collection<String> moduleNames = new ArrayList<>();
+				moduleNames.add("ritzow.sandbox.client");
+				if(DEBUG) {
+					moduleNames.add("jdk.management.agent");
+					moduleNames.add("jdk.management.jfr");
+				}
 				Path JVM_DIR = OUTPUT_DIR.resolve("jvm");
-				int result = jlink(JVM_DIR, modules, List.of(
-					"ritzow.sandbox.client",
-					"jdk.management.agent",
-					"jdk.management.jfr"
-				));
-
+				int result = jlink(JVM_DIR, modules, moduleNames);
 				if(result == 0) {
-					postJlink(CLIENT_DIR, JVM_DIR, LWJGL_DIR,
-						CLIENT_LIBS.resolve("json"), OUTPUT_DIR, INCLUDE_DIR);
+					postJlink(JVM_DIR, LWJGL_DIR, CLIENT_LIBS.resolve("json"));
 				} else {
 					System.out.println("jlink failed with error " + result + ".");
 				}
@@ -101,8 +105,8 @@ public class Build {
 		}
 	}
 
-	private static void postJlink(Path CLIENT_DIR, Path JVM_DIR, Path LWJGL_DIR,
-			Path JSON_DIR, Path OUTPUT_DIR, Path INCLUDE_DIR) throws IOException, InterruptedException {
+	private static void postJlink(Path JVM_DIR, Path LWJGL_DIR, Path JSON_DIR)
+			throws IOException, InterruptedException {
 		System.out.println("done.\nMoving header files and deleting unecessary files.");
 		traverse(INCLUDE_DIR, Files::delete, Files::delete);
 
@@ -174,18 +178,19 @@ public class Build {
 			"msbuild",
 			"-nologo",
 			"-verbosity:minimal",
-			"Sandbox2DClientLauncher.vcxproj",
+			LAUNCHER_PROJECT_FILE.toString(),
 			"-p:Platform=" + ARCH + ";Configuration=Release"
 		).inheritIO().start().waitFor();
 	}
 
+	//TODO can use FileSystem API to do this as well
 	private static void packageOutput(Path outFile) throws IOException {
-		Instant compileTime = Instant.now();
 		System.out.println("Zipping program to " + outFile);
 		try(var zip  = new ZipOutputStream(Files.newOutputStream(outFile))) {
 			zip.setComment("Sandbox2D Game Client Binaries");
 			zip.setLevel(Deflater.BEST_COMPRESSION);
 			zip.setMethod(ZipOutputStream.DEFLATED);
+			Instant compileTime = Instant.now();
 			traverse(OUTPUT_DIR, file -> {
 				ZipEntry entry = new ZipEntry(OUTPUT_DIR.relativize(file).toString().replace('\\', '/'));
 				entry.setCreationTime(FileTime.from(compileTime));
@@ -195,43 +200,43 @@ public class Build {
 				zip.closeEntry();
 			}, path -> {});
 		}
-		NumberFormat format = NumberFormat.getIntegerInstance();
-		format.setGroupingUsed(true);
-		System.out.println("Zipped to " + format.format(Files.size(outFile)) + " bytes.");
+		System.out.println("Zipped to " + NumberFormat.getInstance().format(Files.size(outFile)) + " bytes.");
 	}
 
 	private static Iterable<? extends JavaFileObject> getSourceFiles(Path src) throws IOException {
 		PathMatcher match = src.getFileSystem().getPathMatcher("glob:*.java");
 		Path diagDir = src.getParent();
-		List<JavaFileObject> list = new ArrayList<JavaFileObject>();
-		Files.find(src, Integer.MAX_VALUE, (path, attr) ->
-				!attr.isDirectory() && match.matches(path.getFileName()))
+		return Files.find(src, Integer.MAX_VALUE, (path, attr) ->
+			attr.isRegularFile() && match.matches(path.getFileName()))
 			.peek(file -> System.out.println("FOUND " + diagDir.relativize(file)))
-			.map(PathSourceFile::new)
-			.forEach(list::add);
-		return list;
+			.map(PathJavaFile::source)
+			.collect(Collectors.toList());
 	}
 
 	private static boolean compile(Path output, Path diag, Iterable<? extends JavaFileObject> sources,
-			Iterable<Path> modules) {
-		return javax.tools.ToolProvider.getSystemJavaCompiler().getTask(
-			null,
-			null,
-			createDiagnostic(diag),
-			List.of(
-			"-g:none",
-			"--enable-preview",
-			"--release", RELEASE_VERSION,
-			"--module-path", join(modules, ';'),
-			"-d", output.toString()
-			),
-			null,
-			sources
-		).call();
+			Iterable<Path> modules) throws IOException {
+		var javac = ToolProvider.getSystemJavaCompiler();
+		try(var writer = new PrintWriter(System.err); var fileManager = new CustomFileManager(
+			javac.getStandardFileManager(null, null, null), output, modules)) {
+			return javac.getTask(
+				writer,
+				fileManager,
+				createDiagnostic(diag),
+				List.of(
+					"-g:none",
+					"--enable-preview",
+					"--release", RELEASE_VERSION
+					//"--module-path", join(modules, ';'),
+					//"-d", output.toString()
+				),
+				null,
+				sources
+			).call();
+		}
 	}
 
 	private static int jlink(Path output, Iterable<Path> modules, Iterable<String> includeModules) {
-		return ToolProvider.findFirst("jlink").get().run(System.out, System.err,
+		return java.util.spi.ToolProvider.findFirst("jlink").orElseThrow().run(System.out, System.err,
 			"--compress", "2",
 			//"--strip-debug",
 			"--no-man-pages",
@@ -260,13 +265,13 @@ public class Build {
 
 	private static Path createTempDir(Path output) throws IOException {
 		Path temp = Files.createTempDirectory(output, "classes_");
-		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-			try {
-				traverse(temp, Files::delete, Files::delete);
-			} catch (IOException e) {
-				throw new RuntimeException("Error while deleting temp directory.", e);
-			}
-		}));
+//		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+//			try {
+//				traverse(temp, Files::delete, Files::delete);
+//			} catch (IOException e) {
+//				throw new RuntimeException("Error while deleting temp directory.", e);
+//			}
+//		}));
 		return temp;
 	}
 
@@ -300,16 +305,22 @@ public class Build {
 		});
 	}
 
-	private static final class PathSourceFile implements JavaFileObject {
+	private static final class PathJavaFile implements JavaFileObject {
 		private final Path path;
+		private final Kind kind;
 
-		private PathSourceFile(Path path) {
+		private static PathJavaFile source(Path path) {
+			return new PathJavaFile(path, Kind.SOURCE);
+		}
+
+		private PathJavaFile(Path path, Kind kind) {
 			this.path = path;
+			this.kind = kind;
 		}
 
 		@Override
 		public URI toUri() {
-			return path.toUri().normalize();
+			return path.toAbsolutePath().normalize().toUri();
 		}
 
 		@Override
@@ -319,7 +330,7 @@ public class Build {
 
 		@Override
 		public Kind getKind() {
-			return Kind.SOURCE;
+			return kind;
 		}
 
 		@Override
@@ -338,13 +349,17 @@ public class Build {
 		}
 
 		@Override
-		public OutputStream openOutputStream() {
-			throw new UnsupportedOperationException("writes to source files not allowed");
+		public OutputStream openOutputStream() throws IOException {
+			if(kind == Kind.SOURCE)
+				throw new UnsupportedOperationException("writes to source files not allowed");
+			return Files.newOutputStream(path);
 		}
 
 		@Override
-		public Writer openWriter() {
-			throw new UnsupportedOperationException("writes to source files not allowed");
+		public Writer openWriter() throws IOException {
+			if(kind == Kind.SOURCE)
+				throw new UnsupportedOperationException("writes to source files not allowed");
+			return Files.newBufferedWriter(path);
 		}
 
 		@Override
@@ -359,22 +374,269 @@ public class Build {
 
 		@Override
 		public boolean delete() {
-			throw new UnsupportedOperationException("source file modifications not allowed");
+			try {
+				return Files.deleteIfExists(path);
+			} catch (IOException e) {
+				e.printStackTrace();
+				return false;
+			}
 		}
 
 		@Override
 		public boolean isNameCompatible(String simpleName, Kind kind) {
-			return kind == Kind.SOURCE && path.getFileName().toString().equals(simpleName + kind.extension);
+			return kind == this.kind && path.getFileName().toString().equals(simpleName + kind.extension);
 		}
 
 		@Override
 		public NestingKind getNestingKind() {
-			return NestingKind.TOP_LEVEL;
+			return kind == Kind.SOURCE ? NestingKind.TOP_LEVEL : null;
 		}
 
 		@Override
 		public Modifier getAccessLevel() {
 			return null;
 		}
+	}
+
+//	private static final class TestFileManager extends ForwardingJavaFileManager<StandardJavaFileManager> {
+//
+//		/**
+//		 * Creates a new instance of ForwardingJavaFileManager.
+//		 *
+//		 * @param fileManager delegate to this file manager
+//		 */
+//		protected TestFileManager(StandardJavaFileManager fileManager) {
+//			super(fileManager);
+//		}
+//
+//		@Override
+//		public <S> ServiceLoader<S> getServiceLoader(Location location, Class<S> service) throws IOException {
+//			var result = super.getServiceLoader(location, service);
+//			System.out.println("get service loader for " + location + ": " + service + ": " + result);
+//			return result;
+//		}
+//
+//		@Override
+//		public JavaFileObject getJavaFileForOutput(Location location, String className, JavaFileObject.Kind kind, FileObject sibling) throws IOException {
+//			var result = super.getJavaFileForOutput(location, className, kind, sibling);
+//			System.out.println("get java file for output " + result);
+//			return result;
+//		}
+//
+//		@Override
+//		public FileObject getFileForOutput(Location location, String packageName, String relativeName, FileObject sibling) throws IOException {
+//			var result = super.getFileForOutput(location, packageName, relativeName, sibling);
+//			System.out.println("get file for output " + result);
+//			return result;
+//		}
+//
+//		@Override
+//		public Location getLocationForModule(Location location, String moduleName) throws IOException {
+//			var result = super.getLocationForModule(location, moduleName);
+//			System.out.println("get location for module" + result);
+//			return result;
+//		}
+//
+//		@Override
+//		public Location getLocationForModule(Location location, JavaFileObject fo) throws IOException {
+//			var result = super.getLocationForModule(location, fo);
+//			System.out.println("get location for module" + fo + " " + result);
+//			return result;
+//		}
+//
+//		@Override
+//		public Iterable<Set<Location>> listLocationsForModules(Location location) throws IOException {
+//			var result = super.listLocationsForModules(location);
+//			System.out.println("list mod locs for " + location);
+//				for(var r : result) {
+//					System.out.println("  " + r + " " + r.iterator().next().getClass().getName());
+//				}
+//			return result;
+//		}
+//
+//		@Override
+//		public JavaFileObject getJavaFileForInput(Location location, String className, JavaFileObject.Kind kind) throws IOException {
+//			var result = super.getJavaFileForInput(location, className, kind);
+//			System.out.println("get java file for input" + result);
+//			return result;
+//		}
+//
+//		@Override
+//		public FileObject getFileForInput(Location location, String packageName, String relativeName) throws IOException {
+//			var result = super.getFileForInput(location, packageName, relativeName);
+//			System.out.println("get file for input" + result);
+//			return result;
+//		}
+//
+//
+//	}
+
+	//TODO write directly to a jar file to use up less space
+	private static final class CustomFileManager extends ForwardingJavaFileManager<StandardJavaFileManager> {
+		private final Path output;
+
+		private static final class ModuleLocation implements Location {
+			private final Path file;
+
+			ModuleLocation(Path file) {
+				this.file = file;
+			}
+
+			@Override
+			public String getName() {
+				return file.toString();
+			}
+
+			@Override
+			public boolean isOutputLocation() {
+				return false;
+			}
+
+			@Override
+			public boolean isModuleOrientedLocation() {
+				return true;
+			}
+		}
+
+		public CustomFileManager(StandardJavaFileManager fileManager, Path output, Iterable<Path> modules)
+			throws IOException {
+			super(fileManager);
+			this.output = output;
+			List<Set<Location>> collect = new ArrayList<>();
+			for(Path module : modules) {
+				ModuleLocation location = new ModuleLocation(module);
+				collect.add(Set.of(location));
+				//fileManager.setLocationFromPaths(location, List.of(module)); //TODO use module version?
+			}
+
+			List<Path> modulePath = new ArrayList<>();
+			modules.forEach(modulePath::add);
+
+			this.modules = collect;
+			this.fm = fileManager;
+			fileManager.setLocationFromPaths(StandardLocation.MODULE_PATH, modulePath);
+		}
+
+//		@Override
+//		public boolean hasLocation(Location location) {
+//			return location instanceof StandardLocation type && switch(type) {
+//				case MODULE_PATH, CLASS_OUTPUT -> true;
+//				default -> false;
+//			};
+//		}
+//
+//		@Override
+//		public Iterable<Set<Location>> listLocationsForModules(Location location) {
+//			System.out.println("List location for " + location);
+//			if(location instanceof StandardLocation type) {
+//				return switch(type) {
+//					case MODULE_PATH -> modules;
+//					default -> List.of();
+//				};
+//			} else {
+//				throw new UnsupportedOperationException(
+//					"Unsupported non-standard Location type " + location.getName());
+//			}
+//		}
+
+		@Override
+		public JavaFileObject getJavaFileForOutput(Location location,
+			String className, JavaFileObject.Kind kind, FileObject sibling) throws IOException {
+			if(location instanceof StandardLocation type) {
+				return switch(type) {
+					default -> throw new UnsupportedOperationException(location + " " + className);
+					case CLASS_OUTPUT -> {
+						String classFormatted = className.replace('.', '/') + kind.extension;
+						Path file = output.resolve(classFormatted);
+						Files.createDirectories(file.getParent());
+						yield new PathJavaFile(Files.createFile(file), kind);
+					}
+				};
+			} else {
+				throw new UnsupportedOperationException();
+			}
+		}
+
+//		@Override
+//		public boolean contains(Location location, FileObject fo) throws IOException {
+//			throw new UnsupportedOperationException();
+//		}
+//
+//		@Override
+//		public ClassLoader getClassLoader(Location location) {
+//			return null;
+//		}
+//
+//		@Override
+//		public Iterable<JavaFileObject> list(Location location, String packageName,
+//			Set<JavaFileObject.Kind> kinds, boolean recurse) {
+//			System.out.println("list " + location);
+//			return List.of();
+//		}
+//
+//		@Override
+//		public String inferModuleName(Location location) throws IOException {
+//			throw new UnsupportedOperationException("non-modular libraries not supported");
+//		}
+//
+//		@Override
+//		public String inferBinaryName(Location location, JavaFileObject file) {
+//			throw new UnsupportedOperationException();
+//		}
+//
+//		@Override
+//		public boolean isSameFile(FileObject a, FileObject b) {
+//			throw new UnsupportedOperationException();
+//		}
+//
+//		@Override
+//		public boolean handleOption(String current, Iterator<String> remaining) {
+//			System.out.println("handle option " + current);
+//			return false;
+//		}
+//
+//		@Override
+//		public Location getLocationForModule(Location location, String moduleName) throws IOException {
+//			throw new UnsupportedOperationException();
+//		}
+//
+//		@Override
+//		public Location getLocationForModule(Location location, JavaFileObject fo) throws IOException {
+//			throw new UnsupportedOperationException();
+//		}
+//
+//		@Override
+//		public JavaFileObject getJavaFileForInput(Location location,
+//			String className, JavaFileObject.Kind kind) {
+//			System.out.println("getJavaFileForInput");
+//			return null;
+//		}
+//
+//		@Override
+//		public FileObject getFileForInput(Location location,
+//			 String packageName, String relativeName) {
+//			throw new UnsupportedOperationException();
+//		}
+//
+//		@Override
+//		public FileObject getFileForOutput(Location location,
+//			 String packageName, String relativeName, FileObject sibling) {
+//			throw new UnsupportedOperationException();
+//		}
+//
+//		@Override
+//		public int isSupportedOption(String option) {
+//			return -1;
+//		}
+//
+//		@Override
+//		public void flush() {
+//
+//		}
+//
+//		@Override
+//		public void close() {
+//
+//		}
 	}
 }
