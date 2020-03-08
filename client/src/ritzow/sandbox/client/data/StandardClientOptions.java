@@ -6,6 +6,8 @@ import ritzow.sandbox.client.util.ClientUtility;
 import ritzow.sandbox.network.NetworkUtility;
 import ritzow.sandbox.network.Protocol;
 
+import static ritzow.sandbox.network.NetworkUtility.parseSocket;
+
 public class StandardClientOptions extends ClientOptions {
 
 	//Rendering
@@ -18,9 +20,10 @@ public class StandardClientOptions extends ClientOptions {
 	//Networking
 	public static final InetSocketAddress LAST_SERVER_ADDRESS =
 			get("address_server", defaultAddress(Protocol.DEFAULT_SERVER_PORT),
-					string -> NetworkUtility.parseSocket(string, Protocol.DEFAULT_SERVER_PORT));
+					string -> parseSocket(string, Protocol.DEFAULT_SERVER_PORT));
 	public static final InetSocketAddress LAST_LOCAL_ADDRESS =
-			get("address_local", defaultAddress(0), string -> NetworkUtility.parseSocket(string, 0));
+			get("address_local", defaultAddress(NetworkUtility.ANY_PORT),
+				string -> parseSocket(string, 0));
 
 	//Input
 	public static final double SELECT_SENSITIVITY = get("scroll_sensitivity", 1.0, Double::parseDouble);
