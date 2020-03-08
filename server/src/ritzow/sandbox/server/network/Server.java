@@ -10,7 +10,6 @@ import java.util.function.Predicate;
 import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.data.Transportable;
 import ritzow.sandbox.network.NetworkUtility;
-import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.server.SerializationProvider;
 import ritzow.sandbox.server.world.entity.ServerBombEntity;
 import ritzow.sandbox.server.world.entity.ServerPlayerEntity;
@@ -95,7 +94,7 @@ public class Server {
 	}
 
 	public void setCurrentWorld(World world) {
-		Objects.requireNonNull(world).setRemoveEntities(this::broadcastRemoveEntity);
+		world.setRemoveEntities(this::broadcastRemoveEntity);
 		this.world = world;
 		this.lastWorldUpdateTime = System.nanoTime();
 	}
@@ -179,9 +178,7 @@ public class Server {
 					//do nothing because client might be deserializing world
 				}
 
-				case ClientState.STATUS_IN_GAME -> {
-					client.checkReceiveTimeout();
-				}
+				case ClientState.STATUS_IN_GAME -> client.checkReceiveTimeout();
 
 				case ClientState.STATUS_TIMED_OUT -> {
 					iterator.remove();
@@ -248,11 +245,11 @@ public class Server {
 	}
 
 	public void broadcastConsoleMessage(String message) {
-		broadcastUnsafe(Protocol.buildConsoleMessage(message), true, c -> true);
+		broadcastUnsafe(buildConsoleMessage(message), true, c -> true);
 	}
 
 	private void broadcastAndPrint(String consoleMessage) {
-		broadcastUnsafe(Protocol.buildConsoleMessage(consoleMessage), true, c -> true);
+		broadcastUnsafe(buildConsoleMessage(consoleMessage), true, c -> true);
 		log(consoleMessage);
 	}
 
@@ -262,7 +259,7 @@ public class Server {
 			throw new ClientBadDataException("client has no associated player to perform an action");
 		if(world.contains(player)) {
 			short state = packet.getShort();
-			Protocol.PlayerState.updatePlayer(player, state);
+			PlayerState.updatePlayer(player, state);
 			broadcastPlayerState(client, player);
 			//TODO for now ignore the primary/secondary actions
 		} //else what is the point of the player performing the action
@@ -272,7 +269,7 @@ public class Server {
 		byte[] message = new byte[8];
 		Bytes.putShort(message, 0, TYPE_CLIENT_PLAYER_STATE);
 		Bytes.putInteger(message, 2, player.getID());
-		Bytes.putShort(message, 6, Protocol.PlayerState.getState(player, false, false));
+		Bytes.putShort(message, 6, PlayerState.getState(player, false, false));
 		broadcastUnreliable(message, message.length, recipient -> !recipient.equals(client));
 	}
 
@@ -306,7 +303,7 @@ public class Server {
 
 	private static void sendBreakCooldown(ClientState client, long currentTimeMillis) {
 		byte[] packet = new byte[2 + 8];
-		Bytes.putShort(packet, 0, Protocol.TYPE_SERVER_CLIENT_BREAK_BLOCK_COOLDOWN);
+		Bytes.putShort(packet, 0, TYPE_SERVER_CLIENT_BREAK_BLOCK_COOLDOWN);
 		Bytes.putLong(packet, 2, currentTimeMillis);
 		sendReliable(client, packet);
 	}
@@ -407,7 +404,7 @@ public class Server {
 	}
 
 	private static void placePlayer(Entity player, BlockGrid grid) {
-		float posX = grid.getWidth()/2;
+		float posX = grid.getWidth()/2f;
 		player.setPositionX(posX);
 		for(int blockY = grid.getHeight() - 1; blockY > 0; blockY--) {
 			if(grid.isBlock(posX, blockY)) {
@@ -451,7 +448,7 @@ public class Server {
 		boolean compress = entity.length > MAX_MESSAGE_LENGTH - 3;
 		entity = compress ? Bytes.compress(entity) : entity;
 		byte[] packet = new byte[3 + entity.length];
-		Bytes.putShort(packet, 0, TYPE_SERVER_ADD_ENTITY);
+		Bytes.putShort(packet, 0, TYPE_SERVER_CREATE_ENTITY);
 		Bytes.putBoolean(packet, 2, compress);
 		Bytes.copy(entity, packet, 3);
 		return packet;
@@ -459,7 +456,7 @@ public class Server {
 
 	public void broadcastRemoveEntity(Entity e) {
 		byte[] packet = new byte[2 + 4];
-		Bytes.putShort(packet, 0, TYPE_SERVER_REMOVE_ENTITY);
+		Bytes.putShort(packet, 0, TYPE_SERVER_DELETE_ENTITY);
 		Bytes.putInteger(packet, 2, e.getID());
 		broadcastUnsafe(packet, true, c -> true);
 	}
@@ -467,7 +464,7 @@ public class Server {
 	private void broadcastUnsafe(byte[] data, boolean reliable, Predicate<ClientState> sendToClient) {
 		SendPacket packet = new SendPacket(data, reliable);
 		for(ClientState client : clients.values()) {
-			if(!client.isDisconnectState() && sendToClient.test(client))
+			if(client.isNotDisconnectState() && sendToClient.test(client))
 				client.sendQueue.add(packet);
 		}
 	}
@@ -475,7 +472,7 @@ public class Server {
 	private void broadcastUnreliable(byte[] data, int length, Predicate<ClientState> sendToClient) {
 		SendPacket packet = new SendPacket(Arrays.copyOfRange(data, 0, length), false);
 		for(ClientState client : clients.values()) {
-			if(sendToClient.test(client) && !client.isDisconnectState()) {
+			if(sendToClient.test(client) && client.isNotDisconnectState()) {
 				client.sendQueue.add(packet);
 			}
 		}
@@ -523,7 +520,7 @@ public class Server {
 		if(buffer.limit() >= HEADER_SIZE) {
 			byte type = buffer.get(); //type of message (RESPONSE, RELIABLE, UNRELIABLE)
 			int messageID = buffer.getInt(); //received ID or messageID for ack.
-			ClientState client = clients.computeIfAbsent(sender, addr -> new ClientState(addr));
+			ClientState client = clients.computeIfAbsent(sender, ClientState::new);
 			switch(type) {
 				case RESPONSE_TYPE -> {
 					if(client.sendReliableID == messageID) {
@@ -633,11 +630,10 @@ public class Server {
 			};
 		}
 
-		private boolean isDisconnectState() {
-			return switch(status) {
-				case ClientState.STATUS_TIMED_OUT, ClientState.STATUS_KICKED,
-					ClientState.STATUS_SELF_DISCONNECTED, ClientState.STATUS_REJECTED -> true;
-				default -> false;
+		private boolean isNotDisconnectState() {
+			return switch (status) {
+				default -> true;
+				case STATUS_TIMED_OUT, STATUS_KICKED, STATUS_SELF_DISCONNECTED, STATUS_REJECTED -> false;
 			};
 		}
 

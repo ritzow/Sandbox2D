@@ -103,8 +103,8 @@ class InWorldContext implements GameTalker {
 			case Protocol.TYPE_CONSOLE_MESSAGE -> processServerConsoleMessage(data);
 			case Protocol.TYPE_SERVER_WORLD_DATA -> processReceiveWorldData(data);
 			case Protocol.TYPE_SERVER_ENTITY_UPDATE -> processUpdateEntity(data);
-			case Protocol.TYPE_SERVER_ADD_ENTITY -> processAddEntity(data);
-			case Protocol.TYPE_SERVER_REMOVE_ENTITY -> processRemoveEntity(data);
+			case Protocol.TYPE_SERVER_CREATE_ENTITY -> processAddEntity(data);
+			case Protocol.TYPE_SERVER_DELETE_ENTITY -> processRemoveEntity(data);
 			case Protocol.TYPE_SERVER_REMOVE_BLOCK -> processServerRemoveBlock(data);
 			case Protocol.TYPE_SERVER_PLACE_BLOCK -> processServerPlaceBlock(data);
 			case Protocol.TYPE_CLIENT_PLAYER_STATE -> processPlayerState(data);
