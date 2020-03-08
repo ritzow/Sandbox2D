@@ -12,23 +12,12 @@ import ritzow.sandbox.network.NetworkUtility;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.server.network.Server;
 import ritzow.sandbox.util.Utility;
-import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
-import ritzow.sandbox.world.block.DirtBlock;
-import ritzow.sandbox.world.block.GrassBlock;
 import ritzow.sandbox.world.entity.ItemEntity;
+import ritzow.sandbox.world.generator.SinusoidWorldGenerator;
 
-@SuppressWarnings("unused")
 public final class StartServer {
-	private static final Path
-			SAVE_FILE = Path.of("world.dat");
-	private static final int
-			WORLD_WIDTH = 1500,
-			WORLD_BASE_HEIGHT = 150,
-			TERRAIN_AMPLITUDE = 10,
-			SKY_HEIGHT = 20;
-	private static final float
-			WORLD_FREQUENCY = 0.05f;
+	private static final Path SAVE_FILE = Path.of("world.dat");
 
 	private static Server server;
 	private static boolean save = true;
@@ -36,7 +25,7 @@ public final class StartServer {
 	public static void main(String[] args) throws IOException {
 		InetSocketAddress bind = args.length > 0 ?
 			NetworkUtility.parseSocket(args[0], Protocol.DEFAULT_SERVER_PORT) :
-			new InetSocketAddress(NetworkUtility.getPrimaryAddress(true), Protocol.DEFAULT_SERVER_PORT);
+			new InetSocketAddress(NetworkUtility.getPrimaryAddress(), Protocol.DEFAULT_SERVER_PORT);
 		try {
 			startServer(bind);
 			CommandParser parser = new CommandParser();
@@ -61,7 +50,7 @@ public final class StartServer {
 		long time = System.nanoTime();
 		boolean loadFromFile = Files.exists(SAVE_FILE);
 		System.out.print((loadFromFile ? "Loading" : "Generating") + " world... ");
-		server.setCurrentWorld(loadFromFile ? loadWorld(SAVE_FILE) : generateWorld());
+		server.setCurrentWorld(loadFromFile ? loadWorld(SAVE_FILE) : SinusoidWorldGenerator.builder().generate());
 		System.out.println("took " + Utility.formatTime(Utility.nanosSince(time)) + ".");
 	}
 
@@ -75,32 +64,10 @@ public final class StartServer {
 		}
 	}
 
-	private static World generateWorld() {
-		World world = new World(WORLD_WIDTH, WORLD_BASE_HEIGHT + TERRAIN_AMPLITUDE + SKY_HEIGHT);
-		BlockGrid fg = world.getForeground();
-		BlockGrid bg = world.getBackground();
-		int midpoint = TERRAIN_AMPLITUDE/2;
-		int base = WORLD_BASE_HEIGHT - 1;
-		fg.fill(DirtBlock.INSTANCE, 0, 0, fg.getWidth(), WORLD_BASE_HEIGHT);
-		bg.fill(DirtBlock.INSTANCE, 0, 0, bg.getWidth(), WORLD_BASE_HEIGHT);
-		for(int column = 0; column < WORLD_WIDTH; ++column) {
-			int max = base + midpoint + Math.round(midpoint * (float)Math.sin(column * WORLD_FREQUENCY));
-			for(int row = base; row <= max; ++row) {
-				fg.set(column, row, DirtBlock.INSTANCE);
-				bg.set(column, row, DirtBlock.INSTANCE);
-			}
-			fg.set(column, max, GrassBlock.INSTANCE);
-			bg.set(column, max, DirtBlock.INSTANCE);
-		}
-		return world;
-	}
-
 	private static void saveWorld(World world, Path file) {
 		if(save) {
 			try {
 				System.out.print("Saving world... ");
-				//shouldnt have any players once server is shut down
-				//world.removeIf(e -> e instanceof PlayerEntity); //remove players before saving to file
 				byte[] serialized = Bytes.compress(SerializationProvider.getProvider().serialize(world));
 				Files.write(file, serialized);
 				System.out.println("world saved to " + Utility.formatSize(serialized.length) + ".");
@@ -145,7 +112,6 @@ public final class StartServer {
 			if(Files.deleteIfExists(SAVE_FILE))
 				System.out.println("Deleted world " + SAVE_FILE + ".");
 		} catch (IOException e) {
-			e.printStackTrace();
 			throw new RuntimeException(e);
 		}
 	}
@@ -160,11 +126,11 @@ public final class StartServer {
 	}
 
 	private static void killCommand(String args) {
-		save = false;
 		try {
+			save = false;
 			server.close();
 		} catch (IOException e) {
-			e.printStackTrace();
+			throw new RuntimeException(e);
 		}
 	}
 
