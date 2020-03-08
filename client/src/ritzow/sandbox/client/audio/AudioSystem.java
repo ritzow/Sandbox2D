@@ -1,19 +1,20 @@
 package ritzow.sandbox.client.audio;
 
-import java.util.List;
+import java.io.IOException;
+import ritzow.sandbox.client.audio.Sound.StandardSound;
 
-import static java.util.Map.entry;
 import static ritzow.sandbox.client.data.StandardClientProperties.AUDIO_PATH;
 import static ritzow.sandbox.client.util.ClientUtility.log;
 
 public interface AudioSystem {
-	default void playSound(int sound, float x, float y, float velocityX, float velocityY) {
+
+	default void playSound(Sound sound, float x, float y, float velocityX, float velocityY) {
 		playSound(sound, x, y, velocityX, velocityY, 1.0f, 1.0f);
 	}
 
-	void playSound(int sound, float x, float y, float velocityX, float velocityY, float gain, float pitch);
-	void playSoundGlobal(int sound, float gain, float pitch);
-	void registerSound(int id, AudioData data);
+	void playSound(Sound sound, float x, float y, float velocityX, float velocityY, float gain, float pitch);
+	void playSoundGlobal(Sound sound, float gain, float pitch);
+	void registerSound(Sound sound, AudioData data);
 	void setVolume(float gain);
 	void setPosition(float x, float y);
 	void close();
@@ -22,30 +23,21 @@ public interface AudioSystem {
 		return Default.DEFAULT;
 	}
 
-	static final class Default {
+	final class Default {
+		private Default() {}
 		private static final AudioSystem DEFAULT = loadDefault();
-
 		private static AudioSystem loadDefault() {
 			try {
 				log().info("Loading audio system");
 				OpenALAudioSystem.initialize();
 				AudioSystem audio = OpenALAudioSystem.create();
 				audio.setVolume(1.0f);
-
-				var sounds = List.of(
-					entry(Sound.BLOCK_BREAK, "dig.wav"),
-					entry(Sound.BLOCK_PLACE, "place.wav"),
-					entry(Sound.POP, "pop.wav"),
-					entry(Sound.THROW, "throw.wav"),
-					entry(Sound.SNAP, "snap.wav")
-				);
-
-				for(var entry : sounds) {
-					audio.registerSound(entry.getKey().code(),
-							WAVEDecoder.decode(AUDIO_PATH.resolve(entry.getValue())));
+				for(var sound : StandardSound.values()) {
+					audio.registerSound(sound,
+							WAVEDecoder.decode(AUDIO_PATH.resolve(sound.fileName())));
 				}
 				return audio;
-			} catch(Exception e) {
+			} catch (IOException e) {
 				throw new RuntimeException(e);
 			}
 		}

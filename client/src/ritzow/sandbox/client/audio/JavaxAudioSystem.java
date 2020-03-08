@@ -20,8 +20,8 @@ public final class JavaxAudioSystem implements ritzow.sandbox.client.audio.Audio
 	private final Collection<SourceDataLine> lines;
 	private final DataLine.Info info;
 	private final Mixer mixer;
-	private final Map<Integer, byte[]> sounds;
-	
+	private final Map<Sound, byte[]> sounds;
+
 	public static JavaxAudioSystem create(AudioData init) throws IOException {
 		return new JavaxAudioSystem(init);
 	}
@@ -40,34 +40,34 @@ public final class JavaxAudioSystem implements ritzow.sandbox.client.audio.Audio
 			throw new IOException(e);
 		}
 	}
-	
+
 	@Override
-	public void registerSound(int id, AudioData data) {
+	public void registerSound(Sound id, AudioData data) {
 		if(sounds.containsKey(id))
 			throw new IllegalStateException(id + " already registered");
 		sounds.put(id, getData(data));
 	}
-	
+
 	private static byte[] getData(AudioData info) {
 		byte[] data = new byte[info.getData().capacity()];
 		info.getData().get(data);
 		return data;
 	}
-	
+
 	private static AudioFormat getFormat(AudioData info) {
 		return new AudioFormat(
-			info.getSampleRate(), 
-			info.getBitsPerSample(), 
-			info.getChannels(), 
-			info.isSigned(), 
+			info.getSampleRate(),
+			info.getBitsPerSample(),
+			info.getChannels(),
+			info.isSigned(),
 			false
 		);
 	}
-	
+
 	private final ExecutorService worker = Executors.newCachedThreadPool();
 
 	@Override
-	public void playSound(int sound, float x, float y, float velocityX, float velocityY, float gain, float pitch) {
+	public void playSound(Sound sound, float x, float y, float velocityX, float velocityY, float gain, float pitch) {
 		worker.execute(()-> {
 			byte[] data = sounds.get(sound);
 			if(data == null)
@@ -75,7 +75,7 @@ public final class JavaxAudioSystem implements ritzow.sandbox.client.audio.Audio
 			selectLine().write(data, 0, data.length);
 		});
 	}
-	
+
 	private SourceDataLine selectLine() {
 		synchronized(lines) {
 			for(var line : lines) {
@@ -91,16 +91,16 @@ public final class JavaxAudioSystem implements ritzow.sandbox.client.audio.Audio
 				return line;
 			} catch (LineUnavailableException e) {
 				throw new RuntimeException(e);
-			}	
+			}
 		}
 		return null;
 	}
-	
+
 	private boolean reachedMaxLines() {
 		int max = mixer.getMaxLines(info);
 		return max != -1 && max > lines.size();
 	}
-	
+
 	private SourceDataLine createLine() throws LineUnavailableException {
 		var line = (SourceDataLine)mixer.getLine(info);
 		line.open(); line.start();
@@ -109,7 +109,7 @@ public final class JavaxAudioSystem implements ritzow.sandbox.client.audio.Audio
 	}
 
 	@Override
-	public void playSoundGlobal(int sound, float gain, float pitch) {
+	public void playSoundGlobal(Sound sound, float gain, float pitch) {
 		throw new UnsupportedOperationException("not implemented");
 	}
 
@@ -124,7 +124,7 @@ public final class JavaxAudioSystem implements ritzow.sandbox.client.audio.Audio
 
 	@Override
 	public void setPosition(float x, float y) {
-		
+
 	}
 
 	@Override

@@ -75,7 +75,7 @@ public final class OpenALAudioSystem implements AudioSystem {
 		}
 	}
 
-	private final Map<Integer, Integer> sounds;
+	private final Map<Sound, Integer> sounds;
 
 	public OpenALAudioSystem() {
 		sounds = new HashMap<>();
@@ -90,9 +90,9 @@ public final class OpenALAudioSystem implements AudioSystem {
 	}
 
 	@Override
-	public void registerSound(int id, AudioData data) {
-		if(sounds.containsKey(id))
-			throw new UnsupportedOperationException("already a sound associated with id " + id);
+	public void registerSound(Sound sound, AudioData data) {
+		if(sounds.containsKey(sound))
+			throw new UnsupportedOperationException("already a sound associated with sound " + sound);
     	int format = switch(data.getBitsPerSample()) {
     		case 8 -> switch(data.getChannels()) {
     			case 1 -> AL_FORMAT_MONO8;
@@ -109,15 +109,15 @@ public final class OpenALAudioSystem implements AudioSystem {
 
     	int buffer = alGenBuffers();
     	alBufferData(buffer, format, data.getData(), data.getSampleRate());
-		sounds.put(id, buffer);
+		sounds.put(sound, buffer);
 		checkErrors();
 	}
 
 	@Override
-	public void playSound(int soundID, float x, float y, float velocityX, float velocityY, float gain, float pitch) {
-		Integer bufferID = sounds.get(soundID);
+	public void playSound(Sound sound, float x, float y, float velocityX, float velocityY, float gain, float pitch) {
+		Integer bufferID = sounds.get(sound);
 		if(bufferID == null)
-			throw new IllegalStateException("soundID " + soundID + " does not exist");
+			throw new IllegalStateException("soundID " + sound + " does not exist");
 		for(int source : sources) {
 			int state = alGetSourcei(source, AL_SOURCE_STATE);
 			if(state == AL_STOPPED || state == AL_INITIAL) {
@@ -133,7 +133,7 @@ public final class OpenALAudioSystem implements AudioSystem {
 	}
 
 	@Override
-	public void playSoundGlobal(int sound, float gain, float pitch) {
+	public void playSoundGlobal(Sound sound, float gain, float pitch) {
 		throw new UnsupportedOperationException("global playback not supported");
 	}
 
