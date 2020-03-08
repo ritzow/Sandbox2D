@@ -2,12 +2,16 @@ package ritzow.sandbox.network;
 
 import java.net.*;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class NetworkUtility {
+
+	public static final int ANY_PORT = 0;
 
 	private static final Pattern
 		ADDRESS_PARSER = Pattern.compile("(?!\\[).+(?=\\])"),
@@ -59,15 +63,6 @@ public class NetworkUtility {
 		}
 	}
 
-	public static InetSocketAddress getAddressFromProgramArgumentsOrDefault(String[] args, int index, InetAddress defaultAddress, int defaultPort) throws NumberFormatException, UnknownHostException {
-		return new InetSocketAddress((args.length > index && !args[index].isEmpty()) ? InetAddress.getByName(args[index]) : defaultAddress,
-				args.length > 1 ? Integer.parseInt(args[index + 1]) : defaultPort);
-	}
-
-	public static InetSocketAddress socketAddress(InetAddress address) {
-		return new InetSocketAddress(address, 0);
-	}
-
 	public static boolean isIPv6(InetAddress address) {
 		return address instanceof Inet6Address;
 	}
@@ -76,41 +71,30 @@ public class NetworkUtility {
 	 * @return The loopback address or null.
 	 * @throws SocketException if there is an error querying the loopback address. **/
 	public static InetAddress getLoopbackAddress() throws SocketException {
-		//get main network interface
-		//get interface's addresses
-		//filter out special addresses
-		//put best addresses first
-		return NetworkInterface.networkInterfaces()
-				.filter(adapter -> {
-					try {
-						return adapter.isLoopback();
-					} catch(SocketException e) {
-						throw new RuntimeException(e);
-					}
-				}).findAny() //get main network interface
-				.map(NetworkInterface::getInterfaceAddresses)
-				.orElseGet(Collections::emptyList).stream() //get interface's addresses
-				.filter(NetworkUtility::filterAdresses)
-				.min((a, b) -> compareAddresses(true, a, b))
-				.map(InterfaceAddress::getAddress).orElseThrow(); //get the best address
+		return getBestAddress(NetworkUtility::isLoopback, NetworkUtility::compareAddresses);
 	}
 
 	/** Returns a suitable IP address if available and null if not available
-	 * @param preferIPv6 if IPv6 should be used when possible.
 	 * @return The primary network-facing IP address of this computer.
 	 * @throws SocketException if there is an error querying the IP address. **/
-	public static InetAddress getPrimaryAddress(boolean preferIPv6) throws SocketException {
+	public static InetAddress getPrimaryAddress() throws SocketException {
+		return getBestAddress(NetworkUtility::filterPublicInterfaces, NetworkUtility::compareAddresses);
+	}
+
+	private static InetAddress getBestAddress(
+		Predicate<NetworkInterface> filter, Comparator<InterfaceAddress> comparator) throws SocketException {
 		//get main network interface
 		//get interface's addresses
 		//filter out special addresses
 		//put best addresses first
 		return NetworkInterface.networkInterfaces()
-				.filter(NetworkUtility::filterInterfaces).findAny() //get main network interface
-				.map(NetworkInterface::getInterfaceAddresses)
-				.orElseGet(Collections::emptyList).stream() //get interface's addresses
-				.filter(NetworkUtility::filterAdresses)
-				.min((a, b) -> compareAddresses(preferIPv6, a, b))
-				.map(InterfaceAddress::getAddress).orElseThrow(); //get the best address
+			.filter(filter)
+			.map(NetworkInterface::getInterfaceAddresses)
+			.flatMap(List::stream)
+			.filter(address -> !address.getAddress().isLinkLocalAddress())
+			.min(comparator) //get the best address
+			.map(InterfaceAddress::getAddress)
+			.orElseThrow();
 	}
 
 	public static Collection<InetAddress> getAllAddresses() throws SocketException {
@@ -119,18 +103,15 @@ public class NetworkUtility {
 				.collect(Collectors.toList());
 	}
 
-	private static int compareAddresses(boolean preferIPv6, InterfaceAddress a, InterfaceAddress b) {
-		boolean aIs6 = a.getAddress() instanceof Inet6Address, bIs6 = b.getAddress() instanceof Inet6Address;
-		if(aIs6 && bIs6) {
-			return b.getNetworkPrefixLength() - a.getNetworkPrefixLength(); //put the address with larger scope first
-		} else if(preferIPv6 && aIs6) {
-			return -1;
-		} else {
-			return 1;
-		}
+	private static int compareAddresses(InterfaceAddress a, InterfaceAddress b) {
+		boolean aIs6 = isIPv6(a.getAddress());
+		if(aIs6 && isIPv6(b.getAddress())) {
+			//put the address with larger scope first
+			return b.getNetworkPrefixLength() - a.getNetworkPrefixLength();
+		} else return aIs6 ? -1 : 1;
 	}
 
-	private static boolean filterInterfaces(NetworkInterface network) {
+	private static boolean filterPublicInterfaces(NetworkInterface network) {
 		try {
 			return network.isUp() && !network.isLoopback() && !network.isVirtual();
 		} catch (SocketException e) {
@@ -138,7 +119,11 @@ public class NetworkUtility {
 		}
 	}
 
-	private static boolean filterAdresses(InterfaceAddress address) {
-		return !address.getAddress().isLinkLocalAddress();
+	private static boolean isLoopback(NetworkInterface network) {
+		try {
+			return network.isLoopback();
+		} catch (SocketException e) {
+			throw new RuntimeException(e);
+		}
 	}
 }
