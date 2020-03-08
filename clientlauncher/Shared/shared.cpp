@@ -1,19 +1,5 @@
 #include <sstream>
-
-#ifdef WIN32
-	//#include "../Windows/include/jni.h"
-#endif
-
 #include <jni.h>
-
-#if 0
-void LoadMainModule(JNIEnv* env) {
-	jclass classModuleLayer = env->FindClass("java/lang/ModuleLayer");
-	jmethodID mBootModule = env->GetStaticMethodID(classModuleLayer,
-		"boot", "()java/lang/ModuleLayer;");
-	jobject layer = env->CallStaticObjectMethod(classModuleLayer, mBootModule);
-}
-#endif
 
 JavaVMInitArgs GetJavaInitArgs() noexcept {
 	static JavaVMOption options[] = {
@@ -31,14 +17,14 @@ JavaVMInitArgs GetJavaInitArgs() noexcept {
 
 constexpr const wchar_t* GetErrorString(jint result) noexcept {
 	switch (result) {
-	case JNI_OK: return L"Success";
-	case JNI_ERR: return L"Unknown error";
-	case JNI_EDETACHED: return L"Thread detached from the VM";
-	case JNI_EVERSION: return L"JNI version error";
-	case JNI_ENOMEM: return L"Not enough memory";
-	case JNI_EEXIST: return L"VM already created";
-	case JNI_EINVAL: return L"Invalid arguments";
-	default: return L"Unknown error";
+		case JNI_OK: return L"Success";
+		case JNI_ERR: return L"Unknown error";
+		case JNI_EDETACHED: return L"Thread detached from the VM";
+		case JNI_EVERSION: return L"JNI version error";
+		case JNI_ENOMEM: return L"Not enough memory";
+		case JNI_EEXIST: return L"VM already created";
+		case JNI_EINVAL: return L"Invalid arguments";
+		default: return L"Unknown error";
 	}
 }
 

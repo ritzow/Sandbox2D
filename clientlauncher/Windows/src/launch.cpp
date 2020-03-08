@@ -1,7 +1,7 @@
+#include <shared.cpp>
 #include <windows.h>
 #include <PathCch.h>
 #include <iostream>
-#include <shared.cpp>
 
 constexpr bool SHOW_CONSOLE = false;
 
@@ -22,7 +22,7 @@ INT WINAPI wWinMain(_In_ HINSTANCE module, _In_opt_ HINSTANCE, _In_ LPWSTR lpCmd
 	DWORD length = GetModuleFileNameW(module, program_path, MAX_PATH);
 	PathCchRemoveFileSpec(program_path, length);
 	SetCurrentDirectoryW(program_path);
-	HMODULE dll = LoadLibraryW(L"jvm\\bin\\server\\jvm.dll");
+	HMODULE dll = LoadLibraryW(LR"(jvm\bin\server\jvm.dll)");
 	if (dll != nullptr) {
 		JavaVM* vm; JNIEnv* env; JavaVMInitArgs args = GetJavaInitArgs();
 		jint result = ((StartJVM)GetProcAddress(dll, "JNI_CreateJavaVM"))(&vm, &env, &args);
