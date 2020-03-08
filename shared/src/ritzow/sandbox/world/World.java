@@ -63,10 +63,13 @@ public class World implements Transportable, Iterable<Entity> {
 		int entityCount = reader.readInteger();
 		entities = new ArrayList<>(entityCount);
 		entitiesID = new HashMap<>(entityCount);
+		int maxEntityID = 0;
 		for(int i = 0; i < entityCount; ++i) {
-			addEntity(Objects.requireNonNull(reader.readObject()));
+			Entity e = Objects.requireNonNull(reader.readObject(), "entity was null");
+			maxEntityID = Math.max(maxEntityID, e.getID());
+			addEntity(e);
 		}
-		lastEntityID = reader.readInteger(); //TODO can just get max id from readObjects
+		lastEntityID = maxEntityID;
 	}
 
 	@Override
@@ -87,8 +90,8 @@ public class World implements Transportable, Iterable<Entity> {
 				.mapToInt(a -> a.length)
 				.sum();
 
-		//foreground data, background data, number of entities, entity data (size), lastEntityID
-		byte[] bytes = new byte[foregroundBytes.length + backgroundBytes.length + 4 + totalEntityBytes + 4];
+		//foreground data, background data, number of entities, entity data (size)
+		byte[] bytes = new byte[foregroundBytes.length + backgroundBytes.length + 4 + totalEntityBytes];
 		int index = 0;
 
 		//write foreground data
@@ -107,13 +110,7 @@ public class World implements Transportable, Iterable<Entity> {
 			Bytes.copy(dat, bytes, index);
 			index += dat.length;
 		}
-
-		//write last entity id
-		//TODO might not need this, can just get max of all entities plus one
-		Bytes.putInteger(bytes, index, lastEntityID);
-
 		return bytes;
-
 	}
 
 	@Override
