@@ -1,7 +1,7 @@
-#include <shared.cpp>
 #include <windows.h>
 #include <PathCch.h>
 #include <iostream>
+#include <shared.cpp>
 
 constexpr bool SHOW_CONSOLE = false;
 
