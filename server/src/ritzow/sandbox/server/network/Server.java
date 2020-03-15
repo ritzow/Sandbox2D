@@ -174,22 +174,24 @@ public class Server {
 		while(iterator.hasNext()) {
 			ClientState client = iterator.next();
 			switch(client.status) {
-				case ClientState.STATUS_CONNECTED -> {
-					//do nothing because client might be deserializing world
-				}
+				//check that the client is still sending pings
+				case ClientState.STATUS_CONNECTED, ClientState.STATUS_IN_GAME
+					-> client.checkReceiveTimeout();
 
-				case ClientState.STATUS_IN_GAME -> client.checkReceiveTimeout();
-
+				//disconnect the client without waiting for any response
 				case ClientState.STATUS_TIMED_OUT -> {
 					iterator.remove();
 					handleDisconnect(client);
 				}
 
+				//disconnect the client after ensuring they have been notified
 				case ClientState.STATUS_KICKED, ClientState.STATUS_SELF_DISCONNECTED -> {
 					if(client.sendQueue.isEmpty()) iterator.remove();
 					handleDisconnect(client);
 				}
 
+				//ensure that the client knows they have been rejected,
+				//but no need to let everyone else know they have been rejected
 				case ClientState.STATUS_REJECTED -> {
 					if(client.sendQueue.isEmpty()) iterator.remove();
 				}
@@ -217,6 +219,7 @@ public class Server {
 	private void sendEntityUpdates() {
 		int entitiesRemaining = world.entities();
 		Iterator<Entity> iterator = world.iterator();
+		//noinspection WhileLoopReplaceableByForEach
 		while(iterator.hasNext()) {
 			int count = Math.min(entitiesRemaining, MAX_ENTITIES_PER_PACKET);
 			int index = 0;
@@ -486,15 +489,7 @@ public class Server {
 		client.sendQueue.add(new SendPacket(data, reliable));
 	}
 
-	private static class SendPacket {
-		final byte[] data;
-		final boolean reliable;
-
-		public SendPacket(byte[] data, boolean reliable) {
-			this.data = data;
-			this.reliable = reliable;
-		}
-
+	private static record SendPacket(byte[] data, boolean reliable) {
 		@Override
 		public String toString() {
 			return "SendPacket[reliable: " + reliable + " size:" + data.length + "]";
@@ -515,8 +510,7 @@ public class Server {
 	}
 
 	private void processPacket(InetSocketAddress sender) throws IOException {
-		ByteBuffer buffer = receiveBuffer;
-		buffer.flip(); //flip to set limit and prepare to read packet data
+		ByteBuffer buffer = receiveBuffer.flip(); //flip to set limit and prepare to read packet data
 		if(buffer.limit() >= HEADER_SIZE) {
 			byte type = buffer.get(); //type of message (RESPONSE, RELIABLE, UNRELIABLE)
 			int messageID = buffer.getInt(); //received ID or messageID for ack.
@@ -549,7 +543,7 @@ public class Server {
 					} //else: message is outdated
 				}
 			}
-		}
+		} //else packet too small, just ignore
 		buffer.clear(); //clear to prepare for next receive
 	}
 
@@ -589,7 +583,7 @@ public class Server {
 	}
 
 	private static final class ClientState {
-		static final byte
+		private static final byte
 			STATUS_CONNECTED = 0, //after the client acks the connect ack
 			STATUS_TIMED_OUT = 1, //if the client doesn't send an ack within ack interval
 			STATUS_KICKED = 2, //if server kicks a player or shuts down
@@ -620,13 +614,13 @@ public class Server {
 
 		static String statusToString(byte status) {
 			return switch(status) {
-				case STATUS_CONNECTED -> 			"CONNECTED";
-				case STATUS_TIMED_OUT -> 			"TIMED_OUT";
-				case STATUS_KICKED -> 				"KICKED";
-				case STATUS_SELF_DISCONNECTED -> 	"DISCONNECTED";
-				case STATUS_REJECTED -> 			"REJECTED";
-				case STATUS_IN_GAME -> 				"IN_GAME";
-				default -> 							"ILLEGAL";
+				case STATUS_CONNECTED -> 			"Connected";
+				case STATUS_TIMED_OUT -> 			"Timed out";
+				case STATUS_KICKED -> 				"Kicked";
+				case STATUS_SELF_DISCONNECTED -> 	"Disconnected";
+				case STATUS_REJECTED -> 			"Rejected";
+				case STATUS_IN_GAME -> 				"In-game";
+				default -> 							"Unknown";
 			};
 		}
 
