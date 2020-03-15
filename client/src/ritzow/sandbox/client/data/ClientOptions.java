@@ -10,6 +10,17 @@ import java.util.stream.Collectors;
 class ClientOptions {
 	private static final Map<String, String> OPTIONS = loadOptions();
 
+//	private static Map<String, String> loadOptions() {
+//		try(var in = Files.newInputStream(StandardClientProperties.OPTIONS_PATH)) {
+//			Properties options = new Properties();
+//			options.load(in);
+//			return (Map<Object, Object>)options;
+//		} catch(IOException e) {
+//			e.printStackTrace();
+//			return Map.of();
+//		}
+//	}
+
 	private static Map<String, String> loadOptions() {
 		try {
 			return Files.lines(StandardClientProperties.OPTIONS_PATH, StandardCharsets.UTF_8)
@@ -24,12 +35,14 @@ class ClientOptions {
 		}
 	}
 
-	protected static String get(String option, String defaultValue) {
+	static String get(String option, String defaultValue) {
 		return OPTIONS.getOrDefault(option, defaultValue);
 	}
 
-	protected static <T> T get(String option, T defaultValue, Function<String, T> converter) {
+	static <T> T get(String option, T defaultValue, Function<String, T> converter) {
 		var val = OPTIONS.get(option);
 		return val == null || val.isBlank() ? defaultValue : converter.apply(val);
 	}
+
+	private ClientOptions() {}
 }
