@@ -3,10 +3,8 @@ package ritzow.sandbox.server;
 import java.io.IOException;
 import java.net.BindException;
 import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.network.NetworkUtility;
 import ritzow.sandbox.network.Protocol;
@@ -16,8 +14,9 @@ import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.ItemEntity;
 import ritzow.sandbox.world.generator.SinusoidWorldGenerator;
 
-public final class StartServer {
+class StartServer {
 	private static final Path SAVE_FILE = Path.of("world.dat");
+	private static final long FRAME_TIME_LIMIT = Utility.frameRateToFrameTimeNanos(60);
 
 	private static Server server;
 	private static boolean save = true;
@@ -33,9 +32,10 @@ public final class StartServer {
 			new Thread(parser, "Command Parser").start();
 
 			while(server.isOpen()) {
+				long start = System.nanoTime();
 				parser.update();
 				server.update();
-				Utility.sleepMillis(1);
+				Utility.limitFramerate(start, FRAME_TIME_LIMIT);
 			}
 
 			saveWorld(server.world(), SAVE_FILE);
@@ -50,18 +50,14 @@ public final class StartServer {
 		long time = System.nanoTime();
 		boolean loadFromFile = Files.exists(SAVE_FILE);
 		System.out.print((loadFromFile ? "Loading" : "Generating") + " world... ");
-		server.setCurrentWorld(loadFromFile ? loadWorld(SAVE_FILE) : SinusoidWorldGenerator.builder().generate());
+		server.setCurrentWorld(loadFromFile ? loadWorld(SAVE_FILE) : SinusoidWorldGenerator.builder()
+			.width(100_000)
+			.generate());
 		System.out.println("took " + Utility.formatTime(Utility.nanosSince(time)) + ".");
 	}
 
 	public static World loadWorld(Path file) throws IOException {
-		try(var in = Files.newByteChannel(file, StandardOpenOption.READ)) {
-			if(in.size() > Integer.MAX_VALUE)
-				throw new RuntimeException("file too large to read");
-			ByteBuffer buffer = ByteBuffer.allocate((int)in.size());
-			in.read(buffer);
-			return SerializationProvider.getProvider().deserialize(Bytes.decompress(buffer.flip()));
-		}
+		return SerializationProvider.getProvider().deserialize(Utility.loadCompressedFile(file));
 	}
 
 	private static void saveWorld(World world, Path file) {
