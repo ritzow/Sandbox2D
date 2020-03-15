@@ -1,42 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" path="src"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/Sandbox2DShared">
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER">
 		<attributes>
 			<attribute name="module" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER">
+	<classpathentry combineaccessrules="false" kind="src" path="/Sandbox2DShared">
 		<attributes>
 			<attribute name="module" value="true"/>
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-glfw.jar" sourcepath="libraries/lwjgl/lwjgl-glfw-sources.jar">
 		<attributes>
-			<attribute name="javadoc_location" value="jar:platform:/resource/Sandbox2DClient/libraries/lwjgl/lwjgl-glfw-javadoc.jar!/"/>
 			<attribute name="module" value="true"/>
+			<attribute name="javadoc_location" value="jar:platform:/resource/client/libraries/lwjgl/lwjgl-glfw-javadoc.jar!/"/>
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-openal.jar" sourcepath="libraries/lwjgl/lwjgl-openal-sources.jar">
 		<attributes>
-			<attribute name="javadoc_location" value="jar:platform:/resource/Sandbox2D/client/libraries/lwjgl/lwjgl-openal-javadoc.jar!/"/>
 			<attribute name="module" value="true"/>
+			<attribute name="javadoc_location" value="jar:platform:/resource/client/libraries/lwjgl/lwjgl-openal-javadoc.jar!/"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-opengl.jar" sourcepath="/Sandbox2D/client/libraries/lwjgl/lwjgl-opengl-sources.jar">
+	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-opengl.jar" sourcepath="libraries/lwjgl/lwjgl-opengl-sources.jar">
 		<attributes>
-			<attribute name="javadoc_location" value="jar:platform:/resource/Sandbox2D/client/libraries/lwjgl/lwjgl-opengl-javadoc.jar!/"/>
 			<attribute name="module" value="true"/>
+			<attribute name="javadoc_location" value="jar:platform:/resource/client/libraries/lwjgl/lwjgl-opengl-javadoc.jar!/"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl.jar" sourcepath="/Sandbox2D/client/libraries/lwjgl/lwjgl-sources.jar">
+	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl.jar" sourcepath="libraries/lwjgl/lwjgl-sources.jar">
 		<attributes>
-			<attribute name="javadoc_location" value="jar:platform:/resource/Sandbox2D/client/libraries/lwjgl/lwjgl-javadoc.jar!/"/>
 			<attribute name="module" value="true"/>
+			<attribute name="javadoc_location" value="jar:platform:/resource/client/libraries/lwjgl/lwjgl-javadoc.jar!/"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-glfw-natives-windows.jar"/>
 	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-natives-windows.jar"/>
+	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-glfw-natives-windows.jar"/>
 	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-openal-natives-windows.jar"/>
 	<classpathentry kind="lib" path="libraries/lwjgl/lwjgl-opengl-natives-windows.jar"/>
 	<classpathentry kind="output" path="bin"/>
