@@ -49,23 +49,19 @@ public class UserInterface implements Renderer {
 
 		//load the view transformation
 		program.loadViewMatrixStandard(framebufferWidth, framebufferHeight);
-		
+
 		//set the current shader program
 		program.setCurrent();
-		
+
 		for(var element : elements) {
 			for(Graphics g : element.getKey().appearance()) {
 				Position p = element.getValue();
-				program.queueRender(g.getModelID(), g.getOpacity(), p.x, p.y, 
+				program.queueRender(g.getModelID(), g.getOpacity(), p.x, p.y,
 						g.getScaleX(), g.getScaleY(), g.getRotation());
 			}
 		}
-		
+
 		program.render();
-	}
-
-	public void notifyClick(Display display) {
-
 	}
 
 	public void update(Display display, long nanoseconds) {

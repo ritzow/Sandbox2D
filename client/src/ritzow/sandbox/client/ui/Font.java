@@ -16,9 +16,9 @@ public final class Font {
 			'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '{', '|', '}', '~', ' ',
 	};
 
-	protected final int[] glyphs;
-	protected final OpenGLTexture charsetLatin;
-	protected final String name;
+	private final int[] glyphs;
+	private final OpenGLTexture charsetLatin;
+	private final String name;
 
 	/** A class for loading and managing fonts, should only be used in GraphicsManager
 	 * @throws IOException if unable to load texture

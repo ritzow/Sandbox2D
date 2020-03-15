@@ -8,15 +8,15 @@ public class Text {
 	protected Font font;
 	protected int size;
 	protected float spacing;
-	
+
 	public Text(String text, Font font, int size, float spacing) {
 		this.text = text;
 		this.font = font;
 		this.size = size;
 		this.spacing = spacing;
 	}
-	
-	public void render(ModelRenderProgram renderer) { 
+
+	public void render(ModelRenderProgram renderer) {
 		int index = 0;
 		float charWidth = (size * 0.02f) + (size * 0.02f * spacing);
 		for(float pos = getPositionX(); index < text.length(); pos += charWidth) {
@@ -56,7 +56,7 @@ public class Text {
 	public final void setSpacing(float spacing) {
 		this.spacing = spacing;
 	}
-	
+
 	public float getWidth() {
 		return 1;
 	}

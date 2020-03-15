@@ -2,13 +2,14 @@ package ritzow.sandbox.client.graphics;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GLCapabilities;
 import org.lwjgl.system.MemoryUtil;
 import ritzow.sandbox.client.data.StandardClientOptions;
 import ritzow.sandbox.client.graphics.ModelRenderProgram.ModelData;
 import ritzow.sandbox.client.graphics.Shader.ShaderType;
-import ritzow.sandbox.client.util.ClientUtility;
+import ritzow.sandbox.util.Utility;
 
 import static org.lwjgl.glfw.GLFW.glfwMakeContextCurrent;
 import static org.lwjgl.glfw.GLFW.glfwSwapInterval;
@@ -76,7 +77,7 @@ public class RenderManager {
 	}
 
 	private static Shader spirv(String file, ShaderType type) throws IOException {
-		return Shader.fromSPIRV(ClientUtility.load(SHADERS_PATH.resolve(file)), type);
+		return Shader.fromSPIRV(Utility.load(SHADERS_PATH.resolve(file), BufferUtils::createByteBuffer), type);
 	}
 
 	private static void debugCallback(int source, int type, int id, int severity,

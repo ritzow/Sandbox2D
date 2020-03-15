@@ -1,9 +1,9 @@
 package ritzow.sandbox.client.graphics;
 
-import static org.lwjgl.opengl.GL46C.*;
-
 import java.nio.ByteBuffer;
 import java.util.Map;
+
+import static org.lwjgl.opengl.GL46C.*;
 
 public final class GraphicsUtility {
 

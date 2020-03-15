@@ -166,7 +166,8 @@ public class Client {
 			if(isUp) {
 				//send unreliable messages
 				while(!sendQueue.isEmpty() && !sendQueue.peek().reliable) {
-					setupSendBuffer(sendBuffer, Protocol.UNRELIABLE_TYPE, sendUnreliableID++, sendQueue.poll().data);
+					setupSendBuffer(sendBuffer, Protocol.UNRELIABLE_TYPE,
+						sendUnreliableID++, sendQueue.poll().data);
 					channel.write(sendBuffer);
 					sendBuffer.clear();
 				}
@@ -174,7 +175,8 @@ public class Client {
 				//start send/continue current reliable message
 				if(!sendQueue.isEmpty()) {
 					if(sendAttempts == 0) {
-						setupSendBuffer(sendBuffer, Protocol.RELIABLE_TYPE, sendReliableID, sendQueue.peek().data);
+						setupSendBuffer(sendBuffer, Protocol.RELIABLE_TYPE,
+							sendReliableID, sendQueue.peek().data);
 						sendReliableInternal(sendBuffer);
 						sendTime = System.nanoTime();
 					} else if(Utility.resendIntervalElapsed(sendTime, sendAttempts)) {

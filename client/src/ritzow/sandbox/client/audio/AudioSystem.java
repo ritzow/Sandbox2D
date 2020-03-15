@@ -19,7 +19,7 @@ public interface AudioSystem {
 	void setPosition(float x, float y);
 	void close();
 
-	public static AudioSystem getDefault() {
+	static AudioSystem getDefault() {
 		return Default.DEFAULT;
 	}
 

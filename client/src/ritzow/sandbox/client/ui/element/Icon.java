@@ -19,19 +19,19 @@ public class Icon implements UIElement {
 	public Iterable<Graphics> appearance() {
 		return appearance;
 	}
-	
+
 	@Override
 	public void update(long nanoseconds) {
 		graphics.rotation += (Math.PI/4 * nanoseconds/1_000_000_000f);
 	}
 
 	@Override
-	public void onHover(float localX, float localY) {
+	public void setOnClick(Runnable action) {
 
 	}
 
 	@Override
-	public void onClick() {
+	public void onHover(float localX, float localY) {
 
 	}
 

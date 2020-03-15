@@ -6,8 +6,8 @@ import ritzow.sandbox.client.input.Control.Button;
 /** Handles window events **/
 @SuppressWarnings(value="unused")
 public interface InputContext {
-	public static final InputContext EMPTY_CONTEXT = new InputContext() {};
-	
+	InputContext EMPTY_CONTEXT = new InputContext() {};
+
 	default Map<Button, Runnable> buttonControls() {return Map.of();}
 	default void framebufferSize(int width, int height) {}
 	default void keyboardButton(int key, int scancode, int action, int mods) {}

@@ -13,12 +13,12 @@ public interface ClientBlockProperties extends Block {
 	boolean isTransparent();
 
 	@Override
-	public default void onBreak(World world, BlockGrid grid, float x, float y) {
+	default void onBreak(World world, BlockGrid grid, float x, float y) {
 		throw new UnsupportedOperationException("client does not support default onBreak");
 	}
 
 	@Override
-	public default void onPlace(World world, BlockGrid grid, float x, float y) {
+	default void onPlace(World world, BlockGrid grid, float x, float y) {
 		throw new UnsupportedOperationException("client does not support default onPlace");
 	}
 
@@ -30,7 +30,7 @@ public interface ClientBlockProperties extends Block {
 	 * @param x the world x position the block was at.
 	 * @param y the world y position the block was at.
 	 */
-	public default void onBreak(World world, BlockGrid grid, Camera camera, float x, float y) {
+	default void onBreak(World world, BlockGrid grid, Camera camera, float x, float y) {
 		AudioSystem.getDefault()
 		.playSound(StandardSound.BLOCK_BREAK, x, y, 0, 0,
 				camera.getZoom() * 2 * Utility.random(0.75f, 1.5f), Utility.random(0.75f, 1.5f));
@@ -44,7 +44,7 @@ public interface ClientBlockProperties extends Block {
 	 * @param x the world x position the block was placed at.
 	 * @param y the world y position the block was placed at.
 	 */
-	public default void onPlace(World world, BlockGrid grid, Camera camera, float x, float y) {
+	default void onPlace(World world, BlockGrid grid, Camera camera, float x, float y) {
 		AudioSystem.getDefault()
 			.playSound(StandardSound.BLOCK_PLACE, x, y, 0, 0, camera.getZoom() * 2, Utility.random(0.9f, 1.1f));
 	}
