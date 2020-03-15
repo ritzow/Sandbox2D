@@ -2,8 +2,11 @@ package ritzow.sandbox.client;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayDeque;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Queue;
+import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
 import ritzow.sandbox.client.audio.AudioSystem;
 import ritzow.sandbox.client.data.StandardClientOptions;
@@ -16,59 +19,93 @@ import ritzow.sandbox.client.input.controller.InteractionController;
 import ritzow.sandbox.client.input.controller.TrackingCameraController;
 import ritzow.sandbox.client.network.Client;
 import ritzow.sandbox.client.network.GameTalker;
-import ritzow.sandbox.client.util.ClientUtility;
 import ritzow.sandbox.client.util.SerializationProvider;
 import ritzow.sandbox.client.world.ClientWorldRenderer;
 import ritzow.sandbox.client.world.block.ClientBlockProperties;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
 import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.data.Transportable;
-import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.Entity;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
 import static ritzow.sandbox.client.util.ClientUtility.log;
+import static ritzow.sandbox.network.Protocol.*;
 
 class InWorldContext implements GameTalker {
 	private final Client client;
 	private final InputContext input;
-	private final GameState state;
-	InteractionController interactionControls;
-	ClientWorldRenderer worldRenderer;
-	TrackingCameraController cameraGrip;
-	ClientPlayerEntity player;
+	private final int playerID;
+	private InteractionController interactionControls;
+	private ClientWorldRenderer worldRenderer;
+	private TrackingCameraController cameraGrip;
+	private ClientPlayerEntity player;
+	private World world;
+	private ByteBuffer worldDownloadBuffer;
+	private CompletableFuture<World> worldBuildTask;
+	private Queue<QueuedPacket> bufferedMessages;
 
-	World world;
-	ByteBuffer worldBuffer;
-	int playerID;
-	long lastGameUpdate;
-
-	public InWorldContext(GameState state, Client client, int downloadSize, int playerID) {
-		this.state = state;
+	public InWorldContext(Client client, int downloadSize, int playerID) {
+		log().info("Downloading " + Utility.formatSize(downloadSize) + " of world data");
 		this.client = client;
 		this.input = new InWorldInputContext();
-		this.worldBuffer = ByteBuffer.allocate(downloadSize);
+		this.worldDownloadBuffer = ByteBuffer.allocate(downloadSize);
+		this.bufferedMessages = new ArrayDeque<>();
 		this.playerID = playerID;
-		log().info("Downloading " + Utility.formatSize(downloadSize) + " of world data");
 	}
 
-	private void update() {
-		Display display = state.display;
-		long frameStart = System.nanoTime();
+	private static record QueuedPacket(short messageType, ByteBuffer packet) {}
+
+	public void updatePreInGame() {
+		/* When building the world, queue any received packets so they are processed
+		 * and applied to the client state once the world is built. **/
+		client.update((messageType, data) -> {
+			if(messageType == TYPE_SERVER_WORLD_DATA) {
+				processReceiveWorldData(data);
+			} else {
+				ByteBuffer packet = ByteBuffer.allocate(data.remaining());
+				bufferedMessages.add(new QueuedPacket(messageType, packet.put(data).flip()));
+			}
+		});
+
+		if(worldBuildTask != null && worldBuildTask.isDone()) {
+			setupAfterReceiveWorld();
+		}
+	}
+
+	private void setupAfterReceiveWorld() {
+		world = worldBuildTask.join();
+		worldDownloadBuffer = null; //release the downloaded data to the garbage collector
+		worldBuildTask = null;
+		log().info("World built");
+		player = getEntity(playerID);
+		cameraGrip = new TrackingCameraController(2.5f, player.getWidth() / 20f, player.getWidth() / 2f);
+		worldRenderer = new ClientWorldRenderer(GameState.shader(), cameraGrip.getCamera(), world);
+		interactionControls = new InteractionController();
+		GameState.display().setCursor(GameState.cursorPick());
+		client.sendReliable(Bytes.of(TYPE_CLIENT_WORLD_BUILT));
+		//apply received packets
+		log().info("Processing " + bufferedMessages.size() + " buffered messages");
+		while(!bufferedMessages.isEmpty()) {
+			QueuedPacket packet = bufferedMessages.poll();
+			process(packet.messageType, packet.packet);
+		}
+		bufferedMessages = null;
+		GameLoop.setContext(this::updateInWorld);
+	}
+
+	private void updateInWorld(long delta) {
 		client.update(this::process);
-		display.poll(input);
 		if(isPaused()) {
-			lastGameUpdate = System.nanoTime();
 			sendPing();
 		} else {
-			updateRunning(display);
+			updateRunning(GameState.display(), delta);
+			GameState.display().poll(input);
 		}
-		ClientUtility.limitFramerate(frameStart);
 	}
 
-	private void updateRunning(Display display) {
+	private void updateRunning(Display display, long deltaTime) {
 		if(display.isControlActivated(Control.RESET_ZOOM)) cameraGrip.resetZoom();
 		boolean isLeft = display.isControlActivated(Control.MOVE_LEFT);
 		boolean isRight = display.isControlActivated(Control.MOVE_RIGHT);
@@ -81,64 +118,56 @@ class InWorldContext implements GameTalker {
 		player.setUp(isUp);
 		player.setDown(isDown);
 		sendPlayerState(player, isPrimary, isSecondary);
-		updateRender(display);
+		updateRender(display, deltaTime);
 	}
 
-	private void updateRender(Display display) {
-		long start = System.nanoTime();
-		long deltaTime = start - lastGameUpdate;
-		lastGameUpdate = start;
+	private void updateRender(Display display, long deltaTime) {
 		world.update(deltaTime);
 		cameraGrip.update(display, player, AudioSystem.getDefault(), deltaTime);
 		int width = display.width(), height = display.height();
 		RenderManager.preRender(width, height);
 		worldRenderer.render(RenderManager.DISPLAY_BUFFER, width, height);
 		interactionControls.update(display, cameraGrip.getCamera(), this, world, player);
-		interactionControls.render(display, state.shader, cameraGrip.getCamera(), world, player);
+		interactionControls.render(display, GameState.shader(), cameraGrip.getCamera(), world, player);
 		display.refresh();
 	}
 
 	private void process(short messageType, ByteBuffer data) {
 		switch(messageType) {
-			case Protocol.TYPE_CONSOLE_MESSAGE -> processServerConsoleMessage(data);
-			case Protocol.TYPE_SERVER_WORLD_DATA -> processReceiveWorldData(data);
-			case Protocol.TYPE_SERVER_ENTITY_UPDATE -> processUpdateEntity(data);
-			case Protocol.TYPE_SERVER_CREATE_ENTITY -> processAddEntity(data);
-			case Protocol.TYPE_SERVER_DELETE_ENTITY -> processRemoveEntity(data);
-			case Protocol.TYPE_SERVER_REMOVE_BLOCK -> processServerRemoveBlock(data);
-			case Protocol.TYPE_SERVER_PLACE_BLOCK -> processServerPlaceBlock(data);
-			case Protocol.TYPE_CLIENT_PLAYER_STATE -> processPlayerState(data);
-			case Protocol.TYPE_SERVER_CLIENT_DISCONNECT -> processServerDisconnect(data);
-			case Protocol.TYPE_SERVER_CLIENT_BREAK_BLOCK_COOLDOWN -> processBlockBreakCooldown(data);
-			default -> throw new IllegalArgumentException("Client received message of unknown protocol " + messageType);
+			case TYPE_CONSOLE_MESSAGE -> processServerConsoleMessage(data);
+			case TYPE_SERVER_ENTITY_UPDATE -> processUpdateEntity(data);
+			case TYPE_SERVER_CREATE_ENTITY -> processAddEntity(data);
+			case TYPE_SERVER_DELETE_ENTITY -> processRemoveEntity(data);
+			case TYPE_SERVER_REMOVE_BLOCK -> processServerRemoveBlock(data);
+			case TYPE_SERVER_PLACE_BLOCK -> processServerPlaceBlock(data);
+			case TYPE_CLIENT_PLAYER_STATE -> processPlayerState(data);
+			case TYPE_SERVER_CLIENT_DISCONNECT -> processServerDisconnect(data);
+			case TYPE_SERVER_CLIENT_BREAK_BLOCK_COOLDOWN -> processBlockBreakCooldown(data);
+			default -> log().severe("Client received message of unknown protocol " + messageType);
 		}
 	}
 
+	@SuppressWarnings("unused")
 	private void processBlockBreakCooldown(ByteBuffer data) {
 		//interactionControls.setLastBreak(data.getLong());
 	}
 
 	private static void processServerConsoleMessage(ByteBuffer data) {
-		log().info(Bytes.getString(data, data.remaining(), Protocol.CHARSET));
-	}
-
-	private void leaveServer() {
-		startDisconnect();
-		GameLoop.setContext(() -> client.update(this::process));
+		log().info(Bytes.getString(data, data.remaining(), CHARSET));
 	}
 
 	/**
 	 * Notifies the server, disconnects, and stops the client. May block
-	 * while disconnect is occurring.
-	 */
-	public void startDisconnect() {
+	 * while disconnect is occurring. */
+	private void leaveServer() {
 		log().info("Starting disconnect");
-		client.sendReliable(Bytes.of(Protocol.TYPE_CLIENT_DISCONNECT), this::onDisconnected);
+		client.sendReliable(Bytes.of(TYPE_CLIENT_DISCONNECT), this::onDisconnected);
+		GameState.display().resetCursor();
+		GameLoop.setContext(delta -> client.update((messageType, data) -> {}));
 	}
 
 	private void processServerDisconnect(ByteBuffer data) {
-		log().info("Disconnected from server: "
-				+ Bytes.getString(data, data.getInt(), Protocol.CHARSET));
+		log().info("Disconnected from server: " + Bytes.getString(data, data.getInt(), CHARSET));
 		onDisconnected();
 	}
 
@@ -149,11 +178,11 @@ class InWorldContext implements GameTalker {
 		} catch (IOException e) {
 			log().log(Level.SEVERE, "Exception on Client::close()", e);
 		} finally {
-			state.display.resetCursor();
-			if(state.display.wasClosed()) {
+			GameState.display().resetCursor();
+			if(GameState.display().wasClosed()) {
 				GameLoop.stop();
 			} else {
-				GameLoop.setContext(state.menuContext::update);
+				GameLoop.setContext(GameState.menuContext()::update);
 			}
 		}
 	}
@@ -161,7 +190,7 @@ class InWorldContext implements GameTalker {
 	private void processPlayerState(ByteBuffer data) {
 		int id = data.getInt();
 		if(id != player.getID()) {
-			Protocol.PlayerState.updatePlayer(getEntity(id), data.getShort());
+			PlayerState.updatePlayer(getEntity(id), data.getShort());
 		}
 	}
 
@@ -208,44 +237,40 @@ class InWorldContext implements GameTalker {
 	}
 
 	private void processReceiveWorldData(ByteBuffer data) {
-		if(!worldBuffer.put(data).hasRemaining()) {
+		if(!worldDownloadBuffer.put(data).hasRemaining()) {
 			log().info("Received all world data");
-			long start = System.nanoTime();
-			world = SerializationProvider.getProvider().deserialize(Protocol.COMPRESS_WORLD_DATA ?
-						Bytes.decompress(worldBuffer.flip()) : worldBuffer.flip());
-			worldBuffer = null; //release the raw data to the garbage collector
-			log().info("World built, took " + Utility.formatTime(Utility.nanosSince(start)));
-			player = getEntity(playerID);
-			cameraGrip = new TrackingCameraController(2.5f, player.getWidth() / 20f, player.getWidth() / 2f);
-			worldRenderer = new ClientWorldRenderer(state.shader, cameraGrip.getCamera(), world);
-			interactionControls = new InteractionController();
-			state.display.setCursor(state.cursorPick);
-			client.sendReliable(Bytes.of(Protocol.TYPE_CLIENT_WORLD_BUILT));
-			lastGameUpdate = System.nanoTime();
-			GameLoop.setContext(this::update);
+			//from https://docs.oracle.com/javase/tutorial/essential/concurrency/memconsist.html
+			// https://docs.oracle.com/en/java/javase/13
+			// /docs/api/java.base/java/util/concurrent/package-summary.html
+			// When a statement invokes Thread.start, every statement that has a happens-before
+			// relationship with that statement also has a happens-before relationship with
+			// every statement executed by the new thread. The effects of the code that led up
+			// to the creation of the new thread are visible to the new thread.
+			worldBuildTask = CompletableFuture.supplyAsync(this::buildWorld);
 		}
 	}
 
-	public void listenForServer() {
-		state.display.poll(input);
-		client.update(this::process);
+	private World buildWorld() {
+		world= SerializationProvider.getProvider().deserialize(COMPRESS_WORLD_DATA ?
+			Bytes.decompress(worldDownloadBuffer.flip()) : worldDownloadBuffer.flip());
+		return world;
 	}
 
-	private boolean isPaused() {
-		return state.display.minimized();
+	private static boolean isPaused() {
+		return GameState.display().minimized();
 	}
 
 	public void sendPlayerState(PlayerEntity player, boolean primary, boolean secondary) {
 		byte[] packet = new byte[4];
-		Bytes.putShort(packet, 0, Protocol.TYPE_CLIENT_PLAYER_STATE);
-		Bytes.putShort(packet, 2, Protocol.PlayerState.getState(player, primary, secondary));
+		Bytes.putShort(packet, 0, TYPE_CLIENT_PLAYER_STATE);
+		Bytes.putShort(packet, 2, PlayerState.getState(player, primary, secondary));
 		client.sendUnreliable(packet);
 	}
 
 	@Override
 	public void sendBombThrow(float angle) {
 		byte[] packet = new byte[2 + 4];
-		Bytes.putShort(packet, 0, Protocol.TYPE_CLIENT_BOMB_THROW);
+		Bytes.putShort(packet, 0, TYPE_CLIENT_BOMB_THROW);
 		Bytes.putFloat(packet, 2, angle);
 		client.sendReliable(packet);
 	}
@@ -253,7 +278,7 @@ class InWorldContext implements GameTalker {
 	@Override
 	public void sendBlockBreak(int x, int y) {
 		byte[] packet = new byte[10];
-		Bytes.putShort(packet, 0, Protocol.TYPE_CLIENT_BREAK_BLOCK);
+		Bytes.putShort(packet, 0, TYPE_CLIENT_BREAK_BLOCK);
 		Bytes.putInteger(packet, 2, x);
 		Bytes.putInteger(packet, 6, y);
 		client.sendReliable(packet);
@@ -262,23 +287,23 @@ class InWorldContext implements GameTalker {
 	@Override
 	public void sendBlockPlace(int x, int y) {
 		byte[] packet = new byte[10];
-		Bytes.putShort(packet, 0, Protocol.TYPE_CLIENT_PLACE_BLOCK);
+		Bytes.putShort(packet, 0, TYPE_CLIENT_PLACE_BLOCK);
 		Bytes.putInteger(packet, 2, x);
 		Bytes.putInteger(packet, 6, y);
 		client.sendReliable(packet);
 	}
 
 	private void sendPing() {
-		client.sendReliable(Bytes.of(Protocol.TYPE_PING));
+		client.sendReliable(Bytes.of(TYPE_PING));
 	}
 
 	private void selectSlot(int slot) {
 		long cursor = switch(slot) {
-			case 1, 2 -> state.cursorMallet;
-			default -> state.cursorPick;
+			case 1, 2 -> GameState.cursorMallet();
+			default -> GameState.cursorPick();
 		};
 		player.setSlot(slot);
-		state.display.setCursor(cursor);
+		GameState.display().setCursor(cursor);
 	}
 
 	private final class InWorldInputContext implements InputContext {
@@ -291,7 +316,7 @@ class InWorldContext implements GameTalker {
 		public void windowRefresh() {
 			sendPing();
 			client.update(InWorldContext.this::process);
-			updateRender(state.display);
+			updateRender(GameState.display(), GameLoop.updateDeltaTime());
 		}
 
 		@Override
@@ -300,7 +325,7 @@ class InWorldContext implements GameTalker {
 		}
 
 		private final Map<Button, Runnable> controls = Map.ofEntries(
-			Map.entry(Control.FULLSCREEN, state.display::toggleFullscreen),
+			Map.entry(Control.FULLSCREEN, GameState.display()::toggleFullscreen),
 			Map.entry(Control.QUIT,  InWorldContext.this::leaveServer),
 			Map.entry(Control.SLOT_SELECT_1, () -> selectSlot(0)),
 			Map.entry(Control.SLOT_SELECT_2, () -> selectSlot(1)),
@@ -316,7 +341,7 @@ class InWorldContext implements GameTalker {
 
 		@Override
 		public void mouseScroll(double xoffset, double yoffset) {
-			if(state.display.isControlActivated(Control.SCROLL_MODIFIER)) {
+			if(GameState.display().isControlActivated(Control.SCROLL_MODIFIER)) {
 				if(slotOffset == 0) slotOffset += yoffset;
 
 				if(slotOffset > 0) {

@@ -1,8 +1,6 @@
 package ritzow.sandbox.client;
 
-import java.io.IOException;
 import java.util.Map;
-import ritzow.sandbox.client.graphics.Display;
 import ritzow.sandbox.client.graphics.RenderConstants;
 import ritzow.sandbox.client.graphics.RenderManager;
 import ritzow.sandbox.client.input.Control;
@@ -11,53 +9,46 @@ import ritzow.sandbox.client.input.InputContext;
 import ritzow.sandbox.client.ui.UserInterface;
 import ritzow.sandbox.client.ui.UserInterface.Position;
 import ritzow.sandbox.client.ui.element.Icon;
-import ritzow.sandbox.client.util.ClientUtility;
 
 class MainMenuContext {
-	private final GameState state;
 	private final UserInterface ui;
 	private final InputContext context;
-	private long previousTime;
+	private ServerJoinContext joinContext;
 
-	MainMenuContext(GameState state) {
-		this.state = state;
+	MainMenuContext() {
 		this.context = new MenuInputContext();
-		this.ui = UserInterface.of(state.shader,
+		this.ui = UserInterface.of(GameState.shader(),
 			Map.entry(new Icon(RenderConstants.MODEL_GREEN_FACE), Position.of(0, 0))
+			//Map.entry(new Text("hello world", Fonts.getDefaultFont(), 1, 1), Position.of(0, 0))
 		);
-		
-		previousTime = System.nanoTime();
 	}
-	
-	public void update() {
-		long frameStart = System.nanoTime();
-		state.display.poll(context);
-		refresh();
-		ClientUtility.limitFramerate(frameStart);
+
+	public void update(long delta) {
+		GameState.display().poll(context);
+		refresh(delta);
 	}
-	
-	private void refresh() {
-		Display display = state.display;
-		int width = display.width(), height = display.height();
-		long time = System.nanoTime();
-		ui.update(display, time - previousTime);
+
+	private void refresh(long deltaTime) {
+		int width = GameState.display().width();
+		int height = GameState.display().height();
+		ui.update(GameState.display(), deltaTime);
 		RenderManager.preRender(width, height);
 		ui.render(RenderManager.DISPLAY_BUFFER, width, height);
-		previousTime = time;
-		display.refresh();
-	}
-	
-	private void startJoin() {
-		try {
-			state.menuContext = this;
-			ServerJoinContext.start(state);
-		} catch (IOException e) {
-			e.printStackTrace();
+		GameState.display().refresh();
+		if(joinContext != null) {
+			if(joinContext.hasFailed()) {
+				joinContext = null;
+			} else {
+				joinContext.listen();
+			}
 		}
 	}
 
-	private final class MenuInputContext implements InputContext {
+	private void startJoin() {
+		joinContext = new ServerJoinContext();
+	}
 
+	private final class MenuInputContext implements InputContext {
 		@Override
 		public void windowClose() {
 			GameLoop.stop();
@@ -65,11 +56,11 @@ class MainMenuContext {
 
 		@Override
 		public void windowRefresh() {
-			refresh();
+			refresh(GameLoop.updateDeltaTime());
 		}
 
 		private final Map<Button, Runnable> controls = Map.ofEntries(
-			Map.entry(Control.FULLSCREEN, state.display::toggleFullscreen),
+			Map.entry(Control.FULLSCREEN, GameState.display()::toggleFullscreen),
 			Map.entry(Control.QUIT, GameLoop::stop),
 			Map.entry(Control.CONNECT, MainMenuContext.this::startJoin)
 		);
