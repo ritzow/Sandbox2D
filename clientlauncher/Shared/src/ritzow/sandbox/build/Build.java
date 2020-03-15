@@ -6,17 +6,16 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.*;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.text.NumberFormat;
 import java.time.Instant;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.jar.Attributes;
 import java.util.jar.Attributes.Name;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
-import java.util.stream.Collectors;
 import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -38,12 +37,25 @@ public class Build {
 		AUTHOR = "Solomon Ritzow";
 
 	private static final Path
-		SHARED_DIR = Path.of("..\\shared"),
-		CLIENT_DIR = Path.of("..\\client"),
-		BUILD_DIR = Path.of("Windows\\x64\\Release\\Build"),
-		OUTPUT_DIR = Path.of("Windows\\x64\\Release\\Output"),
-		INCLUDE_DIR = Path.of("Windows\\include"),
-		LAUNCHER_PROJECT_FILE = Path.of("Sandbox2DClientLauncher.vcxproj");
+		LAUNCHER_DIR =  Path.of(System.getProperty("user.dir")),
+		SHARED_DIR =    LAUNCHER_DIR.resolveSibling("shared"),
+		SHARED_SRC = 	SHARED_DIR.resolve("src"),
+		CLIENT_DIR =	LAUNCHER_DIR.resolveSibling("client"),
+		CLIENT_SRC = 	CLIENT_DIR.resolve("src"),
+		CLIENT_LIBS = 	CLIENT_DIR.resolve("libraries"),
+		RES_SRC_DIR = 	CLIENT_DIR.resolve("resources"),
+		LWJGL_DIR = 	CLIENT_LIBS.resolve("lwjgl"),
+		JSON_DIR =		CLIENT_LIBS.resolve("json"),
+		WINDOWS_DIR = 	LAUNCHER_DIR.resolve("Windows"),
+		RELEASE_DIR = 	WINDOWS_DIR.resolve(ARCH).resolve("Release"),
+		BUILD_DIR = 	RELEASE_DIR.resolve("Build"),
+		CLIENT_LIB = 	BUILD_DIR.resolve("client.jar"),
+		SHARED_LIB = 	BUILD_DIR.resolve("shared.jar"),
+		OUTPUT_DIR = 	RELEASE_DIR.resolve("Output"),
+		RES_OUT_DIR = 	OUTPUT_DIR.resolve("resources"),
+		JVM_DIR =		OUTPUT_DIR.resolve("jvm"),
+		INCLUDE_DIR = 	WINDOWS_DIR.resolve("include"),
+		MSBUILD_FILE = 	WINDOWS_DIR.resolve("Sandbox2DLauncherWindows.vcxproj");
 
 	private static final Charset SRC_CHARSET = StandardCharsets.UTF_8;
 
@@ -51,7 +63,8 @@ public class Build {
 		System.out.println("Running Build.java.");
 		if(args.length > 0) {
 			switch(args[0].toLowerCase()) {
-				case "launcher" -> msbuild();
+				case "launcher" -> System.out.println(msbuild() == 0 ? "Launcher built."
+					: "Launcher build failed.");
 				case "zip" -> packageOutput(args.length > 1 ? Path.of(args[1]) : Path.of("out.zip"));
 				default -> System.out.println("Uknown arguments.");
 			}
@@ -63,18 +76,15 @@ public class Build {
 	private static void buildAll() throws IOException, InterruptedException {
 		if(Files.exists(OUTPUT_DIR)) {
 			System.out.println("Deleting output directory.");
-			traverse(OUTPUT_DIR, Files::delete, Files::delete);
+			forEachFileAndDir(OUTPUT_DIR, Files::delete);
+			Files.delete(OUTPUT_DIR);
 		}
 
 		Files.createDirectory(OUTPUT_DIR);
-		Path SHARED_SRC = SHARED_DIR.resolve("src");
-		Path SHARED_LIB = BUILD_DIR.resolve("shared.jar");
 		System.out.println("Searching for shared code.");
 		var sharedFiles = getSourceFiles(SHARED_SRC);
 		System.out.println("Compiling shared code.");
 		if(compile(SHARED_LIB, SHARED_SRC, sharedFiles, List.of())) {
-			Path CLIENT_LIBS = CLIENT_DIR.resolve("libraries");
-			Path LWJGL_DIR = CLIENT_LIBS.resolve("lwjgl");
 			System.out.println("Shared code compiled.");
 			Collection<Path> modules = new ArrayList<Path>(6);
 			modules.add(LWJGL_DIR.resolve("lwjgl.jar"));
@@ -82,8 +92,6 @@ public class Build {
 			modules.add(LWJGL_DIR.resolve("lwjgl-opengl.jar"));
 			modules.add(LWJGL_DIR.resolve("lwjgl-openal.jar"));
 			modules.add(SHARED_LIB);
-			Path CLIENT_SRC = CLIENT_DIR.resolve("src");
-			Path CLIENT_LIB = BUILD_DIR.resolve("client.jar");
 			System.out.println("Searching for client code.");
 			var clientFiles = getSourceFiles(CLIENT_SRC);
 			System.out.println("Compiling client code.");
@@ -96,10 +104,9 @@ public class Build {
 					moduleNames.add("jdk.management.agent");
 					moduleNames.add("jdk.management.jfr");
 				}
-				Path JVM_DIR = OUTPUT_DIR.resolve("jvm");
 				int result = jlink(JVM_DIR, modules, moduleNames);
 				if(result == 0) {
-					postJlink(JVM_DIR, LWJGL_DIR, CLIENT_LIBS.resolve("json"));
+					postJlink(JVM_DIR, LWJGL_DIR, JSON_DIR);
 				} else {
 					System.out.println("jlink failed with error " + result + ".");
 				}
@@ -114,14 +121,22 @@ public class Build {
 	private static void postJlink(Path JVM_DIR, Path LWJGL_DIR, Path JSON_DIR)
 		throws IOException, InterruptedException {
 		System.out.println("done.\nMoving header files and deleting unecessary files.");
-		traverse(INCLUDE_DIR, Files::delete, Files::delete);
+		if(Files.exists(INCLUDE_DIR)) {
+			forEachFileAndDir(INCLUDE_DIR, Files::delete);
+			Files.delete(INCLUDE_DIR);
+		}
 
 		//create include directory
 		Files.createDirectory(INCLUDE_DIR);
 
 		//move header files to Windows directory
-		traverse(JVM_DIR.resolve("include"), file ->
-			Files.move(file, INCLUDE_DIR.resolve(file.getFileName())), Files::delete);
+		forEachFileAndDir(JVM_DIR.resolve("include"), path -> {
+			if(Files.isDirectory(path)) {
+				Files.delete(path);
+			} else if(Files.isRegularFile(path)) {
+				Files.move(path, INCLUDE_DIR.resolve(path.getFileName()));
+			}
+		});
 
 		//delete unnecessary java.base files
 		Files.delete(JVM_DIR.resolve("bin").resolve("java.exe"));
@@ -132,13 +147,11 @@ public class Build {
 		System.out.print("Copying game files and natives... ");
 
 		//copy resources while preserving file system structure
-		Path RESOURCES_SRC_DIR = CLIENT_DIR.resolve("resources");
-		Path RESOURCES_OUT_DIR = OUTPUT_DIR.resolve("resources");
-		Files.walk(RESOURCES_SRC_DIR).forEach(path -> {
+		Files.walk(RES_SRC_DIR).forEach(path -> {
 			try {
-				Files.copy(path, RESOURCES_OUT_DIR.resolve(RESOURCES_SRC_DIR.relativize(path)));
+				Files.copy(path, RES_OUT_DIR.resolve(RES_SRC_DIR.relativize(path)));
 			} catch(IOException e) {
-				throw new RuntimeException(e);
+				throw new RuntimeException("Failed to copy client resources", e);
 			}
 		});
 
@@ -184,8 +197,8 @@ public class Build {
 			"msbuild",
 			"-nologo",
 			"-verbosity:minimal",
-			LAUNCHER_PROJECT_FILE.toString(),
-			"-p:Platform=" + ARCH + ";Configuration=Release"
+			MSBUILD_FILE.toString(),
+			"-p:Configuration=Release;Platform=" + ARCH
 		).inheritIO().start().waitFor();
 	}
 
@@ -197,32 +210,34 @@ public class Build {
 			zip.setLevel(Deflater.BEST_COMPRESSION);
 			zip.setMethod(ZipOutputStream.DEFLATED);
 			Instant compileTime = Instant.now();
-			traverse(OUTPUT_DIR, file -> {
-				ZipEntry entry = new ZipEntry(OUTPUT_DIR.relativize(file).toString().replace('\\', '/'));
-				entry.setCreationTime(FileTime.from(compileTime));
-				entry.setLastModifiedTime(FileTime.from(compileTime));
-				zip.putNextEntry(entry);
-				zip.write(Files.readAllBytes(file));
-				zip.closeEntry();
-			}, path -> {});
+			forEachFile(OUTPUT_DIR, Files::isReadable, file -> {
+				try {
+					ZipEntry entry = new ZipEntry(OUTPUT_DIR.relativize(file).toString().replace('\\', '/'));
+					entry.setCreationTime(FileTime.from(compileTime));
+					entry.setLastModifiedTime(FileTime.from(compileTime));
+					zip.putNextEntry(entry);
+					zip.write(Files.readAllBytes(file));
+					zip.closeEntry();
+				} catch(IOException e) {
+					throw new RuntimeException("Failed to zip", e);
+				}
+			});
 		}
 		System.out.println("Zipped to " + NumberFormat.getInstance().format(Files.size(outFile)) + " bytes.");
 	}
 
-	private static Iterable<? extends JavaFileObject> getSourceFiles(Path src) throws IOException {
-		PathMatcher match = src.getFileSystem().getPathMatcher("glob:*.java");
-		return Files.find(src, Integer.MAX_VALUE, (path, attr) ->
-			attr.isRegularFile() && match.matches(path.getFileName()))
-			.map(SourceFile::new)
-			.collect(Collectors.toList());
+	private static Iterable<JavaFileObject> getSourceFiles(Path src) throws IOException {
+		Collection<JavaFileObject> files = new ArrayList<>();
+		PathMatcher matcher = file -> file.getFileName().toString().endsWith(".java");
+		forEachFile(src, matcher, file -> files.add(new SourceFile(file)));
+		return files;
 	}
 
-	private static boolean compile(Path outJar, Path diag, Iterable<? extends JavaFileObject> sources,
-	                               Collection<Path> modules) throws IOException {
+	private static boolean compile(Path outJar, Path diag,
+		Iterable<JavaFileObject> sources, Collection<Path> modules) throws IOException {
 		JavaCompiler javac = ToolProvider.getSystemJavaCompiler();
 		var diagnostics = createDiagnostic(diag);
-		try(var fileManager = new JarOutFileManager(
-			javac.getStandardFileManager(diagnostics, Locale.getDefault(), SRC_CHARSET), outJar, modules)) {
+		try(var fileManager = new JarOutFileManager(javac, diagnostics, outJar, modules)) {
 			return javac.getTask(
 				null, //writer
 				fileManager, //file manager
@@ -278,71 +293,73 @@ public class Build {
 		void accept(Path path) throws IOException;
 	}
 
-	private static void traverse(Path directory,
-	                             PathConsumer fileAction, PathConsumer dirAction) throws IOException {
-		Files.walkFileTree(directory, new SimpleFileVisitor<Path>() {
-			@Override
-			public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-				fileAction.accept(file);
-				return FileVisitResult.CONTINUE;
+	private static void forEachFileAndDir(Path dir, PathConsumer action) throws IOException {
+		try(var paths = Files.newDirectoryStream(dir)) {
+			for(Path path : paths) {
+				if(Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) {
+					action.accept(path);
+				} else if(Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)) {
+					forEachFileAndDir(path, action);
+					action.accept(path);
+				}
 			}
+		}
+	}
 
-			@Override
-			public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-				if(exc != null)
-					throw exc;
-				dirAction.accept(dir);
-				return FileVisitResult.CONTINUE;
+	private static void forEachFile(Path dir, PathMatcher matcher, PathConsumer action) throws IOException {
+		try(var paths = Files.newDirectoryStream(dir,
+			path -> Files.isDirectory(path) || matcher.matches(path))) {
+			for(Path path : paths) {
+				if(Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) {
+					action.accept(path);
+				} else if(Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)) {
+					forEachFile(path, matcher, action);
+				}
 			}
-		});
+		}
 	}
 
 	//TODO write directly to a jar file to use up less space
 	private static class JarOutFileManager extends ForwardingJavaFileManager<StandardJavaFileManager> {
+		private final Path outJar;
+		private final ByteArrayOutputStream buffer;
 		private final JarOutputStream outFile;
 
-		public JarOutFileManager(StandardJavaFileManager fm, Path outJar, Collection<Path> modules)
-			throws IOException {
-			super(fm);
+		public JarOutFileManager(JavaCompiler compiler, DiagnosticListener<JavaFileObject> listener,
+			Path outJar, Collection<Path> modules) throws IOException {
+			super(compiler.getStandardFileManager(listener, Locale.getDefault(), SRC_CHARSET));
 			fileManager.setLocationFromPaths(StandardLocation.MODULE_PATH, modules);
+			this.outJar = outJar;
 			Manifest manifest = new Manifest();
-			var attribs = manifest.getMainAttributes();
+			Attributes attribs = manifest.getMainAttributes();
 			attribs.put(Name.MANIFEST_VERSION, "1.0");
-			attribs.put(new Name("Created-By"), Runtime.version() + " (" + System.getProperty("java.vendor") + ")");
-			attribs.put(Name.MULTI_RELEASE, Boolean.toString(false));
 			attribs.put(Name.SPECIFICATION_TITLE, "Sandbox2D");
 			attribs.put(Name.SPECIFICATION_VENDOR, AUTHOR);
-			outFile = new JarOutputStream(Files.newOutputStream(outJar), manifest);
+			outFile = new JarOutputStream(buffer = new ByteArrayOutputStream(50_000), manifest);
+			outFile.setComment("Sandbox2D binaries, by " + AUTHOR);
 			outFile.setLevel(Deflater.BEST_COMPRESSION);
-			outFile.setComment("Sandbox2D");
 		}
 
 		@Override
 		public JavaFileObject getJavaFileForOutput(Location location,
-		    String className, Kind kind, FileObject sibling) throws IOException {
+		    String className, Kind kind, FileObject sibling) {
 			if(location instanceof StandardLocation type) {
 				return switch(type) {
 					default -> throw new UnsupportedOperationException(location + " " + className);
 					case CLASS_OUTPUT -> {
 						System.out.println("OUTPUT FROM " +
 							Path.of(sibling.getName()).getFileName() + " TO " + className);
-						String classFormatted = className.replace('.', '/') + kind.extension;
-						var entry = new JavaJarEntry(classFormatted, outFile);
-						outFile.putNextEntry(entry);
-						yield entry;
+						yield new JavaJarEntry(className.replace('.', '/') + kind.extension, outFile);
 					}
 				};
 			} else {
-				throw new UnsupportedOperationException(location.toString());
+				throw new UnsupportedOperationException(className);
 			}
 		}
 
 		@Override
 		public boolean hasLocation(Location location) {
-			return location instanceof StandardLocation type && switch(type) {
-				case MODULE_PATH, CLASS_OUTPUT -> true;
-				default -> false;
-			};
+			return location == StandardLocation.MODULE_PATH;
 		}
 
 		@Override
@@ -355,8 +372,11 @@ public class Build {
 
 		@Override
 		public void close() throws IOException {
-			super.close();
 			outFile.close();
+			try(var out = Files.newOutputStream(outJar)) {
+				buffer.writeTo(out);
+			}
+			super.close();
 		}
 	}
 
@@ -439,11 +459,11 @@ public class Build {
 	}
 
 	private static class JavaJarEntry extends JarEntry implements JavaFileObject {
-		private final JarOutputStream outFile;
+		private final JarOutputStream output;
 
 		public JavaJarEntry(String name, JarOutputStream out) {
 			super(name);
-			this.outFile = out;
+			this.output = out;
 		}
 
 		@Override
@@ -477,12 +497,33 @@ public class Build {
 		}
 
 		@Override
-		public OutputStream openOutputStream() {
-			return new BufferedOutputStream(outFile) {
+		public OutputStream openOutputStream() throws IOException {
+			output.putNextEntry(this);
+			return new OutputStream() {
+				@Override
+				public void write(int b) throws IOException {
+					output.write(b);
+				}
+
+				@Override
+				public void write(byte[] b) throws IOException {
+					output.write(b);
+				}
+
+				@Override
+				public void write(byte[] b, int off, int len) throws IOException {
+					output.write(b, off, len);
+				}
+
+				@Override
+				public void flush() throws IOException {
+					output.flush();
+				}
+
 				@Override
 				public void close() throws IOException {
 					flush();
-					outFile.closeEntry();
+					output.closeEntry();
 				}
 			};
 		}
