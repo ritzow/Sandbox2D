@@ -1,0 +1,9 @@
+.text-field {
+	-fx-border-color: gray;
+	-fx-focus-color: inherit;
+	-fx-background-color: -fx-text-box-border, -fx-control-inner-background;
+}
+
+.root: focused {
+	-fx-background-color: -fx-outer-border, -fx-inner-border, -fx-body-color;
+}

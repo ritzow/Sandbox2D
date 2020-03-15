@@ -4,12 +4,8 @@
  * @author Solomon Ritzow
  */
 module ritzow.sandbox.shared {
-	exports ritzow.sandbox.network to
-		ritzow.sandbox.client,
-		ritzow.sandbox.server;
-	exports ritzow.sandbox.util to
-		ritzow.sandbox.client,
-		ritzow.sandbox.server;
+	exports ritzow.sandbox.network;
+	exports ritzow.sandbox.util;
 	exports ritzow.sandbox.world;
 	exports ritzow.sandbox.world.component;
 	exports ritzow.sandbox.world.item;

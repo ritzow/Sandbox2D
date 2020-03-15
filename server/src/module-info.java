@@ -3,7 +3,7 @@
  *
  */
 module ritzow.sandbox.server {
-	exports ritzow.sandbox.server;
+	requires ritzow.sandbox.shared;
 	exports ritzow.sandbox.server.network;
-	requires transitive ritzow.sandbox.shared;
+	exports ritzow.sandbox.server;
 }
