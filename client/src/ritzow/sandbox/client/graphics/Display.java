@@ -1,7 +1,5 @@
 package ritzow.sandbox.client.graphics;
 
-import static org.lwjgl.glfw.GLFW.*;
-
 import java.nio.DoubleBuffer;
 import java.nio.IntBuffer;
 import org.lwjgl.glfw.GLFWImage;
@@ -11,6 +9,8 @@ import ritzow.sandbox.client.input.Control;
 import ritzow.sandbox.client.input.Control.Button;
 import ritzow.sandbox.client.input.InputContext;
 import ritzow.sandbox.client.input.InputProvider;
+
+import static org.lwjgl.glfw.GLFW.*;
 
 public final class Display implements InputProvider {
 	private final long displayID;
@@ -76,9 +76,9 @@ public final class Display implements InputProvider {
 
 	@Override
 	public boolean isControlActivated(Button buttonControl) {
-		return switch(buttonControl.buttonType) {
-			case Control.Button.TYPE_MOUSE -> glfwGetMouseButton(displayID, buttonControl.buttonCode) == GLFW_PRESS;
-			case Control.Button.TYPE_KEYBOARD -> glfwGetKey(displayID, buttonControl.buttonCode) == GLFW_PRESS;
+		return switch(buttonControl.type()) {
+			case Control.BUTTON_TYPE_MOUSE -> glfwGetMouseButton(displayID, buttonControl.code()) == GLFW_PRESS;
+			case Control.BUTTON_TYPE_KEYBOARD -> glfwGetKey(displayID, buttonControl.code()) == GLFW_PRESS;
 			default -> false;
 		};
 	}
@@ -187,13 +187,12 @@ public final class Display implements InputProvider {
 			int height = glfwGetVideoMode(monitor).height();
 			int refreshRate = glfwGetVideoMode(monitor).refreshRate();
 			glfwSetWindowMonitor(displayID, monitor, 0, 0, width, height, refreshRate);
-			focus();
 		} else {
 			glfwSetWindowMonitor(displayID, 0, windowedX, windowedY, windowedWidth, windowedHeight, GLFW_DONT_CARE);
-			focus();
 		}
+		focus();
 	}
-	
+
 	public void poll(InputContext input) {
 		handler = input;
 		glfwPollEvents();
@@ -205,39 +204,22 @@ public final class Display implements InputProvider {
 		glfwSetKeyCallback(displayID, (windowID, key, scancode, action, mods) -> {
 			handler.keyboardButton(key, scancode, action, mods);
 			if(action == GLFW_PRESS) {
-				handler.buttonControls().getOrDefault(new Button(Control.Button.TYPE_KEYBOARD, key), () -> {}).run();
+				handler.buttonControls().getOrDefault(new Button(Control.BUTTON_TYPE_KEYBOARD, key), () -> {}).run();
 			}
-		});
-
-		glfwSetScrollCallback(displayID, (windowID, xoffset, yoffset) -> {
-			handler.mouseScroll(xoffset, yoffset);
 		});
 
 		glfwSetMouseButtonCallback(displayID, (windowID, button, action, mods) -> {
 			handler.mouseButton(button, action, mods);
 			if(action == GLFW_PRESS) {
-				handler.buttonControls().getOrDefault(new Button(Control.Button.TYPE_MOUSE, button), () -> {}).run();
+				handler.buttonControls().getOrDefault(new Button(Control.BUTTON_TYPE_MOUSE, button), () -> {}).run();
 			}
 		});
 
-		glfwSetFramebufferSizeCallback(displayID, (windowID, width, height) -> {
-			handler.framebufferSize(width, height);
-		});
-
-		glfwSetWindowRefreshCallback(displayID, windowID -> {
-			handler.windowRefresh();
-		});
-
-		glfwSetWindowCloseCallback(displayID, windowID -> {
-			handler.windowClose();
-		});
-
-		glfwSetWindowIconifyCallback(displayID, (windowID, iconified) -> {
-			handler.windowIconify(iconified);
-		});
-
-		glfwSetWindowFocusCallback(displayID, (windowID, focused) -> {
-			handler.windowFocus(focused);
-		});
+		glfwSetScrollCallback(displayID, (windowID, xoffset, yoffset) -> handler.mouseScroll(xoffset, yoffset));
+		glfwSetFramebufferSizeCallback(displayID, (windowID, width, height) -> handler.framebufferSize(width, height));
+		glfwSetWindowRefreshCallback(displayID, windowID -> handler.windowRefresh());
+		glfwSetWindowCloseCallback(displayID, windowID -> handler.windowClose());
+		glfwSetWindowIconifyCallback(displayID, (windowID, iconified) -> handler.windowIconify(iconified));
+		glfwSetWindowFocusCallback(displayID, (windowID, focused) -> handler.windowFocus(focused));
 	}
 }

@@ -5,10 +5,10 @@ import ritzow.sandbox.data.TransportableDataReader;
 import ritzow.sandbox.world.block.GrassBlock;
 
 public class ClientGrassBlock extends GrassBlock implements ClientBlockProperties {
-	
+
 	public static final ClientGrassBlock SINGLETON = new ClientGrassBlock();
-	
-	public static final ClientGrassBlock getSingleton(@SuppressWarnings("unused") TransportableDataReader reader) {
+
+	public static ClientGrassBlock getSingleton(@SuppressWarnings("unused") TransportableDataReader reader) {
 		return SINGLETON;
 	}
 

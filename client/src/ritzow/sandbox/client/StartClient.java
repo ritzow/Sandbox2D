@@ -19,20 +19,20 @@ class StartClient {
 
 	/** Native launcher entry point.
 	 * @param args command line arguments as a single String.
-	 * @throws Exception if an exception occurs during program execution **/
+	 * @throws IOException if an exception occurs during program execution **/
 	@SuppressWarnings("unused")
-	public static void run(String args) throws Exception {
+	public static void start(String args) throws IOException {
 		run();
 	}
 
 	/** Command line entry point.
 	 * @param args command line arguments.
-	 * @throws Exception if the program encounters an error. **/
-	public static void main(String[] args) throws Exception {
+	 * @throws IOException if the program encounters an error. **/
+	public static void main(String[] args) throws IOException {
 		run();
 	}
 
-	private static void run() throws Exception {
+	private static void run() throws IOException {
 		log().info("Starting game");
 		long startupStart = System.nanoTime();
 		AudioSystem audio = AudioSystem.getDefault(); //load default audio system

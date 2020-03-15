@@ -87,8 +87,7 @@ public final class JavaxAudioSystem implements ritzow.sandbox.client.audio.Audio
 
 		if(!reachedMaxLines()) {
 			try {
-				var line = createLine();
-				return line;
+				return createLine();
 			} catch (LineUnavailableException e) {
 				throw new RuntimeException(e);
 			}

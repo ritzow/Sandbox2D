@@ -9,14 +9,14 @@ import static ritzow.sandbox.client.data.StandardClientOptions.LIMIT_FPS;
 
 class GameLoop {
 	public interface GameContext {
-		void run(long deltaNanos) throws Exception;
+		void run(long deltaNanos);
 	}
 
 	private static GameContext current;
 
 	private static long lastUpdate;
 
-	public static void start(GameContext initial) throws Exception {
+	public static void start(GameContext initial) {
 		if(current != null)
 			throw new IllegalStateException("GameLoop already started");
 		current = Objects.requireNonNull(initial);
