@@ -4,11 +4,8 @@ import de.matthiasmann.twl.utils.PNGDecoder;
 import de.matthiasmann.twl.utils.PNGDecoder.Format;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.util.concurrent.locks.LockSupport;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
@@ -19,8 +16,6 @@ import ritzow.sandbox.client.graphics.Camera;
 import ritzow.sandbox.util.Utility;
 
 import static org.lwjgl.glfw.GLFW.glfwCreateCursor;
-import static ritzow.sandbox.client.data.StandardClientOptions.FRAME_TIME_LIMIT;
-import static ritzow.sandbox.client.data.StandardClientOptions.LIMIT_FPS;
 
 public class ClientUtility {
 	private static final Logger LOGGER;
@@ -48,22 +43,6 @@ public class ClientUtility {
 
 	public static Logger log() {
 		return LOGGER;
-	}
-
-	public static void limitFramerate(long frameStart) {
-		if(LIMIT_FPS) LockSupport.parkNanos(FRAME_TIME_LIMIT + frameStart - System.nanoTime());
-	}
-
-	public static long frameRateToFrameTimeNanos(long fps) {
-		return 1_000_000_000/fps;
-	}
-
-	public static ByteBuffer load(Path file) throws IOException {
-		try(FileChannel reader = FileChannel.open(file, StandardOpenOption.READ)) {
-			ByteBuffer dest = BufferUtils.createByteBuffer((int)reader.size());
-			reader.read(dest);
-			return dest.flip();
-		}
 	}
 
 	public static long loadGLFWCursor(GLFWImage image, int hotspotX, int hotspotY) {

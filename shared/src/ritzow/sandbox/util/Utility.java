@@ -1,10 +1,17 @@
 package ritzow.sandbox.util;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.SplittableRandom;
-import java.util.function.BooleanSupplier;
+import java.util.concurrent.locks.LockSupport;
+import java.util.function.IntFunction;
+import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
@@ -19,8 +26,17 @@ import static ritzow.sandbox.network.Protocol.BLOCK_INTERACT_RANGE;
 	(matrix/random math, time, synchronization, hitboxes)
 **/
 public final class Utility {
+
 	private Utility() {
 		throw new UnsupportedOperationException("Utility class cannot be instantiated");
+	}
+
+	public static void limitFramerate(long frameStart, long frameTimeLimit) {
+		LockSupport.parkNanos(frameTimeLimit + frameStart - System.nanoTime());
+	}
+
+	public static long frameRateToFrameTimeNanos(long fps) {
+		return 1_000_000_000/fps;
 	}
 
 	public static String formatCurrentTime() {
@@ -36,33 +52,22 @@ public final class Utility {
 	}
 
 	public static float clamp(float min, float value, float max) {
-		float first = (value <= max) ? value : max;
-		return (min >= first) ? min : first;
+		float first = Math.min(value, max);
+		return Math.max(min, first);
 	}
 
-	public interface GridAction {
-		void perform(int x, int y);
+	public static ByteBuffer loadCompressedFile(Path file) throws IOException {
+		return Bytes.decompress(load(file, ByteBuffer::allocate));
 	}
 
-	/**
-	 * Sleeps for the provided number of milliseconds
-	 * @param milliseconds the number of milliseconds to sleep for
-	 * @throws IllegalStateException if the thread is interrupted while sleeping
-	 */
-	public static void sleepMillis(long milliseconds) {
-		//LockSupport.parkNanos(milliseconds * 1_000_000);
-		try {
-			Thread.sleep(Math.max(0, milliseconds));
-		} catch (InterruptedException e) {
-			throw new RuntimeException(e);
-		}
-	}
-
-	public static void sleepNanos(long nanoseconds) {
-		try {
-			Thread.sleep(Math.max(0, nanoseconds)/1_000_000);
-		} catch (InterruptedException e) {
-			throw new RuntimeException(e);
+	public static ByteBuffer load(Path file, IntFunction<ByteBuffer> buffer) throws IOException {
+		try(FileChannel reader = FileChannel.open(file, StandardOpenOption.READ)) {
+			long length = reader.size();
+			if(length > Integer.MAX_VALUE)
+				throw new RuntimeException(file + " too large " + formatSize(length));
+			ByteBuffer dest = buffer.apply((int)length);
+			reader.read(dest);
+			return dest.flip();
 		}
 	}
 
@@ -70,10 +75,6 @@ public final class Utility {
 		long start = System.nanoTime();
 		while(System.nanoTime() - start < nanoseconds)
 			Thread.onSpinWait();
-	}
-
-	private static void throwInterrupted(InterruptedException cause) {
-		throw new IllegalStateException(Thread.currentThread() + " should not be interrupted", cause);
 	}
 
 	/**
@@ -114,7 +115,7 @@ public final class Utility {
 	public static boolean canPlace(PlayerEntity player, long lastPlaceTime, World world, int blockX, int blockY) {
 		BlockGrid front = world.getForeground();
 		BlockGrid back = world.getBackground();
-		return Utility.nanosSince(lastPlaceTime) > Protocol.BLOCK_INTERACT_COOLDOWN_NANOSECONDS &&
+		return Utility.nanosSince(lastPlaceTime) > BLOCK_INTERACT_COOLDOWN_NANOSECONDS &&
 				inRange(player, blockX, blockY) &&
 				front.isValid(blockX, blockY) &&
 				!front.isBlock(blockX, blockY) &&
@@ -124,46 +125,7 @@ public final class Utility {
 
 	public static boolean inRange(Entity player, int blockX, int blockY) {
 		return Utility.withinDistance(player.getPositionX(), player.getPositionY(),
-				blockX, blockY, Protocol.BLOCK_INTERACT_RANGE);
-	}
-
-	public static void notify(Object o) {
-		synchronized(o) {
-			o.notifyAll();
-		}
-	}
-
-	/**
-	 * Waits on {@code lock} and returns once {@code condition} returns {@code true}.
-	 * @param lock the object to wait to be notified by.
-	 * @param condition the condition to check.
-	 * @throws InterruptedException if the thread is interrupted while waiting.
-	 */
-	public static void waitOnCondition(Object lock, BooleanSupplier condition) throws InterruptedException {
-		if(!condition.getAsBoolean()) {
-			synchronized(lock) {
-				lock.wait();
-				if(!condition.getAsBoolean())
-					throw new IllegalStateException("condition not met");
-			}
-		}
-	}
-
-	public static void waitOnCondition(Object lock, long timeoutMillis, BooleanSupplier condition) {
-		if(timeoutMillis == 0)
-			throw new IllegalArgumentException("timeout of 0 not allowed, use other overload");
-		if(!condition.getAsBoolean()) {
-			long start = System.currentTimeMillis();
-			synchronized(lock) {
-				try {
-					lock.wait(timeoutMillis);
-				} catch(InterruptedException e) {
-					throwInterrupted(e);
-				}
-			}
-			if((System.currentTimeMillis() - start) < timeoutMillis && !condition.getAsBoolean())
-				throw new IllegalStateException("condition not met");
-		}
+				blockX, blockY, BLOCK_INTERACT_RANGE);
 	}
 
 	public static double degreesPerSecToRadiansPerMillis(double degreesPerSec) {
@@ -180,7 +142,6 @@ public final class Utility {
 	}
 
 	/** Returns an rotation in radians that represents the change in angle after rotating around a point **/
-	@SuppressWarnings("javadoc")
 	public static float rotateAround(float x, float y, float centerX, float centerY) {
 		return (float)Math.atan2(x-centerX, y-centerY);
 	}
@@ -286,8 +247,10 @@ public final class Utility {
 			return magnitude;
 	}
 
+	private static final SplittableRandom RANDOM = new SplittableRandom();
+
 	public static float random(double min, double max) {
-		return (float)new SplittableRandom().nextDouble(min, max);
+		return (float)RANDOM.nextDouble(min, max);
 	}
 
 	public static void launchAtAngle(Entity e, float angle, float velocity) {
