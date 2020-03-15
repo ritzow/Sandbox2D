@@ -3,7 +3,6 @@ package ritzow.sandbox.network;
 import java.net.*;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.List;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -18,10 +17,12 @@ public class NetworkUtility {
 		PORT_PARSER = Pattern.compile("(?<=\\]\\:)[0-9]+");
 
 	public static InetSocketAddress parseSocket(String address, int defaultPort) {
-		Matcher addressMatcher = ADDRESS_PARSER.matcher(address);
-		Matcher portMatcher = PORT_PARSER.matcher(address);
 		try { //TODO handle cases: IPv4 with no brackets with/without port, IPv6 with no brackets
-			if(addressMatcher.find()) {
+			Matcher addressMatcher = ADDRESS_PARSER.matcher(address);
+			if(address.equalsIgnoreCase("localhost")) {
+				return new InetSocketAddress(InetAddress.getLocalHost(), defaultPort);
+			} else if(addressMatcher.find()) {
+				Matcher portMatcher = PORT_PARSER.matcher(address);
 				return new InetSocketAddress(
 					InetAddress.getByName(addressMatcher.group()),
 					portMatcher.find() ? Integer.parseUnsignedInt(portMatcher.group()) : defaultPort
@@ -67,11 +68,22 @@ public class NetworkUtility {
 		return address instanceof Inet6Address;
 	}
 
-	/** Returns the computer's loopback address for same-machine communication
+	public static InetSocketAddress createLoopbackSocket() throws SocketException {
+		return new InetSocketAddress(getLoopbackAddress(), ANY_PORT);
+	}
+
+	/** Returns the computer's loopback address (localhost) for same-machine communication.
 	 * @return The loopback address or null.
 	 * @throws SocketException if there is an error querying the loopback address. **/
 	public static InetAddress getLoopbackAddress() throws SocketException {
-		return getBestAddress(NetworkUtility::isLoopback, NetworkUtility::compareAddresses);
+		return getBestAddress(NetworkUtility::isLoopback, NetworkUtility::compareProtocols);
+	}
+
+	/** Returns a suitable IP address and port for communicating over the Internet.
+	 * @return An internet-facing socket on any port.
+	 * @throws SocketException if there is an error querying the IP address. **/
+	public static InetSocketAddress createPublicSocket() throws SocketException {
+		return new InetSocketAddress(getPrimaryAddress(), ANY_PORT);
 	}
 
 	/** Returns a suitable IP address if available and null if not available
@@ -86,15 +98,14 @@ public class NetworkUtility {
 		//get main network interface
 		//get interface's addresses
 		//filter out special addresses
-		//put best addresses first
+		//get best address
 		return NetworkInterface.networkInterfaces()
 			.filter(filter)
-			.map(NetworkInterface::getInterfaceAddresses)
-			.flatMap(List::stream)
+			.flatMap(i -> i.getInterfaceAddresses().stream())
 			.filter(address -> !address.getAddress().isLinkLocalAddress())
-			.min(comparator) //get the best address
-			.map(InterfaceAddress::getAddress)
-			.orElseThrow();
+			.min(comparator)//get the best address
+			.orElseThrow()
+			.getAddress();
 	}
 
 	public static Collection<InetAddress> getAllAddresses() throws SocketException {
@@ -103,12 +114,24 @@ public class NetworkUtility {
 				.collect(Collectors.toList());
 	}
 
+	private static int compareProtocols(InterfaceAddress a, InterfaceAddress b) {
+		boolean aIs6 = isIPv6(a.getAddress()), bIs6 = isIPv6(b.getAddress());
+		if(aIs6 == bIs6) {
+			return 0;
+		} else if(aIs6) {
+			return -1;
+		} else {
+			return 1;
+		}
+	}
+
+	//prioritize IPv6 over address scope
 	private static int compareAddresses(InterfaceAddress a, InterfaceAddress b) {
-		boolean aIs6 = isIPv6(a.getAddress());
-		if(aIs6 && isIPv6(b.getAddress())) {
-			//put the address with larger scope first
-			return b.getNetworkPrefixLength() - a.getNetworkPrefixLength();
-		} else return aIs6 ? -1 : 1;
+		if(a.getNetworkPrefixLength() < b.getNetworkPrefixLength()) {
+			return -1;
+		} else if(a.getNetworkPrefixLength() > b.getNetworkPrefixLength()) {
+			return 1;
+		} else return compareProtocols(a, b);
 	}
 
 	private static boolean filterPublicInterfaces(NetworkInterface network) {
