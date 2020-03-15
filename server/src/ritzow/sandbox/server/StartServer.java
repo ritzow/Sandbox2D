@@ -5,6 +5,7 @@ import java.net.BindException;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.stream.Collectors;
 import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.network.NetworkUtility;
 import ritzow.sandbox.network.Protocol;
@@ -51,7 +52,7 @@ class StartServer {
 		boolean loadFromFile = Files.exists(SAVE_FILE);
 		System.out.print((loadFromFile ? "Loading" : "Generating") + " world... ");
 		server.setCurrentWorld(loadFromFile ? loadWorld(SAVE_FILE) : SinusoidWorldGenerator.builder()
-			.width(100_000)
+			.width(10_000)
 			.generate());
 		System.out.println("took " + Utility.formatTime(Utility.nanosSince(time)) + ".");
 	}
@@ -137,11 +138,8 @@ class StartServer {
 
 	private static void listCommmand(String args) {
 		if(server.getClientCount() > 0) {
-			System.out.println("Connected clients:");
-			for(var string : server.listClients()) {
-				System.out.print("  - ");
-				System.out.println(string);
-			}
+			System.out.print(server.clientNames()
+				.collect(Collectors.joining("\n  - ", "Connected clients:\n  - ", "\n")));
 		} else {
 			System.out.println("No connected clients.");
 		}

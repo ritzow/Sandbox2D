@@ -7,6 +7,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.util.*;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.data.Transportable;
 import ritzow.sandbox.network.NetworkUtility;
@@ -82,11 +83,9 @@ public class Server {
 		return channel.isOpen();
 	}
 
-	public String[] listClients() {
-		return clients.values()
-			.stream()
-			.map(ClientState::formattedName)
-			.toArray(String[]::new);
+	public Stream<String> clientNames() {
+		return clients.values().stream()
+			.map(ClientState::formattedName);
 	}
 
 	public int getClientCount() {
