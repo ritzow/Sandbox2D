@@ -24,7 +24,8 @@ public abstract class PlayerEntity extends Entity implements Living {
 	protected static final boolean JETPACK_MODE = false;
 	protected static final float
 			SIZE_SCALE		= 1f,
-			MOVEMENT_SPEED	= Utility.convertPerSecondToPerNano(12.5f /* human running speed meters */) * SIZE_SCALE,
+			MOVEMENT_SPEED	= Utility.convertPerSecondToPerNano(
+				12.5f /* human running speed meters */) * SIZE_SCALE,
 			JUMP_VELOCITY	= Utility.convertPerSecondToPerNano(11),
 			AIR_ACCELERATION	= Utility.convertAccelerationSecondsNanos(50),
 			AIR_MAX_SPEED = 0.5f * MOVEMENT_SPEED;

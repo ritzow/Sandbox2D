@@ -101,12 +101,12 @@ public final class Protocol {
 		//1 bit unused
 		//1 bit unused
 		//1 byte unsigned item slot TODO not currently unsigned
-		public static byte MOVE_LEFT = 			0b00000001;
-		public static byte MOVE_RIGHT = 		0b00000010;
-		public static byte MOVE_UP = 			0b00000100;
-		public static byte MOVE_DOWN = 			0b00001000;
-		public static byte PRIMARY_ACTION = 	0b00010000;
-		public static byte SECONDARY_ACTION = 	0b00100000;
+		public static final byte MOVE_LEFT = 			0b00000001;
+		public static final byte MOVE_RIGHT = 			0b00000010;
+		public static final byte MOVE_UP = 				0b00000100;
+		public static final byte MOVE_DOWN = 			0b00001000;
+		public static final byte PRIMARY_ACTION = 		0b00010000;
+		public static final byte SECONDARY_ACTION = 	0b00100000;
 
 		public static boolean isPrimary(short state) {
 			return (state & PRIMARY_ACTION) == PRIMARY_ACTION;

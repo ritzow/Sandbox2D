@@ -10,5 +10,5 @@ package ritzow.sandbox.data;
 public interface Transportable {
 	/** @param ser The serializer to use to encode the data.
 	 * @return a byte array representing the object, which can be restored exactly by calling the byte array constructor of the object **/
-	public byte[] getBytes(Serializer ser);
+	byte[] getBytes(Serializer ser);
 }
