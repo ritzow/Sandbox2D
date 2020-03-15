@@ -4,7 +4,8 @@
 JavaVMInitArgs GetJavaInitArgs() noexcept {
 	static JavaVMOption options[] = {
 		{(char*)"-Djdk.module.main=ritzow.sandbox.client"},
-		{(char*)"--enable-preview"}
+		{(char*)"--enable-preview"},
+		{(char*)"-XX:-UsePerfData"}
 	};
 
 	return {
