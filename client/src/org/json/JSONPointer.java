@@ -186,7 +186,7 @@ public class JSONPointer {
         this.refTokens = new ArrayList<String>(refTokens);
     }
 
-    private static String unescape(String token) {
+    private String unescape(String token) {
         return token.replace("~1", "/").replace("~0", "~")
                 .replace("\\\"", "\"")
                 .replace("\\\\", "\\");
@@ -228,13 +228,13 @@ public class JSONPointer {
      * @return the matched object. If no matching item is found a
      * @throws JSONPointerException is thrown if the index is out of bounds
      */
-    private static Object readByIndexToken(Object current, String indexToken) throws JSONPointerException {
+    private Object readByIndexToken(Object current, String indexToken) throws JSONPointerException {
         try {
             int index = Integer.parseInt(indexToken);
             JSONArray currentArr = (JSONArray) current;
             if (index >= currentArr.length()) {
-                throw new JSONPointerException(format("index %d is out of bounds - the array has %d elements", index,
-                        currentArr.length()));
+                throw new JSONPointerException(format("index %s is out of bounds - the array has %d elements", indexToken,
+                        Integer.valueOf(currentArr.length())));
             }
             try {
 				return currentArr.get(index);
@@ -267,7 +267,7 @@ public class JSONPointer {
      * @param token the JSONPointer segment value to be escaped
      * @return the escaped value for the token
      */
-    private static String escape(String token) {
+    private String escape(String token) {
         return token.replace("~", "~0")
                 .replace("/", "~1")
                 .replace("\\", "\\\\")
