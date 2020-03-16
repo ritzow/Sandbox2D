@@ -84,14 +84,18 @@ class InWorldContext implements GameTalker {
 		worldRenderer = new ClientWorldRenderer(GameState.shader(), cameraGrip.getCamera(), world);
 		interactionControls = new InteractionController();
 		GameState.display().setCursor(GameState.cursorPick());
+		client.setOnTimeout(() -> {
+			log().info("Timed out");
+			onDisconnected();
+		});
 		client.sendReliable(Bytes.of(TYPE_CLIENT_WORLD_BUILT));
 		//apply received packets
-		log().info("Processing " + bufferedMessages.size() + " buffered messages");
 		while(!bufferedMessages.isEmpty()) {
 			QueuedPacket packet = bufferedMessages.poll();
 			process(packet.messageType, packet.packet);
 		}
 		bufferedMessages = null;
+		log().info("Joined world");
 		GameLoop.setContext(this::updateInWorld);
 	}
 
@@ -182,7 +186,7 @@ class InWorldContext implements GameTalker {
 			if(GameState.display().wasClosed()) {
 				GameLoop.stop();
 			} else {
-				GameLoop.setContext(GameState.menuContext()::update);
+				GameState.menuContext().returnToMenu();
 			}
 		}
 	}

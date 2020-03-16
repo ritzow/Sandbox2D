@@ -23,6 +23,11 @@ class MainMenuContext {
 		);
 	}
 
+	public void returnToMenu() {
+		joinContext = null;
+		GameLoop.setContext(this::update);
+	}
+
 	public void update(long delta) {
 		GameState.display().poll(context);
 		refresh(delta);

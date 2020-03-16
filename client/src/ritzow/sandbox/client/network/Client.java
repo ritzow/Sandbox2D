@@ -22,6 +22,7 @@ public class Client {
 	private final Queue<SendPacket> sendQueue;
 	private final Map<SendPacket, Runnable> messageSentActions;
 	private int receiveReliableID, receiveUnreliableID, sendReliableID, sendUnreliableID;
+	private long lastMessageReceive;
 
 	private boolean isUp;
 	private long ping; //rount trip time in nanoseconds
@@ -61,6 +62,7 @@ public class Client {
 	}
 
 	public Client beginConnect() {
+		lastMessageReceive = System.nanoTime();
 		sendReliable(Bytes.of(Protocol.TYPE_CLIENT_CONNECT_REQUEST));
 		return this;
 	}
@@ -131,7 +133,7 @@ public class Client {
 		channel.close();
 	}
 
-	public void startClose() {
+	public void startClose() { //TODO deal with this and close and onTimeout in a cleaner way
 		isUp = false;
 	}
 
@@ -156,14 +158,17 @@ public class Client {
 		try {
 			//already connected to server so no need to check SocketAddress
 			while(isUp && maxReceive > 0 && channel.receive(receiveBuffer) != null) {
+				lastMessageReceive = System.nanoTime();
 				receiveBuffer.flip(); //flip to set limit and prepare to read packet data
 				processReceived(processor); //process messages from the server
 				receiveBuffer.clear(); //clear to prepare for next receive
 				--maxReceive;
 			}
 
-			//TODO create interface type for SendPackets that writes directly to send buffer
-			if(isUp) {
+			if(Utility.nanosSince(lastMessageReceive) > Protocol.TIMEOUT_DISCONNECT) {
+				onTimeout.run();
+			} else if(isUp) {
+				//TODO create interface type for SendPackets that writes directly to send buffer
 				//send unreliable messages
 				while(!sendQueue.isEmpty() && !sendQueue.peek().reliable) {
 					setupSendBuffer(sendBuffer, Protocol.UNRELIABLE_TYPE,
