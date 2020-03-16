@@ -43,7 +43,7 @@ public class World implements Transportable, Iterable<Entity> {
 	private Consumer<Entity> onRemove;
 
 	/** For access protection during entity updates **/
-	private boolean isEntitiesModifiable = true;
+	private boolean isEntitiesUnmodifiable = false;
 
 	/**
 	 * Initializes a new World object with a foreground, background, entity storage, and gravity.
@@ -222,18 +222,13 @@ public class World implements Transportable, Iterable<Entity> {
 	}
 
 	private void checkEntitiesModifiable() {
-		if(!isEntitiesModifiable)
+		if(isEntitiesUnmodifiable)
 			throw new IllegalStateException("cannot add/remove from world: world is being updated");
 	}
 
 	private void addEntity(Entity e) {
 		entities.add(e);
 		entitiesID.put(e.getID(), e);
-	}
-
-	private void removeEntity(Entity e) {
-		entities.remove(e);
-		entitiesID.remove(e.getID());
 	}
 
 	/**
@@ -251,7 +246,7 @@ public class World implements Transportable, Iterable<Entity> {
 	 */
 	public final void remove(Entity e) {
 		checkEntitiesModifiable();
-		removeEntity(e);
+		remove(e.getID());
 	}
 
 	public final Entity remove(int entityID) {
@@ -270,7 +265,7 @@ public class World implements Transportable, Iterable<Entity> {
 	 * @param nanoseconds the amount of time to simulate.
 	 */
 	public final void update(long nanoseconds) {
-		isEntitiesModifiable = false;
+		isEntitiesUnmodifiable = true;
 		var entities = this.entities;
 		int size = entities.size();
 		for(int i = 0; i < size; i++) {
@@ -309,7 +304,7 @@ public class World implements Transportable, Iterable<Entity> {
 				}
 			}
 		}
-		isEntitiesModifiable = true;
+		isEntitiesUnmodifiable = false;
 	}
 
 	private void resolveBlockCollisions(Entity e, long nanoseconds) {
