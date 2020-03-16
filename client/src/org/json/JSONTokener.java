@@ -145,7 +145,7 @@ public class JSONTokener {
 
     /**
      * Checks if the end of the input has been reached.
-     *  
+     *
      * @return true if at the end of the file and we didn't step back
      */
     public boolean end() {
@@ -504,7 +504,7 @@ public class JSONTokener {
      * @return  A JSONException object, suitable for throwing
      */
     public JSONException syntaxError(String message) {
-        return new JSONException(message + this.toString());
+        return new JSONException(message + this);
     }
 
     /**
@@ -515,7 +515,7 @@ public class JSONTokener {
      * @return  A JSONException object, suitable for throwing
      */
     public JSONException syntaxError(String message, Throwable causedBy) {
-        return new JSONException(message + this.toString(), causedBy);
+        return new JSONException(message + this, causedBy);
     }
 
     /**

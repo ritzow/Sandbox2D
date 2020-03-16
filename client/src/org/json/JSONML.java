@@ -255,8 +255,8 @@ public class JSONML {
      * attributes, then the second element will be JSONObject containing the
      * name/value pairs. If the tag contains children, then strings and
      * JSONArrays will represent the child tags.
-     * As opposed to toJSONArray this method does not attempt to convert 
-     * any text node or attribute value to any type 
+     * As opposed to toJSONArray this method does not attempt to convert
+     * any text node or attribute value to any type
      * but just leaves it as a string.
      * Comments, prologs, DTDs, and <code>&lt;[ [ ]]></code> are ignored.
      * @param string The source string.
@@ -277,8 +277,8 @@ public class JSONML {
      * attributes, then the second element will be JSONObject containing the
      * name/value pairs. If the tag contains children, then strings and
      * JSONArrays will represent the child content and tags.
-     * As opposed to toJSONArray this method does not attempt to convert 
-     * any text node or attribute value to any type 
+     * As opposed to toJSONArray this method does not attempt to convert
+     * any text node or attribute value to any type
      * but just leaves it as a string.
      * Comments, prologs, DTDs, and <code>&lt;[ [ ]]></code> are ignored.
      * @param x An XMLTokener.
@@ -325,8 +325,8 @@ public class JSONML {
     public static JSONObject toJSONObject(String string) throws JSONException {
         return (JSONObject)parse(new XMLTokener(string), false, null, false);
     }
-    
-    
+
+
     /**
      * Convert a well-formed (but not necessarily valid) XML string into a
      * JSONObject using the JsonML transform. Each XML tag is represented as
@@ -346,7 +346,7 @@ public class JSONML {
         return (JSONObject)parse(new XMLTokener(string), false, null, keepStrings);
     }
 
-    
+
     /**
      * Convert a well-formed (but not necessarily valid) XML string into a
      * JSONObject using the JsonML transform. Each XML tag is represented as
@@ -450,7 +450,7 @@ public class JSONML {
                     } else if (object instanceof JSONArray) {
                         sb.append(toString((JSONArray)object));
                     } else {
-                        sb.append(object.toString());
+                        sb.append(object);
                     }
                 }
             } while (i < length);
@@ -528,7 +528,7 @@ public class JSONML {
                     } else if (object instanceof JSONArray) {
                         sb.append(toString((JSONArray)object));
                     } else {
-                        sb.append(object.toString());
+                        sb.append(object);
                     }
                 }
             }
