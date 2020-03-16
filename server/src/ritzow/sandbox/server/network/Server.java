@@ -1,7 +1,6 @@
 package ritzow.sandbox.server.network;
 
 import java.io.IOException;
-import java.io.PrintStream;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
@@ -110,13 +109,13 @@ public class Server {
 		Bytes.putInteger(packet, 2, message.length);
 		Bytes.copy(message, packet, 6);
 		sendReliableUnsafe(client, packet);
-		client.status = ClientState.STATUS_KICKED;
+		client.status = STATUS_KICKED;
 		client.disconnectReason = "kicked by server: " + reason;
 	}
 
 	private void onReceive(short type, ClientState client, ByteBuffer packet) {
 		switch(client.status) {
-			case ClientState.STATUS_CONNECTED -> {
+			case STATUS_CONNECTED -> {
 				switch(type) {
 					case TYPE_CLIENT_CONNECT_REQUEST -> processClientConnectRequest(client);
 					case TYPE_CLIENT_WORLD_BUILT -> processClientWorldBuilt(client);
@@ -124,9 +123,9 @@ public class Server {
 				}
 			}
 
-			case ClientState.STATUS_IN_GAME -> {
+			case STATUS_IN_GAME -> {
 				switch(type) {
-					case TYPE_CLIENT_DISCONNECT -> processClientDisconnect(client);
+					case TYPE_CLIENT_DISCONNECT -> client.handleLeave();
 					case TYPE_CLIENT_BREAK_BLOCK -> processClientBreakBlock(client, packet);
 					case TYPE_CLIENT_PLACE_BLOCK -> processClientPlaceBlock(client, packet);
 					case TYPE_CLIENT_BOMB_THROW -> processClientThrowBomb(client, packet);
@@ -136,11 +135,11 @@ public class Server {
 				}
 			}
 
-			case ClientState.STATUS_TIMED_OUT, //TODO will need to do *something*?
-				ClientState.STATUS_INVALID,
-				ClientState.STATUS_REJECTED,
-				ClientState.STATUS_SELF_DISCONNECTED,
-				ClientState.STATUS_KICKED -> {}
+			case STATUS_TIMED_OUT, //TODO will need to do *something*?
+				STATUS_INVALID,
+				STATUS_REJECTED,
+				STATUS_LEAVE,
+				STATUS_KICKED -> {}
 		}
 	}
 
@@ -168,8 +167,8 @@ public class Server {
 			);
 
 			if(Utility.nanosSince(lastClientsUpdate) > NETWORK_SEND_INTERVAL_NANOSECONDS) {
-				sendEntityUpdates();
 				lastClientsUpdate = System.nanoTime();
+				sendEntityUpdates();
 			}
 			sendAllQueued();
 		}
@@ -187,29 +186,31 @@ public class Server {
 			ClientState client = iterator.next();
 			switch(client.status) {
 				//check that the client is still sending pings
-				case ClientState.STATUS_CONNECTED, ClientState.STATUS_IN_GAME
+				case STATUS_CONNECTED, STATUS_IN_GAME
 					-> client.checkReceiveTimeout();
 
 				//disconnect the client without waiting for any response
-				case ClientState.STATUS_TIMED_OUT -> {
+				case STATUS_TIMED_OUT -> {
 					//This could be called again if the client sends more packets
 					iterator.remove();
 					handleDisconnect(client);
 				}
 
 				//disconnect the client after ensuring they have been notified
-				case ClientState.STATUS_KICKED, ClientState.STATUS_SELF_DISCONNECTED -> {
-					if(client.sendQueue.isEmpty()) iterator.remove();
-					handleDisconnect(client);
+				case STATUS_KICKED, STATUS_LEAVE -> {
+					if(client.sendQueue.isEmpty()) {
+						iterator.remove();
+						handleDisconnect(client);
+					}
 				}
 
 				//ensure that the client knows they have been rejected,
 				//but no need to let everyone else know they have been rejected
-				case ClientState.STATUS_REJECTED -> {
+				case STATUS_REJECTED -> {
 					if(client.sendQueue.isEmpty()) iterator.remove();
 				}
 
-				case ClientState.STATUS_INVALID -> {
+				case STATUS_INVALID -> {
 					log("Removed invalid client " + client);
 					iterator.remove();
 				}
@@ -247,10 +248,10 @@ public class Server {
 				populateEntityUpdate(packet, ENTITY_UPDATE_HEADER_SIZE + index * BYTES_PER_ENTITY, entity);
 				entitiesRemaining--;
 				if(entity instanceof PlayerEntity p) {
-					broadcastPlayerState(null, p);
+					broadcastPlayerState(p);
 				}
 			}
-			broadcastUnsafe(packet, false, client -> client.status == ClientState.STATUS_IN_GAME);
+			broadcastUnsafe(packet, false, ClientState::inGame);
 		}
 	}
 
@@ -262,17 +263,17 @@ public class Server {
 		Bytes.putFloat(packet, index + 16, e.getVelocityY());
 	}
 
-	public void broadcastConsoleMessage(String message) {
-		broadcastUnsafe(buildConsoleMessage(message), true, c -> true);
+	public void broadcastConsoleMessage(String message) { //TODO still send for kicked, etc.
+		broadcastUnsafe(buildConsoleMessage(message), true, ClientState::isNotDisconnectState);
 	}
 
 	private void broadcastAndPrint(String consoleMessage) {
-		broadcastUnsafe(buildConsoleMessage(consoleMessage), true, c -> true);
+		broadcastConsoleMessage(consoleMessage);
 		log(consoleMessage);
 	}
 
 	private void processClientWorldBuilt(ClientState client) {
-		client.status = ClientState.STATUS_IN_GAME;
+		client.status = STATUS_IN_GAME;
 		log(NetworkUtility.formatAddress(client.address) + " joined ("
 			+ getClientCount() + " player(s) connected)");
 	}
@@ -284,32 +285,29 @@ public class Server {
 		if(world.contains(player)) {
 			short state = packet.getShort();
 			PlayerState.updatePlayer(player, state);
-			broadcastPlayerState(client, player);
+			broadcastPlayerState(player);
 			//TODO for now ignore the primary/secondary actions
 		} //else what is the point of the player performing the action
 	}
 
-	private void broadcastPlayerState(ClientState client, PlayerEntity player) {
+	private void broadcastPlayerState(PlayerEntity player) {
 		byte[] message = new byte[8];
 		Bytes.putShort(message, 0, TYPE_CLIENT_PLAYER_STATE);
 		Bytes.putInteger(message, 2, player.getID());
 		Bytes.putShort(message, 6, PlayerState.getState(player, false, false));
-		broadcastUnreliable(message, message.length, recipient -> !recipient.equals(client));
+		broadcastUnreliable(message, message.length, ClientState::inGame);
 	}
 
-	public void printDebug(PrintStream out) {
+	public String getDebugInfo() {
 		if(clients.isEmpty()) {
-			out.println("No connected clients.");
+			return "No connected clients.";
 		} else {
+			StringJoiner joiner = new StringJoiner("\n");
 			for(ClientState client : clients.values()) {
-				out.println(client);
+				joiner.add(client.toString());
 			}
+			return joiner.toString();
 		}
-	}
-
-	private static void processClientDisconnect(ClientState client) {
-		client.status = ClientState.STATUS_SELF_DISCONNECTED;
-		client.disconnectReason = "self disconnect";
 	}
 
 	private void processClientBreakBlock(ClientState client, ByteBuffer data) {
@@ -359,7 +357,7 @@ public class Server {
 		Bytes.putShort(packet, 0, TYPE_SERVER_REMOVE_BLOCK);
 		Bytes.putInteger(packet, 2, x);
 		Bytes.putInteger(packet, 6, y);
-		broadcastUnsafe(packet, true, c -> true);
+		broadcastUnsafe(packet, true, ClientState::isNotDisconnectState);
 	}
 
 	private void broadcastPlaceBlock(Block block, int x, int y) {
@@ -369,7 +367,7 @@ public class Server {
 		Bytes.putInteger(packet, 2, x);
 		Bytes.putInteger(packet, 6, y);
 		Bytes.copy(blockData, packet, 10);
-		broadcastUnsafe(packet, true, c -> true);
+		broadcastUnsafe(packet, true, ClientState::isNotDisconnectState);
 	}
 
 	private static final float
@@ -407,7 +405,7 @@ public class Server {
 			world.add(player);
 			client.player = player;
 			//send entity to already connected players
-			broadcastUnsafe(buildAddEntity(player), true, c -> c.status == ClientState.STATUS_IN_GAME);
+			broadcastUnsafe(buildAddEntity(player), true, ClientState::inGame);
 
 			log("Serializing world to send to " + client.formattedName());
 			//TODO don't send world size in ack, takes too long to serialize entire world
@@ -420,7 +418,7 @@ public class Server {
 			Bytes.putShort(response, 0, TYPE_SERVER_CONNECT_ACKNOWLEDGMENT);
 			response[2] = CONNECT_STATUS_REJECTED;
 			sendReliableSafe(client, response);
-			client.status = ClientState.STATUS_REJECTED;
+			client.status = STATUS_REJECTED;
 			client.disconnectReason = "client rejected";
 		}
 	}
@@ -462,7 +460,7 @@ public class Server {
 	}
 
 	public void broadcastAddEntity(Entity e) {
-		broadcastUnsafe(buildAddEntity(e), true, c -> true);
+		broadcastUnsafe(buildAddEntity(e), true, ClientState::isNotDisconnectState);
 	}
 
 	private static byte[] buildAddEntity(Entity e) {
@@ -480,13 +478,13 @@ public class Server {
 		byte[] packet = new byte[2 + 4];
 		Bytes.putShort(packet, 0, TYPE_SERVER_DELETE_ENTITY);
 		Bytes.putInteger(packet, 2, e.getID());
-		broadcastUnsafe(packet, true, c -> true);
+		broadcastUnsafe(packet, true, ClientState::isNotDisconnectState);
 	}
 
 	private void broadcastUnsafe(byte[] data, boolean reliable, Predicate<ClientState> sendToClient) {
 		SendPacket packet = new SendPacket(data, reliable);
 		for(ClientState client : clients.values()) {
-			if(client.isNotDisconnectState() && sendToClient.test(client))
+			if(sendToClient.test(client))
 				client.sendQueue.add(packet);
 		}
 	}
@@ -494,7 +492,7 @@ public class Server {
 	private void broadcastUnreliable(byte[] data, int length, Predicate<ClientState> sendToClient) {
 		SendPacket packet = new SendPacket(Arrays.copyOfRange(data, 0, length), false);
 		for(ClientState client : clients.values()) {
-			if(sendToClient.test(client) && client.isNotDisconnectState()) {
+			if(sendToClient.test(client)) {
 				client.sendQueue.add(packet);
 			}
 		}
@@ -571,7 +569,7 @@ public class Server {
 		try {
 			onReceive(packet.getShort(), client, packet);
 		} catch(ClientBadDataException e) {
-			client.status = ClientState.STATUS_KICKED;
+			client.status = STATUS_KICKED;
 			client.disconnectReason = "Received bad data - " + e.getMessage();
 		}
 	}
@@ -611,18 +609,24 @@ public class Server {
 		}
 	}
 
-	private static final class ClientState {
-		private static final byte
-			STATUS_CONNECTED = 0, //after the client acks the connect ack
-			STATUS_TIMED_OUT = 1, //if the client doesn't send an ack within ack interval
-			STATUS_KICKED = 2, //if server kicks a player or shuts down
-			STATUS_SELF_DISCONNECTED = 3, //if the client manually disconnects
-			STATUS_REJECTED = 4, //if the server rejects the client
-			STATUS_IN_GAME = 5, //if the client has received the world and player and notifies server
-			STATUS_INVALID = 6;
+		/** after the client acks the connect ack */
+	private static final byte
+		STATUS_CONNECTED = 0,
+		/** if the client doesn't send an ack within ack interval */
+		STATUS_TIMED_OUT = 1,
+		/** if server kicks a player or shuts down */
+		STATUS_KICKED = 2,
+		/** if the client manually disconnects */
+		STATUS_LEAVE = 3,
+		/** if the server rejects the client */
+		STATUS_REJECTED = 4,
+		/** if the client has received the world and player and notifies server */
+		STATUS_IN_GAME = 5,
+		/** if the client sent data that didn't make sense */
+		STATUS_INVALID = 6;
 
-		int receiveReliableID, receiveUnreliableID, sendUnreliableID, sendReliableID;
-		int sendAttempts;
+	private static final class ClientState {
+		int sendAttempts, receiveReliableID, receiveUnreliableID, sendUnreliableID, sendReliableID;
 		long sendStartTime, lastMessageReceiveTime;
 		final InetSocketAddress address;
 		final Queue<SendPacket> sendQueue;
@@ -644,28 +648,33 @@ public class Server {
 
 		static String statusToString(byte status) {
 			return switch(status) {
-				case STATUS_CONNECTED -> 			"Connected";
-				case STATUS_TIMED_OUT -> 			"Timed out";
-				case STATUS_KICKED -> 				"Kicked";
-				case STATUS_SELF_DISCONNECTED -> 	"Disconnected";
-				case STATUS_REJECTED -> 			"Rejected";
-				case STATUS_IN_GAME -> 				"In-game";
-				default -> 							"Unknown";
+				case STATUS_CONNECTED -> 	"connected";
+				case STATUS_TIMED_OUT -> 	"timed out";
+				case STATUS_KICKED -> 		"kicked";
+				case STATUS_LEAVE -> 		"disconnected";
+				case STATUS_REJECTED -> 	"rejected";
+				case STATUS_IN_GAME -> 		"in-game";
+				case STATUS_INVALID ->		"invalid";
+				default -> 					"unknown";
 			};
 		}
 
-		private void removeAsInvalid() {
+		void removeAsInvalid() {
 			status = STATUS_INVALID;
 		}
 
-		private boolean isNotDisconnectState() {
+		boolean inGame() {
+			return status == STATUS_IN_GAME;
+		}
+
+		boolean isNotDisconnectState() {
 			return switch (status) {
-				default -> true;
-				case STATUS_TIMED_OUT, STATUS_KICKED, STATUS_SELF_DISCONNECTED, STATUS_REJECTED -> false;
+				case STATUS_CONNECTED, STATUS_IN_GAME -> true;
+				default -> false;
 			};
 		}
 
-		private void checkReceiveTimeout() {
+		void checkReceiveTimeout() {
 			long delta = Utility.nanosSince(lastMessageReceiveTime);
 			if(delta > TIMEOUT_DISCONNECT) {
 				status = STATUS_TIMED_OUT;
@@ -673,13 +682,18 @@ public class Server {
 			}
 		}
 
-		private void handleSendTimeout() {
+		void handleLeave() {
+			status = STATUS_LEAVE;
+			disconnectReason = "self disconnect";
+		}
+
+		void handleSendTimeout() {
 			status = STATUS_TIMED_OUT;
 			disconnectReason = "client didn't respond to reliable message";
 		}
 
 		public String formattedName() {
-			return NetworkUtility.formatAddress(address) + ": " + ClientState.statusToString(status);
+			return NetworkUtility.formatAddress(address) + " (" + statusToString(status) + ')';
 		}
 
 		@Override
