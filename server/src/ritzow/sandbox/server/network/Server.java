@@ -126,16 +126,32 @@ public class Server {
 	}
 
 	private void onReceive(short type, ClientState client, ByteBuffer packet) {
-		switch(type) {
-			case TYPE_CLIENT_CONNECT_REQUEST -> processClientConnectRequest(client);
-			case TYPE_CLIENT_DISCONNECT -> processClientDisconnect(client);
-			case TYPE_CLIENT_BREAK_BLOCK -> processClientBreakBlock(client, packet);
-			case TYPE_CLIENT_PLACE_BLOCK -> processClientPlaceBlock(client, packet);
-			case TYPE_CLIENT_BOMB_THROW -> processClientThrowBomb(client, packet);
-			case TYPE_CLIENT_WORLD_BUILT -> client.status = ClientState.STATUS_IN_GAME;
-			case TYPE_CLIENT_PLAYER_STATE -> processClientPlayerState(client, packet);
-			case TYPE_PING -> {} //do nothing
-			default -> throw new ClientBadDataException("received unknown protocol " + type);
+		switch(client.status) {
+			case ClientState.STATUS_CONNECTED -> {
+				switch(type) {
+					case TYPE_CLIENT_CONNECT_REQUEST -> processClientConnectRequest(client);
+					case TYPE_CLIENT_WORLD_BUILT -> processClientWorldBuilt(client);
+					default -> client.removeAsInvalid();
+				}
+			}
+
+			case ClientState.STATUS_IN_GAME -> {
+				switch(type) {
+					case TYPE_CLIENT_DISCONNECT -> processClientDisconnect(client);
+					case TYPE_CLIENT_BREAK_BLOCK -> processClientBreakBlock(client, packet);
+					case TYPE_CLIENT_PLACE_BLOCK -> processClientPlaceBlock(client, packet);
+					case TYPE_CLIENT_BOMB_THROW -> processClientThrowBomb(client, packet);
+					case TYPE_CLIENT_PLAYER_STATE -> processClientPlayerState(client, packet);
+					case TYPE_PING -> {} //do nothing
+					default -> throw new ClientBadDataException("received unknown protocol " + type);
+				}
+			}
+
+			case ClientState.STATUS_TIMED_OUT, //TODO will need to do *something*.
+				ClientState.STATUS_INVALID,
+				ClientState.STATUS_REJECTED,
+				ClientState.STATUS_SELF_DISCONNECTED,
+				ClientState.STATUS_KICKED -> {}
 		}
 	}
 
@@ -179,6 +195,7 @@ public class Server {
 
 				//disconnect the client without waiting for any response
 				case ClientState.STATUS_TIMED_OUT -> {
+					//This could be called again if the client sends more packets
 					iterator.remove();
 					handleDisconnect(client);
 				}
@@ -193,6 +210,11 @@ public class Server {
 				//but no need to let everyone else know they have been rejected
 				case ClientState.STATUS_REJECTED -> {
 					if(client.sendQueue.isEmpty()) iterator.remove();
+				}
+
+				case ClientState.STATUS_INVALID -> {
+					log("Removed invalid client " + client);
+					iterator.remove();
 				}
 
 				default -> throw new UnsupportedOperationException("Unknown client status");
@@ -253,6 +275,12 @@ public class Server {
 	private void broadcastAndPrint(String consoleMessage) {
 		broadcastUnsafe(buildConsoleMessage(consoleMessage), true, c -> true);
 		log(consoleMessage);
+	}
+
+	private void processClientWorldBuilt(ClientState client) {
+		client.status = ClientState.STATUS_IN_GAME;
+		log(NetworkUtility.formatAddress(client.address) + " joined ("
+			+ getClientCount() + " player(s) connected)");
 	}
 
 	private void processClientPlayerState(ClientState client, ByteBuffer packet) {
@@ -387,14 +415,12 @@ public class Server {
 			//send entity to already connected players
 			broadcastUnsafe(buildAddEntity(player), true, c -> c.status == ClientState.STATUS_IN_GAME);
 
+			log("Serializing world to send to " + client.formattedName());
 			//TODO don't send world size in ack, takes too long to serialize entire world
 			for(byte[] packet : buildAcknowledgementPackets(world, player.getID())) {
 				sendUnsafe(client, packet, true);
 			}
-
-			//sendPlayerID(client, player); //send id of player entity which was sent in world data
-			log(NetworkUtility.formatAddress(client.address) + " joined ("
-					+ getClientCount() + " player(s) connected)");
+			log("World serialized and sent to " + client.formattedName());
 		} else {
 			byte[] response = new byte[3];
 			Bytes.putShort(response, 0, TYPE_SERVER_CONNECT_ACKNOWLEDGMENT);
@@ -529,7 +555,7 @@ public class Server {
 						//if the message is the next one, process it and update last message
 						sendResponse(sender, responseBuffer, messageID);
 						client.receiveReliableID++;
-						onReceive(client, buffer.position(HEADER_SIZE));
+						onReceive(client, buffer); //buffer.position(HEADER_SIZE)
 					} else if(messageID < client.receiveReliableID) { //message already received
 						sendResponse(sender, responseBuffer, messageID);
 					} //else: message received too early
@@ -538,8 +564,8 @@ public class Server {
 				case UNRELIABLE_TYPE -> {
 					if(messageID >= client.receiveUnreliableID) {
 						client.receiveUnreliableID = messageID + 1;
-						onReceive(client, buffer.position(HEADER_SIZE));
-					} //else: message is outdated
+						onReceive(client, buffer); //buffer.position(HEADER_SIZE)
+					} //else: message is outdated and can be ignored
 				}
 			}
 		} //else packet too small, just ignore
@@ -588,7 +614,8 @@ public class Server {
 			STATUS_KICKED = 2, //if server kicks a player or shuts down
 			STATUS_SELF_DISCONNECTED = 3, //if the client manually disconnects
 			STATUS_REJECTED = 4, //if the server rejects the client
-			STATUS_IN_GAME = 5; //if the client has received the world and player and notifies server
+			STATUS_IN_GAME = 5, //if the client has received the world and player and notifies server
+			STATUS_INVALID = 6;
 
 		int receiveReliableID, receiveUnreliableID, sendUnreliableID, sendReliableID;
 		int sendAttempts;
@@ -608,7 +635,7 @@ public class Server {
 		ClientState(InetSocketAddress address) {
 			this.address = address;
 			status = STATUS_CONNECTED;
-			sendQueue = new ArrayDeque<>();
+			sendQueue = new ArrayDeque<>(1);
 		}
 
 		static String statusToString(byte status) {
@@ -621,6 +648,10 @@ public class Server {
 				case STATUS_IN_GAME -> 				"In-game";
 				default -> 							"Unknown";
 			};
+		}
+
+		private void removeAsInvalid() {
+			status = STATUS_INVALID;
 		}
 
 		private boolean isNotDisconnectState() {
