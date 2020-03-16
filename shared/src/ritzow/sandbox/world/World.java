@@ -197,7 +197,7 @@ public class World implements Transportable, Iterable<Entity> {
 	}
 
 	public Entity getEntityFromID(int id) {
-		return entitiesID.get(id);
+		return Objects.requireNonNull(entitiesID.get(id), "No entity in world with provided ID");
 	}
 
 	/**
@@ -252,6 +252,13 @@ public class World implements Transportable, Iterable<Entity> {
 	public final void remove(Entity e) {
 		checkEntitiesModifiable();
 		removeEntity(e);
+	}
+
+	public final Entity remove(int entityID) {
+		Entity e = Objects.requireNonNull(entitiesID.remove(entityID), "entity not found");
+		if(!entities.remove(e))
+			throw new IllegalStateException("entity not found in list, but found in map");
+		return e;
 	}
 
 	/**
