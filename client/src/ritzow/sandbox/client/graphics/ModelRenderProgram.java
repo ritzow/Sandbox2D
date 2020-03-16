@@ -1,20 +1,19 @@
 package ritzow.sandbox.client.graphics;
 
-import static org.lwjgl.opengl.GL46C.*;
-
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
-import java.util.ArrayDeque;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Queue;
+import java.util.*;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.system.MemoryStack;
 
+import static org.lwjgl.opengl.GL46C.*;
+
 public final class ModelRenderProgram extends ShaderProgram {
-	
+
+	public static final record RenderInstance(int modelID, float opacity,
+		float posX, float posY, float scaleX, float scaleY, float rotation) {}
+	private static record ModelAttributes(int indexOffset, int indexCount) {}
+
 	private static final int POSITION_SIZE = 2, TEXTURE_COORD_SIZE = 2;
 	private static final int ATLAS_TEXTURE_UNIT = GL_TEXTURE0;
 
@@ -31,7 +30,7 @@ public final class ModelRenderProgram extends ShaderProgram {
 			0, 0, 0, 0,
 			0, 0, 0, 1,
 	};
-	
+
 	private final int
 		uniform_transform,
 		uniform_opacity,
@@ -42,12 +41,14 @@ public final class ModelRenderProgram extends ShaderProgram {
 	private final int vaoID, atlasTexture;
 	private final Queue<RenderInstance> renderQueue;
 	private final Map<Integer, ModelAttributes> modelProperties;
-	
-	public static ModelRenderProgram create(Shader vertexShader, Shader fragmentShader, int textureAtlas, ModelData... models) {
+
+	public static ModelRenderProgram create(Shader vertexShader, Shader fragmentShader,
+			int textureAtlas, ModelData... models) {
 		return new ModelRenderProgram(vertexShader, fragmentShader, textureAtlas, models);
 	}
 
-	private ModelRenderProgram(Shader vertexShader, Shader fragmentShader, int textureAtlas, ModelData... models) {
+	private ModelRenderProgram(Shader vertexShader, Shader fragmentShader,
+		int textureAtlas, ModelData... models) {
 		super(vertexShader, fragmentShader);
 		this.uniform_transform = getUniformLocation("transform");
 		this.uniform_opacity = getUniformLocation("opacity");
@@ -60,25 +61,13 @@ public final class ModelRenderProgram extends ShaderProgram {
 		this.renderQueue = new ArrayDeque<RenderInstance>();
 		this.vaoID = register(models);
 	}
-	
-	public static class ModelData {
-		final int modelID;
-		final float[] positions;
-		final float[] textureCoords;
-		final int[] indices;
-		
-		public ModelData(int modelID, float[] positions, float[] textureCoords, int[] indices) {
-			this.modelID = modelID;
-			this.positions = positions;
-			this.textureCoords = textureCoords;
-			this.indices = indices;
-		}
-		
+
+	public static record ModelData(int modelID, float[] positions, float[] textureCoords, int[] indices) {
 		public int indexCount() {
 			return indices.length;
 		}
 	}
-	
+
 	@Override
 	public void setCurrent() {
 		glUseProgram(programID);
@@ -88,7 +77,7 @@ public final class ModelRenderProgram extends ShaderProgram {
 		glBlendFunci(RenderManager.MAIN_DRAW_BUFFER_INDEX, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glBlendEquationi(RenderManager.MAIN_DRAW_BUFFER_INDEX, GL_FUNC_ADD);
 	}
-	
+
 	/**
 	 * Renders a model with the specified properties
 	 * @param modelID the model to render
@@ -112,10 +101,10 @@ public final class ModelRenderProgram extends ShaderProgram {
 				lastOpacity = opacity;
 			}
 			glBindVertexArray(vaoID);
-			glDrawElements(GL_TRIANGLES, model.indexCount, GL_UNSIGNED_INT, model.indexOffset * Integer.BYTES);		
+			glDrawElements(GL_TRIANGLES, model.indexCount, GL_UNSIGNED_INT, model.indexOffset * Integer.BYTES);
 		}
 	}
-	
+
 	public void render(Graphics g, float posX, float posY) {
 		render(g.getModelID(), g.getOpacity(), posX, posY, g.getScaleX(), g.getScaleY(), g.getRotation());
 	}
@@ -124,7 +113,7 @@ public final class ModelRenderProgram extends ShaderProgram {
 		aspectMatrix[0] = framebufferHeight/(float)framebufferWidth;
 		setMatrix(uniform_view, aspectMatrix);
 	}
-	
+
 	public void loadViewMatrix(Camera camera, int framebufferWidth, int framebufferHeight) {
 		float ratio = framebufferHeight/(float)framebufferWidth;
 		float zoom = camera.getZoom();
@@ -147,55 +136,55 @@ public final class ModelRenderProgram extends ShaderProgram {
 			indexTotal += model.indexCount();
 			vertexTotal += model.positions.length/POSITION_SIZE;
 		}
-		
+
 		//TODO remove repeat vertices (same position and texture coord)?
 		//initialize temporary buffers
 		FloatBuffer positionData = BufferUtils.createFloatBuffer(vertexTotal * POSITION_SIZE);
 		FloatBuffer textureCoordsData = BufferUtils.createFloatBuffer(vertexTotal * TEXTURE_COORD_SIZE);
 		IntBuffer indexData = BufferUtils.createIntBuffer(indexTotal);
-		
+
 		for(ModelData model : models) {
 			int vertexOffset = positionData.position()/POSITION_SIZE;
 			positionData.put(model.positions);
 			textureCoordsData.put(model.textureCoords);
-			
+
 			int indexOffset = indexData.position();
 			for(int index : model.indices) {
 				indexData.put(vertexOffset + index); //adjust index to be absolute instead of relative to model
 			}
-			
+
 			modelProperties.put(model.modelID, new ModelAttributes(indexOffset, model.indexCount()));
 		}
 		positionData.flip();
 		textureCoordsData.flip();
 		indexData.flip();
-		
+
 		int vao = glGenVertexArrays();
 		glBindVertexArray(vao);
-		
+
 		int positionsID = glGenBuffers();
 		glBindBuffer(GL_ARRAY_BUFFER, positionsID);
 		glBufferData(GL_ARRAY_BUFFER, positionData, GL_STATIC_DRAW);
 		glEnableVertexAttribArray(attribute_position);
 		glVertexAttribPointer(attribute_position, POSITION_SIZE, GL_FLOAT, false, 0, 0);
-		
+
 		int textureCoordsID = glGenBuffers();
 		glBindBuffer(GL_ARRAY_BUFFER, textureCoordsID);
 		glBufferData(GL_ARRAY_BUFFER, textureCoordsData, GL_STATIC_DRAW);
 		glEnableVertexAttribArray(attribute_textureCoord);
 		glVertexAttribPointer(attribute_textureCoord, TEXTURE_COORD_SIZE, GL_FLOAT, false, 0, 0);
-		
+
 		int indicesID = glGenBuffers();
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indicesID);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexData, GL_STATIC_DRAW);
-		
+
 		glBindVertexArray(0);
 		GraphicsUtility.checkErrors();
-		
+
 		return vao;
 	}
-	
-	private static void prepInstanceData(FloatBuffer dest, float posX, float posY, 
+
+	private static void prepInstanceData(FloatBuffer dest, float posX, float posY,
 			float scaleX, float scaleY, float rotation) {
 		float rotX = (float)Math.cos(rotation);
 		float rotY = (float)Math.sin(rotation);
@@ -204,30 +193,30 @@ public final class ModelRenderProgram extends ShaderProgram {
 			.put(0)				.put(0)					.put(0).put(0)
 			.put(posX)			.put(posY)				.put(0).put(1);
 	}
-	
+
 	public void queueRender(int modelID, float opacity,
 				float posX, float posY, float scaleX, float scaleY,
 				float rotation) {
 		renderQueue.add(new RenderInstance(modelID, opacity, posX, posY, scaleX, scaleY, rotation));
 	}
-	
+
 	//TODO maybe I should change the queue to actually buffer indices, etc. directly instead of RenderInstances
 	public void renderQueue(RenderInstance model) {
 		renderQueue.add(Objects.requireNonNull(model));
 	}
-	
+
 	public void renderQueue(Collection<RenderInstance> models) {
 		renderQueue.addAll(models);
 	}
-	
+
 	private float lastOpacity = 0;
-	
+
 	/** Render queued RenderInstances **/
 	public void render() {
 		//glMultiDrawElementsIndirect works even better but requires OpenGL 4.3
 		//gl_DrawID can be used from glsl for this
 		//https://www.khronos.org/opengl/wiki/Built-in_Variable_(GLSL)#Vertex_shader_inputs
-		
+
 		try(MemoryStack stack = MemoryStack.stackPush()) {
 			FloatBuffer instanceData = stack.mallocFloat(16);
 			glBindVertexArray(vaoID);
@@ -240,40 +229,8 @@ public final class ModelRenderProgram extends ShaderProgram {
 					setFloat(uniform_opacity, render.opacity);
 					lastOpacity = render.opacity;
 				}
-				glDrawElements(GL_TRIANGLES, model.indexCount, GL_UNSIGNED_INT, model.indexOffset * Integer.BYTES);	
+				glDrawElements(GL_TRIANGLES, model.indexCount, GL_UNSIGNED_INT, model.indexOffset * Integer.BYTES);
 			}
-		}
-	}
-	
-	public static final class RenderInstance {
-		final int modelID;
-		final float opacity;
-		final float posX;
-		final float posY;
-		final float scaleX;
-		final float scaleY;
-		final float rotation;
-		
-		public RenderInstance(int modelID, float opacity,
-				float posX, float posY, float scaleX, float scaleY,
-				float rotation) {
-			this.modelID = modelID;
-			this.opacity = opacity;
-			this.posX = posX;
-			this.posY = posY;
-			this.scaleX = scaleX;
-			this.scaleY = scaleY;
-			this.rotation = rotation;
-		}
-	}
-	
-	private static class ModelAttributes {
-		final int indexOffset;
-		final int indexCount;
-		
-		ModelAttributes(int indexOffset, int indexCount) {
-			this.indexOffset = indexOffset;
-			this.indexCount = indexCount;
 		}
 	}
 }
