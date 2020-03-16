@@ -68,6 +68,10 @@ public class NetworkUtility {
 		return address instanceof Inet6Address;
 	}
 
+	public static InetAddress getLocalAreaAddress() throws SocketException {
+		return getBestAddress(NetworkUtility::filterPublicInterfaces, NetworkUtility::prioritizeLAN);
+	}
+
 	public static InetSocketAddress createLoopbackSocket() throws SocketException {
 		return new InetSocketAddress(getLoopbackAddress(), ANY_PORT);
 	}
@@ -102,7 +106,7 @@ public class NetworkUtility {
 		return NetworkInterface.networkInterfaces()
 			.filter(filter)
 			.flatMap(i -> i.getInterfaceAddresses().stream())
-			.filter(address -> !address.getAddress().isLinkLocalAddress())
+			.filter(NetworkUtility::isNotLinkLocal) //filter out computer-router addresses
 			.min(comparator)//get the best address
 			.orElseThrow()
 			.getAddress();
@@ -125,6 +129,14 @@ public class NetworkUtility {
 		}
 	}
 
+	private static int prioritizeLAN(InterfaceAddress a, InterfaceAddress b) {
+		throw new UnsupportedOperationException("LAN not implemented");
+	}
+
+	private static boolean isNotLinkLocal(InterfaceAddress a) {
+		return !a.getAddress().isLinkLocalAddress();
+	}
+
 	//prioritize IPv6 over address scope
 	private static int compareAddresses(InterfaceAddress a, InterfaceAddress b) {
 		if(a.getNetworkPrefixLength() < b.getNetworkPrefixLength()) {
@@ -136,7 +148,8 @@ public class NetworkUtility {
 
 	private static boolean filterPublicInterfaces(NetworkInterface network) {
 		try {
-			return network.isUp() && !network.isLoopback() && !network.isVirtual();
+			return network.isUp() &&
+				!(network.isLoopback() || network.isVirtual() || network.isPointToPoint());
 		} catch (SocketException e) {
 			throw new RuntimeException(e);
 		}
@@ -144,7 +157,7 @@ public class NetworkUtility {
 
 	private static boolean isLoopback(NetworkInterface network) {
 		try {
-			return network.isLoopback();
+			return network.isUp() && network.isLoopback();
 		} catch (SocketException e) {
 			throw new RuntimeException(e);
 		}
