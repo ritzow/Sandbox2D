@@ -6,9 +6,9 @@
  * @author Solomon Ritzow
  */
 module ritzow.sandbox.client {
+	requires ritzow.sandbox.shared;
 	requires static java.desktop;
 	requires java.logging;
-	requires ritzow.sandbox.shared;
 	requires org.lwjgl;
 	requires org.lwjgl.glfw;
 	requires org.lwjgl.openal;

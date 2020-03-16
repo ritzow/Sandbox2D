@@ -65,8 +65,9 @@ public class World implements Transportable, Iterable<Entity> {
 		entitiesID = new HashMap<>(entityCount);
 		int maxEntityID = 0;
 		for(int i = 0; i < entityCount; ++i) {
-			Entity e = Objects.requireNonNull(reader.readObject(), "entity was null");
-			maxEntityID = Math.max(maxEntityID, e.getID());
+			Entity e = Objects.requireNonNull(reader.readObject(), "null entities prohibited by World");
+			int id = e.getID();
+			if(id > maxEntityID) maxEntityID = id;
 			addEntity(e);
 		}
 		lastEntityID = maxEntityID;

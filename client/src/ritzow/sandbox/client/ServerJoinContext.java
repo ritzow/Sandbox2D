@@ -12,6 +12,7 @@ import ritzow.sandbox.network.Protocol;
 import static ritzow.sandbox.client.data.StandardClientOptions.getLocalAddress;
 import static ritzow.sandbox.client.data.StandardClientOptions.getServerAddress;
 import static ritzow.sandbox.client.util.ClientUtility.log;
+import static ritzow.sandbox.network.Protocol.TYPE_SERVER_CONNECT_ACKNOWLEDGMENT;
 
 class ServerJoinContext {
 	private Client client;
@@ -70,7 +71,7 @@ class ServerJoinContext {
 	}
 
 	private void process(short messageType, ByteBuffer data) {
-		if(messageType == Protocol.TYPE_SERVER_CONNECT_ACKNOWLEDGMENT) {
+		if(messageType == TYPE_SERVER_CONNECT_ACKNOWLEDGMENT) {
 			byte response = data.get();
 			switch(response) {
 				case Protocol.CONNECT_STATUS_REJECTED -> {

@@ -31,13 +31,13 @@ public final class ClientWorldRenderer implements Renderer {
 		ModelRenderProgram program = this.modelProgram;
 		Camera camera = this.camera;
 		World world = this.world;
-		
+
 		//set the current shader program
 		program.setCurrent();
 		framebuffer.setDraw();
-		
+
 		program.loadViewMatrixStandard(width, height);
-		
+
 		//render before loading view matrix
 		float scale = 2f * (width > height ? width/(float)height : height/(float)width);
 		program.render(RenderConstants.MODEL_SKY, 1.0f, 0, 0, scale, scale, 0);
@@ -90,7 +90,7 @@ public final class ClientWorldRenderer implements Renderer {
 				((Renderable)e).render(program);
 			}
 		}
-		
+
 		program.render();
 	}
 }

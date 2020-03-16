@@ -59,7 +59,7 @@ public class PNGDecoder {
 		final int numComponents;
 		final boolean hasAlpha;
 
-		private Format(int numComponents, boolean hasAlpha) {
+		Format(int numComponents, boolean hasAlpha) {
 			this.numComponents = numComponents;
 			this.hasAlpha = hasAlpha;
 		}
@@ -761,7 +761,7 @@ public class PNGDecoder {
 				}
 			} while(length > 0);
 		} catch (DataFormatException ex) {
-			throw (IOException)(new IOException("inflate error").initCause(ex));
+			throw new IOException("inflate error", ex);
 		}
 	}
 
