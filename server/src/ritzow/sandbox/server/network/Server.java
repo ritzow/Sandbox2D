@@ -109,21 +109,9 @@ public class Server {
 		Bytes.putShort(packet, 0, TYPE_SERVER_CLIENT_DISCONNECT);
 		Bytes.putInteger(packet, 2, message.length);
 		Bytes.copy(message, packet, 6);
-		sendUnsafe(client, packet, true);
+		sendReliableUnsafe(client, packet);
 		client.status = ClientState.STATUS_KICKED;
 		client.disconnectReason = "kicked by server: " + reason;
-	}
-
-	private void onReceive(ClientState client, ByteBuffer packet) {
-		try {
-			client.lastMessageReceiveTime = System.nanoTime();
-			short type = packet.getShort();
-			onReceive(type, client, packet);
-		} catch(ClientBadDataException e) {
-			client.status = ClientState.STATUS_KICKED;
-			client.disconnectReason = "Received bad data - " + e.getMessage();
-			log("Server received bad data from client: " + e.getMessage());
-		}
 	}
 
 	private void onReceive(short type, ClientState client, ByteBuffer packet) {
@@ -148,7 +136,7 @@ public class Server {
 				}
 			}
 
-			case ClientState.STATUS_TIMED_OUT, //TODO will need to do *something*.
+			case ClientState.STATUS_TIMED_OUT, //TODO will need to do *something*?
 				ClientState.STATUS_INVALID,
 				ClientState.STATUS_REJECTED,
 				ClientState.STATUS_SELF_DISCONNECTED,
@@ -157,16 +145,21 @@ public class Server {
 	}
 
 	private long lastClientsUpdate;
-	private static final int ENTITY_UPDATE_HEADER_SIZE = 6;
-	private static final int BYTES_PER_ENTITY = 20;
-	private static final int MAX_ENTITIES_PER_PACKET =
+	private static final int
+		ENTITY_UPDATE_HEADER_SIZE = 6,
+		BYTES_PER_ENTITY = 20,
+		MAX_ENTITIES_PER_PACKET =
 			(MAX_MESSAGE_LENGTH - ENTITY_UPDATE_HEADER_SIZE)/BYTES_PER_ENTITY;
 
 	public void update() throws IOException {
 		receive();
 		handleClientStatuses();
-		if(shutdown && getClientCount() == 0) {
-			close();
+		if(shutdown) {
+			if(getClientCount() == 0) {
+				close();
+			} else {
+				sendAllQueued();
+			}
 		} else {
 			lastWorldUpdateTime = Utility.updateWorld(
 				world,
@@ -178,10 +171,13 @@ public class Server {
 				sendEntityUpdates();
 				lastClientsUpdate = System.nanoTime();
 			}
+			sendAllQueued();
+		}
+	}
 
-			for(ClientState client : clients.values()) {
-				sendQueued(client);
-			}
+	private void sendAllQueued() throws IOException {
+		for(ClientState client : clients.values()) {
+			sendQueued(client);
 		}
 	}
 
@@ -241,18 +237,15 @@ public class Server {
 	private void sendEntityUpdates() {
 		int entitiesRemaining = world.entities();
 		Iterator<Entity> iterator = world.iterator();
-		//noinspection WhileLoopReplaceableByForEach
 		while(iterator.hasNext()) {
 			int count = Math.min(entitiesRemaining, MAX_ENTITIES_PER_PACKET);
-			int index = 0;
 			byte[] packet = new byte[ENTITY_UPDATE_HEADER_SIZE + count * BYTES_PER_ENTITY];
 			Bytes.putShort(packet, 0, TYPE_SERVER_ENTITY_UPDATE);
 			Bytes.putInteger(packet, 2, count);
-			while(index < count) {
+			for(int index = 0; index < count; index++) {
 				Entity entity = iterator.next();
 				populateEntityUpdate(packet, ENTITY_UPDATE_HEADER_SIZE + index * BYTES_PER_ENTITY, entity);
 				entitiesRemaining--;
-				index++;
 				if(entity instanceof PlayerEntity p) {
 					broadcastPlayerState(null, p);
 				}
@@ -336,7 +329,7 @@ public class Server {
 		byte[] packet = new byte[2 + 8];
 		Bytes.putShort(packet, 0, TYPE_SERVER_CLIENT_BREAK_BLOCK_COOLDOWN);
 		Bytes.putLong(packet, 2, currentTimeMillis);
-		sendReliable(client, packet);
+		sendReliableSafe(client, packet);
 	}
 
 	private void processClientPlaceBlock(ClientState client, ByteBuffer packet) {
@@ -419,14 +412,14 @@ public class Server {
 			log("Serializing world to send to " + client.formattedName());
 			//TODO don't send world size in ack, takes too long to serialize entire world
 			for(byte[] packet : buildAcknowledgementPackets(world, player.getID())) {
-				sendUnsafe(client, packet, true);
+				sendReliableUnsafe(client, packet);
 			}
 			log("World serialized and sent to " + client.formattedName());
 		} else {
 			byte[] response = new byte[3];
 			Bytes.putShort(response, 0, TYPE_SERVER_CONNECT_ACKNOWLEDGMENT);
 			response[2] = CONNECT_STATUS_REJECTED;
-			sendReliable(client, response);
+			sendReliableSafe(client, response);
 			client.status = ClientState.STATUS_REJECTED;
 			client.disconnectReason = "client rejected";
 		}
@@ -507,18 +500,18 @@ public class Server {
 		}
 	}
 
-	private static void sendReliable(ClientState client, byte[] data) {
-		sendUnsafe(client, data.clone(), true);
+	private static void sendReliableSafe(ClientState client, byte[] data) {
+		sendReliableUnsafe(client, data.clone());
 	}
 
-	private static void sendUnsafe(ClientState client, byte[] data, boolean reliable) {
-		client.sendQueue.add(new SendPacket(data, reliable));
+	private static void sendReliableUnsafe(ClientState client, byte[] data) {
+		client.sendQueue.add(new SendPacket(data, true));
 	}
 
 	private static record SendPacket(byte[] data, boolean reliable) {
 		@Override
 		public String toString() {
-			return "SendPacket[reliable: " + reliable + " size:" + data.length + "]";
+			return "SendPacket[" + (reliable ? "reliable" : "unreliable") + " size:" + data.length + " bytes]";
 		}
 	}
 
@@ -541,6 +534,7 @@ public class Server {
 			byte type = buffer.get(); //type of message (RESPONSE, RELIABLE, UNRELIABLE)
 			int messageID = buffer.getInt(); //received ID or messageID for ack.
 			ClientState client = clients.computeIfAbsent(sender, ClientState::new);
+			client.lastMessageReceiveTime = System.nanoTime();
 			switch(type) {
 				case RESPONSE_TYPE -> {
 					if(client.sendReliableID == messageID) {
@@ -556,7 +550,7 @@ public class Server {
 						//if the message is the next one, process it and update last message
 						sendResponse(sender, responseBuffer, messageID);
 						client.receiveReliableID++;
-						onReceive(client, buffer); //buffer.position(HEADER_SIZE)
+						handleReceive(client, buffer);
 					} else if(messageID < client.receiveReliableID) { //message already received
 						sendResponse(sender, responseBuffer, messageID);
 					} //else: message received too early
@@ -565,12 +559,21 @@ public class Server {
 				case UNRELIABLE_TYPE -> {
 					if(messageID >= client.receiveUnreliableID) {
 						client.receiveUnreliableID = messageID + 1;
-						onReceive(client, buffer); //buffer.position(HEADER_SIZE)
+						handleReceive(client, buffer);
 					} //else: message is outdated and can be ignored
 				}
 			}
 		} //else packet too small, just ignore
 		buffer.clear(); //clear to prepare for next receive
+	}
+
+	private void handleReceive(ClientState client, ByteBuffer packet) {
+		try {
+			onReceive(packet.getShort(), client, packet);
+		} catch(ClientBadDataException e) {
+			client.status = ClientState.STATUS_KICKED;
+			client.disconnectReason = "Received bad data - " + e.getMessage();
+		}
 	}
 
 	private static void setupSendBuffer(ByteBuffer sendBuffer, byte type, int id, byte[] data) {
