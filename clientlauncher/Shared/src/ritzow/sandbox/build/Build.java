@@ -64,7 +64,7 @@ public class Build {
 		System.out.println("Running Build.java.");
 		if(args.length > 0) {
 			switch(args[0].toLowerCase()) {
-				case "launcher" -> System.out.println(msbuild() == 0 ? "Launcher built."
+				case "executable" -> System.out.println(msbuild() == 0 ? "Launcher built."
 					: "Launcher build failed.");
 				case "zip" -> packageOutput(args.length > 1 ? Path.of(args[1]) : Path.of("out.zip"));
 				default -> System.out.println("Uknown arguments.");
