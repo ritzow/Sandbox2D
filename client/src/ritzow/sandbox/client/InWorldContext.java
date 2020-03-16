@@ -217,7 +217,7 @@ class InWorldContext implements GameTalker {
 	}
 
 	private void processRemoveEntity(ByteBuffer data) {
-		world.remove(world.getEntityFromID(data.getInt()));
+		world.remove(data.getInt()); //TODO entity is null when another player disconects
 	}
 
 	private static <T extends Transportable> T deserialize(ByteBuffer data) {
