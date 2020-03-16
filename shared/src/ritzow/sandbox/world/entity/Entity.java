@@ -38,6 +38,16 @@ public abstract class Entity implements Transportable {
 	}
 
 	@Override
+	public boolean equals(Object obj) {
+		return obj instanceof Entity e && entityID == e.entityID;
+	}
+
+	@Override
+	public int hashCode() {
+		return entityID * 31;
+	}
+
+	@Override
 	public byte[] getBytes(Serializer ser) {
 		byte[] data = new byte[20];
 		Bytes.putInteger(data, 0, entityID);
