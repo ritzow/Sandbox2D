@@ -71,12 +71,6 @@ public final class Utility {
 		}
 	}
 
-	public static void waitNanos(long nanoseconds) {
-		long start = System.nanoTime();
-		while(System.nanoTime() - start < nanoseconds)
-			Thread.onSpinWait();
-	}
-
 	/**
 	 * Updates the world
 	 * @param world the world to update
@@ -167,39 +161,27 @@ public final class Utility {
 	}
 
 	public static String formatSize(long bytes) {
-		String units; double value;
 		if(bytes < 1000) {
-			units = "bytes";
-			value = bytes;
+			return formatNumber(bytes, 0) + " bytes";
 		} else if(bytes/1000 < 1000) {
-			units = "KB";
-			value = bytes/1000d;
+			return formatNumber(bytes/1000d, 2) + " KB";
 		} else if(bytes/1_000_000 < 1000) {
-			units = "MB";
-			value = bytes/1_000_000d;
+			return formatNumber(bytes/1_000_000d, 2) + " MB";
 		} else {
-			units = "GB";
-			value = bytes/1_000_000_000d;
+			return formatNumber(bytes/1_000_000_000d, 2) + " GB";
 		}
-		return formatNumber(value, 2) + " " + units;
 	}
 
 	public static String formatTime(long nanoseconds) {
-		String units; double value;
 		if(nanoseconds < 1000) {
-			units = "ns";
-			value = nanoseconds;
+			return formatNumber(nanoseconds, 0) + " ns";
 		} else if(nanoseconds/1000 < 1000) {
-			units = "μs";
-			value = nanoseconds/1000f;
+			return formatNumber(nanoseconds/1000d, 2) + " μs";
 		} else if(nanoseconds/1_000_000 < 1000) {
-			units = "ms";
-			value = nanoseconds/1_000_000f;
+			return formatNumber(nanoseconds/1_000_000d, 2) + " ms";
 		} else {
-			units = "s";
-			value = nanoseconds/1_000_000_000f;
+			return formatNumber(nanoseconds/1_000_000_000d, 2) + " s";
 		}
-		return formatNumber(value, 2) + " " + units;
 	}
 
 	public static String formatNumber(double value, int decimals) {
@@ -215,11 +197,11 @@ public final class Utility {
 	}
 
 	public static float convertAccelerationSecondsNanos(float acceleration) {
-		return acceleration / 1_000_000_000f / 1_000_000_000f;
+		return acceleration * 1.0E-18f;
 	}
 
 	public static float convertPerSecondToPerNano(float value) {
-		return value * 0.000000001f;
+		return value * 1.0E-09f;
 	}
 
 	public static long millisToNanos(long milliseconds) {
