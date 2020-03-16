@@ -185,7 +185,7 @@ class LauncherController {
 					worldFileField.getPromptText() : worldFileField.getText()))));
 			stage.setOnCloseRequest(windowEvent -> {
 				System.out.println("Shutting down server");
-				server.startShutdown(); //TODO this needs to happen in server update thread.
+				server.shutdown(); //TODO this needs to happen in server update thread.
 			});
 			new Thread(() -> runServer(server), "Server Thread").start();
 		} catch(UnknownHostException e) {

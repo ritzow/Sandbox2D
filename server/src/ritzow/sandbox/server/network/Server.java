@@ -64,15 +64,16 @@ public class Server {
 		return (InetSocketAddress)channel.getLocalAddress();
 	}
 
-	public void startShutdown() {
+	private static void log(String message) {
+		System.out.println(Utility.formatCurrentTime() + " " + message);
+	}
+
+	/** Starts the shutdown process of kicking all the clients off the server **/
+	public void shutdown() {
 		shutdown = true;
 		for(ClientState client : clients.values()) {
 			kickClient(client, "server shutting down");
 		}
-	}
-
-	private static void log(String message) {
-		System.out.println(Utility.formatCurrentTime() + " " + message);
 	}
 
 	public void close() throws IOException {

@@ -114,12 +114,12 @@ class StartServer {
 	}
 
 	private static void stopCommand(String args) {
-		server.startShutdown();
+		server.shutdown();
 	}
 
 	private static void abortCommand(String args) {
 		save = false;
-		server.startShutdown();
+		server.shutdown();
 	}
 
 	private static void killCommand(String args) {
