@@ -40,7 +40,7 @@ class StartServer {
 				Utility.limitFramerate(start, FRAME_TIME_LIMIT);
 			}
 
-			saveWorld(server.world(), SAVE_FILE);
+			saveWorld(server.world());
 		} catch(BindException e) {
 			System.out.println("Couldn't start server on address " + NetworkUtility.formatAddress(bind));
 		}
@@ -63,15 +63,15 @@ class StartServer {
 		return SerializationProvider.getProvider().deserialize(Utility.loadCompressedFile(file));
 	}
 
-	private static void saveWorld(World world, Path file) {
+	private static void saveWorld(World world) {
 		if(save) {
 			try {
 				System.out.print("Saving world... ");
 				byte[] serialized = Bytes.compress(SerializationProvider.getProvider().serialize(world));
-				Files.write(file, serialized);
+				Files.write(SAVE_FILE, serialized);
 				System.out.println("world saved to " + Utility.formatSize(serialized.length) + ".");
 			} catch(IOException e) {
-				System.out.println("Error while saving world to file '" + file + "':"
+				System.out.println("Error while saving world to file '" + SAVE_FILE + "':"
 					+ e.getClass().getTypeName() + ":" + e.getMessage());
 			}
 		} else {
@@ -102,7 +102,7 @@ class StartServer {
 	}
 
 	private static void debugCommand(String args) {
-		server.printDebug(System.out);
+		System.out.println(server.getDebugInfo());
 	}
 
 	private static void resetCommand(String args) {
