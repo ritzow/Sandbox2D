@@ -1,11 +1,9 @@
 package ritzow.sandbox.client;
 
 import java.util.Objects;
-import ritzow.sandbox.client.data.StandardClientOptions;
 import ritzow.sandbox.util.Utility;
 
-import static ritzow.sandbox.client.data.StandardClientOptions.FRAME_TIME_LIMIT;
-import static ritzow.sandbox.client.data.StandardClientOptions.LIMIT_FPS;
+import static ritzow.sandbox.client.data.StandardClientOptions.*;
 
 class GameLoop {
 	public interface GameContext {
@@ -21,27 +19,22 @@ class GameLoop {
 			throw new IllegalStateException("GameLoop already started");
 		current = Objects.requireNonNull(initial);
 		lastUpdate = System.nanoTime();
-		if(StandardClientOptions.PRINT_FPS) {
-			while(current != null) {
-				long frameStart = System.nanoTime();
-				current.run(frameStart - lastUpdate);
-				lastUpdate = Math.max(frameStart, lastUpdate);
-				if(LIMIT_FPS) Utility.limitFramerate(frameStart, FRAME_TIME_LIMIT);
-				Utility.printFramerate(frameStart);
-			}
-		} else {
-			while(current != null) {
-				long frameStart = System.nanoTime();
-				current.run(frameStart - lastUpdate);
-				lastUpdate = Math.max(frameStart, lastUpdate);
-				if(LIMIT_FPS) Utility.limitFramerate(frameStart, FRAME_TIME_LIMIT);
-			}
+		while(current != null) {
+			long frameStart = System.nanoTime();
+			current.run(frameStart - lastUpdate);
+			lastUpdate = Math.max(frameStart, lastUpdate);
+			if(LIMIT_FPS) Utility.limitFramerate(frameStart, FRAME_TIME_LIMIT);
+			if(PRINT_FPS) Utility.printFramerate(frameStart);
 		}
 	}
 
 	public static long updateDeltaTime() {
 		long lastTime = lastUpdate;
 		return (lastUpdate = System.nanoTime()) - lastTime;
+	}
+
+	public static void setContext(Runnable context) {
+		current = delta -> context.run();
 	}
 
 	public static void setContext(GameContext context) {
