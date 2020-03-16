@@ -18,6 +18,7 @@ import ritzow.sandbox.world.generator.SinusoidWorldGenerator;
 class StartServer {
 	private static final Path SAVE_FILE = Path.of("world.dat");
 	private static final long FRAME_TIME_LIMIT = Utility.frameRateToFrameTimeNanos(60);
+	private static final int WIDTH = 5000, HEIGHT = 200;
 
 	private static Server server;
 	private static boolean save = true;
@@ -52,7 +53,8 @@ class StartServer {
 		boolean loadFromFile = Files.exists(SAVE_FILE);
 		System.out.print((loadFromFile ? "Loading" : "Generating") + " world... ");
 		server.setCurrentWorld(loadFromFile ? loadWorld(SAVE_FILE) : SinusoidWorldGenerator.builder()
-			.width(10_000)
+			.width(WIDTH)
+			.baseHeight(HEIGHT)
 			.generate());
 		System.out.println("took " + Utility.formatTime(Utility.nanosSince(time)) + ".");
 	}
