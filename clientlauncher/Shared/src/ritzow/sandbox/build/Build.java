@@ -54,6 +54,7 @@ public class Build {
 		OUTPUT_DIR = 	RELEASE_DIR.resolve("Output"),
 		RES_OUT_DIR = 	OUTPUT_DIR.resolve("resources"),
 		JVM_DIR =		OUTPUT_DIR.resolve("jvm"),
+		JVM_INCLUDES =	JVM_DIR.resolve("include"),
 		INCLUDE_DIR = 	WINDOWS_DIR.resolve("include"),
 		MSBUILD_FILE = 	WINDOWS_DIR.resolve("Sandbox2DLauncherWindows.vcxproj");
 
@@ -104,9 +105,9 @@ public class Build {
 					moduleNames.add("jdk.management.agent");
 					moduleNames.add("jdk.management.jfr");
 				}
-				int result = jlink(JVM_DIR, modules, moduleNames);
+				int result = jlink(modules, moduleNames);
 				if(result == 0) {
-					postJlink(JVM_DIR, LWJGL_DIR, JSON_DIR);
+					postJlink();
 				} else {
 					System.out.println("jlink failed with error " + result + ".");
 				}
@@ -118,25 +119,26 @@ public class Build {
 		}
 	}
 
-	private static void postJlink(Path JVM_DIR, Path LWJGL_DIR, Path JSON_DIR)
+	private static void postJlink()
 		throws IOException, InterruptedException {
 		System.out.println("done.\nMoving header files and deleting unecessary files.");
 		if(Files.exists(INCLUDE_DIR)) {
 			forEachFileAndDir(INCLUDE_DIR, Files::delete);
-			Files.delete(INCLUDE_DIR);
 		}
 
-		//create include directory
-		Files.createDirectory(INCLUDE_DIR);
+		//create include directory if it doesn't exist
+		if(!Files.isDirectory(INCLUDE_DIR))
+			Files.createDirectory(INCLUDE_DIR);
 
 		//move header files to Windows directory
-		forEachFileAndDir(JVM_DIR.resolve("include"), path -> {
+		forEachFileAndDir(JVM_INCLUDES, path -> {
 			if(Files.isDirectory(path)) {
 				Files.delete(path);
 			} else if(Files.isRegularFile(path)) {
 				Files.move(path, INCLUDE_DIR.resolve(path.getFileName()));
 			}
 		});
+		Files.delete(JVM_INCLUDES);
 
 		//delete unnecessary java.base files
 		Files.delete(JVM_DIR.resolve("bin").resolve("java.exe"));
@@ -253,7 +255,7 @@ public class Build {
 		}
 	}
 
-	private static int jlink(Path output, Iterable<Path> modules, Iterable<String> includeModules) {
+	private static int jlink(Iterable<Path> modules, Iterable<String> includeModules) {
 		return java.util.spi.ToolProvider.findFirst("jlink").orElseThrow().run(System.out, System.err,
 			"--compress", "2",
 			//"--strip-debug",
@@ -261,7 +263,7 @@ public class Build {
 			"--endian", "little",
 			"--module-path", join(modules, ';'),
 			"--add-modules", join(includeModules, ','),
-			"--output", output.toString()
+			"--output", JVM_DIR.toString()
 		);
 	}
 
