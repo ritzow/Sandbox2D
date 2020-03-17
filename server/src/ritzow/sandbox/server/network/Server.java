@@ -247,8 +247,14 @@ public class Server {
 				Entity entity = iterator.next();
 				populateEntityUpdate(packet, ENTITY_UPDATE_HEADER_SIZE + index * BYTES_PER_ENTITY, entity);
 				entitiesRemaining--;
-				if(entity instanceof PlayerEntity p) {
-					broadcastPlayerState(p);
+				if(entity instanceof PlayerEntity player) {
+					log("Sending player state during entity updates " + player.getID());
+					SendPacket msg = new SendPacket(buildPlayerStateMessage(player), false);
+					for(ClientState client : clients.values()) {
+						if(client.inGame() && !client.player.equals(player)) {
+							client.sendQueue.add(msg);
+						}
+					}
 				}
 			}
 			broadcastUnsafe(packet, false, ClientState::inGame);
@@ -285,17 +291,18 @@ public class Server {
 		if(world.contains(player)) {
 			short state = packet.getShort();
 			PlayerState.updatePlayer(player, state);
-			broadcastPlayerState(player);
+			var msg = buildPlayerStateMessage(client.player);
+			broadcastUnreliable(msg, msg.length, r -> r.inGame() && !r.equals(client));
 			//TODO for now ignore the primary/secondary actions
 		} //else what is the point of the player performing the action
 	}
 
-	private void broadcastPlayerState(PlayerEntity player) {
+	private static byte[] buildPlayerStateMessage(PlayerEntity player) {
 		byte[] message = new byte[8];
 		Bytes.putShort(message, 0, TYPE_CLIENT_PLAYER_STATE);
 		Bytes.putInteger(message, 2, player.getID());
 		Bytes.putShort(message, 6, PlayerState.getState(player, false, false));
-		broadcastUnreliable(message, message.length, ClientState::inGame);
+		return message;
 	}
 
 	public String getDebugInfo() {
