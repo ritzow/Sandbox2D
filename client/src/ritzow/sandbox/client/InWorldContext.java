@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
@@ -57,28 +56,45 @@ class InWorldContext implements GameTalker {
 
 	private static record QueuedPacket(short messageType, ByteBuffer packet) {}
 
-	public void updatePreInGame() {
+	public void updateJoining() {
+		if(worldBuildTask == null) {
+			client.update((messageType, data) -> {
+				switch(messageType) {
+					case TYPE_SERVER_WORLD_DATA -> { //TODO maybe don't queue certain things (like ping)
+						if(!worldDownloadBuffer.put(data).hasRemaining()) {
+							log().info("Received all world data");
+							//from https://docs.oracle.com/javase/tutorial/essential/concurrency/memconsist.html
+							// https://docs.oracle.com/en/java/javase/13
+							// /docs/api/java.base/java/util/concurrent/package-summary.html
+							// When a statement invokes Thread.start, every statement that has a happens-before
+							// relationship with that statement also has a happens-before relationship with
+							// every statement executed by the new thread. The effects of the code that led up
+							// to the creation of the new thread are visible to the new thread.
+							worldBuildTask = CompletableFuture.supplyAsync(this::buildWorld);
+						}
+					}
+					default -> queuePacket(messageType, data);
+				}
+			});
+		} else if(worldBuildTask.isDone()) {
+			setupAfterReceiveWorld();
+		} else {
+			//TODO maybe don't queue certain things (like ping)
+			client.update(this::queuePacket);
+		}
+	}
+
+	private void queuePacket(short messageType, ByteBuffer data) {
 		/* When building the world, queue any received packets so they are processed
 		 * and applied to the client state once the world is built. **/
-		client.update((messageType, data) -> {
-			if(messageType == TYPE_SERVER_WORLD_DATA) {
-				processReceiveWorldData(data);
-			} else {
-				ByteBuffer packet = ByteBuffer.allocate(data.remaining());
-				bufferedMessages.add(new QueuedPacket(messageType, packet.put(data).flip()));
-			}
-		});
-
-		if(worldBuildTask != null && worldBuildTask.isDone()) {
-			setupAfterReceiveWorld();
-		}
+		ByteBuffer packet = ByteBuffer.allocate(data.remaining());
+		bufferedMessages.add(new QueuedPacket(messageType, packet.put(data).flip()));
 	}
 
 	private void setupAfterReceiveWorld() {
 		world = worldBuildTask.join();
 		worldDownloadBuffer = null; //release the downloaded data to the garbage collector
 		worldBuildTask = null;
-		log().info("World built");
 		player = getEntity(playerID);
 		cameraGrip = new TrackingCameraController(2.5f, player.getWidth() / 20f, player.getWidth() / 2f);
 		worldRenderer = new ClientWorldRenderer(GameState.shader(), cameraGrip.getCamera(), world);
@@ -95,22 +111,22 @@ class InWorldContext implements GameTalker {
 			process(packet.messageType, packet.packet);
 		}
 		bufferedMessages = null;
-		log().info("Joined world");
+		log().info("World built, joined world");
 		GameLoop.setContext(this::updateInWorld);
 	}
 
 	private void updateInWorld(long delta) {
 		client.update(this::process);
-		if(isPaused()) {
-			sendPing();
-		} else {
-			updateRunning(GameState.display(), delta);
-			GameState.display().poll(input);
+		Display display = GameState.display();
+		display.poll(input);
+		updatePlayerState(display);
+		if(!display.minimized()) { //TODO need to be more checks, this will run no matter what
+			if(display.isControlActivated(Control.RESET_ZOOM)) cameraGrip.resetZoom();
+			updateRender(display, delta);
 		}
 	}
 
-	private void updateRunning(Display display, long deltaTime) {
-		if(display.isControlActivated(Control.RESET_ZOOM)) cameraGrip.resetZoom();
+	private void updatePlayerState(Display display) {
 		boolean isLeft = display.isControlActivated(Control.MOVE_LEFT);
 		boolean isRight = display.isControlActivated(Control.MOVE_RIGHT);
 		boolean isUp = display.isControlActivated(Control.MOVE_UP);
@@ -122,7 +138,6 @@ class InWorldContext implements GameTalker {
 		player.setUp(isUp);
 		player.setDown(isDown);
 		sendPlayerState(player, isPrimary, isSecondary);
-		updateRender(display, deltaTime);
 	}
 
 	private void updateRender(Display display, long deltaTime) {
@@ -166,8 +181,6 @@ class InWorldContext implements GameTalker {
 	private void leaveServer() {
 		log().info("Starting disconnect");
 		client.sendReliable(Bytes.of(TYPE_CLIENT_DISCONNECT), this::onDisconnected);
-		GameState.display().resetCursor();
-		GameLoop.setContext(delta -> client.update((messageType, data) -> {}));
 	}
 
 	private void processServerDisconnect(ByteBuffer data) {
@@ -184,7 +197,7 @@ class InWorldContext implements GameTalker {
 		} finally {
 			GameState.display().resetCursor();
 			if(GameState.display().wasClosed()) {
-				GameLoop.stop();
+				GameLoop.stop(); //TODO what if mainmenu or something has resources to clean up?
 			} else {
 				GameState.menuContext().returnToMenu();
 			}
@@ -213,7 +226,7 @@ class InWorldContext implements GameTalker {
 
 	@SuppressWarnings("unchecked")
 	private <E extends Entity> E getEntity(int id) {
-		return Objects.requireNonNull((E)world.getEntityFromID(id), "No entity with ID " + id + " exists");
+		return (E)world.getEntityFromID(id);
 	}
 
 	private void processRemoveEntity(ByteBuffer data) {
@@ -240,28 +253,9 @@ class InWorldContext implements GameTalker {
 		}
 	}
 
-	private void processReceiveWorldData(ByteBuffer data) {
-		if(!worldDownloadBuffer.put(data).hasRemaining()) {
-			log().info("Received all world data");
-			//from https://docs.oracle.com/javase/tutorial/essential/concurrency/memconsist.html
-			// https://docs.oracle.com/en/java/javase/13
-			// /docs/api/java.base/java/util/concurrent/package-summary.html
-			// When a statement invokes Thread.start, every statement that has a happens-before
-			// relationship with that statement also has a happens-before relationship with
-			// every statement executed by the new thread. The effects of the code that led up
-			// to the creation of the new thread are visible to the new thread.
-			worldBuildTask = CompletableFuture.supplyAsync(this::buildWorld);
-		}
-	}
-
 	private World buildWorld() {
-		world= SerializationProvider.getProvider().deserialize(COMPRESS_WORLD_DATA ?
+		return SerializationProvider.getProvider().deserialize(COMPRESS_WORLD_DATA ?
 			Bytes.decompress(worldDownloadBuffer.flip()) : worldDownloadBuffer.flip());
-		return world;
-	}
-
-	private static boolean isPaused() {
-		return GameState.display().minimized();
 	}
 
 	public void sendPlayerState(PlayerEntity player, boolean primary, boolean secondary) {

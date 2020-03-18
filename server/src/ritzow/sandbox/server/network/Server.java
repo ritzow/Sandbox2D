@@ -31,6 +31,7 @@ import static ritzow.sandbox.network.Protocol.*;
  * receives client input, and broadcasts information for clients. */
 public class Server {
 	private static final long NETWORK_SEND_INTERVAL_NANOSECONDS = Utility.millisToNanos(200);
+	private static final long PLAYER_STATE_BROADCAST_INTERVAL = Utility.millisToNanos(100);
 	private static final float BOMB_THROW_VELOCITY = Utility.convertPerSecondToPerNano(25);
 
 	private final DatagramChannel channel;
@@ -71,7 +72,7 @@ public class Server {
 	public void shutdown() {
 		shutdown = true;
 		for(ClientState client : clients.values()) {
-			kickClient(client, "server shutting down");
+			kickClient(client, "Server shutting down");
 		}
 	}
 
@@ -103,14 +104,17 @@ public class Server {
 	}
 
 	private static void kickClient(ClientState client, String reason) {
+		client.status = STATUS_KICKED;
+		sendDisconnect(client, "kicked for " + reason, true);
+	}
+
+	private static void sendDisconnect(ClientState client, String reason, boolean reliable) {
 		byte[] message = reason.getBytes(CHARSET);
 		byte[] packet = new byte[message.length + 6];
 		Bytes.putShort(packet, 0, TYPE_SERVER_CLIENT_DISCONNECT);
 		Bytes.putInteger(packet, 2, message.length);
 		Bytes.copy(message, packet, 6);
-		sendReliableUnsafe(client, packet);
-		client.status = STATUS_KICKED;
-		client.disconnectReason = "kicked by server: " + reason;
+		client.sendQueue.add(new SendPacket(packet, reliable));
 	}
 
 	private void onReceive(short type, ClientState client, ByteBuffer packet) {
@@ -119,27 +123,31 @@ public class Server {
 				switch(type) {
 					case TYPE_CLIENT_CONNECT_REQUEST -> processClientConnectRequest(client);
 					case TYPE_CLIENT_WORLD_BUILT -> processClientWorldBuilt(client);
-					default -> client.removeAsInvalid();
+					default -> {
+						client.status = STATUS_INVALID;
+						sendDisconnect(client, "invalid", false);
+						log("Removed invalid client " + client);
+					}
 				}
 			}
 
 			case STATUS_IN_GAME -> {
 				switch(type) {
-					case TYPE_CLIENT_DISCONNECT -> client.handleLeave();
+					case TYPE_CLIENT_DISCONNECT -> processClientSelfDisconnect(client);
 					case TYPE_CLIENT_BREAK_BLOCK -> processClientBreakBlock(client, packet);
 					case TYPE_CLIENT_PLACE_BLOCK -> processClientPlaceBlock(client, packet);
 					case TYPE_CLIENT_BOMB_THROW -> processClientThrowBomb(client, packet);
 					case TYPE_CLIENT_PLAYER_STATE -> processClientPlayerState(client, packet);
 					case TYPE_PING -> {} //do nothing
 					default -> throw new ClientBadDataException("received unknown protocol " + type);
-				}
+				} //^^ TODO unify bad data exception vs invalid, etc.
 			}
 
-			case STATUS_TIMED_OUT, //TODO will need to do *something*?
+			case STATUS_TIMED_OUT,
 				STATUS_INVALID,
 				STATUS_REJECTED,
 				STATUS_LEAVE,
-				STATUS_KICKED -> {}
+				STATUS_KICKED -> sendDisconnect(client, "already disconnected", false);
 		}
 	}
 
@@ -152,12 +160,12 @@ public class Server {
 
 	public void update() throws IOException {
 		receive();
-		handleClientStatuses();
+		handleClientStatus();
 		if(shutdown) {
-			if(getClientCount() == 0) {
-				close();
-			} else {
+			if(getClientCount() > 0) {
 				sendAllQueued();
+			} else {
+				close();
 			}
 		} else {
 			lastWorldUpdateTime = Utility.updateWorld(
@@ -180,44 +188,56 @@ public class Server {
 		}
 	}
 
-	private void handleClientStatuses() {
+	//TODO deal with limbo states such as when client responds, but isn't actually doing anything
+	private void handleClientStatus() { //TODO this is not allowing disconnect messages to be sent!
 		var iterator = clients.values().iterator();
 		while(iterator.hasNext()) {
 			ClientState client = iterator.next();
 			switch(client.status) {
 				//check that the client is still sending pings
-				case STATUS_CONNECTED, STATUS_IN_GAME
-					-> client.checkReceiveTimeout();
+				case STATUS_CONNECTED -> checkTimeout(client);
 
-				//disconnect the client without waiting for any response
+				case STATUS_IN_GAME -> {
+					if(checkTimeout(client)) {
+						iterator.remove();
+						handleDisconnect(client);
+					} else if(Utility.nanosSince(client.lastPlayerStateUpdate)
+						> PLAYER_STATE_BROADCAST_INTERVAL) {
+						client.lastPlayerStateUpdate = System.nanoTime();
+						broadcastUnreliable(
+							buildPlayerStateMessage(client.player), ClientState::inGame);
+					}
+				}
+
+				case STATUS_KICKED, STATUS_LEAVE, STATUS_REJECTED -> {
+					if(!client.hasPending()) {
+						iterator.remove();
+						handleDisconnect(client);
+					} else {
+						log(client.sendQueue.toString());
+					}
+				}
+
 				case STATUS_TIMED_OUT -> {
-					//This could be called again if the client sends more packets
 					iterator.remove();
 					handleDisconnect(client);
 				}
 
-				//disconnect the client after ensuring they have been notified
-				case STATUS_KICKED, STATUS_LEAVE -> {
-					if(client.sendQueue.isEmpty()) {
-						iterator.remove();
-						handleDisconnect(client);
-					}
-				}
-
-				//ensure that the client knows they have been rejected,
-				//but no need to let everyone else know they have been rejected
-				case STATUS_REJECTED -> {
-					if(client.sendQueue.isEmpty()) iterator.remove();
-				}
-
-				case STATUS_INVALID -> {
-					log("Removed invalid client " + client);
-					iterator.remove();
-				}
+				case STATUS_INVALID -> iterator.remove();
 
 				default -> throw new UnsupportedOperationException("Unknown client status");
 			}
 		}
+	}
+
+	private static boolean checkTimeout(ClientState client) {
+		long delta = Utility.nanosSince(client.lastMessageReceiveTime);
+		if(delta > TIMEOUT_DISCONNECT) {
+			client.status = STATUS_TIMED_OUT;
+			client.disconnectReason = "server didn't receive message in " + Utility.formatTime(delta);
+			return true;
+		}
+		return false;
 	}
 
 	private void handleDisconnect(ClientState client) {
@@ -247,15 +267,6 @@ public class Server {
 				Entity entity = iterator.next();
 				populateEntityUpdate(packet, ENTITY_UPDATE_HEADER_SIZE + index * BYTES_PER_ENTITY, entity);
 				entitiesRemaining--;
-				if(entity instanceof PlayerEntity player) {
-					log("Sending player state during entity updates " + player.getID());
-					SendPacket msg = new SendPacket(buildPlayerStateMessage(player), false);
-					for(ClientState client : clients.values()) {
-						if(client.inGame() && !client.player.equals(player)) {
-							client.sendQueue.add(msg);
-						}
-					}
-				}
 			}
 			broadcastUnsafe(packet, false, ClientState::inGame);
 		}
@@ -284,17 +295,26 @@ public class Server {
 			+ getClientCount() + " player(s) connected)");
 	}
 
+	private static void processClientSelfDisconnect(ClientState client) {
+		client.status = STATUS_LEAVE;
+		client.disconnectReason = "self disconnect";
+	}
+
 	private void processClientPlayerState(ClientState client, ByteBuffer packet) {
 		PlayerEntity player = client.player;
+		client.lastPlayerStateUpdate = System.nanoTime();
 		if(player == null)
 			throw new ClientBadDataException("client has no associated player to perform an action");
 		if(world.contains(player)) {
 			short state = packet.getShort();
 			PlayerState.updatePlayer(player, state);
 			var msg = buildPlayerStateMessage(client.player);
-			broadcastUnreliable(msg, msg.length, r -> r.inGame() && !r.equals(client));
+			broadcastUnreliable(msg, r -> r.inGame() && !r.equals(client));
 			//TODO for now ignore the primary/secondary actions
-		} //else what is the point of the player performing the action
+		} else {
+			//else what is the point of the player performing the action
+			throw new ClientBadDataException("client player is not in game world");
+		}
 	}
 
 	private static byte[] buildPlayerStateMessage(PlayerEntity player) {
@@ -424,7 +444,7 @@ public class Server {
 			byte[] response = new byte[3];
 			Bytes.putShort(response, 0, TYPE_SERVER_CONNECT_ACKNOWLEDGMENT);
 			response[2] = CONNECT_STATUS_REJECTED;
-			sendReliableSafe(client, response);
+			sendReliableUnsafe(client, response);
 			client.status = STATUS_REJECTED;
 			client.disconnectReason = "client rejected";
 		}
@@ -494,6 +514,10 @@ public class Server {
 			if(sendToClient.test(client))
 				client.sendQueue.add(packet);
 		}
+	}
+
+	private void broadcastUnreliable(byte[] data, Predicate<ClientState> sendToClient) {
+		broadcastUnreliable(data, data.length, sendToClient);
 	}
 
 	private void broadcastUnreliable(byte[] data, int length, Predicate<ClientState> sendToClient) {
@@ -576,10 +600,10 @@ public class Server {
 		try {
 			onReceive(packet.getShort(), client, packet);
 		} catch(ClientBadDataException e) {
-			client.status = STATUS_KICKED;
-			client.disconnectReason = "Received bad data - " + e.getMessage();
+			kickClient(client, "Received bad data - " + e.getMessage());
 		}
 	}
+
 
 	private static void setupSendBuffer(ByteBuffer sendBuffer, byte type, int id, byte[] data) {
 		sendBuffer.put(type).putInt(id).put(data).flip();
@@ -605,7 +629,8 @@ public class Server {
 						sendReliableImpl(client, queue.peek());
 					}
 				} else { //client has timed out
-					client.handleSendTimeout();
+					client.status = STATUS_TIMED_OUT;
+					client.disconnectReason = "client didn't respond to reliable message";
 				}
 				break;
 			} else {
@@ -643,7 +668,7 @@ public class Server {
 		long ping;
 
 		/** Last player action times in nanoseconds offset */
-		long lastBlockBreakTime, lastBlockPlaceTime, lastThrowTime;
+		long lastBlockBreakTime, lastBlockPlaceTime, lastThrowTime, lastPlayerStateUpdate;
 		ServerPlayerEntity player;
 		String disconnectReason;
 
@@ -653,21 +678,27 @@ public class Server {
 			sendQueue = new ArrayDeque<>(1);
 		}
 
+		@Override
+		public boolean equals(Object obj) {
+			return obj instanceof ClientState client && address.equals(client.address);
+		}
+
+		@Override
+		public int hashCode() {
+			return super.hashCode();
+		}
+
 		static String statusToString(byte status) {
 			return switch(status) {
 				case STATUS_CONNECTED -> 	"connected";
 				case STATUS_TIMED_OUT -> 	"timed out";
 				case STATUS_KICKED -> 		"kicked";
-				case STATUS_LEAVE -> 		"disconnected";
+				case STATUS_LEAVE -> 		"leave";
 				case STATUS_REJECTED -> 	"rejected";
 				case STATUS_IN_GAME -> 		"in-game";
 				case STATUS_INVALID ->		"invalid";
 				default -> 					"unknown";
 			};
-		}
-
-		void removeAsInvalid() {
-			status = STATUS_INVALID;
 		}
 
 		boolean inGame() {
@@ -681,22 +712,8 @@ public class Server {
 			};
 		}
 
-		void checkReceiveTimeout() {
-			long delta = Utility.nanosSince(lastMessageReceiveTime);
-			if(delta > TIMEOUT_DISCONNECT) {
-				status = STATUS_TIMED_OUT;
-				disconnectReason = "server didn't receive message in " + Utility.formatTime(delta);
-			}
-		}
-
-		void handleLeave() {
-			status = STATUS_LEAVE;
-			disconnectReason = "self disconnect";
-		}
-
-		void handleSendTimeout() {
-			status = STATUS_TIMED_OUT;
-			disconnectReason = "client didn't respond to reliable message";
+		boolean hasPending() {
+			return !sendQueue.isEmpty();
 		}
 
 		public String formattedName() {
@@ -716,6 +733,8 @@ public class Server {
 				.append(Utility.formatTime(ping))
 				.append(" queuedSend: ")
 				.append(sendQueue.size())
+				.append(" ")
+				.append(statusToString(status))
 				.append(']')
 				.toString();
 		}
