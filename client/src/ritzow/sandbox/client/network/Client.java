@@ -15,7 +15,7 @@ import ritzow.sandbox.network.NetworkUtility;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.util.Utility;
 
-public class Client {
+public class Client implements AutoCloseable {
 
 	//sender/receiver state
 	private final DatagramChannel channel;
@@ -128,6 +128,7 @@ public class Client {
 	 * Abruptly close the client without notifying a connected server
 	 * @throws IOException if an exception occurs when closing the networking socket
 	 */
+	@Override
 	public void close() throws IOException {
 		isUp = false;
 		channel.close();

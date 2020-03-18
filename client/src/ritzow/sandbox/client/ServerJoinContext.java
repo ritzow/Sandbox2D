@@ -50,9 +50,9 @@ class ServerJoinContext {
 			//wait for server response to connect request
 			//only process 1 message so other message types don't get eaten up
 			//TODO this is still broken, if message isn't immediately received before other types
-			client.update(this::process); //client.update(1, this::process);
+			client.update(1, this::process); //client.update(1, this::process);
 		} else {
-			worldContext.updatePreInGame();
+			worldContext.updateJoining();
 		}
 	}
 
@@ -85,10 +85,7 @@ class ServerJoinContext {
 					worldContext = new InWorldContext(client, data.getInt(), data.getInt());
 				}
 
-				case Protocol.CONNECT_STATUS_LOBBY ->
-					throw new UnsupportedOperationException("CONNECT_STATUS_LOBBY not supported.");
-
-				default -> throw new UnsupportedOperationException("unknown connect ack type " + response);
+				default -> throw new UnsupportedOperationException("Unsupported connect ack type " + response);
 			}
 		} else {
 			throw new UnsupportedOperationException(messageType + " not supported during connect");

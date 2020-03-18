@@ -17,8 +17,8 @@ import ritzow.sandbox.world.generator.SinusoidWorldGenerator;
 
 class StartServer {
 	private static final Path SAVE_FILE = Path.of("world.dat");
-	private static final long FRAME_TIME_LIMIT = Utility.frameRateToFrameTimeNanos(60);
-	private static final int WIDTH = 5000, HEIGHT = 200;
+	private static final long FRAME_TIME_LIMIT = Utility.frameRateToFrameTimeNanos(120);
+	private static final int WIDTH = 100, HEIGHT = 200;
 
 	private static Server server;
 	private static boolean save = true;
@@ -28,18 +28,15 @@ class StartServer {
 			NetworkUtility.parseSocket(args[0], Protocol.DEFAULT_SERVER_PORT) :
 			new InetSocketAddress(NetworkUtility.getPrimaryAddress(), Protocol.DEFAULT_SERVER_PORT);
 		try {
-			startServer(bind);
-			CommandParser parser = new CommandParser();
-			registerCommands(parser);
+			CommandParser parser = createParser();
 			new Thread(parser, "Command Parser").start();
-
+			startServer(bind);
 			while(server.isOpen()) {
 				long start = System.nanoTime();
 				parser.update();
 				server.update();
 				Utility.limitFramerate(start, FRAME_TIME_LIMIT);
 			}
-
 			saveWorld(server.world());
 		} catch(BindException e) {
 			System.out.println("Couldn't start server on address " + NetworkUtility.formatAddress(bind));
@@ -79,8 +76,8 @@ class StartServer {
 		}
 	}
 
-	private static void registerCommands(CommandParser runner) {
-		runner	.register("stop", 		StartServer::stopCommand, true)
+	private static CommandParser createParser() {
+		return new CommandParser()	.register("stop", 		StartServer::stopCommand, true)
 				.register("abort", 		StartServer::abortCommand, true)
 				.register("reset", 		StartServer::resetCommand, true)
 				.register("kill", 		StartServer::killCommand, true)

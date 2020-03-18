@@ -80,18 +80,16 @@ public final class Utility {
 	 */
 	public static long updateWorld(World world, long previousTime, long maxTimestep) {
 		long start = System.nanoTime(); //get the current time
-		long updateTimeRemaining = start - previousTime;
-		if(updateTimeRemaining > Protocol.MAX_UPDATE_TIME_ALLOWED)
-			throw new IllegalArgumentException(updateTimeRemaining +
+		long timeRemaining = start - previousTime;
+		if(timeRemaining > Protocol.MAX_UPDATE_TIME_ALLOWED)
+			throw new IllegalArgumentException(timeRemaining +
 					" is greater than the max allowed world update time");
-
 		//update the world with a timestep of at most maxTimestep until the world is up to date.
-		while(updateTimeRemaining > 0) {
-			long singleUpdateTime = Math.min(updateTimeRemaining, maxTimestep);
+		while(timeRemaining > 0) {
+			long singleUpdateTime = Math.min(timeRemaining, maxTimestep);
 			world.update(singleUpdateTime);
-			updateTimeRemaining -= singleUpdateTime;
+			timeRemaining -= singleUpdateTime;
 		}
-
 		return start;
 	}
 

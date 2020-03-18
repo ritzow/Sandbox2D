@@ -39,7 +39,7 @@ public class World implements Transportable, Iterable<Entity> {
 	/** Entity ID counter **/
 	private int lastEntityID;
 
-	/** called when an entity is removed from the world **/
+	/** called when an entity is removed from the world, entities won't be removed if null **/
 	private Consumer<Entity> onRemove;
 
 	/** For access protection during entity updates **/
@@ -152,7 +152,7 @@ public class World implements Transportable, Iterable<Entity> {
 	 * @param onRemove action to take when an entity is removed
 	 */
 	public void setRemoveEntities(Consumer<Entity> onRemove) {
-		this.onRemove = onRemove;
+		this.onRemove = Objects.requireNonNull(onRemove);
 	}
 
 	/**
@@ -249,8 +249,10 @@ public class World implements Transportable, Iterable<Entity> {
 		remove(e.getID());
 	}
 
+	/** Removes the entity with id {@code entityID} from the world,
+	 * returns null if the entity does not exist. */
 	public final Entity remove(int entityID) {
-		Entity e = Objects.requireNonNull(entitiesID.remove(entityID), "entity not found");
+		Entity e = entitiesID.remove(entityID); //Objects.requireNonNull(, "entity not found");
 		if(!entities.remove(e))
 			throw new IllegalStateException("entity not found in list, but found in map");
 		return e;
@@ -421,6 +423,7 @@ public class World implements Transportable, Iterable<Entity> {
 	 * @param surfaceFriction The friction of the object the entity e is colliding with.
 	 * @param nanoseconds The duration of the collision?
 	 */
+	@SuppressWarnings("unused")
 	private static void onCollisionEntity(Entity e, float surfaceFriction, long nanoseconds) {
 		//friction force = normal force * friction
 		//TODO maybe implement normal forces some time (for when entities are stacked)?

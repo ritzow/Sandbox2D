@@ -78,8 +78,7 @@ public final class Protocol {
 
 	public static final byte
 		CONNECT_STATUS_REJECTED = 0,
-		CONNECT_STATUS_WORLD = 1,
-		CONNECT_STATUS_LOBBY = 2;
+		CONNECT_STATUS_WORLD = 1;
 
 	public static byte[] buildConsoleMessage(String message) {
 		byte[] msg = message.getBytes(Protocol.CHARSET);
