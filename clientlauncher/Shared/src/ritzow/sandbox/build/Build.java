@@ -81,7 +81,7 @@ public class Build {
 			Files.delete(OUTPUT_DIR);
 		}
 
-		Files.createDirectory(OUTPUT_DIR);
+		Files.createDirectories(OUTPUT_DIR);
 		System.out.println("Searching for shared code.");
 		var sharedFiles = getSourceFiles(SHARED_SRC);
 		System.out.println("Compiling shared code.");
@@ -332,6 +332,7 @@ public class Build {
 			super(compiler.getStandardFileManager(listener, Locale.getDefault(), SRC_CHARSET));
 			fileManager.setLocationFromPaths(StandardLocation.MODULE_PATH, modules);
 			this.outJar = outJar;
+			Files.createDirectories(outJar.getParent());
 			Manifest manifest = new Manifest();
 			Attributes attribs = manifest.getMainAttributes();
 			attribs.put(Name.MANIFEST_VERSION, "1.0");
