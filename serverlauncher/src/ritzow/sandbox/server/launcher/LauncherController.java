@@ -37,6 +37,12 @@ import ritzow.sandbox.server.network.Server;
 import ritzow.sandbox.util.Utility;
 
 class LauncherController {
+	private static final Path
+		RESOURCES = Path.of("resources"),
+		FXML = RESOURCES.resolve("ui").resolve("launcher_main.fxml"),
+		CSS = RESOURCES.resolve("ui").resolve("style.css"),
+		ICON = RESOURCES.resolve("greenFace.png");
+
 	@FXML TextField ipField, portField, worldFileField;
 	@FXML Button startButton, browseButton;
 	@FXML Text errorMessageText;
@@ -44,12 +50,12 @@ class LauncherController {
 	private final Stage stage;
 
 	public LauncherController() {
-		try(var in = Files.newInputStream(Path.of("bin/launcher_main.fxml"));
-			var iconIn = Files.newInputStream(Path.of("bin/greenFace.png"))) {
+		try(var in = Files.newInputStream(FXML);
+			var iconIn = Files.newInputStream(ICON)) {
 			var loader = new FXMLLoader();
 			loader.setController(this);
 			BorderPane root = loader.load(in);
-			root.getStylesheets().add("style.css");
+			root.getStylesheets().add(CSS.toUri().toString());
 			stage = new Stage();
 			stage.getIcons().add(new Image(iconIn));
 			ipField.setPromptText(NetworkUtility.getPrimaryAddress().getHostAddress());
