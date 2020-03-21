@@ -69,7 +69,7 @@ public class NetworkUtility {
 	}
 
 	public static InetAddress getLocalAreaAddress() throws SocketException {
-		return getBestAddress(NetworkUtility::filterPublicInterfaces, NetworkUtility::prioritizeLAN);
+		return getBestAddress(NetworkUtility::isPublic, NetworkUtility::prioritizeLAN);
 	}
 
 	public static InetSocketAddress createLoopbackSocket() throws SocketException {
@@ -94,7 +94,7 @@ public class NetworkUtility {
 	 * @return The primary network-facing IP address of this computer.
 	 * @throws SocketException if there is an error querying the IP address. **/
 	public static InetAddress getPrimaryAddress() throws SocketException {
-		return getBestAddress(NetworkUtility::filterPublicInterfaces, NetworkUtility::compareAddresses);
+		return getBestAddress(NetworkUtility::isPublic, NetworkUtility::compareAddressScope);
 	}
 
 	private static InetAddress getBestAddress(
@@ -118,17 +118,6 @@ public class NetworkUtility {
 				.collect(Collectors.toList());
 	}
 
-	private static int compareProtocols(InterfaceAddress a, InterfaceAddress b) {
-		boolean aIs6 = isIPv6(a.getAddress()), bIs6 = isIPv6(b.getAddress());
-		if(aIs6 == bIs6) {
-			return 0;
-		} else if(aIs6) {
-			return -1;
-		} else {
-			return 1;
-		}
-	}
-
 	private static int prioritizeLAN(InterfaceAddress a, InterfaceAddress b) {
 		throw new UnsupportedOperationException("LAN not implemented");
 	}
@@ -138,15 +127,19 @@ public class NetworkUtility {
 	}
 
 	//prioritize IPv6 over address scope
-	private static int compareAddresses(InterfaceAddress a, InterfaceAddress b) {
-		if(a.getNetworkPrefixLength() < b.getNetworkPrefixLength()) {
-			return -1;
-		} else if(a.getNetworkPrefixLength() > b.getNetworkPrefixLength()) {
-			return 1;
-		} else return compareProtocols(a, b);
+	private static int compareAddressScope(InterfaceAddress a, InterfaceAddress b) {
+		return Float.compare(getScopeRatio(b), getScopeRatio(a));
 	}
 
-	private static boolean filterPublicInterfaces(NetworkInterface network) {
+	private static float getScopeRatio(InterfaceAddress a) {
+		return a.getNetworkPrefixLength() / (isIPv6(a.getAddress()) ? 128f : 32f);
+	}
+
+	private static int compareProtocols(InterfaceAddress a, InterfaceAddress b) {
+		return -Boolean.compare(isIPv6(a.getAddress()),isIPv6(b.getAddress()));
+	}
+
+	private static boolean isPublic(NetworkInterface network) {
 		try {
 			return network.isUp() &&
 				!(network.isLoopback() || network.isVirtual() || network.isPointToPoint());
