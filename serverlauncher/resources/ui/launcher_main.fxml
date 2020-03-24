@@ -9,71 +9,63 @@
 <?import javafx.scene.text.Font?>
 <?import javafx.scene.text.Text?>
 
-<BorderPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
-   <bottom>
-      <HBox alignment="BOTTOM_RIGHT" fillHeight="false" maxHeight="-Infinity" maxWidth="-Infinity" spacing="10.0" BorderPane.alignment="BOTTOM_RIGHT">
-         <children>
-            <Text fx:id="errorMessageText" fill="RED" strokeType="OUTSIDE" strokeWidth="0.0">
-               <font>
-                  <Font name="Open Sans Bold" size="18.0" />
-               </font>
+<BorderPane maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" xmlns="http://javafx.com/javafx/10.0.1" xmlns:fx="http://javafx.com/fxml/1">
+    <bottom>
+        <HBox alignment="BOTTOM_LEFT" fillHeight="false" maxHeight="-Infinity" maxWidth="-Infinity" spacing="10.0" BorderPane.alignment="BOTTOM_RIGHT">
+            <BorderPane.margin>
+                <Insets top="10.0"/>
+            </BorderPane.margin>
+            <Text fx:id="errorMessageText" fill="RED" strokeType="OUTSIDE" strokeWidth="0.0" textAlignment="RIGHT">
+                <font>
+                    <Font name="Open Sans Bold" size="18.0"/>
+                </font>
             </Text>
             <Button fx:id="startButton" accessibleText="Start Server" defaultButton="true" mnemonicParsing="false" text="Start">
-               <font>
-                  <Font name="Open Sans Bold" size="17.0" />
-               </font>
+                <font>
+                    <Font name="Open Sans Bold" size="17.0"/>
+                </font>
             </Button>
-         </children>
-         <BorderPane.margin>
-            <Insets left="10.0" top="10.0" />
-         </BorderPane.margin>
-      </HBox>
-   </bottom>
-   <top>
-      <VBox spacing="10.0" BorderPane.alignment="TOP_LEFT">
-         <children>
+        </HBox>
+    </bottom>
+    <top>
+        <VBox spacing="10.0" BorderPane.alignment="TOP_LEFT">
+            <BorderPane.margin>
+                <Insets/>
+            </BorderPane.margin>
             <Text strokeType="OUTSIDE" strokeWidth="0.0" text="Sandbox2D Dedicated Server">
-               <font>
-                  <Font name="Open Sans Bold" size="24.0" />
-               </font>
+                <font>
+                    <Font name="Open Sans Bold" size="24.0"/>
+                </font>
             </Text>
             <HBox alignment="CENTER_LEFT" spacing="10.0">
-               <children>
-                  <Text strokeType="OUTSIDE" text="Server Address">
-                     <font>
-                        <Font name="Open Sans Bold" size="18.0" />
-                     </font>
-                  </Text>
-                  <TextField fx:id="ipField" accessibleText="Server Address" prefColumnCount="1" promptText="localhost" HBox.hgrow="ALWAYS" />
-                  <Text strokeType="OUTSIDE" text="Port">
-                     <font>
-                        <Font name="Open Sans Bold" size="18.0" />
-                     </font>
-                  </Text>
-                  <TextField fx:id="portField" accessibleText="Server Port" minWidth="-Infinity" prefColumnCount="3" promptText="50000" />
-               </children>
+                <Text strokeType="OUTSIDE" text="Server Address">
+                    <font>
+                        <Font name="Open Sans Bold" size="18.0"/>
+                    </font>
+                </Text>
+                <TextField fx:id="ipField" accessibleText="Server Address" prefColumnCount="1" promptText="localhost" HBox.hgrow="ALWAYS"/>
+                <Text strokeType="OUTSIDE" text="Port">
+                    <font>
+                        <Font name="Open Sans Bold" size="18.0"/>
+                    </font>
+                </Text>
+                <TextField fx:id="portField" accessibleText="Server Port" minWidth="-Infinity" prefColumnCount="3" promptText="50000"/>
             </HBox>
             <HBox spacing="10.0">
-               <children>
-                  <Text strokeType="OUTSIDE" text="World File">
-                     <font>
-                        <Font name="Open Sans Bold" size="18.0" />
-                     </font>
-                  </Text>
-                  <TextField fx:id="worldFileField" accessibleText="Server World File" promptText="world.dat" HBox.hgrow="ALWAYS" />
-                  <Button fx:id="browseButton" mnemonicParsing="false" text="Browse" />
-               </children>
+                <Text strokeType="OUTSIDE" text="World File">
+                    <font>
+                        <Font name="Open Sans Bold" size="18.0"/>
+                    </font>
+                </Text>
+                <TextField fx:id="worldFileField" accessibleText="Server World File" promptText="world.dat" HBox.hgrow="ALWAYS"/>
+                <Button fx:id="browseButton" mnemonicParsing="false" text="Browse"/>
             </HBox>
-         </children>
-         <BorderPane.margin>
-            <Insets />
-         </BorderPane.margin>
-      </VBox>
-   </top>
-   <padding>
-      <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
-   </padding>
-   <opaqueInsets>
-      <Insets />
-   </opaqueInsets>
+        </VBox>
+    </top>
+    <opaqueInsets>
+        <Insets/>
+    </opaqueInsets>
+    <padding>
+        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0"/>
+    </padding>
 </BorderPane>

@@ -7,6 +7,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -202,6 +203,8 @@ class LauncherController {
 			setBorder(ValidState.INVALID, portField);
 		} catch(BindException e) {
 			errorMessageText.setText("Couldn't bind to provided address");
+		} catch(NoSuchFileException e) {
+			errorMessageText.setText("File " + e.getFile() + " does not exist");
 		} catch(IOException e) {
 			errorMessageText.setText("Uknown error: " + e.getMessage());
 			e.printStackTrace();
