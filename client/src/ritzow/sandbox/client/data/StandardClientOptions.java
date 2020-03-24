@@ -16,7 +16,7 @@ public class StandardClientOptions {
 	public static final boolean PRINT_FPS = get("fps_print", false, Boolean::parseBoolean);
 	public static final long FRAME_TIME_LIMIT =
 		get("fps_limit", 0, StandardClientOptions::frameTimeLimit).longValue();
-	public static final boolean	LIMIT_FPS = FRAME_TIME_LIMIT > 0;
+	public static final boolean LIMIT_FPS = FRAME_TIME_LIMIT > 0;
 	public static final boolean USE_INTERNET = get("use_internet", true, Boolean::parseBoolean);
 
 	private static long frameTimeLimit(String value) {
@@ -32,18 +32,18 @@ public class StandardClientOptions {
 	public static InetSocketAddress getServerAddress() {
 		return SERVER_ADDRESS == null ? SERVER_ADDRESS =
 			get("address_server", defaultAddress(Protocol.DEFAULT_SERVER_PORT),
-			string -> parseSocket(string, Protocol.DEFAULT_SERVER_PORT)) : SERVER_ADDRESS;
+				string -> parseSocket(string, Protocol.DEFAULT_SERVER_PORT)) : SERVER_ADDRESS;
 	}
 
 	public static InetSocketAddress getLocalAddress() {
 		return LOCAL_ADDRESS == null ? LOCAL_ADDRESS =
 			get("address_local", defaultAddress(NetworkUtility.ANY_PORT),
-			string -> parseSocket(string, 0)) : LOCAL_ADDRESS;
+				string -> parseSocket(string, 0)) : LOCAL_ADDRESS;
 	}
 
 	private static InetSocketAddress defaultAddress(int port) {
 		try {
-			return USE_INTERNET ? NetworkUtility.createPublicSocket() :
+			return USE_INTERNET ? NetworkUtility.getPublicSocket() :
 				new InetSocketAddress(NetworkUtility.getLoopbackAddress(), port);
 		} catch(SocketException e) {
 			throw new RuntimeException(e);

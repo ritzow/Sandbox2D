@@ -20,7 +20,7 @@ public class NetworkUtility {
 		try { //TODO handle cases: IPv4 with no brackets with/without port, IPv6 with no brackets
 			Matcher addressMatcher = ADDRESS_PARSER.matcher(address);
 			if(address.equalsIgnoreCase("localhost")) {
-				return new InetSocketAddress(InetAddress.getLocalHost(), defaultPort);
+				return new InetSocketAddress(getLoopbackAddress(), defaultPort);
 			} else if(addressMatcher.find()) {
 				Matcher portMatcher = PORT_PARSER.matcher(address);
 				return new InetSocketAddress(
@@ -33,7 +33,7 @@ public class NetworkUtility {
 					if(colonIndex > -1) {
 						return new InetSocketAddress(
 							InetAddress.getByName(address.substring(0, colonIndex)),
-							Integer.parseInt(address.substring(colonIndex + 1))
+							Integer.parseUnsignedInt(address.substring(colonIndex + 1))
 						);
 					} else {
 						return new InetSocketAddress(InetAddress.getByName(address), defaultPort);
@@ -43,15 +43,17 @@ public class NetworkUtility {
 				}
 			}
 		} catch(UnknownHostException e) {
-			throw new RuntimeException("Illegal adddress", e);
+			throw new RuntimeException("Couldn't resolve adddress", e);
 		} catch(NumberFormatException e) {
 			throw new RuntimeException("Unreadable port number", e);
+		} catch(SocketException e) {
+			throw new RuntimeException(e);
 		}
 	}
 
 	public static String formatAddress(InetSocketAddress address) {
 		return "[" + address.getAddress().getHostAddress() + "]:" +
-				(address.getPort() == 0 ? "any" : address.getPort());
+			(address.getPort() == 0 ? "any" : address.getPort());
 	}
 
 	public static ProtocolFamily protocolOf(InetAddress address) {
@@ -68,35 +70,51 @@ public class NetworkUtility {
 		return address instanceof Inet6Address;
 	}
 
-	public static InetAddress getLocalAreaAddress() throws SocketException {
+	public static InetAddress getLanAddress() throws SocketException {
 		return getBestAddress(NetworkUtility::isPublic, NetworkUtility::prioritizeLAN);
 	}
 
-	public static InetSocketAddress createLoopbackSocket() throws SocketException {
-		return new InetSocketAddress(getLoopbackAddress(), ANY_PORT);
+	public static InetSocketAddress getLoopbackSocket(int port) throws SocketException {
+		return new InetSocketAddress(getLoopbackAddress(), port);
 	}
 
-	/** Returns the computer's loopback address (localhost) for same-machine communication.
+	public static InetSocketAddress getLoopbackSocket() throws SocketException {
+		return getLoopbackSocket(ANY_PORT);
+	}
+
+	/**
+	 * Returns the computer's loopback address (localhost) for same-machine communication.
+	 *
 	 * @return The loopback address or null.
-	 * @throws SocketException if there is an error querying the loopback address. **/
+	 * @throws SocketException if there is an error querying the loopback address.
+	 **/
 	public static InetAddress getLoopbackAddress() throws SocketException {
 		return getBestAddress(NetworkUtility::isLoopback, NetworkUtility::compareProtocols);
 	}
 
-	/** Returns a suitable IP address and port for communicating over the Internet.
+	/**
+	 * Returns a suitable IP address and port for communicating over the Internet.
+	 *
 	 * @return An internet-facing socket on any port.
-	 * @throws SocketException if there is an error querying the IP address. **/
-	public static InetSocketAddress createPublicSocket() throws SocketException {
+	 * @throws SocketException if there is an error querying the IP address.
+	 **/
+	public static InetSocketAddress getPublicSocket() throws SocketException {
 		return new InetSocketAddress(getPrimaryAddress(), ANY_PORT);
 	}
 
-	/** Returns a suitable IP address if available and null if not available
+	/**
+	 * Returns a suitable IP address if available and null if not available
+	 *
 	 * @return The primary network-facing IP address of this computer.
-	 * @throws SocketException if there is an error querying the IP address. **/
+	 * @throws SocketException if there is an error querying the IP address.
+	 **/
 	public static InetAddress getPrimaryAddress() throws SocketException {
 		return getBestAddress(NetworkUtility::isPublic, NetworkUtility::compareAddressScope);
 	}
 
+	/**
+	 * Querying network interfaces takes about 30ms on Windows
+	 **/
 	private static InetAddress getBestAddress(
 		Predicate<NetworkInterface> filter, Comparator<InterfaceAddress> comparator) throws SocketException {
 		//get main network interface
@@ -114,8 +132,8 @@ public class NetworkUtility {
 
 	public static Collection<InetAddress> getAllAddresses() throws SocketException {
 		return NetworkInterface.networkInterfaces()
-				.flatMap(NetworkInterface::inetAddresses)
-				.collect(Collectors.toList());
+			.flatMap(NetworkInterface::inetAddresses)
+			.collect(Collectors.toList());
 	}
 
 	private static int prioritizeLAN(InterfaceAddress a, InterfaceAddress b) {
@@ -136,14 +154,14 @@ public class NetworkUtility {
 	}
 
 	private static int compareProtocols(InterfaceAddress a, InterfaceAddress b) {
-		return -Boolean.compare(isIPv6(a.getAddress()),isIPv6(b.getAddress()));
+		return -Boolean.compare(isIPv6(a.getAddress()), isIPv6(b.getAddress()));
 	}
 
 	private static boolean isPublic(NetworkInterface network) {
 		try {
 			return network.isUp() &&
 				!(network.isLoopback() || network.isVirtual() || network.isPointToPoint());
-		} catch (SocketException e) {
+		} catch(SocketException e) {
 			throw new RuntimeException(e);
 		}
 	}
@@ -151,7 +169,7 @@ public class NetworkUtility {
 	private static boolean isLoopback(NetworkInterface network) {
 		try {
 			return network.isUp() && network.isLoopback();
-		} catch (SocketException e) {
+		} catch(SocketException e) {
 			throw new RuntimeException(e);
 		}
 	}

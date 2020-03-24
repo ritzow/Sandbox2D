@@ -24,7 +24,7 @@ class ClientOptions {
 	private static Map<String, String> loadOptions() {
 		try {
 			return Files.lines(StandardClientProperties.OPTIONS_PATH, StandardCharsets.UTF_8)
-				.filter(line -> !line.stripLeading().startsWith("#") && !line.isBlank())
+				.filter(line -> !line.isBlank() && !line.stripLeading().startsWith("#"))
 				.collect(Collectors.toMap(
 					line -> line.substring(0, line.indexOf('=')).strip(),
 					line -> line.substring(line.indexOf('=') + 1).strip()
@@ -40,8 +40,8 @@ class ClientOptions {
 	}
 
 	static <T> T get(String option, T defaultValue, Function<String, T> converter) {
-		var val = OPTIONS.get(option);
-		return val == null || val.isBlank() ? defaultValue : converter.apply(val);
+		var val = OPTIONS.getOrDefault(option, "");
+		return val.isEmpty() ? defaultValue : converter.apply(val);
 	}
 
 	private ClientOptions() {}
