@@ -1,12 +1,9 @@
 package ritzow.sandbox.network;
 
 import java.net.*;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
+import ritzow.sandbox.data.Bytes;
 
 public class NetworkUtility {
 
@@ -51,6 +48,27 @@ public class NetworkUtility {
 		}
 	}
 
+	/**
+	 * Returns whether the address is in a global unicast address range. Based on data from the IANA.
+	 * IPv6: https://www.iana.org/assignments/ipv6-address-space/ipv6-address-space.xhtml
+	 * IPv4: https://www.iana.org/assignments/ipv4-address-space/ipv4-address-space.xhtml
+	 * @param address The address to check.
+	 * @return whether the address is a global unicast IPv4 or IPv6 address.
+	 */
+	public static boolean isGlobalUnicast(InetAddress address) {
+		if(isIPv6(address)) {
+			byte[] raw = address.getAddress();
+			short high = Bytes.getShort(raw, 0);
+			return high >= 2000 && high <= 0x3fff;
+		} else {
+			short high = (short)(((short)address.getAddress()[0]) & 0xFF);
+			return high < 224 && switch(high) {
+				default -> true;
+				case 0, 10, 127 -> false;
+			};
+		}
+	}
+
 	public static String formatAddress(InetSocketAddress address) {
 		return "[" + address.getAddress().getHostAddress() + "]:" +
 			(address.getPort() == 0 ? "any" : address.getPort());
@@ -70,8 +88,51 @@ public class NetworkUtility {
 		return address instanceof Inet6Address;
 	}
 
-	public static InetAddress getLanAddress() throws SocketException {
-		return getBestAddress(NetworkUtility::isPublic, NetworkUtility::prioritizeLAN);
+	/**
+	 * Returns a suitable IP address and port for communicating over the Internet.
+	 * @return An internet-facing socket on on port {@code port}.
+	 * @throws SocketException if there is an error querying the IP address.
+	 **/
+	public static InetSocketAddress getPublicSocket(int port) throws SocketException {
+		return new InetSocketAddress(getPrimaryAddress(), port);
+	}
+
+	/**
+	 * Returns a suitable IP address and port for communicating over the Internet.
+	 * @return An internet-facing socket on any port.
+	 * @throws SocketException if there is an error querying the IP address.
+	 **/
+	public static InetSocketAddress getPublicSocket() throws SocketException {
+		return getPublicSocket(ANY_PORT);
+	}
+
+	/**
+	 * Returns a suitable IP address if available and null if not available
+	 * @return The primary network-facing IP address of this computer.
+	 * @throws SocketException if there is an error querying the IP address.
+	 **/
+	public static InetAddress getPrimaryAddress() throws SocketException {
+		return NetworkInterface.networkInterfaces()
+			.flatMap(i -> i.getInterfaceAddresses().stream())
+			.filter(addr -> isGlobalUnicast(addr.getAddress()))
+			.min(NetworkUtility::compare)
+			.map(InterfaceAddress::getAddress)
+			.orElseThrow();
+	}
+
+	private static float getScopeRatio(short prefixLength, boolean IPv6) {
+		return prefixLength / (IPv6 ? 128f : 32f);
+	}
+
+	private static int compare(InterfaceAddress a, InterfaceAddress b) {
+		boolean aIs6 = isIPv6(a.getAddress()), bIs6 = isIPv6(b.getAddress());
+		if(aIs6 == bIs6) {
+			return Float.compare(getScopeRatio(b.getNetworkPrefixLength(), bIs6), getScopeRatio(a.getNetworkPrefixLength(), aIs6));
+		} else if(aIs6) {
+			return -1;
+		} else {
+			return 1;
+		}
 	}
 
 	public static InetSocketAddress getLoopbackSocket(int port) throws SocketException {
@@ -84,93 +145,22 @@ public class NetworkUtility {
 
 	/**
 	 * Returns the computer's loopback address (localhost) for same-machine communication.
-	 *
 	 * @return The loopback address or null.
 	 * @throws SocketException if there is an error querying the loopback address.
 	 **/
 	public static InetAddress getLoopbackAddress() throws SocketException {
-		return getBestAddress(NetworkUtility::isLoopback, NetworkUtility::compareProtocols);
-	}
-
-	/**
-	 * Returns a suitable IP address and port for communicating over the Internet.
-	 *
-	 * @return An internet-facing socket on any port.
-	 * @throws SocketException if there is an error querying the IP address.
-	 **/
-	public static InetSocketAddress getPublicSocket() throws SocketException {
-		return new InetSocketAddress(getPrimaryAddress(), ANY_PORT);
-	}
-
-	/**
-	 * Returns a suitable IP address if available and null if not available
-	 *
-	 * @return The primary network-facing IP address of this computer.
-	 * @throws SocketException if there is an error querying the IP address.
-	 **/
-	public static InetAddress getPrimaryAddress() throws SocketException {
-		return getBestAddress(NetworkUtility::isPublic, NetworkUtility::compareAddressScope);
-	}
-
-	/**
-	 * Querying network interfaces takes about 30ms on Windows
-	 **/
-	private static InetAddress getBestAddress(
-		Predicate<NetworkInterface> filter, Comparator<InterfaceAddress> comparator) throws SocketException {
-		//get main network interface
-		//get interface's addresses
-		//filter out special addresses
-		//get best address
-		return NetworkInterface.networkInterfaces()
-			.filter(filter)
-			.flatMap(i -> i.getInterfaceAddresses().stream())
-			.filter(NetworkUtility::isNotLinkLocal) //filter out computer-router addresses
-			.min(comparator)//get the best address
-			.orElseThrow()
-			.getAddress();
-	}
-
-	public static Collection<InetAddress> getAllAddresses() throws SocketException {
 		return NetworkInterface.networkInterfaces()
 			.flatMap(NetworkInterface::inetAddresses)
-			.collect(Collectors.toList());
+			.filter(InetAddress::isLoopbackAddress)
+			.min((a, b) -> isIPv6(a) ? isIPv6(b) ? 0 : -1 : 1)
+			.orElseThrow();
+	}
+
+	public static InetAddress getLanAddress() throws SocketException {
+		throw new UnsupportedOperationException("LAN not implemented");
 	}
 
 	private static int prioritizeLAN(InterfaceAddress a, InterfaceAddress b) {
 		throw new UnsupportedOperationException("LAN not implemented");
-	}
-
-	private static boolean isNotLinkLocal(InterfaceAddress a) {
-		return !a.getAddress().isLinkLocalAddress();
-	}
-
-	//prioritize IPv6 over address scope
-	private static int compareAddressScope(InterfaceAddress a, InterfaceAddress b) {
-		return Float.compare(getScopeRatio(b), getScopeRatio(a));
-	}
-
-	private static float getScopeRatio(InterfaceAddress a) {
-		return a.getNetworkPrefixLength() / (isIPv6(a.getAddress()) ? 128f : 32f);
-	}
-
-	private static int compareProtocols(InterfaceAddress a, InterfaceAddress b) {
-		return -Boolean.compare(isIPv6(a.getAddress()), isIPv6(b.getAddress()));
-	}
-
-	private static boolean isPublic(NetworkInterface network) {
-		try {
-			return network.isUp() &&
-				!(network.isLoopback() || network.isVirtual() || network.isPointToPoint());
-		} catch(SocketException e) {
-			throw new RuntimeException(e);
-		}
-	}
-
-	private static boolean isLoopback(NetworkInterface network) {
-		try {
-			return network.isUp() && network.isLoopback();
-		} catch(SocketException e) {
-			throw new RuntimeException(e);
-		}
 	}
 }

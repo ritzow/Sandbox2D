@@ -25,8 +25,7 @@ class StartServer {
 
 	public static void main(String[] args) throws IOException {
 		InetSocketAddress bind = args.length > 0 ?
-			NetworkUtility.parseSocket(args[0], Protocol.DEFAULT_SERVER_PORT) :
-			new InetSocketAddress(NetworkUtility.getPrimaryAddress(), Protocol.DEFAULT_SERVER_PORT);
+			NetworkUtility.parseSocket(args[0], Protocol.DEFAULT_SERVER_PORT) : NetworkUtility.getPublicSocket(Protocol.DEFAULT_SERVER_PORT);
 		try {
 			CommandParser parser = createParser();
 			new Thread(parser, "Command Parser").start();

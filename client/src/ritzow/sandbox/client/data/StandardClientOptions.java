@@ -43,7 +43,7 @@ public class StandardClientOptions {
 
 	private static InetSocketAddress defaultAddress(int port) {
 		try {
-			return USE_INTERNET ? NetworkUtility.getPublicSocket() :
+			return USE_INTERNET ? NetworkUtility.getPublicSocket(port) :
 				new InetSocketAddress(NetworkUtility.getLoopbackAddress(), port);
 		} catch(SocketException e) {
 			throw new RuntimeException(e);
