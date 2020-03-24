@@ -45,6 +45,8 @@ class InWorldContext implements GameTalker {
 	private CompletableFuture<World> worldBuildTask;
 	private Queue<QueuedPacket> bufferedMessages;
 
+	private static final long PLAYER_STATE_SEND_INTERVAL = Utility.frameRateToFrameTimeNanos(60);
+
 	public InWorldContext(Client client, int downloadSize, int playerID) {
 		log().info("Downloading " + Utility.formatSize(downloadSize) + " of world data");
 		this.client = client;
@@ -126,18 +128,23 @@ class InWorldContext implements GameTalker {
 		}
 	}
 
+	private long lastPlayerStateSend;
+
 	private void updatePlayerState(Display display) {
-		boolean isLeft = display.isControlActivated(Control.MOVE_LEFT);
-		boolean isRight = display.isControlActivated(Control.MOVE_RIGHT);
-		boolean isUp = display.isControlActivated(Control.MOVE_UP);
-		boolean isDown = display.isControlActivated(Control.MOVE_DOWN);
-		boolean isPrimary = display.isControlActivated(Control.USE_HELD_ITEM);
-		boolean isSecondary = display.isControlActivated(Control.THROW_BOMB);
-		player.setLeft(isLeft);
-		player.setRight(isRight);
-		player.setUp(isUp);
-		player.setDown(isDown);
-		sendPlayerState(player, isPrimary, isSecondary);
+		if(Utility.nanosSince(lastPlayerStateSend) > PLAYER_STATE_SEND_INTERVAL) {
+			boolean isLeft = display.isControlActivated(Control.MOVE_LEFT);
+			boolean isRight = display.isControlActivated(Control.MOVE_RIGHT);
+			boolean isUp = display.isControlActivated(Control.MOVE_UP);
+			boolean isDown = display.isControlActivated(Control.MOVE_DOWN);
+			boolean isPrimary = display.isControlActivated(Control.USE_HELD_ITEM);
+			boolean isSecondary = display.isControlActivated(Control.THROW_BOMB);
+			player.setLeft(isLeft);
+			player.setRight(isRight);
+			player.setUp(isUp);
+			player.setDown(isDown);
+			sendPlayerState(player, isPrimary, isSecondary);
+			lastPlayerStateSend = System.nanoTime();
+		}
 	}
 
 	private void updateRender(Display display, long deltaTime) {
