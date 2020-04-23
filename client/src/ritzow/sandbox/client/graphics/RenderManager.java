@@ -25,6 +25,7 @@ public class RenderManager {
 
 	public static ModelRenderProgram setup() throws IOException {
 		log().info("Loading OpenGL");
+		GL.create();
 		RenderManager.OPENGL_CAPS = GL.createCapabilities(true);
 		if(RenderManager.OPENGL_CAPS.GL_ARB_debug_output && StandardClientOptions.USE_OPENGL_4_6) {
 			glEnable(GL_DEBUG_OUTPUT);
@@ -53,11 +54,11 @@ public class RenderManager {
 
 		//TODO look into using https://github.com/javagl/JglTF with Blender
 		ModelData[] models = {
-			new ModelData(RenderConstants.MODEL_DIRT_BLOCK, positions, atlas.getCoordinates(dirt), indices),
-			new ModelData(RenderConstants.MODEL_GRASS_BLOCK, positions, atlas.getCoordinates(grass), indices),
-			new ModelData(RenderConstants.MODEL_GREEN_FACE, positions, atlas.getCoordinates(face), indices),
-			new ModelData(RenderConstants.MODEL_RED_SQUARE, positions, atlas.getCoordinates(red), indices),
-			new ModelData(RenderConstants.MODEL_SKY, positions, atlas.getCoordinates(sky), indices)
+			new ModelData(GameModels.MODEL_DIRT_BLOCK, positions, atlas.getCoordinates(dirt), indices),
+			new ModelData(GameModels.MODEL_GRASS_BLOCK, positions, atlas.getCoordinates(grass), indices),
+			new ModelData(GameModels.MODEL_GREEN_FACE, positions, atlas.getCoordinates(face), indices),
+			new ModelData(GameModels.MODEL_RED_SQUARE, positions, atlas.getCoordinates(red), indices),
+			new ModelData(GameModels.MODEL_SKY, positions, atlas.getCoordinates(sky), indices)
 		};
 
 		Shader vertex = StandardClientOptions.USE_OPENGL_4_6 ?

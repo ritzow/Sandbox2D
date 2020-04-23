@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Scanner;
+import ritzow.sandbox.client.graphics.Model;
 import ritzow.sandbox.client.graphics.OpenGLTexture;
 import ritzow.sandbox.client.graphics.Textures;
 
@@ -19,6 +20,8 @@ public final class Font {
 	private final int[] glyphs;
 	private final OpenGLTexture charsetLatin;
 	private final String name;
+
+	private static final CharModel UNKNOWN_CHAR_MODEL = new CharModel(-1);
 
 	/** A class for loading and managing fonts, should only be used in GraphicsManager
 	 * @throws IOException if unable to load texture
@@ -56,11 +59,10 @@ public final class Font {
 		charsetLatin.delete();
 	}
 
-	public int getModelID(char c) {
-		if(c < glyphs.length) {
-			return glyphs[c];
-		}
-		return 0;
+	private static record CharModel(int c) implements Model {}
+
+	public Model getModel(char c) {
+		return c < glyphs.length ? new CharModel(glyphs[c]) : UNKNOWN_CHAR_MODEL;
 	}
 
 	protected void loadCharacters() {

@@ -10,7 +10,7 @@ import static org.lwjgl.opengl.GL46C.*;
 
 public final class ModelRenderProgram extends ShaderProgram {
 
-	public static final record RenderInstance(int modelID, float opacity,
+	public static final record RenderInstance(Model model, float opacity,
 		float posX, float posY, float scaleX, float scaleY, float rotation) {}
 	private static record ModelAttributes(int indexOffset, int indexCount) {}
 
@@ -40,7 +40,7 @@ public final class ModelRenderProgram extends ShaderProgram {
 
 	private final int vaoID, atlasTexture;
 	private final Queue<RenderInstance> renderQueue;
-	private final Map<Integer, ModelAttributes> modelProperties;
+	private final Map<Model, ModelAttributes> modelProperties;
 
 	public static ModelRenderProgram create(Shader vertexShader, Shader fragmentShader,
 			int textureAtlas, ModelData... models) {
@@ -57,12 +57,12 @@ public final class ModelRenderProgram extends ShaderProgram {
 		this.uniform_view = getUniformLocation("view");
 		setInteger(getUniformLocation("atlasSampler"), ATLAS_TEXTURE_UNIT);
 		this.atlasTexture = textureAtlas;
-		this.modelProperties = new HashMap<Integer, ModelAttributes>();
+		this.modelProperties = new HashMap<Model, ModelAttributes>();
 		this.renderQueue = new ArrayDeque<RenderInstance>();
 		this.vaoID = register(models);
 	}
 
-	public static record ModelData(int modelID, float[] positions, float[] textureCoords, int[] indices) {
+	public static record ModelData(Model model, float[] positions, float[] textureCoords, int[] indices) {
 		public int indexCount() {
 			return indices.length;
 		}
@@ -80,7 +80,7 @@ public final class ModelRenderProgram extends ShaderProgram {
 
 	/**
 	 * Renders a model with the specified properties
-	 * @param modelID the model to render
+	 * @param model the model to render
 	 * @param opacity the opacity of the model
 	 * @param posX the horizontal position to render the model
 	 * @param posY the vertical position to render the model
@@ -88,10 +88,10 @@ public final class ModelRenderProgram extends ShaderProgram {
 	 * @param scaleY the vertical stretch scale of the model
 	 * @param rotation the rotation, in radians, of the model
 	 */
-	public void render(int modelID, float opacity, float posX, float posY, float scaleX, float scaleY, float rotation) {
-		ModelAttributes model = modelProperties.get(modelID);
-		if(model == null)
-			throw new IllegalArgumentException("no data exists for model id " + modelID);
+	public void render(Model model, float opacity, float posX, float posY, float scaleX, float scaleY, float rotation) {
+		ModelAttributes attribs = modelProperties.get(model);
+		if(attribs == null)
+			throw new IllegalArgumentException("no data exists for model " + model);
 		try(MemoryStack stack = MemoryStack.stackPush()) {
 			FloatBuffer instanceData = stack.mallocFloat(16);
 			prepInstanceData(instanceData, posX, posY, scaleX, scaleY, rotation);
@@ -101,12 +101,12 @@ public final class ModelRenderProgram extends ShaderProgram {
 				lastOpacity = opacity;
 			}
 			glBindVertexArray(vaoID);
-			glDrawElements(GL_TRIANGLES, model.indexCount, GL_UNSIGNED_INT, model.indexOffset * Integer.BYTES);
+			glDrawElements(GL_TRIANGLES, attribs.indexCount, GL_UNSIGNED_INT, attribs.indexOffset * Integer.BYTES);
 		}
 	}
 
 	public void render(Graphics g, float posX, float posY) {
-		render(g.getModelID(), g.getOpacity(), posX, posY, g.getScaleX(), g.getScaleY(), g.getRotation());
+		render(g.getModel(), g.getOpacity(), posX, posY, g.getScaleX(), g.getScaleY(), g.getRotation());
 	}
 
 	public void loadViewMatrixStandard(int framebufferWidth, int framebufferHeight) {
@@ -153,7 +153,7 @@ public final class ModelRenderProgram extends ShaderProgram {
 				indexData.put(vertexOffset + index); //adjust index to be absolute instead of relative to model
 			}
 
-			modelProperties.put(model.modelID, new ModelAttributes(indexOffset, model.indexCount()));
+			modelProperties.put(model.model, new ModelAttributes(indexOffset, model.indexCount()));
 		}
 		positionData.flip();
 		textureCoordsData.flip();
@@ -194,10 +194,10 @@ public final class ModelRenderProgram extends ShaderProgram {
 			.put(posX)			.put(posY)				.put(0).put(1);
 	}
 
-	public void queueRender(int modelID, float opacity,
+	public void queueRender(Model model, float opacity,
 				float posX, float posY, float scaleX, float scaleY,
 				float rotation) {
-		renderQueue.add(new RenderInstance(modelID, opacity, posX, posY, scaleX, scaleY, rotation));
+		renderQueue.add(new RenderInstance(model, opacity, posX, posY, scaleX, scaleY, rotation));
 	}
 
 	//TODO maybe I should change the queue to actually buffer indices, etc. directly instead of RenderInstances
@@ -222,7 +222,7 @@ public final class ModelRenderProgram extends ShaderProgram {
 			glBindVertexArray(vaoID);
 			while(!renderQueue.isEmpty()) {
 				RenderInstance render = renderQueue.poll();
-				ModelAttributes model = modelProperties.get(render.modelID);
+				ModelAttributes model = modelProperties.get(render.model);
 				prepInstanceData(instanceData, render.posX, render.posY, render.scaleX, render.scaleY, render.rotation);
 				glUniformMatrix4fv(uniform_transform, false, instanceData.flip());
 				if(render.opacity != lastOpacity) {

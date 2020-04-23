@@ -1,6 +1,7 @@
 package ritzow.sandbox.client.world.item;
 
 import ritzow.sandbox.client.graphics.Graphics;
+import ritzow.sandbox.client.graphics.Model;
 import ritzow.sandbox.client.world.block.ClientBlockProperties;
 import ritzow.sandbox.data.TransportableDataReader;
 import ritzow.sandbox.world.block.Block;
@@ -22,8 +23,8 @@ public final class ClientBlockItem extends BlockItem implements Graphics {
 	}
 
 	@Override
-	public int getModelID() {
-		return ((ClientBlockProperties)block).getModelIndex();
+	public Model getModel() {
+		return ((ClientBlockProperties)block).getModel();
 	}
 
 	@Override

@@ -56,7 +56,7 @@ public class UserInterface implements Renderer {
 		for(var element : elements) {
 			for(Graphics g : element.getKey().appearance()) {
 				Position p = element.getValue();
-				program.queueRender(g.getModelID(), g.getOpacity(), p.x, p.y,
+				program.queueRender(g.getModel(), g.getOpacity(), p.x, p.y,
 						g.getScaleX(), g.getScaleY(), g.getRotation());
 			}
 		}

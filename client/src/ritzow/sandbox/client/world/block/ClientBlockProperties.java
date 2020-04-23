@@ -3,13 +3,14 @@ package ritzow.sandbox.client.world.block;
 import ritzow.sandbox.client.audio.AudioSystem;
 import ritzow.sandbox.client.audio.Sound.StandardSound;
 import ritzow.sandbox.client.graphics.Camera;
+import ritzow.sandbox.client.graphics.Model;
 import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.block.Block;
 
 public interface ClientBlockProperties extends Block {
-	int getModelIndex();
+	Model getModel();
 	boolean isTransparent();
 
 	@Override

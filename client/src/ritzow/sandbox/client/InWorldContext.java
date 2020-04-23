@@ -11,8 +11,8 @@ import ritzow.sandbox.client.audio.AudioSystem;
 import ritzow.sandbox.client.data.StandardClientOptions;
 import ritzow.sandbox.client.graphics.Display;
 import ritzow.sandbox.client.graphics.RenderManager;
+import ritzow.sandbox.client.input.Button;
 import ritzow.sandbox.client.input.Control;
-import ritzow.sandbox.client.input.Control.Button;
 import ritzow.sandbox.client.input.InputContext;
 import ritzow.sandbox.client.input.controller.InteractionController;
 import ritzow.sandbox.client.input.controller.TrackingCameraController;
@@ -45,7 +45,7 @@ class InWorldContext implements GameTalker {
 	private CompletableFuture<World> worldBuildTask;
 	private Queue<QueuedPacket> bufferedMessages;
 
-	private static final long PLAYER_STATE_SEND_INTERVAL = Utility.frameRateToFrameTimeNanos(60);
+	private static final long PLAYER_STATE_SEND_INTERVAL = Utility.frameRateToFrameTimeNanos(15);
 
 	public InWorldContext(Client client, int downloadSize, int playerID) {
 		log().info("Downloading " + Utility.formatSize(downloadSize) + " of world data");
@@ -121,7 +121,10 @@ class InWorldContext implements GameTalker {
 		client.update(this::process);
 		Display display = GameState.display();
 		display.poll(input);
-		updatePlayerState(display);
+		if(Utility.nanosSince(lastPlayerStateSend) > PLAYER_STATE_SEND_INTERVAL) {
+			lastPlayerStateSend = System.nanoTime();
+			updatePlayerState(display);
+		}
 		if(!display.minimized()) { //TODO need to be more checks, this will run no matter what
 			if(display.isControlActivated(Control.RESET_ZOOM)) cameraGrip.resetZoom();
 			updateRender(display, delta);
@@ -131,20 +134,17 @@ class InWorldContext implements GameTalker {
 	private long lastPlayerStateSend;
 
 	private void updatePlayerState(Display display) {
-		if(Utility.nanosSince(lastPlayerStateSend) > PLAYER_STATE_SEND_INTERVAL) {
-			boolean isLeft = display.isControlActivated(Control.MOVE_LEFT);
-			boolean isRight = display.isControlActivated(Control.MOVE_RIGHT);
-			boolean isUp = display.isControlActivated(Control.MOVE_UP);
-			boolean isDown = display.isControlActivated(Control.MOVE_DOWN);
-			boolean isPrimary = display.isControlActivated(Control.USE_HELD_ITEM);
-			boolean isSecondary = display.isControlActivated(Control.THROW_BOMB);
-			player.setLeft(isLeft);
-			player.setRight(isRight);
-			player.setUp(isUp);
-			player.setDown(isDown);
-			sendPlayerState(player, isPrimary, isSecondary);
-			lastPlayerStateSend = System.nanoTime();
-		}
+		boolean isLeft = display.isControlActivated(Control.MOVE_LEFT);
+		boolean isRight = display.isControlActivated(Control.MOVE_RIGHT);
+		boolean isUp = display.isControlActivated(Control.MOVE_UP);
+		boolean isDown = display.isControlActivated(Control.MOVE_DOWN);
+		boolean isPrimary = display.isControlActivated(Control.USE_HELD_ITEM);
+		boolean isSecondary = display.isControlActivated(Control.THROW_BOMB);
+		player.setLeft(isLeft);
+		player.setRight(isRight);
+		player.setUp(isUp);
+		player.setDown(isDown);
+		sendPlayerState(player, isPrimary, isSecondary);
 	}
 
 	private void updateRender(Display display, long deltaTime) {
@@ -252,11 +252,14 @@ class InWorldContext implements GameTalker {
 
 	private void processUpdateEntity(ByteBuffer data) {
 		for(int count = data.getInt(); count > 0; --count) {
-			Entity e = getEntity(data.getInt());
-			e.setPositionX(data.getFloat());
-			e.setPositionY(data.getFloat());
-			e.setVelocityX(data.getFloat());
-			e.setVelocityY(data.getFloat());
+			Entity e = world.getEntityFromIdOrNull(data.getInt());
+			if(e != null) {
+				//getEntity(data.getInt());
+				e.setPositionX(data.getFloat());
+				e.setPositionY(data.getFloat());
+				e.setVelocityX(data.getFloat());
+				e.setVelocityY(data.getFloat());
+			}
 		}
 	}
 
@@ -303,12 +306,11 @@ class InWorldContext implements GameTalker {
 	}
 
 	private void selectSlot(int slot) {
-		long cursor = switch(slot) {
+		player.setSlot(slot);
+		GameState.display().setCursor(switch(slot) {
 			case 1, 2 -> GameState.cursorMallet();
 			default -> GameState.cursorPick();
-		};
-		player.setSlot(slot);
-		GameState.display().setCursor(cursor);
+		});
 	}
 
 	private final class InWorldInputContext implements InputContext {

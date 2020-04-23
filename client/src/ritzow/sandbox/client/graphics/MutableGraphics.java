@@ -1,10 +1,10 @@
 package ritzow.sandbox.client.graphics;
 
 public class MutableGraphics implements Graphics {
-	public int model;
+	public Model model;
 	public float opacity, rotation, scaleX, scaleY;
-	
-	public MutableGraphics(int modelIndex, float scaleX, float scaleY, float rotation, float opacity) {
+
+	public MutableGraphics(Model modelIndex, float scaleX, float scaleY, float rotation, float opacity) {
 		this.model = modelIndex;
 		this.opacity = opacity;
 		this.scaleX = scaleX;
@@ -13,7 +13,7 @@ public class MutableGraphics implements Graphics {
 	}
 
 	@Override
-	public final int getModelID() {
+	public final Model getModel() {
 		return model;
 	}
 

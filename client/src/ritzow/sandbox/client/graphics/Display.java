@@ -6,7 +6,7 @@ import org.lwjgl.glfw.GLFWImage;
 import org.lwjgl.glfw.GLFWVidMode;
 import org.lwjgl.system.MemoryStack;
 import ritzow.sandbox.client.input.Control;
-import ritzow.sandbox.client.input.Control.Button;
+import ritzow.sandbox.client.input.Button;
 import ritzow.sandbox.client.input.InputContext;
 import ritzow.sandbox.client.input.InputProvider;
 
@@ -31,16 +31,20 @@ public final class Display implements InputProvider {
 		glfwWindowHint(GLFW_FOCUS_ON_SHOW, GLFW_TRUE);
 
 		GLFWVidMode video = glfwGetVideoMode(glfwGetPrimaryMonitor());
-		int screenWidth = video.width();
-		int screenHeight = video.height();
+		if(video == null) {
+			throw new RuntimeException("failed to get video mode");
+		} else {
+			int screenWidth = video.width();
+			int screenHeight = video.height();
 
-		displayID = glfwCreateWindow(screenWidth/2, screenHeight/2, title, 0, 0);
-		if(displayID == 0) {
-			throw new UnsupportedOperationException("Error creating window");
+			displayID = glfwCreateWindow(screenWidth/2, screenHeight/2, title, 0, 0);
+			if(displayID == 0) {
+				throw new UnsupportedOperationException("Error creating window");
+			}
+			glfwSetWindowPos(displayID, screenWidth/4, screenHeight/4);
+			setIcons(icons);
+			setupCallbacks();
 		}
-		glfwSetWindowPos(displayID, screenWidth/4, screenHeight/4);
-		setIcons(icons);
-		setupCallbacks();
 	}
 
 	private void setIcons(GLFWImage... icons) {

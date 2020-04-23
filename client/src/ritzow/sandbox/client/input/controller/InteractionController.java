@@ -1,9 +1,6 @@
 package ritzow.sandbox.client.input.controller;
 
-import ritzow.sandbox.client.graphics.Camera;
-import ritzow.sandbox.client.graphics.Display;
-import ritzow.sandbox.client.graphics.ModelRenderProgram;
-import ritzow.sandbox.client.graphics.RenderConstants;
+import ritzow.sandbox.client.graphics.*;
 import ritzow.sandbox.client.input.Control;
 import ritzow.sandbox.client.network.GameTalker;
 import ritzow.sandbox.client.util.ClientUtility;
@@ -23,27 +20,28 @@ public final class InteractionController {
 	}
 
 	public void render(Display display, ModelRenderProgram renderer,
-			Camera camera, World world, ClientPlayerEntity player) {
-		int modelID = switch(player.selected()) {
-			case 1 -> RenderConstants.MODEL_GRASS_BLOCK;
-			case 2 -> RenderConstants.MODEL_DIRT_BLOCK;
-			default -> -1;
-		};
+				Camera camera, World world, ClientPlayerEntity player) {
 		int width = display.width(), height = display.height();
 		int blockX = Math.round(ClientUtility.pixelHorizontalToWorld(
 				camera, display.getCursorX(), width, height));
 		int blockY = Math.round(ClientUtility.pixelVerticalToWorld(
 				camera, display.getCursorY(), height));
 		renderer.loadViewMatrix(camera, width, height);
-		if(modelID == -1) {
-			renderer.render(
-				RenderConstants.MODEL_RED_SQUARE,
+		switch(player.selected()) {
+			case 1 -> renderToolOvelay(world, renderer, player, GameModels.MODEL_DIRT_BLOCK, blockX, blockY);
+			case 2 -> renderToolOvelay(world, renderer, player, GameModels.MODEL_GRASS_BLOCK, blockX, blockY);
+			default -> renderer.render(
+				GameModels.MODEL_RED_SQUARE,
 				computeOpacity(Utility.canBreak(player, lastPlace, world, blockX, blockY)),
 				blockX, blockY, 1.0f, 1.0f, 0.0f
 			);
-		} else if(!world.getForeground().isValid(blockX, blockY) || !world.getForeground().isBlock(blockX, blockY)) {
+		}
+	}
+
+	private void renderToolOvelay(World world, ModelRenderProgram renderer, PlayerEntity player, Model model, int blockX, int blockY) {
+		if(!world.getForeground().isValid(blockX, blockY) || !world.getForeground().isBlock(blockX, blockY)) {
 			renderer.render(
-				modelID,
+				model,
 				computeOpacity(Utility.canPlace(player, lastPlace, world, blockX, blockY)),
 				blockX, blockY, 1.0f, 1.0f, 0.0f
 			);

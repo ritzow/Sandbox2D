@@ -6,7 +6,7 @@ package ritzow.sandbox.client.graphics;
  *
  */
 public interface Graphics {
-	int getModelID();
+	Model getModel();
 	float getOpacity();
 	float getScaleX();
 	float getScaleY();

@@ -2,6 +2,7 @@ package ritzow.sandbox.client.ui.element;
 
 import java.util.Collections;
 import ritzow.sandbox.client.graphics.Graphics;
+import ritzow.sandbox.client.graphics.Model;
 import ritzow.sandbox.client.graphics.MutableGraphics;
 import ritzow.sandbox.util.Utility;
 
@@ -9,7 +10,7 @@ public class Icon implements UIElement {
 	private final Iterable<Graphics> appearance;
 	private final MutableGraphics graphics;
 
-	public Icon(int modelID) {
+	public Icon(Model modelID) {
 		var graphics = new MutableGraphics(modelID, 1.0f, 1.0f, Utility.randomAngleRadians(), 1.0f);
 		appearance = Collections.singleton(graphics);
 		this.graphics = graphics;

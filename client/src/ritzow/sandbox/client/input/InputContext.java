@@ -1,7 +1,6 @@
 package ritzow.sandbox.client.input;
 
 import java.util.Map;
-import ritzow.sandbox.client.input.Control.Button;
 
 /** Handles window events **/
 @SuppressWarnings(value="unused")

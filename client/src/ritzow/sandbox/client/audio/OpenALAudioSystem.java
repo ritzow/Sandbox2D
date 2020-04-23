@@ -1,9 +1,9 @@
 package ritzow.sandbox.client.audio;
 
 import java.nio.ByteBuffer;
-import java.nio.IntBuffer;
 import java.util.HashMap;
 import java.util.Map;
+import org.lwjgl.BufferUtils;
 import org.lwjgl.openal.AL;
 import org.lwjgl.openal.ALC;
 import org.lwjgl.openal.ALCCapabilities;
@@ -20,9 +20,12 @@ public final class OpenALAudioSystem implements AudioSystem {
 	private static boolean created;
 
 	//TODO this takes 500 ms to load, mainly device initialization and context creation
-	public static void initialize() {
+	public static void initOpenAL() {
+		ALC.create();
+		//TODO enumerate available devices and pick one, then reuse the code if a device is disconnected
 		device = alcOpenDevice((ByteBuffer)null);
-		alContext = alcCreateContext(device, (IntBuffer)null);
+		alContext = alcCreateContext(device, BufferUtils.createIntBuffer(2));
+
 		ALCCapabilities alcCaps = ALC.createCapabilities(device);
 		alcMakeContextCurrent(alContext);
 
@@ -39,7 +42,8 @@ public final class OpenALAudioSystem implements AudioSystem {
 	}
 
 	public static OpenALAudioSystem create() {
-		if(created) throw new IllegalStateException("already created");
+		if(created)
+			throw new IllegalStateException("already created");
 		created = true;
 		return new OpenALAudioSystem();
 	}
@@ -93,22 +97,22 @@ public final class OpenALAudioSystem implements AudioSystem {
 	public void registerSound(Sound sound, AudioData data) {
 		if(sounds.containsKey(sound))
 			throw new UnsupportedOperationException("already a sound associated with sound " + sound);
-    	int format = switch(data.getBitsPerSample()) {
-    		case 8 -> switch(data.getChannels()) {
-    			case 1 -> AL_FORMAT_MONO8;
-    			case 2 -> AL_FORMAT_STEREO8;
-				default ->  throw new UnsupportedOperationException("invalid channel count");
+		int format = switch(data.getBitsPerSample()) {
+			case 8 -> switch(data.getChannels()) {
+				case 1 -> AL_FORMAT_MONO8;
+				case 2 -> AL_FORMAT_STEREO8;
+				default -> throw new UnsupportedOperationException("invalid channel count");
 			};
 			case 16 -> switch(data.getChannels()) {
-    			case 1 -> AL_FORMAT_MONO16;
-    			case 2 -> AL_FORMAT_STEREO16;
+				case 1 -> AL_FORMAT_MONO16;
+				case 2 -> AL_FORMAT_STEREO16;
 				default -> throw new UnsupportedOperationException("invalid channel count");
 			};
 			default -> throw new UnsupportedOperationException("unsupported bits per sample");
 		};
 
-    	int buffer = alGenBuffers();
-    	alBufferData(buffer, format, data.getData(), data.getSampleRate());
+		int buffer = alGenBuffers();
+		alBufferData(buffer, format, data.getData(), data.getSampleRate());
 		sounds.put(sound, buffer);
 		checkErrors();
 	}

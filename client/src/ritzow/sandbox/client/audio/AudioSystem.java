@@ -29,7 +29,7 @@ public interface AudioSystem {
 		private static AudioSystem loadDefault() {
 			try {
 				log().info("Loading audio system");
-				OpenALAudioSystem.initialize();
+				OpenALAudioSystem.initOpenAL();
 				AudioSystem audio = OpenALAudioSystem.create();
 				audio.setVolume(1.0f);
 				for(var sound : StandardSound.values()) {

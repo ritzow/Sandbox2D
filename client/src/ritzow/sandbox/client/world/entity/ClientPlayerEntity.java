@@ -1,7 +1,7 @@
 package ritzow.sandbox.client.world.entity;
 
+import ritzow.sandbox.client.graphics.GameModels;
 import ritzow.sandbox.client.graphics.ModelRenderProgram;
-import ritzow.sandbox.client.graphics.RenderConstants;
 import ritzow.sandbox.client.graphics.Renderable;
 import ritzow.sandbox.data.TransportableDataReader;
 import ritzow.sandbox.world.entity.PlayerEntity;
@@ -25,22 +25,22 @@ public class ClientPlayerEntity extends PlayerEntity implements Renderable {
 		float positionX = this.positionX;
 		float positionY = this.positionY;
 		renderer.queueRender(
-			RenderConstants.MODEL_GREEN_FACE, 
-			1.0f, 
-			positionX, 
-			positionY + (down ? 0 : SIZE_SCALE/2),
-			SIZE_SCALE, 
-			SIZE_SCALE, 
+			GameModels.MODEL_GREEN_FACE,
+			1.0f,
+			positionX,
+			positionY + (down ? 0 : SIZE_SCALE / 2),
+			SIZE_SCALE,
+			SIZE_SCALE,
 			0.0f
 		);
 		if(!down) {
 			renderer.queueRender(
-				RenderConstants.MODEL_RED_SQUARE, 
-				1.0f, 
-				positionX, 
-				positionY - SIZE_SCALE/2,
-				SIZE_SCALE, 
-				SIZE_SCALE, 
+				GameModels.MODEL_RED_SQUARE,
+				1.0f,
+				positionX,
+				positionY - SIZE_SCALE / 2,
+				SIZE_SCALE,
+				SIZE_SCALE,
 				//positionX/SIZE_SCALE
 				0
 			);

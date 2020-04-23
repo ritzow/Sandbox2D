@@ -1,10 +1,10 @@
 package ritzow.sandbox.client;
 
 import java.util.Map;
-import ritzow.sandbox.client.graphics.RenderConstants;
+import ritzow.sandbox.client.graphics.GameModels;
 import ritzow.sandbox.client.graphics.RenderManager;
+import ritzow.sandbox.client.input.Button;
 import ritzow.sandbox.client.input.Control;
-import ritzow.sandbox.client.input.Control.Button;
 import ritzow.sandbox.client.input.InputContext;
 import ritzow.sandbox.client.ui.UserInterface;
 import ritzow.sandbox.client.ui.UserInterface.Position;
@@ -18,7 +18,7 @@ class MainMenuContext {
 	MainMenuContext() {
 		this.context = new MenuInputContext();
 		this.ui = UserInterface.of(GameState.shader(),
-			Map.entry(new Icon(RenderConstants.MODEL_GREEN_FACE), Position.of(0, 0))
+			Map.entry(new Icon(GameModels.MODEL_GREEN_FACE), Position.of(0, 0))
 			//Map.entry(new Text("hello world", Fonts.getDefaultFont(), 1, 1), Position.of(0, 0))
 		);
 	}

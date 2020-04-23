@@ -20,7 +20,7 @@ public class Text {
 		int index = 0;
 		float charWidth = (size * 0.02f) + (size * 0.02f * spacing);
 		for(float pos = getPositionX(); index < text.length(); pos += charWidth) {
-			renderer.render(font.getModelID(text.charAt(index)), 1.0f, pos, getPositionY(), size * 0.02f, size * 0.02f, 0.0f);
+			renderer.render(font.getModel(text.charAt(index)), 1.0f, pos, getPositionY(), size * 0.02f, size * 0.02f, 0.0f);
 			index++;
 		}
 	}
