@@ -1,4 +1,11 @@
-To-do list:
+Short-to-Medium Term:
+fix constant game lag/stuttering
+implement friction on entities
+game loop client/server sync
+openal device selection re-connection
+user interface implementation
+
+Long Term:
 Add chunk loading and generation to BlockGrid and Client/Server
 Client world mesh generation for faster graphics
 Use or create proper logging system

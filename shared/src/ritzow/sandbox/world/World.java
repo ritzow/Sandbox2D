@@ -196,6 +196,10 @@ public class World implements Transportable, Iterable<Entity> {
 		entities.forEach(consumer);
 	}
 
+	public Entity getEntityFromIdOrNull(int id) {
+		return entitiesID.get(id);
+	}
+
 	public Entity getEntityFromID(int id) {
 		return Objects.requireNonNull(entitiesID.get(id), "No entity in world with provided ID");
 	}
