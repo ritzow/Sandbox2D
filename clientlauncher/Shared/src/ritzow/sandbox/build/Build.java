@@ -28,7 +28,8 @@ import static java.util.Map.entry;
 
 public class Build {
 
-	private static final boolean DEBUG = false;
+	private static final boolean DEBUG = true;
+	private static final boolean NATIVE_DEVELOPMENT = false;
 
 	private static final String
 		OS = "windows",
@@ -87,25 +88,22 @@ public class Build {
 		System.out.println("Compiling shared code.");
 		if(compile(SHARED_LIB, SHARED_SRC, sharedFiles, List.of())) {
 			System.out.println("Shared code compiled.");
-			Collection<Path> modules = new ArrayList<Path>(6);
-			modules.add(LWJGL_DIR.resolve("lwjgl.jar"));
-			modules.add(LWJGL_DIR.resolve("lwjgl-glfw.jar"));
-			modules.add(LWJGL_DIR.resolve("lwjgl-opengl.jar"));
-			modules.add(LWJGL_DIR.resolve("lwjgl-openal.jar"));
-			modules.add(SHARED_LIB);
+			var modules = List.of(
+				LWJGL_DIR.resolve("lwjgl.jar"),
+				LWJGL_DIR.resolve("lwjgl-glfw.jar"),
+				LWJGL_DIR.resolve("lwjgl-opengl.jar"),
+				LWJGL_DIR.resolve("lwjgl-openal.jar"),
+				SHARED_LIB
+			);
 			System.out.println("Searching for client code.");
-			var clientFiles = getSourceFiles(CLIENT_SRC);
+			var clientFiles = getSourceFiles(CLIENT_SRC, JSON_DIR);
 			System.out.println("Compiling client code.");
 			if(compile(CLIENT_LIB, CLIENT_SRC, clientFiles, modules)) {
 				System.out.print("Client code compiled.\nRunning jlink... ");
-				modules.add(CLIENT_LIB);
-				Collection<String> moduleNames = new ArrayList<>();
-				moduleNames.add("ritzow.sandbox.client");
-				if(DEBUG) {
-					moduleNames.add("jdk.management.agent");
-					moduleNames.add("jdk.management.jfr");
-				}
-				int result = jlink(modules, moduleNames);
+				var bakeModules = new ArrayList<>(modules);
+				bakeModules.add(CLIENT_LIB);
+				int result = jlink(bakeModules, DEBUG ? List.of("ritzow.sandbox.client",
+					"jdk.management.agent", "jdk.management.jfr") : List.of("ritzow.sandbox.client"));
 				if(result == 0) {
 					postJlink();
 				} else {
@@ -191,17 +189,18 @@ public class Build {
 		//run launcher executable build script
 		System.out.println("done.\nBuilding launcher executable.");
 		int result = msbuild();
-		System.out.println(result == 0 ? "Launcher built." : "Launcher build failed with code " + result);
+		System.out.println(result == 0 ? "Launcher built, run using " +
+			Files.newDirectoryStream(OUTPUT_DIR, "*.exe").iterator().next() : "Launcher build failed with code " + result);
 	}
 
 	private static int msbuild() throws IOException, InterruptedException {
-		return new ProcessBuilder(
+		return new ProcessBuilder(List.of(
 			"msbuild",
-			"-nologo",
-			"-verbosity:minimal",
-			MSBUILD_FILE.toString(),
-			"-p:Configuration=Release;Platform=" + ARCH
-		).inheritIO().start().waitFor();
+			"/nologo",
+			"/verbosity:minimal",
+			"/p:Configuration=" + (NATIVE_DEVELOPMENT ? "Development" : "Release") + ";Platform=" + ARCH,
+			MSBUILD_FILE.toString()
+		)).inheritIO().start().waitFor();
 	}
 
 	//TODO can use FileSystem API to do this as well
@@ -228,10 +227,12 @@ public class Build {
 		System.out.println("Zipped to " + NumberFormat.getInstance().format(Files.size(outFile)) + " bytes.");
 	}
 
-	private static Iterable<JavaFileObject> getSourceFiles(Path src) throws IOException {
+	private static Collection<JavaFileObject> getSourceFiles(Path... src) throws IOException {
 		Collection<JavaFileObject> files = new ArrayList<>();
 		PathMatcher matcher = file -> file.getFileName().toString().endsWith(".java");
-		forEachFile(src, matcher, file -> files.add(new SourceFile(file)));
+		for(Path dir : src) {
+			forEachFile(dir, matcher, file -> files.add(new SourceFile(file)));
+		}
 		return files;
 	}
 
@@ -258,7 +259,7 @@ public class Build {
 	private static int jlink(Iterable<Path> modules, Iterable<String> includeModules) {
 		return java.util.spi.ToolProvider.findFirst("jlink").orElseThrow().run(System.out, System.err,
 			"--compress", "2",
-			//"--strip-debug",
+			"--strip-debug", //breaks records in OpenJDK 14
 			"--no-man-pages",
 			"--endian", "little",
 			"--module-path", join(modules, ';'),
@@ -321,7 +322,8 @@ public class Build {
 		}
 	}
 
-	//TODO write directly to a jar file to use up less space
+	//TODO instead of providing all files for compile, can I use the file manager to get only needed ones?
+	//ie provide only the main class to the compiler and let the compile request additional classes?
 	private static class JarOutFileManager extends ForwardingJavaFileManager<StandardJavaFileManager> {
 		private final Path outJar;
 		private final ByteArrayOutputStream buffer;
