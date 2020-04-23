@@ -17,7 +17,7 @@ import ritzow.sandbox.world.generator.SinusoidWorldGenerator;
 
 class StartServer {
 	private static final Path SAVE_FILE = Path.of("world.dat");
-	private static final long FRAME_TIME_LIMIT = Utility.frameRateToFrameTimeNanos(120);
+	private static final long FRAME_TIME_LIMIT = Utility.frameRateToFrameTimeNanos(60);
 	private static final int WIDTH = 100, HEIGHT = 200;
 
 	private static Server server;
@@ -76,15 +76,16 @@ class StartServer {
 	}
 
 	private static CommandParser createParser() {
-		return new CommandParser()	.register("stop", 		StartServer::stopCommand, true)
-				.register("abort", 		StartServer::abortCommand, true)
-				.register("reset", 		StartServer::resetCommand, true)
-				.register("kill", 		StartServer::killCommand, true)
-				.register("list", 		StartServer::listCommmand, false)
-				.register("say", 		StartServer::sayCommand, false)
-				.register("debug",		StartServer::debugCommand, false)
-				.register("printworld", StartServer::printworldCommand, false)
-				.register("killitems", 	StartServer::killItemsCommand, false);
+		return new CommandParser()
+			.register("stop", 		StartServer::stopCommand, true)
+			.register("abort", 		StartServer::abortCommand, true)
+			.register("reset", 		StartServer::resetCommand, true)
+			.register("kill", 		StartServer::killCommand, true)
+			.register("list", 		StartServer::listCommmand, false)
+			.register("say", 		StartServer::sayCommand, false)
+			.register("debug",		StartServer::debugCommand, false)
+			.register("printworld", StartServer::printworldCommand, false)
+			.register("killitems", 	StartServer::killItemsCommand, false);
 	}
 
 	private static void killItemsCommand(String args) {

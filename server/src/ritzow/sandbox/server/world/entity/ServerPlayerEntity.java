@@ -1,6 +1,5 @@
 package ritzow.sandbox.server.world.entity;
 
-import ritzow.sandbox.data.TransportableDataReader;
 import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.Entity;
@@ -12,10 +11,6 @@ public class ServerPlayerEntity extends PlayerEntity {
 
 	public ServerPlayerEntity(int entityID) {
 		super(entityID);
-	}
-
-	public ServerPlayerEntity(TransportableDataReader input) {
-		super(input);
 	}
 
 	@Override

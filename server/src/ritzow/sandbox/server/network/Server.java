@@ -11,7 +11,6 @@ import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.data.Transportable;
 import ritzow.sandbox.network.NetworkUtility;
 import ritzow.sandbox.server.SerializationProvider;
-import ritzow.sandbox.server.world.entity.ServerBombEntity;
 import ritzow.sandbox.server.world.entity.ServerPlayerEntity;
 import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.BlockGrid;
@@ -19,7 +18,6 @@ import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.block.Block;
 import ritzow.sandbox.world.block.DirtBlock;
 import ritzow.sandbox.world.block.GrassBlock;
-import ritzow.sandbox.world.entity.BombEntity;
 import ritzow.sandbox.world.entity.Entity;
 import ritzow.sandbox.world.entity.ItemEntity;
 import ritzow.sandbox.world.entity.PlayerEntity;
@@ -29,10 +27,10 @@ import static ritzow.sandbox.network.Protocol.*;
 
 /** The server manages connected game clients, sends game updates,
  * receives client input, and broadcasts information for clients. */
-public class Server {
+public class Server { //TODO server needs to drop unreliable packets if it receives too many (ie client sending at 120 fps while server is 60 fps)
+	//TODO implement encryption on client and server https://howtodoinjava.com/security/java-aes-encryption-example/
 	private static final long NETWORK_SEND_INTERVAL_NANOSECONDS = Utility.millisToNanos(200);
 	private static final long PLAYER_STATE_BROADCAST_INTERVAL = Utility.millisToNanos(100);
-	private static final float BOMB_THROW_VELOCITY = Utility.convertPerSecondToPerNano(25);
 
 	private final DatagramChannel channel;
 	private final ByteBuffer receiveBuffer, responseBuffer, sendBuffer;
@@ -136,7 +134,6 @@ public class Server {
 					case TYPE_CLIENT_DISCONNECT -> processClientSelfDisconnect(client);
 					case TYPE_CLIENT_BREAK_BLOCK -> processClientBreakBlock(client, packet);
 					case TYPE_CLIENT_PLACE_BLOCK -> processClientPlaceBlock(client, packet);
-					case TYPE_CLIENT_BOMB_THROW -> processClientThrowBomb(client, packet);
 					case TYPE_CLIENT_PLAYER_STATE -> processClientPlayerState(client, packet);
 					case TYPE_PING -> {} //do nothing
 					default -> throw new ClientBadDataException("received unknown protocol " + type);
@@ -155,8 +152,8 @@ public class Server {
 	private static final int
 		ENTITY_UPDATE_HEADER_SIZE = 6,
 		BYTES_PER_ENTITY = 20,
-		MAX_ENTITIES_PER_PACKET =
-			(MAX_MESSAGE_LENGTH - ENTITY_UPDATE_HEADER_SIZE)/BYTES_PER_ENTITY;
+		MAX_ENTITIES_PER_PACKET = 1;
+			//(MAX_MESSAGE_LENGTH - ENTITY_UPDATE_HEADER_SIZE)/BYTES_PER_ENTITY;
 
 	public void update() throws IOException {
 		receive();
@@ -184,6 +181,7 @@ public class Server {
 
 	private void sendAllQueued() throws IOException {
 		for(ClientState client : clients.values()) {
+			System.out.println(client.address + " queued sends: " + client.sendQueue.size());
 			sendQueued(client);
 		}
 	}
@@ -410,18 +408,6 @@ public class Server {
 			drop.setVelocityY((float)Math.sin(angle) * BLOCK_DROP_VELOCITY);
 			world.add(drop);
 			broadcastAddEntity(drop);
-		}
-	}
-
-	private void processClientThrowBomb(ClientState client, ByteBuffer data) {
-		if(Utility.canThrow(client.lastThrowTime)) {
-			BombEntity bomb = new ServerBombEntity(this, world.nextEntityID());
-			bomb.setPositionX(client.player.getPositionX());
-			bomb.setPositionY(client.player.getPositionY());
-			Utility.launchAtAngle(bomb, data.getFloat(), BOMB_THROW_VELOCITY);
-			world.add(bomb);
-			broadcastAddEntity(bomb);
-			client.lastThrowTime = System.nanoTime();
 		}
 	}
 
@@ -663,19 +649,19 @@ public class Server {
 		final InetSocketAddress address;
 		final Queue<SendPacket> sendQueue;
 		byte status;
+		String disconnectReason;
 
 		/** Client reliable message round trip time in nanoseconds */
 		long ping;
 
 		/** Last player action times in nanoseconds offset */
-		long lastBlockBreakTime, lastBlockPlaceTime, lastThrowTime, lastPlayerStateUpdate;
+		long lastBlockBreakTime, lastBlockPlaceTime, lastPlayerStateUpdate;
 		ServerPlayerEntity player;
-		String disconnectReason;
 
 		ClientState(InetSocketAddress address) {
 			this.address = address;
 			status = STATUS_CONNECTED;
-			sendQueue = new ArrayDeque<>(1);
+			sendQueue = new ArrayDeque<>();
 		}
 
 		@Override
