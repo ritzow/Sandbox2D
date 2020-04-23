@@ -1,17 +1,21 @@
 #include <sstream>
 #include <jni.h>
 
-JavaVMInitArgs GetJavaInitArgs() noexcept {
-	static JavaVMOption options[] = {
-		{(char*)"-Djdk.module.main=ritzow.sandbox.client"},
-		{(char*)"--enable-preview"},
-		{(char*)"-XX:-UsePerfData"}
-	};
+static JavaVMOption JVM_OPTIONS[] = {
+	{(char*)"--enable-preview"},
+	{(char*)"-Djdk.module.main=ritzow.sandbox.client"},
+	{(char*)"-XX:-UsePerfData"},
+	{(char*)"-Dorg.lwjgl.util.NoChecks=true"},
+	{(char*)"-Dorg.lwjgl.openal.explicitInit=true"},
+	{(char*)"-Dorg.lwjgl.opengl.explicitInit=true"},
+	{(char*)"-Dorg.lwjgl.util.NoFunctionChecks=true"} //TODO set these properties using Configuration class instead of system properties.
+};
 
+constexpr JavaVMInitArgs GetJavaInitArgs() noexcept {
 	return {
 		.version = JNI_VERSION_10,
-		.nOptions = sizeof(options) / sizeof(JavaVMOption),
-		.options = options,
+		.nOptions = sizeof(JVM_OPTIONS) / sizeof(JavaVMOption),
+		.options = JVM_OPTIONS,
 		.ignoreUnrecognized = false
 	};
 }

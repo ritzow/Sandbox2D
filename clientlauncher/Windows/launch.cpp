@@ -3,25 +3,44 @@
 #include <iostream>
 #include <shared.cpp>
 
-constexpr bool SHOW_CONSOLE = false;
+inline const bool SHOW_CONSOLE = false;
 
 inline void DisplayError(const wchar_t* title, const wchar_t* message) {
 	MessageBoxW(nullptr, message, title, MB_OK | MB_ICONERROR);
 }
 
-INT WINAPI wWinMain(_In_ HINSTANCE module, _In_opt_ HINSTANCE, _In_ LPWSTR lpCmdLine, _In_ INT) {
-	if constexpr (SHOW_CONSOLE) {
-		AllocConsole();
-		FILE* file;
-		_wfreopen_s(&file, L"CONOUT$", L"w", stdout);
-		if(wcslen(lpCmdLine) > 0)
-			std::wcout << "Command Line Arguments: \"" << lpCmdLine << '"' << std::endl;
-	}
-
-	static WCHAR program_path[MAX_PATH];
+void SetWorkingDirectory(HMODULE module) {
+	WCHAR program_path[MAX_PATH];
 	DWORD length = GetModuleFileNameW(module, program_path, MAX_PATH);
 	PathCchRemoveFileSpec(program_path, length);
 	SetCurrentDirectoryW(program_path);
+}
+
+//void SetWorkingDirectory(HMODULE module) {
+//	WCHAR program_path[MAX_PATH];
+//	DWORD nSize = MAX_PATH;
+//	DWORD length;
+//	do {
+//		length = GetModuleFileNameW(module, program_path, MAX_PATH);
+//		if (GetLastError() == ERROR_INSUFFICIENT_BUFFER) {
+//
+//		}
+//	} while (GetLastError() == ERROR_INSUFFICIENT_BUFFER);
+//	PathCchRemoveFileSpec(program_path, length);
+//	SetCurrentDirectoryW(program_path);
+//}
+
+void SetupConsole(LPWSTR args) {
+	AllocConsole();
+	FILE* file;
+	_wfreopen_s(&file, L"CONOUT$", L"w", stdout);
+	if (wcslen(args) > 0)
+		std::wcout << "Program Arguments: \"" << args << '"' << std::endl;
+}
+
+INT WINAPI wWinMain(_In_ HMODULE module, _In_opt_ HINSTANCE, _In_ LPWSTR lpCmdLine, _In_ INT) {
+	if constexpr (SHOW_CONSOLE) SetupConsole(lpCmdLine);
+	SetWorkingDirectory(module);
 	HMODULE dll = LoadLibraryW(LR"(jvm\bin\server\jvm.dll)");
 	if (dll != nullptr) {
 		JavaVM* vm; JNIEnv* env; JavaVMInitArgs args = GetJavaInitArgs();
