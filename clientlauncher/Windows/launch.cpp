@@ -3,7 +3,7 @@
 #include <iostream>
 #include <shared.cpp>
 
-inline const bool SHOW_CONSOLE = false;
+inline const bool SHOW_CONSOLE = true;
 
 inline void DisplayError(const wchar_t* title, const wchar_t* message) {
 	MessageBoxW(nullptr, message, title, MB_OK | MB_ICONERROR);
@@ -38,15 +38,26 @@ void SetupConsole(LPWSTR args) {
 		std::wcout << "Program Arguments: \"" << args << '"' << std::endl;
 }
 
+
+
 INT WINAPI wWinMain(_In_ HMODULE module, _In_opt_ HINSTANCE, _In_ LPWSTR lpCmdLine, _In_ INT) {
 	if constexpr (SHOW_CONSOLE) SetupConsole(lpCmdLine);
 	SetWorkingDirectory(module);
 	HMODULE dll = LoadLibraryW(LR"(jvm\bin\server\jvm.dll)");
 	if (dll != nullptr) {
-		JavaVM* vm; JNIEnv* env; JavaVMInitArgs args = GetJavaInitArgs();
-		jint result = ((StartJVM)GetProcAddress(dll, "JNI_CreateJavaVM"))(&vm, &env, &args);
+		JavaVM* vm; JNIEnv* env; JavaVMInitArgs vmargs = GetJavaInitArgs();
+		jint result = ((StartJVM)GetProcAddress(dll, "JNI_CreateJavaVM"))(&vm, &env, &vmargs);
 		if (result == JNI_OK) {
-			RunGame(env, lpCmdLine);
+			size_t len = wcslen(GetCommandLineW());
+			wchar_t* args_copy = new wchar_t[len];
+			wcsncpy_s(args_copy, len, GetCommandLineW(), len);
+			int argc;
+			wchar_t** args = CommandLineToArgvW(args_copy, &argc);
+
+			RunGame(env, argc, args);
+			delete[] args_copy;
+			LocalFree(args);
+
 			vm->DestroyJavaVM();
 			FreeLibrary(dll);
 			return EXIT_SUCCESS;

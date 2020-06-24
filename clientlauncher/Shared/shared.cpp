@@ -53,29 +53,36 @@ const wchar_t* GetExceptionString(JNIEnv* env) noexcept {
 	jobjectArray trace = (jobjectArray)env->CallObjectMethod(exception, getStackTrace);
 	const char* message = env->GetStringUTFChars(msgString, nullptr);
 	std::wstringstream builder;
-	builder << message;
+	builder << message << '\n';
 	env->ReleaseStringUTFChars(msgString, message);
 	env->DeleteLocalRef(msgString);
 	jsize length = env->GetArrayLength(trace);
 	for (int i = 0; i < length; i++) {
 		jobject element = env->GetObjectArrayElement(trace, i);
 		jstring msg = static_cast<jstring>(env->CallObjectMethod(element, elementToString));
-		const char* str = env->GetStringUTFChars(msg, nullptr);
-		builder << L"\n	at " << str;
-		env->ReleaseStringUTFChars(msg, str);
+		const jchar* str = env->GetStringChars(msg, nullptr);
+		builder << L"  at " << (const wchar_t*)str << '\n';
+		env->ReleaseStringChars(msg, str);
 		env->DeleteLocalRef(msg);
 	}
 	env->DeleteLocalRef(trace);
 	return builder.str().c_str();
 }
 
-void RunGame(JNIEnv* env, const wchar_t* args) {
+void RunGame(JNIEnv* env, int argc, wchar_t** args) {
 	jclass classMain = env->FindClass("ritzow/sandbox/client/StartClient");
-	jmethodID methodMain = env->GetStaticMethodID(classMain, "start", "(Ljava/lang/String;)V");
-	jstring jargs = env->NewString((const jchar*)args, (jsize)wcslen(args));
-	env->CallStaticVoidMethod(classMain, methodMain, jargs);
-	env->DeleteLocalRef(classMain);
+	jclass classString = env->FindClass("java/lang/String");
+	jmethodID methodMain = env->GetStaticMethodID(classMain, "main", "([Ljava/lang/String;)V");
+	jobjectArray jargs = env->NewObjectArray(argc, classString, nullptr);
+	env->DeleteLocalRef(classString);
+	for (int i = 0; i < argc; i++) {
+		jstring jarg = env->NewString((const jchar*)args[i], (jsize)wcslen(args[i]));
+		env->SetObjectArrayElement(jargs, i, jarg);
+		env->DeleteLocalRef(jarg);
+	}
+	env->CallStaticVoidMethod(classMain, methodMain, env->NewString((const jchar*)L"blah", (jsize)wcslen(L"blah")));
 	env->DeleteLocalRef(jargs);
+	env->DeleteLocalRef(classMain);
 	if (env->ExceptionCheck())
 		DisplayError(L"Java Exception Occurred on Main Thread", GetExceptionString(env));
 }
