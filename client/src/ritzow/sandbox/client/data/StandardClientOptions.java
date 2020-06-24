@@ -2,6 +2,7 @@ package ritzow.sandbox.client.data;
 
 import java.net.InetSocketAddress;
 import java.net.SocketException;
+import java.net.UnknownHostException;
 import ritzow.sandbox.network.NetworkUtility;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.util.Utility;
@@ -45,7 +46,7 @@ public class StandardClientOptions {
 		try {
 			return USE_INTERNET ? NetworkUtility.getPublicSocket(port) :
 				new InetSocketAddress(NetworkUtility.getLoopbackAddress(), port);
-		} catch(SocketException e) {
+		} catch(SocketException | UnknownHostException e) {
 			throw new RuntimeException(e);
 		}
 	}

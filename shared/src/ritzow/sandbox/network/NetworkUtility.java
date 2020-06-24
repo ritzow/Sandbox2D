@@ -49,19 +49,19 @@ public class NetworkUtility {
 	}
 
 	/**
-	 * Returns whether the address is in a global unicast address range. Based on data from the IANA.
+	 * Returns whether the address is in a global unicast address range or can be used for public networking.
+	 * Based on data from the IANA.
 	 * IPv6: https://www.iana.org/assignments/ipv6-address-space/ipv6-address-space.xhtml
 	 * IPv4: https://www.iana.org/assignments/ipv4-address-space/ipv4-address-space.xhtml
 	 * @param address The address to check.
 	 * @return whether the address is a global unicast IPv4 or IPv6 address.
 	 */
-	public static boolean isGlobalUnicast(InetAddress address) {
+	public static boolean isGlobalUnicastOrExternal(InetAddress address) {
 		if(isIPv6(address)) {
-			byte[] raw = address.getAddress();
-			short high = Bytes.getShort(raw, 0);
-			return high >= 2000 && high <= 0x3fff;
+			short high = Bytes.getShort(address.getAddress(), 0);
+			return high >= 0x2000 && high <= 0x3fff;
 		} else {
-			short high = (short)(((short)address.getAddress()[0]) & 0xFF);
+			short high = Bytes.getUnsignedByte(address.getAddress(), 0);
 			return high < 224 && switch(high) {
 				default -> true;
 				case 0, 10, 127 -> false;
@@ -93,8 +93,9 @@ public class NetworkUtility {
 	 * @return An internet-facing socket on on port {@code port}.
 	 * @throws SocketException if there is an error querying the IP address.
 	 **/
-	public static InetSocketAddress getPublicSocket(int port) throws SocketException {
-		return new InetSocketAddress(getPrimaryAddress(), port);
+	public static InetSocketAddress getPublicSocket(int port) throws SocketException, UnknownHostException {
+		return new InetSocketAddress(port);
+		//return new InetSocketAddress(getPrimaryAddress(), port);
 	}
 
 	/**
@@ -102,8 +103,9 @@ public class NetworkUtility {
 	 * @return An internet-facing socket on any port.
 	 * @throws SocketException if there is an error querying the IP address.
 	 **/
-	public static InetSocketAddress getPublicSocket() throws SocketException {
-		return getPublicSocket(ANY_PORT);
+	public static InetSocketAddress getPublicSocket() throws SocketException, UnknownHostException {
+		return new InetSocketAddress(ANY_PORT);
+		//return getPublicSocket(ANY_PORT);
 	}
 
 	/**
@@ -111,13 +113,14 @@ public class NetworkUtility {
 	 * @return The primary network-facing IP address of this computer.
 	 * @throws SocketException if there is an error querying the IP address.
 	 **/
-	public static InetAddress getPrimaryAddress() throws SocketException {
-		return NetworkInterface.networkInterfaces()
-			.flatMap(i -> i.getInterfaceAddresses().stream())
-			.filter(addr -> isGlobalUnicast(addr.getAddress()))
-			.min(NetworkUtility::compare)
-			.map(InterfaceAddress::getAddress)
-			.orElseThrow();
+	public static InetAddress getPrimaryAddress() throws SocketException, UnknownHostException {
+		return InetAddress.getByAddress(new byte[16]);
+//		return NetworkInterface.networkInterfaces()
+//			.flatMap(i -> i.getInterfaceAddresses().stream())
+//			.filter(addr -> isGlobalUnicastOrExternal(addr.getAddress()))
+//			.min(NetworkUtility::compare)
+//			.map(InterfaceAddress::getAddress)
+//			.orElseThrow();
 	}
 
 	private static float getScopeRatio(short prefixLength, boolean IPv6) {
@@ -127,6 +130,7 @@ public class NetworkUtility {
 	private static int compare(InterfaceAddress a, InterfaceAddress b) {
 		boolean aIs6 = isIPv6(a.getAddress()), bIs6 = isIPv6(b.getAddress());
 		if(aIs6 == bIs6) {
+			//TODO comparing network prefix length is silly and doesn't get better results
 			return Float.compare(getScopeRatio(b.getNetworkPrefixLength(), bIs6), getScopeRatio(a.getNetworkPrefixLength(), aIs6));
 		} else if(aIs6) {
 			return -1;

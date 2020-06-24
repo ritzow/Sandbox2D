@@ -38,7 +38,8 @@ public final class Protocol {
 	public static final byte
 		RESPONSE_TYPE = 1,
 		RELIABLE_TYPE = 2,
-		UNRELIABLE_TYPE = 3;
+		UNRELIABLE_TYPE = 3,
+		UNRELIABLE_PREDICATE_TYPE = 4;
 
 	/** Message Protocol ID **/
 	public static final short

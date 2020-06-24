@@ -5,21 +5,34 @@ import java.net.InetSocketAddress;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
-import java.util.ArrayDeque;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Queue;
+import java.util.*;
 import java.util.function.Consumer;
 import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.network.NetworkUtility;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.util.Utility;
 
+/**
+ * Protocol representation:
+ * Communication happens as a single bi-directional message stream, which contains
+ * reliable messages and unreliable messages, all in order.
+ *
+ * Receiving: Unreliable messages will always be processed after their
+ * preceding reliable message. Received messages that are not the next message will
+ * be kept in a queue until they or a subsequent reliable message is acknowledged. If
+ * an unreliable message
+ *
+ * Sending:
+ *
+ * If the received messages buffer begins to reach its size limit, unreliable messages
+ * may be purged from it.
+ */
 public class Client implements AutoCloseable {
 
 	//sender/receiver state
 	private final DatagramChannel channel;
 	private final Queue<SendPacket> sendQueue;
+	private final Queue<byte[]> receiveQueue;
 	private final Map<SendPacket, Runnable> messageSentActions;
 	private int receiveReliableID, receiveUnreliableID, sendReliableID, sendUnreliableID;
 	private long lastMessageReceive;
@@ -75,6 +88,7 @@ public class Client implements AutoCloseable {
 				.connect(serverAddress);
 		this.channel.configureBlocking(false);
 		this.sendQueue = new ArrayDeque<>();
+		this.receiveQueue = new ArrayDeque<>();
 		this.messageSentActions = new HashMap<>();
 		this.isUp = true;
 	}
@@ -239,18 +253,32 @@ public class Client implements AutoCloseable {
 						sendResponse(messageID);
 						receiveReliableID++;
 						processor.process(receiveBuffer.position(Protocol.HEADER_SIZE).getShort(), receiveBuffer);
+						//process unreliables with this as predicate
 					} else if(messageID < receiveReliableID) { //message already received
 						sendResponse(messageID);
 					} //else: message received too early
 				}
 
-				case Protocol.UNRELIABLE_TYPE -> {
-					if(messageID >= receiveUnreliableID) {
-						receiveUnreliableID = messageID + 1;
-						processor.process(receiveBuffer.position(Protocol.HEADER_SIZE).getShort(), receiveBuffer);
-					} //else: message is outdated
-				}
+				case Protocol.UNRELIABLE_TYPE -> processUnreliable(messageID, processor);
+
+//				case Protocol.UNRELIABLE_PREDICATE_TYPE -> {
+//					int predicateReliableID = receiveBuffer.getInt();
+//					if(predicateReliableID < receiveReliableID) {
+//						processUnreliable(messageID, processor);
+//					} else {
+//						byte[] dst = new byte[receiveBuffer.limit()];
+//						receiveBuffer.position(0).get(dst);
+//						receiveQueue.add(dst);
+//					}
+//				}
 			}
 		}
+	}
+
+	private void processUnreliable(int messageID, MessageProcessor processor) {
+		if(messageID >= receiveUnreliableID) {
+			receiveUnreliableID = messageID + 1;
+			processor.process(receiveBuffer.position(Protocol.HEADER_SIZE).getShort(), receiveBuffer);
+		} //else: message is outdated
 	}
 }

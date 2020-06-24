@@ -127,6 +127,10 @@ public final class Bytes {
 
 	/* bytes to values */
 
+	public static short getUnsignedByte(byte[] array, int index) {
+		return (short)((short)array[index] & 0xff);
+	}
+
 	public static double getDouble(byte[] array, int index) {
 		return Double.longBitsToDouble(Bytes.getLong(array, index));
 	}

@@ -1,15 +1,13 @@
 package ritzow.sandbox.client;
 
 import java.io.IOException;
-import java.net.NetworkInterface;
-import org.lwjgl.glfw.GLFW;
+import java.util.Arrays;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import ritzow.sandbox.client.audio.AudioSystem;
 import ritzow.sandbox.client.data.StandardClientOptions;
 import ritzow.sandbox.client.graphics.Display;
 import ritzow.sandbox.client.graphics.RenderManager;
 import ritzow.sandbox.client.util.ClientUtility;
-import ritzow.sandbox.network.NetworkUtility;
 import ritzow.sandbox.util.Utility;
 
 import static org.lwjgl.glfw.GLFW.*;
@@ -23,21 +21,12 @@ import static ritzow.sandbox.client.util.ClientUtility.log;
 class StartClient {
 
 	/**
-	 * Native launcher entry point.
-	 * @param args command line arguments as a single String.
-	 * @throws IOException if an exception occurs during program execution
-	 **/
-	@SuppressWarnings("unused")
-	public static void start(String args) throws IOException {
-		run();
-	}
-
-	/**
 	 * Command line entry point.
 	 * @param args command line arguments.
 	 * @throws IOException if the program encounters an error.
 	 **/
 	public static void main(String[] args) throws IOException {
+		System.out.println(Arrays.toString(args));
 		run();
 	}
 

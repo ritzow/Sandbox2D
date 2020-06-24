@@ -24,6 +24,7 @@ import ritzow.sandbox.world.entity.PlayerEntity;
 import ritzow.sandbox.world.item.BlockItem;
 
 import static ritzow.sandbox.network.Protocol.*;
+import static ritzow.sandbox.server.network.ClientState.*;
 
 /** The server manages connected game clients, sends game updates,
  * receives client input, and broadcasts information for clients. */
@@ -523,7 +524,7 @@ public class Server { //TODO server needs to drop unreliable packets if it recei
 		client.sendQueue.add(new SendPacket(data, true));
 	}
 
-	private static record SendPacket(byte[] data, boolean reliable) {
+	static record SendPacket(byte[] data, boolean reliable) {
 		@Override
 		public String toString() {
 			return "SendPacket[" + (reliable ? "reliable" : "unreliable") + " size:" + data.length + " bytes]";
@@ -547,11 +548,11 @@ public class Server { //TODO server needs to drop unreliable packets if it recei
 		ByteBuffer buffer = receiveBuffer.flip(); //flip to set limit and prepare to read packet data
 		if(buffer.limit() >= HEADER_SIZE) {
 			byte type = buffer.get(); //type of message (RESPONSE, RELIABLE, UNRELIABLE)
-			int messageID = buffer.getInt(); //received ID or messageID for ack.
 			ClientState client = clients.computeIfAbsent(sender, ClientState::new);
 			client.lastMessageReceiveTime = System.nanoTime();
 			switch(type) {
 				case RESPONSE_TYPE -> {
+					int messageID = buffer.getInt(); //messageID for ack.
 					if(client.sendReliableID == messageID) {
 						client.ping = Utility.nanosSince(client.sendStartTime);
 						client.sendAttempts = 0;
@@ -561,6 +562,7 @@ public class Server { //TODO server needs to drop unreliable packets if it recei
 				}
 
 				case RELIABLE_TYPE -> {
+					int messageID = buffer.getInt(); //received ID
 					if(messageID == client.receiveReliableID) {
 						//if the message is the next one, process it and update last message
 						sendResponse(sender, responseBuffer, messageID);
@@ -572,6 +574,7 @@ public class Server { //TODO server needs to drop unreliable packets if it recei
 				}
 
 				case UNRELIABLE_TYPE -> {
+					int messageID = buffer.getInt(); //received unreliable ID
 					if(messageID >= client.receiveUnreliableID) {
 						client.receiveUnreliableID = messageID + 1;
 						handleReceive(client, buffer);
@@ -624,105 +627,6 @@ public class Server { //TODO server needs to drop unreliable packets if it recei
 				channel.send(sendBuffer, client.address);
 				sendBuffer.clear();
 			}
-		}
-	}
-
-		/** after the client acks the connect ack */
-	private static final byte
-		STATUS_CONNECTED = 0,
-		/** if the client doesn't send an ack within ack interval */
-		STATUS_TIMED_OUT = 1,
-		/** if server kicks a player or shuts down */
-		STATUS_KICKED = 2,
-		/** if the client manually disconnects */
-		STATUS_LEAVE = 3,
-		/** if the server rejects the client */
-		STATUS_REJECTED = 4,
-		/** if the client has received the world and player and notifies server */
-		STATUS_IN_GAME = 5,
-		/** if the client sent data that didn't make sense */
-		STATUS_INVALID = 6;
-
-	private static final class ClientState {
-		int sendAttempts, receiveReliableID, receiveUnreliableID, sendUnreliableID, sendReliableID;
-		long sendStartTime, lastMessageReceiveTime;
-		final InetSocketAddress address;
-		final Queue<SendPacket> sendQueue;
-		byte status;
-		String disconnectReason;
-
-		/** Client reliable message round trip time in nanoseconds */
-		long ping;
-
-		/** Last player action times in nanoseconds offset */
-		long lastBlockBreakTime, lastBlockPlaceTime, lastPlayerStateUpdate;
-		ServerPlayerEntity player;
-
-		ClientState(InetSocketAddress address) {
-			this.address = address;
-			status = STATUS_CONNECTED;
-			sendQueue = new ArrayDeque<>();
-		}
-
-		@Override
-		public boolean equals(Object obj) {
-			return obj instanceof ClientState client && address.equals(client.address);
-		}
-
-		@Override
-		public int hashCode() {
-			return super.hashCode();
-		}
-
-		static String statusToString(byte status) {
-			return switch(status) {
-				case STATUS_CONNECTED -> 	"connected";
-				case STATUS_TIMED_OUT -> 	"timed out";
-				case STATUS_KICKED -> 		"kicked";
-				case STATUS_LEAVE -> 		"leave";
-				case STATUS_REJECTED -> 	"rejected";
-				case STATUS_IN_GAME -> 		"in-game";
-				case STATUS_INVALID ->		"invalid";
-				default -> 					"unknown";
-			};
-		}
-
-		boolean inGame() {
-			return status == STATUS_IN_GAME;
-		}
-
-		boolean isNotDisconnectState() {
-			return switch (status) {
-				case STATUS_CONNECTED, STATUS_IN_GAME -> true;
-				default -> false;
-			};
-		}
-
-		boolean hasPending() {
-			return !sendQueue.isEmpty();
-		}
-
-		public String formattedName() {
-			return NetworkUtility.formatAddress(address) + " (" + statusToString(status) + ')';
-		}
-
-		@Override
-		public String toString() {
-			return new StringBuilder()
-				.append("ClientState[address: ")
-				.append(NetworkUtility.formatAddress(address))
-				.append(" rSend: ")
-				.append(sendReliableID)
-				.append(" rReceive: ")
-				.append(receiveReliableID)
-				.append(" ping: ")
-				.append(Utility.formatTime(ping))
-				.append(" queuedSend: ")
-				.append(sendQueue.size())
-				.append(" ")
-				.append(statusToString(status))
-				.append(']')
-				.toString();
 		}
 	}
 }
