@@ -56,11 +56,13 @@ class InWorldContext implements GameTalker {
 		this.playerID = playerID;
 	}
 
+	//TODO needs updating since message type no longer extracted by Client class
 	private static record QueuedPacket(short messageType, ByteBuffer packet) {}
 
 	public void updateJoining() {
 		if(worldBuildTask == null) {
-			client.update((messageType, data) -> {
+			client.update(data -> {
+				short messageType = data.getShort();
 				switch(messageType) {
 					case TYPE_SERVER_WORLD_DATA -> { //TODO maybe don't queue certain things (like ping)
 						if(!worldDownloadBuffer.put(data).hasRemaining()) {
@@ -75,7 +77,7 @@ class InWorldContext implements GameTalker {
 							worldBuildTask = CompletableFuture.supplyAsync(this::buildWorld);
 						}
 					}
-					default -> queuePacket(messageType, data);
+					default -> queuePacket(data);
 				}
 			});
 		} else if(worldBuildTask.isDone()) {
@@ -86,11 +88,11 @@ class InWorldContext implements GameTalker {
 		}
 	}
 
-	private void queuePacket(short messageType, ByteBuffer data) {
+	private void queuePacket(ByteBuffer data) {
 		/* When building the world, queue any received packets so they are processed
 		 * and applied to the client state once the world is built. **/
 		ByteBuffer packet = ByteBuffer.allocate(data.remaining());
-		bufferedMessages.add(new QueuedPacket(messageType, packet.put(data).flip()));
+		bufferedMessages.add(new QueuedPacket(data.getShort(), packet.put(data).flip()));
 	}
 
 	private void setupAfterReceiveWorld() {
@@ -110,7 +112,7 @@ class InWorldContext implements GameTalker {
 		//apply received packets
 		while(!bufferedMessages.isEmpty()) {
 			QueuedPacket packet = bufferedMessages.poll();
-			process(packet.messageType, packet.packet);
+			process(packet.packet);
 		}
 		bufferedMessages = null;
 		log().info("World built, joined world");
@@ -158,7 +160,8 @@ class InWorldContext implements GameTalker {
 		display.refresh();
 	}
 
-	private void process(short messageType, ByteBuffer data) {
+	private void process(ByteBuffer data) {
+		short messageType = data.getShort();
 		switch(messageType) {
 			case TYPE_CONSOLE_MESSAGE -> processServerConsoleMessage(data);
 			case TYPE_SERVER_ENTITY_UPDATE -> processUpdateEntity(data);

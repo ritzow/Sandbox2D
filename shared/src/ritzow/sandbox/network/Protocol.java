@@ -32,14 +32,14 @@ public final class Protocol {
 
 	public static final int
 		HEADER_SIZE = 5,
+		RELIABLE_HEADER_SIZE = HEADER_SIZE + 4,
 		MAX_PACKET_SIZE = 1024,
 		MAX_MESSAGE_LENGTH = MAX_PACKET_SIZE - HEADER_SIZE;
 
 	public static final byte
 		RESPONSE_TYPE = 1,
 		RELIABLE_TYPE = 2,
-		UNRELIABLE_TYPE = 3,
-		UNRELIABLE_PREDICATE_TYPE = 4;
+		UNRELIABLE_TYPE = 3;
 
 	/** Message Protocol ID **/
 	public static final short

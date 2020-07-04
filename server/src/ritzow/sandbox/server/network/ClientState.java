@@ -2,9 +2,11 @@ package ritzow.sandbox.server.network;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayDeque;
+import java.util.PriorityQueue;
 import java.util.Queue;
 import ritzow.sandbox.network.NetworkUtility;
-import ritzow.sandbox.server.network.Server.SendPacket;
+import ritzow.sandbox.network.ReceivePacket;
+import ritzow.sandbox.network.SendPacket;
 import ritzow.sandbox.server.world.entity.ServerPlayerEntity;
 import ritzow.sandbox.util.Utility;
 
@@ -25,10 +27,11 @@ final class ClientState {
 		/** if the client sent data that didn't make sense */
 		STATUS_INVALID = 6;
 
-	int sendAttempts, receiveReliableID, receiveUnreliableID, sendUnreliableID, sendReliableID;
-	long sendStartTime, lastMessageReceiveTime;
+	int sendMessageID, lastSendReliableID, headProcessedID;
+	long lastMessageReceiveTime;
 	final InetSocketAddress address;
 	final Queue<SendPacket> sendQueue;
+	final PriorityQueue<ReceivePacket> receiveQueue;
 	byte status;
 	String disconnectReason;
 
@@ -43,11 +46,18 @@ final class ClientState {
 		this.address = address;
 		status = STATUS_CONNECTED;
 		sendQueue = new ArrayDeque<>();
+		receiveQueue = new PriorityQueue<>();
 	}
 
 	@Override
 	public boolean equals(Object obj) {
 		return obj instanceof ClientState client && address.equals(client.address);
+	}
+
+	public void send(byte[] data, boolean reliable) {
+		sendQueue.add(new SendPacket(data, sendMessageID, lastSendReliableID, reliable, -1));
+		if(reliable) lastSendReliableID = sendMessageID;
+		sendMessageID++;
 	}
 
 	@Override
@@ -92,10 +102,10 @@ final class ClientState {
 		return new StringBuilder()
 			.append("ClientState[address: ")
 			.append(NetworkUtility.formatAddress(address))
-			.append(" rSend: ")
-			.append(sendReliableID)
-			.append(" rReceive: ")
-			.append(receiveReliableID)
+			.append(" send: ")
+			.append(sendMessageID)
+			.append(" headProcessedID: ")
+			.append(headProcessedID)
 			.append(" ping: ")
 			.append(Utility.formatTime(ping))
 			.append(" queuedSend: ")

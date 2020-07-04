@@ -10,6 +10,8 @@ import java.util.stream.Stream;
 import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.data.Transportable;
 import ritzow.sandbox.network.NetworkUtility;
+import ritzow.sandbox.network.ReceivePacket;
+import ritzow.sandbox.network.SendPacket;
 import ritzow.sandbox.server.SerializationProvider;
 import ritzow.sandbox.server.world.entity.ServerPlayerEntity;
 import ritzow.sandbox.util.Utility;
@@ -28,13 +30,14 @@ import static ritzow.sandbox.server.network.ClientState.*;
 
 /** The server manages connected game clients, sends game updates,
  * receives client input, and broadcasts information for clients. */
-public class Server { //TODO server needs to drop unreliable packets if it receives too many (ie client sending at 120 fps while server is 60 fps)
+public class Server {
+	//TODO server needs to drop unreliable packets if it receives too many (ie client sending at 120 fps while server is 60 fps)
 	//TODO implement encryption on client and server https://howtodoinjava.com/security/java-aes-encryption-example/
 	private static final long NETWORK_SEND_INTERVAL_NANOSECONDS = Utility.millisToNanos(200);
 	private static final long PLAYER_STATE_BROADCAST_INTERVAL = Utility.millisToNanos(100);
 
 	private final DatagramChannel channel;
-	private final ByteBuffer receiveBuffer, responseBuffer, sendBuffer;
+	private final ByteBuffer receiveBuffer, sendBuffer;
 	private final Map<InetSocketAddress, ClientState> clients;
 	private World world;
 	private long lastWorldUpdateTime;
@@ -56,7 +59,6 @@ public class Server { //TODO server needs to drop unreliable packets if it recei
 		clients = new HashMap<>();
 		sendBuffer = ByteBuffer.allocateDirect(MAX_PACKET_SIZE);
 		receiveBuffer = ByteBuffer.allocateDirect(MAX_PACKET_SIZE);
-		responseBuffer = ByteBuffer.allocateDirect(HEADER_SIZE);
 	}
 
 	public InetSocketAddress getAddress() throws IOException {
@@ -113,7 +115,10 @@ public class Server { //TODO server needs to drop unreliable packets if it recei
 		Bytes.putShort(packet, 0, TYPE_SERVER_CLIENT_DISCONNECT);
 		Bytes.putInteger(packet, 2, message.length);
 		Bytes.copy(message, packet, 6);
-		client.sendQueue.add(new SendPacket(packet, reliable));
+		if(reliable)
+			sendReliableUnsafe(client, packet);
+		else
+			sendUnreliableUnsafe(client, packet);
 	}
 
 	private void onReceive(short type, ClientState client, ByteBuffer packet) {
@@ -160,8 +165,8 @@ public class Server { //TODO server needs to drop unreliable packets if it recei
 		receive();
 		handleClientStatus();
 		if(shutdown) {
-			if(getClientCount() > 0) {
-				sendAllQueued();
+			if(!clients.isEmpty()) {
+				sendQueued();
 			} else {
 				close();
 			}
@@ -176,14 +181,7 @@ public class Server { //TODO server needs to drop unreliable packets if it recei
 				lastClientsUpdate = System.nanoTime();
 				sendEntityUpdates();
 			}
-			sendAllQueued();
-		}
-	}
-
-	private void sendAllQueued() throws IOException {
-		for(ClientState client : clients.values()) {
-			System.out.println(client.address + " queued sends: " + client.sendQueue.size());
-			sendQueued(client);
+			sendQueued();
 		}
 	}
 
@@ -496,10 +494,10 @@ public class Server { //TODO server needs to drop unreliable packets if it recei
 	}
 
 	private void broadcastUnsafe(byte[] data, boolean reliable, Predicate<ClientState> sendToClient) {
-		SendPacket packet = new SendPacket(data, reliable);
 		for(ClientState client : clients.values()) {
-			if(sendToClient.test(client))
-				client.sendQueue.add(packet);
+			if(sendToClient.test(client)) {
+				client.send(data, reliable);
+			}
 		}
 	}
 
@@ -508,27 +506,24 @@ public class Server { //TODO server needs to drop unreliable packets if it recei
 	}
 
 	private void broadcastUnreliable(byte[] data, int length, Predicate<ClientState> sendToClient) {
-		SendPacket packet = new SendPacket(Arrays.copyOfRange(data, 0, length), false);
+		byte[] copy = Arrays.copyOfRange(data, 0, length);
 		for(ClientState client : clients.values()) {
 			if(sendToClient.test(client)) {
-				client.sendQueue.add(packet);
+				client.send(copy, false);
 			}
 		}
 	}
 
 	private static void sendReliableSafe(ClientState client, byte[] data) {
-		sendReliableUnsafe(client, data.clone());
+		client.send(data.clone(), true);
+	}
+
+	private static void sendUnreliableUnsafe(ClientState client, byte[] data) {
+		client.send(data, false);
 	}
 
 	private static void sendReliableUnsafe(ClientState client, byte[] data) {
-		client.sendQueue.add(new SendPacket(data, true));
-	}
-
-	static record SendPacket(byte[] data, boolean reliable) {
-		@Override
-		public String toString() {
-			return "SendPacket[" + (reliable ? "reliable" : "unreliable") + " size:" + data.length + " bytes]";
-		}
+		client.send(data, true);
 	}
 
 	private void receive() throws IOException {
@@ -538,51 +533,87 @@ public class Server { //TODO server needs to drop unreliable packets if it recei
 		}
 	}
 
-	private void sendResponse(InetSocketAddress recipient, ByteBuffer sendBuffer, int receivedMessageID)
-			throws IOException {
+	private void sendResponse(InetSocketAddress recipient, ByteBuffer sendBuffer, int receivedMessageID) throws IOException {
 		channel.send(sendBuffer.put(RESPONSE_TYPE).putInt(receivedMessageID).flip(), recipient);
 		sendBuffer.clear();
 	}
 
+	//use min heap (PriorityQueue) to keep messages in order while queued for processing
+	//if message received is next message, don't bother putting it in queue
 	private void processPacket(InetSocketAddress sender) throws IOException {
 		ByteBuffer buffer = receiveBuffer.flip(); //flip to set limit and prepare to read packet data
 		if(buffer.limit() >= HEADER_SIZE) {
 			byte type = buffer.get(); //type of message (RESPONSE, RELIABLE, UNRELIABLE)
 			ClientState client = clients.computeIfAbsent(sender, ClientState::new);
 			client.lastMessageReceiveTime = System.nanoTime();
+			int messageID = receiveBuffer.getInt();
 			switch(type) {
 				case RESPONSE_TYPE -> {
-					int messageID = buffer.getInt(); //messageID for ack.
-					if(client.sendReliableID == messageID) {
-						client.ping = Utility.nanosSince(client.sendStartTime);
-						client.sendAttempts = 0;
-						client.sendReliableID++;
-						client.sendQueue.poll(); //remove and continue processing
-					} //else drop the response
+					//remove packet from send queue once acknowledged
+					Iterator<SendPacket> packets = client.sendQueue.iterator();
+					while(packets.hasNext()) {
+						SendPacket packet = packets.next();
+						if(packet.messageID == messageID) {
+							packets.remove();
+							break;
+						}
+					}
 				}
 
+				//predecessorID needs to be replaced with messageID in some of this, fix
 				case RELIABLE_TYPE -> {
-					int messageID = buffer.getInt(); //received ID
-					if(messageID == client.receiveReliableID) {
-						//if the message is the next one, process it and update last message
-						sendResponse(sender, responseBuffer, messageID);
-						client.receiveReliableID++;
-						handleReceive(client, buffer);
-					} else if(messageID < client.receiveReliableID) { //message already received
-						sendResponse(sender, responseBuffer, messageID);
-					} //else: message received too early
+					sendResponse(client.address, sendBuffer, messageID);
+					if(messageID > client.headProcessedID) {
+						int predecessorID = receiveBuffer.getInt();
+						if(predecessorID == client.headProcessedID) {
+							//no need to add to the queue, this is the next message in the stream.
+							sendResponse(client.address, sendBuffer, messageID);
+							process(client, messageID, receiveBuffer);
+							handleReceive(client, receiveBuffer);
+						} else if(predecessorID > client.headProcessedID) {
+							//predecessorID > headProcessedID
+							//this will also happen if the message was already received
+							//this wastes space in case of
+							queueReceived(client, messageID, predecessorID, true, receiveBuffer);
+						} //else error in packet data
+					}
 				}
 
 				case UNRELIABLE_TYPE -> {
-					int messageID = buffer.getInt(); //received unreliable ID
-					if(messageID >= client.receiveUnreliableID) {
-						client.receiveUnreliableID = messageID + 1;
-						handleReceive(client, buffer);
-					} //else: message is outdated and can be ignored
+					//only process messages that aren't older than already processed messages
+					//in order to keep all message processing in order
+					if(messageID > client.headProcessedID) {
+						int predecessorID = receiveBuffer.getInt();
+						if(predecessorID > client.headProcessedID) {
+							queueReceived(client, messageID, predecessorID, false, receiveBuffer);
+						} else {
+							//don't need to queue something that can be processed immediately
+							process(client, messageID, receiveBuffer);
+						}
+					}
 				}
 			}
 		} //else packet too small, just ignore
 		buffer.clear(); //clear to prepare for next receive
+	}
+
+	private void queueReceived(ClientState client, int messageID, int predecessorID, boolean reliable, ByteBuffer data) {
+		byte[] copy = new byte[data.remaining()];
+		receiveBuffer.get(copy);
+		client.receiveQueue.add(new ReceivePacket(messageID, predecessorID, reliable, copy));
+	}
+
+	private void process(ClientState client, int messageID, ByteBuffer receiveBuffer) {
+		handleReceive(client, receiveBuffer);
+		client.headProcessedID = messageID;
+		ReceivePacket packet = client.receiveQueue.peek();
+		while(packet != null && packet.predecessorReliableID() <= client.headProcessedID) {
+			if(packet.messageID() > client.headProcessedID) {
+				handleReceive(client, ByteBuffer.wrap(client.receiveQueue.poll().data()));
+				client.headProcessedID = packet.messageID();
+				packet = client.receiveQueue.peek();
+			} //else was a duplicate
+		}
 	}
 
 	private void handleReceive(ClientState client, ByteBuffer packet) {
@@ -593,40 +624,29 @@ public class Server { //TODO server needs to drop unreliable packets if it recei
 		}
 	}
 
-
-	private static void setupSendBuffer(ByteBuffer sendBuffer, byte type, int id, byte[] data) {
-		sendBuffer.put(type).putInt(id).put(data).flip();
-	}
-
-	private void sendReliableImpl(ClientState client, SendPacket packet) throws IOException {
-		client.sendAttempts++;
-		setupSendBuffer(sendBuffer, RELIABLE_TYPE, client.sendReliableID, packet.data);
-		channel.send(sendBuffer, client.address);
-		sendBuffer.clear();
-	}
-
-	private void sendQueued(ClientState client) throws IOException {
-		 //TODO create interface type that writes directly to send buffer
-		Queue<SendPacket> queue = client.sendQueue;
-		while(!queue.isEmpty()) {
-			if(queue.peek().reliable) {
-				if(client.sendAttempts == 0) { //initialize
-					client.sendStartTime = System.nanoTime();
-					sendReliableImpl(client, queue.peek());
-				} else if(client.sendAttempts <= RESEND_COUNT) { //check if not timed out
-					if(Utility.resendIntervalElapsed(client.sendStartTime, client.sendAttempts)) {
-						sendReliableImpl(client, queue.peek());
+	private void sendQueued() throws IOException {
+		//TODO maybe separate reliable messages into a different datastructure and use queue only for unreliables?
+		for(ClientState client : clients.values()) {
+			Iterator<SendPacket> packets = client.sendQueue.iterator();
+			while(packets.hasNext()) {
+				SendPacket packet = packets.next();
+				if(packet.reliable) {
+					long time = System.nanoTime();
+					if(packet.lastSendTime == -1 || time - packet.lastSendTime > RESEND_INTERVAL) {
+						sendBuffer(client, RELIABLE_TYPE, packet.data);
+						packet.lastSendTime = time;
 					}
-				} else { //client has timed out
-					client.status = STATUS_TIMED_OUT;
-					client.disconnectReason = "client didn't respond to reliable message";
+				} else {
+					//always remove unreliable messages, they will never be re-sent
+					packets.remove();
+					sendBuffer(client, UNRELIABLE_TYPE, packet.data);
 				}
-				break;
-			} else {
-				setupSendBuffer(sendBuffer, UNRELIABLE_TYPE, client.sendUnreliableID++, queue.poll().data);
-				channel.send(sendBuffer, client.address);
-				sendBuffer.clear();
 			}
 		}
+	}
+
+	private void sendBuffer(ClientState client, byte type, byte[] data) throws IOException {
+		channel.send(sendBuffer.put(type).putInt(client.sendMessageID).putInt(client.lastSendReliableID).put(data).flip(), client.address);
+		sendBuffer.clear();
 	}
 }

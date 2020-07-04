@@ -70,7 +70,8 @@ class ServerJoinContext {
 		close();
 	}
 
-	private void process(short messageType, ByteBuffer data) {
+	private void process(ByteBuffer data) {
+		short messageType = data.getShort();
 		if(messageType == TYPE_SERVER_CONNECT_ACKNOWLEDGMENT) {
 			byte response = data.get();
 			switch(response) {
