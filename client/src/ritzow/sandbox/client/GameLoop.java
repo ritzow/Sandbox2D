@@ -23,7 +23,7 @@ class GameLoop {
 			long frameStart = System.nanoTime();
 			current.run(frameStart - lastUpdate);
 			lastUpdate = Math.max(frameStart, lastUpdate);
-			if(LIMIT_FPS) Utility.limitFramerate(frameStart, FRAME_TIME_LIMIT);
+			if(LIMIT_FPS) Utility.limitFramerate(frameStart, FRAME_TIME_LIMIT); //TODO this is causing problems again I think?
 			if(PRINT_FPS) Utility.printFramerate(frameStart);
 		}
 	}

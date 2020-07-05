@@ -158,8 +158,7 @@ public class Server {
 	private static final int
 		ENTITY_UPDATE_HEADER_SIZE = 6,
 		BYTES_PER_ENTITY = 20,
-		MAX_ENTITIES_PER_PACKET = 1;
-			//(MAX_MESSAGE_LENGTH - ENTITY_UPDATE_HEADER_SIZE)/BYTES_PER_ENTITY;
+		MAX_ENTITIES_PER_PACKET = (MAX_MESSAGE_LENGTH - ENTITY_UPDATE_HEADER_SIZE)/BYTES_PER_ENTITY;
 
 	public void update() throws IOException {
 		receive();
@@ -530,6 +529,7 @@ public class Server {
 		InetSocketAddress sender;
 		while((sender = (InetSocketAddress)channel.receive(receiveBuffer)) != null) {
 			processPacket(sender);
+			receiveBuffer.clear();
 		}
 	}
 
@@ -541,11 +541,10 @@ public class Server {
 	//use min heap (PriorityQueue) to keep messages in order while queued for processing
 	//if message received is next message, don't bother putting it in queue
 	private void processPacket(InetSocketAddress sender) throws IOException {
-		ByteBuffer buffer = receiveBuffer.flip(); //flip to set limit and prepare to read packet data
-		if(buffer.limit() >= HEADER_SIZE) {
-			byte type = buffer.get(); //type of message (RESPONSE, RELIABLE, UNRELIABLE)
+		if(receiveBuffer.flip().limit() >= MIN_PACKET_SIZE) { //check that packet is large enough
 			ClientState client = clients.computeIfAbsent(sender, ClientState::new);
 			client.lastMessageReceiveTime = System.nanoTime();
+			byte type = receiveBuffer.get(); //type of message (RESPONSE, RELIABLE, UNRELIABLE)
 			int messageID = receiveBuffer.getInt();
 			switch(type) {
 				case RESPONSE_TYPE -> {
@@ -553,7 +552,9 @@ public class Server {
 					Iterator<SendPacket> packets = client.sendQueue.iterator();
 					while(packets.hasNext()) {
 						SendPacket packet = packets.next();
-						if(packet.messageID == messageID) {
+						if(packet.messageID < messageID) {
+							break;
+						} else if(packet.messageID == messageID) {
 							packets.remove();
 							break;
 						}
@@ -565,11 +566,10 @@ public class Server {
 					sendResponse(client.address, sendBuffer, messageID);
 					if(messageID > client.headProcessedID) {
 						int predecessorID = receiveBuffer.getInt();
-						if(predecessorID == client.headProcessedID) {
+						if(predecessorID <= client.headProcessedID) {
 							//no need to add to the queue, this is the next message in the stream.
 							sendResponse(client.address, sendBuffer, messageID);
 							process(client, messageID, receiveBuffer);
-							handleReceive(client, receiveBuffer);
 						} else if(predecessorID > client.headProcessedID) {
 							//predecessorID > headProcessedID
 							//this will also happen if the message was already received
@@ -593,8 +593,7 @@ public class Server {
 					}
 				}
 			}
-		} //else packet too small, just ignore
-		buffer.clear(); //clear to prepare for next receive
+		}
 	}
 
 	private void queueReceived(ClientState client, int messageID, int predecessorID, boolean reliable, ByteBuffer data) {
@@ -608,11 +607,12 @@ public class Server {
 		client.headProcessedID = messageID;
 		ReceivePacket packet = client.receiveQueue.peek();
 		while(packet != null && packet.predecessorReliableID() <= client.headProcessedID) {
+			client.receiveQueue.poll();
 			if(packet.messageID() > client.headProcessedID) {
-				handleReceive(client, ByteBuffer.wrap(client.receiveQueue.poll().data()));
+				handleReceive(client, ByteBuffer.wrap(packet.data()));
 				client.headProcessedID = packet.messageID();
-				packet = client.receiveQueue.peek();
 			} //else was a duplicate
+			packet = client.receiveQueue.peek();
 		}
 	}
 
@@ -633,20 +633,20 @@ public class Server {
 				if(packet.reliable) {
 					long time = System.nanoTime();
 					if(packet.lastSendTime == -1 || time - packet.lastSendTime > RESEND_INTERVAL) {
-						sendBuffer(client, RELIABLE_TYPE, packet.data);
+						sendBuffer(client, RELIABLE_TYPE, packet);
 						packet.lastSendTime = time;
 					}
 				} else {
 					//always remove unreliable messages, they will never be re-sent
 					packets.remove();
-					sendBuffer(client, UNRELIABLE_TYPE, packet.data);
+					sendBuffer(client, UNRELIABLE_TYPE, packet);
 				}
 			}
 		}
 	}
 
-	private void sendBuffer(ClientState client, byte type, byte[] data) throws IOException {
-		channel.send(sendBuffer.put(type).putInt(client.sendMessageID).putInt(client.lastSendReliableID).put(data).flip(), client.address);
+	private void sendBuffer(ClientState client, byte type, SendPacket packet) throws IOException {
+		channel.send(sendBuffer.put(type).putInt(packet.messageID).putInt(packet.lastReliableID).put(packet.data).flip(), client.address);
 		sendBuffer.clear();
 	}
 }

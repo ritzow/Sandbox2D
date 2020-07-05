@@ -27,7 +27,7 @@ final class ClientState {
 		/** if the client sent data that didn't make sense */
 		STATUS_INVALID = 6;
 
-	int sendMessageID, lastSendReliableID, headProcessedID;
+	int sendMessageID = 0, lastSendReliableID = -1, headProcessedID = -1;
 	long lastMessageReceiveTime;
 	final InetSocketAddress address;
 	final Queue<SendPacket> sendQueue;

@@ -43,14 +43,20 @@ public class Client implements AutoCloseable {
 	private final Queue<SendPacket> sendQueue;
 	private final PriorityQueue<ReceivePacket> received;
 	private final Map<Integer, Runnable> messageSentActions;
-	private int sendMessageID, lastSendReliableID, headProcessedID;
+	private int sendMessageID = 0, lastSendReliableID = -1, headProcessedID = -1;
 	private long lastMessageReceive;
 	private boolean isUp;
 	private long ping; //rount trip time in nanoseconds
 
 	public interface MessageProcessor {
 		//todo make this take one argument
-		void process(ByteBuffer data);
+
+		/**
+		 * Called by the Client class when a received message can be processed
+		 * @param data the data received
+		 * @return true if processing should continue
+		 */
+		boolean process(ByteBuffer data);
 	}
 
 	private Runnable onTimeout;
@@ -125,31 +131,27 @@ public class Client implements AutoCloseable {
 	 * @param data the packet message, including message type, to send **/
 	public void sendUnreliable(byte[] data) {
 		send(data, false);
-		sendMessageID++;
 	}
 
 	/** Queues a reliable message
 	 * @param data the packet message, including message type, to send **/
 	public void sendReliable(byte[] data) {
 		send(data, true);
-		lastSendReliableID = sendMessageID;
-		sendMessageID++;
 	}
 
 	/** Queues a reliable message, and runs an action after the message is received by the server
 	 * @param data the packet message, including message type, to send
 	 * @param action an action to run when the message is acknowledged by the server **/
 	public void sendReliable(byte[] data, Runnable action) {
-		SendPacket packet = send(data, true);
-		lastSendReliableID = sendMessageID;
-		sendMessageID++;
 		messageSentActions.put(sendMessageID, action);
+		send(data, true);
 	}
 
-	private SendPacket send(byte[] data, boolean reliable) {
+	private void send(byte[] data, boolean reliable) {
 		SendPacket packet = new SendPacket(Arrays.copyOf(data, data.length), sendMessageID, lastSendReliableID, reliable, -1);
+		if(reliable) lastSendReliableID = sendMessageID;
+		sendMessageID++;
 		sendQueue.add(packet);
-		return packet;
 	}
 
 	/**
@@ -171,19 +173,19 @@ public class Client implements AutoCloseable {
 		sendBuffer = ByteBuffer.allocateDirect(Protocol.MAX_PACKET_SIZE),
 		receiveBuffer = ByteBuffer.allocateDirect(Protocol.MAX_PACKET_SIZE);
 
-	public void update(MessageProcessor processor) {
-		update(Integer.MAX_VALUE, processor);
-	}
+//	public void update(MessageProcessor processor) {
+//		update(Integer.MAX_VALUE, processor);
+//	}
 
-	public void update(int maxReceive, MessageProcessor processor) {
+	public void update(MessageProcessor processor) {
 		try {
 			//already connected to server so no need to check SocketAddress
-			while(isUp && maxReceive > 0 && channel.receive(receiveBuffer) != null) {
+			boolean cont = true;
+			while(isUp && cont && channel.receive(receiveBuffer) != null) {
 				lastMessageReceive = System.nanoTime();
 				receiveBuffer.flip(); //flip to set limit and prepare to read packet data
-				processReceived(processor); //process messages from the server
+				cont = processReceived(processor); //process messages from the server
 				receiveBuffer.clear(); //clear to prepare for next receive
-				--maxReceive;
 			}
 
 			if(Utility.nanosSince(lastMessageReceive) > Protocol.TIMEOUT_DISCONNECT) {
@@ -199,19 +201,20 @@ public class Client implements AutoCloseable {
 
 	private void sendQueued() throws IOException {
 		//TODO maybe separate reliable messages into a different datastructure and use queue only for unreliables?
+		//TODO possible to do in reverse to process oldest first (the ones holding the rest up)?
 		Iterator<SendPacket> packets = sendQueue.iterator();
 		while(packets.hasNext()) {
 			SendPacket packet = packets.next();
 			if(packet.reliable) {
 				long time = System.nanoTime();
 				if(packet.lastSendTime == -1 || time - packet.lastSendTime > Protocol.RESEND_INTERVAL) {
-					sendBuffer(Protocol.RELIABLE_TYPE, sendMessageID, lastSendReliableID, packet.data);
+					sendBuffer(Protocol.RELIABLE_TYPE, packet.messageID, packet.lastReliableID, packet.data);
 					packet.lastSendTime = time;
 				}
 			} else {
 				//always remove unreliable messages, they will never be re-sent
 				packets.remove();
-				sendBuffer(Protocol.UNRELIABLE_TYPE, sendMessageID, lastSendReliableID, packet.data);
+				sendBuffer(Protocol.UNRELIABLE_TYPE, packet.messageID, packet.lastReliableID, packet.data);
 			}
 		}
 	}
@@ -226,21 +229,23 @@ public class Client implements AutoCloseable {
 		sendBuffer.clear();
 	}
 
-	private void processReceived(MessageProcessor processor) throws IOException {
-		if(receiveBuffer.limit() >= Protocol.HEADER_SIZE) {
+	private boolean processReceived(MessageProcessor processor) throws IOException {
+		if(receiveBuffer.limit() >= Protocol.MIN_PACKET_SIZE) {
 			byte type = receiveBuffer.get(); //type of message (RESPONSE, RELIABLE, UNRELIABLE)
 			int messageID = receiveBuffer.getInt(); //received ID or messageID for ack.
 			switch(type) {
 				case Protocol.RESPONSE_TYPE -> {
 					//remove packet from send queue once acknowledged
 					Iterator<SendPacket> packets = sendQueue.iterator();
-					while(packets.hasNext()) {
+					while(packets.hasNext()) { //always decreasing in ID
 						SendPacket packet = packets.next();
-						if(packet.messageID == messageID) {
+						if(packet.messageID < messageID) {
+							break;
+						} else if(packet.messageID == messageID) {
+							//can run multiple times for duplicates
 							packets.remove();
 							var action = messageSentActions.get(packet.messageID);
 							if(action != null) action.run();
-							break;
 						}
 					}
 				}
@@ -250,16 +255,16 @@ public class Client implements AutoCloseable {
 					sendResponse(messageID);
 					if(messageID > headProcessedID) {
 						int predecessorID = receiveBuffer.getInt();
-						if(predecessorID == headProcessedID) {
+						if(predecessorID <= headProcessedID) {
 							//no need to add to the queue, this is the next message in the stream.
 							sendResponse(messageID);
-							process(processor, messageID, receiveBuffer);
+							return process(processor, messageID, receiveBuffer);
 						} else if(predecessorID > headProcessedID) {
 							//predecessorID > headProcessedID
 							//this will also happen if the message was already received
 							//this wastes space in case of
 							queueReceived(messageID, predecessorID, true, receiveBuffer);
-						} //else error in packet data
+						}
 					}
 				}
 
@@ -272,12 +277,13 @@ public class Client implements AutoCloseable {
 							queueReceived(messageID, predecessorID, false, receiveBuffer);
 						} else {
 							//don't need to queue something that can be processed immediately
-							process(processor, messageID, receiveBuffer);
+							return process(processor, messageID, receiveBuffer);
 						}
 					}
 				}
 			}
 		}
+		return true; //if a message is not processed, always continue processing
 	}
 
 	private void queueReceived(int messageID, int predecessorID, boolean reliable, ByteBuffer data) {
@@ -286,16 +292,19 @@ public class Client implements AutoCloseable {
 		received.add(new ReceivePacket(messageID, predecessorID, reliable, copy));
 	}
 
-	private void process(MessageProcessor processor, int messageID, ByteBuffer receiveBuffer) {
-		processor.process(receiveBuffer);
+	private boolean process(MessageProcessor processor, int messageID, ByteBuffer receiveBuffer) {
+		boolean cont = processor.process(receiveBuffer);
 		headProcessedID = messageID;
 		ReceivePacket packet = received.peek();
-		while(packet != null && packet.predecessorReliableID() <= headProcessedID) {
+		while(cont && packet != null && packet.predecessorReliableID() <= headProcessedID) {
+			received.poll();
 			if(packet.messageID() > headProcessedID) {
-				processor.process(ByteBuffer.wrap(received.poll().data()));
+				cont = processor.process(ByteBuffer.wrap(packet.data()));
 				headProcessedID = packet.messageID();
-				packet = received.peek();
 			} //else was a duplicate
+			packet = received.peek();
 		}
+
+		return cont;
 	}
 }

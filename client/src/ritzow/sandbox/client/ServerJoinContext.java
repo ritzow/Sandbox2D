@@ -50,7 +50,7 @@ class ServerJoinContext {
 			//wait for server response to connect request
 			//only process 1 message so other message types don't get eaten up
 			//TODO this is still broken, if message isn't immediately received before other types
-			client.update(1, this::process); //client.update(1, this::process);
+			client.update(this::process); //client.update(1, this::process);
 		} else {
 			worldContext.updateJoining();
 		}
@@ -70,7 +70,7 @@ class ServerJoinContext {
 		close();
 	}
 
-	private void process(ByteBuffer data) {
+	private boolean process(ByteBuffer data) {
 		short messageType = data.getShort();
 		if(messageType == TYPE_SERVER_CONNECT_ACKNOWLEDGMENT) {
 			byte response = data.get();
@@ -78,12 +78,14 @@ class ServerJoinContext {
 				case Protocol.CONNECT_STATUS_REJECTED -> {
 					log().info("Server rejected connection");
 					close();
+					return false;
 				}
 
 				case Protocol.CONNECT_STATUS_WORLD -> {
 					log().info("Connected to server");
 					//worldSize and playerID integers
 					worldContext = new InWorldContext(client, data.getInt(), data.getInt());
+					return false;
 				}
 
 				default -> throw new UnsupportedOperationException("Unsupported connect ack type " + response);

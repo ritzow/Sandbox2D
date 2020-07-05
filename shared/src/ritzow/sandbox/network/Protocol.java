@@ -31,10 +31,11 @@ public final class Protocol {
 		RESEND_INTERVAL = TIMEOUT_DISCONNECT/RESEND_COUNT;
 
 	public static final int
-		HEADER_SIZE = 5,
-		RELIABLE_HEADER_SIZE = HEADER_SIZE + 4,
+		MESSAGE_HEADER_SIZE = 9, //type + id + predecessor id
+		RESPONSE_PACKET_SIZE = 5, //type + ack id
+		MIN_PACKET_SIZE = 5,
 		MAX_PACKET_SIZE = 1024,
-		MAX_MESSAGE_LENGTH = MAX_PACKET_SIZE - HEADER_SIZE;
+		MAX_MESSAGE_LENGTH = MAX_PACKET_SIZE - MESSAGE_HEADER_SIZE;
 
 	public static final byte
 		RESPONSE_TYPE = 1,

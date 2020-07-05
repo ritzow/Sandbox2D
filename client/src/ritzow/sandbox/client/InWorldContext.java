@@ -79,6 +79,7 @@ class InWorldContext implements GameTalker {
 					}
 					default -> queuePacket(data);
 				}
+				return true;
 			});
 		} else if(worldBuildTask.isDone()) {
 			setupAfterReceiveWorld();
@@ -88,11 +89,12 @@ class InWorldContext implements GameTalker {
 		}
 	}
 
-	private void queuePacket(ByteBuffer data) {
+	private boolean queuePacket(ByteBuffer data) {
 		/* When building the world, queue any received packets so they are processed
 		 * and applied to the client state once the world is built. **/
 		ByteBuffer packet = ByteBuffer.allocate(data.remaining());
 		bufferedMessages.add(new QueuedPacket(data.getShort(), packet.put(data).flip()));
+		return true;
 	}
 
 	private void setupAfterReceiveWorld() {
@@ -160,7 +162,7 @@ class InWorldContext implements GameTalker {
 		display.refresh();
 	}
 
-	private void process(ByteBuffer data) {
+	private boolean process(ByteBuffer data) {
 		short messageType = data.getShort();
 		switch(messageType) {
 			case TYPE_CONSOLE_MESSAGE -> processServerConsoleMessage(data);
@@ -174,6 +176,7 @@ class InWorldContext implements GameTalker {
 			case TYPE_SERVER_CLIENT_BREAK_BLOCK_COOLDOWN -> processBlockBreakCooldown(data);
 			default -> log().severe("Client received message of unknown protocol " + messageType);
 		}
+		return true;
 	}
 
 	@SuppressWarnings("unused")
