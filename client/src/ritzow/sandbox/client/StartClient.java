@@ -1,7 +1,6 @@
 package ritzow.sandbox.client;
 
 import java.io.IOException;
-import java.util.Arrays;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import ritzow.sandbox.client.audio.AudioSystem;
 import ritzow.sandbox.client.data.StandardClientOptions;
@@ -26,11 +25,6 @@ class StartClient {
 	 * @throws IOException if the program encounters an error.
 	 **/
 	public static void main(String[] args) throws IOException {
-		System.out.println(Arrays.toString(args));
-		run();
-	}
-
-	private static void run() throws IOException {
 		log().info("Starting game");
 		long startupStart = System.nanoTime();
 		AudioSystem audio = AudioSystem.getDefault(); //load default audio system

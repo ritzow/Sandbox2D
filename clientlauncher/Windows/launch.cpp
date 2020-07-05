@@ -2,6 +2,7 @@
 #include <PathCch.h>
 #include <iostream>
 #include <shared.cpp>
+#include <cwchar>
 
 inline const bool SHOW_CONSOLE = true;
 
@@ -48,16 +49,7 @@ INT WINAPI wWinMain(_In_ HMODULE module, _In_opt_ HINSTANCE, _In_ LPWSTR lpCmdLi
 		JavaVM* vm; JNIEnv* env; JavaVMInitArgs vmargs = GetJavaInitArgs();
 		jint result = ((StartJVM)GetProcAddress(dll, "JNI_CreateJavaVM"))(&vm, &env, &vmargs);
 		if (result == JNI_OK) {
-			size_t len = wcslen(GetCommandLineW());
-			wchar_t* args_copy = new wchar_t[len];
-			wcsncpy_s(args_copy, len, GetCommandLineW(), len);
-			int argc;
-			wchar_t** args = CommandLineToArgvW(args_copy, &argc);
-
-			RunGame(env, argc, args);
-			delete[] args_copy;
-			LocalFree(args);
-
+			RunGame(env, __argc - 1, __wargv + 1);
 			vm->DestroyJavaVM();
 			FreeLibrary(dll);
 			return EXIT_SUCCESS;

@@ -80,7 +80,7 @@ void RunGame(JNIEnv* env, int argc, wchar_t** args) {
 		env->SetObjectArrayElement(jargs, i, jarg);
 		env->DeleteLocalRef(jarg);
 	}
-	env->CallStaticVoidMethod(classMain, methodMain, env->NewString((const jchar*)L"blah", (jsize)wcslen(L"blah")));
+	env->CallStaticVoidMethod(classMain, methodMain, jargs);
 	env->DeleteLocalRef(jargs);
 	env->DeleteLocalRef(classMain);
 	if (env->ExceptionCheck())
