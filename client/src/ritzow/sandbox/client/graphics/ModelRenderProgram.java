@@ -5,17 +5,18 @@ import java.nio.IntBuffer;
 import java.util.*;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.system.MemoryStack;
+import ritzow.sandbox.client.data.StandardClientOptions;
 
 import static org.lwjgl.opengl.GL46C.*;
 
-public final class ModelRenderProgram extends ShaderProgram {
+public class ModelRenderProgram extends ShaderProgram {
 
 	public static final record RenderInstance(Model model, float opacity,
 		float posX, float posY, float scaleX, float scaleY, float rotation) {}
-	private static record ModelAttributes(int indexOffset, int indexCount) {}
+	protected static record ModelAttributes(int indexOffset, int indexCount) {}
 
-	private static final int POSITION_SIZE = 2, TEXTURE_COORD_SIZE = 2;
-	private static final int ATLAS_TEXTURE_UNIT = GL_TEXTURE0;
+	protected static final int POSITION_SIZE = 2, TEXTURE_COORD_SIZE = 2;
+	protected static final int ATLAS_TEXTURE_UNIT = GL_TEXTURE0;
 
 	private final float[] aspectMatrix = {
 			1, 0, 0, 0,
@@ -31,23 +32,25 @@ public final class ModelRenderProgram extends ShaderProgram {
 			0, 0, 0, 1,
 	};
 
-	private final int
+	protected final int
 		uniform_transform,
 		uniform_opacity,
 		uniform_view,
 		attribute_position,
 		attribute_textureCoord;
 
-	private final int vaoID, atlasTexture;
-	private final Queue<RenderInstance> renderQueue;
-	private final Map<Model, ModelAttributes> modelProperties;
+	protected final int vaoID, atlasTexture;
+	protected final Queue<RenderInstance> renderQueue;
+	protected final Map<Model, ModelAttributes> modelProperties;
 
 	public static ModelRenderProgram create(Shader vertexShader, Shader fragmentShader,
 			int textureAtlas, ModelData... models) {
-		return new ModelRenderProgram(vertexShader, fragmentShader, textureAtlas, models);
+		return StandardClientOptions.USE_OPENGL_4_6 ?
+			new ModelRenderProgramEnhanced(vertexShader, fragmentShader, textureAtlas, models) :
+			new ModelRenderProgram(vertexShader, fragmentShader, textureAtlas, models);
 	}
 
-	private ModelRenderProgram(Shader vertexShader, Shader fragmentShader,
+	protected ModelRenderProgram(Shader vertexShader, Shader fragmentShader,
 		int textureAtlas, ModelData... models) {
 		super(vertexShader, fragmentShader);
 		this.uniform_transform = getUniformLocation("transform");
@@ -77,6 +80,8 @@ public final class ModelRenderProgram extends ShaderProgram {
 		glBlendFunci(RenderManager.MAIN_DRAW_BUFFER_INDEX, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glBlendEquationi(RenderManager.MAIN_DRAW_BUFFER_INDEX, GL_FUNC_ADD);
 	}
+
+	//TODO I still want to use glMultiDrawElements to improve efficiency, need to just draw as many models as are allowed by max array size in glsl
 
 	/**
 	 * Renders a model with the specified properties
@@ -137,7 +142,7 @@ public final class ModelRenderProgram extends ShaderProgram {
 			vertexTotal += model.positions.length/POSITION_SIZE;
 		}
 
-		//TODO remove repeat vertices (same position and texture coord)?
+		//TODO remove repeat vertices (same position and texture coord) and readjust indices?
 		//initialize temporary buffers
 		FloatBuffer positionData = BufferUtils.createFloatBuffer(vertexTotal * POSITION_SIZE);
 		FloatBuffer textureCoordsData = BufferUtils.createFloatBuffer(vertexTotal * TEXTURE_COORD_SIZE);
@@ -184,8 +189,8 @@ public final class ModelRenderProgram extends ShaderProgram {
 		return vao;
 	}
 
-	private static void prepInstanceData(FloatBuffer dest, float posX, float posY,
-			float scaleX, float scaleY, float rotation) {
+	protected static void prepInstanceData(FloatBuffer dest, float posX, float posY,
+								 float scaleX, float scaleY, float rotation) {
 		float rotX = (float)Math.cos(rotation);
 		float rotY = (float)Math.sin(rotation);
 		dest.put(scaleX * rotX)	.put(scaleX * -rotY)	.put(0).put(0) //column major
@@ -213,10 +218,6 @@ public final class ModelRenderProgram extends ShaderProgram {
 
 	/** Render queued RenderInstances **/
 	public void render() {
-		//glMultiDrawElementsIndirect works even better but requires OpenGL 4.3
-		//gl_DrawID can be used from glsl for this
-		//https://www.khronos.org/opengl/wiki/Built-in_Variable_(GLSL)#Vertex_shader_inputs
-
 		try(MemoryStack stack = MemoryStack.stackPush()) {
 			FloatBuffer instanceData = stack.mallocFloat(16);
 			glBindVertexArray(vaoID);

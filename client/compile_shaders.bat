@@ -1,2 +1,2 @@
-glslangValidator -Os -G460 --target-env opengl resources/shaders/model.vert -o resources/shaders/model.vert.spv
-glslangValidator -Os -G460 --target-env opengl resources/shaders/model.frag -o resources/shaders/model.frag.spv
+glslangValidator -Os -G460 --target-env opengl resources/shaders/model.glsl460.vert -o resources/shaders/model.vert.spv
+glslangValidator -Os -G460 --target-env opengl resources/shaders/model.glsl460.frag -o resources/shaders/model.frag.spv
