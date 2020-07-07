@@ -11,8 +11,8 @@ struct instance {
 	mat4 transform;
 };
 
-layout(std140, binding = 1) uniform instance_data {
-	offsets[8];
+layout(binding = 1, std140) uniform instance_data { //TODO store the single view matrix in here as well
+	int offsets[8];
 	instance instances[64 * 8]; //8 4x4 matrices
 };
 
