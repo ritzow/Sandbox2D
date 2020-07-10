@@ -387,6 +387,10 @@ public class World implements Transportable, Iterable<Entity> {
 		}
 	}
 
+	private boolean isOpen(int x, int y) {
+		return !(foreground.isValid(x, y) && foreground.isBlock(x, y) && foreground.get(x, y).isSolid());
+	}
+
 	private void resolveBlockCollision(Entity e, Block block, int blockX, int blockY, long nanoseconds) {
 		float centroidX = Math.fma(0.5f, e.getWidth(), 0.5f);
 		float centroidY = Math.fma(0.5f, e.getHeight(), 0.5f);
@@ -396,11 +400,11 @@ public class World implements Transportable, Iterable<Entity> {
 		    float wy = centroidX * deltaY;
 		    float hx = centroidY * deltaX;
 		    if (wy > hx) {
-		        if (wy > -hx) { /* collision on the bottom of block, top of entity */
+		        if (wy > -hx && isOpen(blockX, blockY - 1)) { /* collision on the bottom of block, top of entity */
 		        	e.setPositionY(blockY - centroidY);
 					e.onCollision(this, block, Entity.Side.TOP, blockX, blockY, nanoseconds);
 		        	onCollisionEntity(e, block.getFriction(), nanoseconds);
-		        } else { /* collision on right of block */
+		        } else if(isOpen(blockX + 1, blockY)) { /* collision on right of block */
 		        	e.setPositionX(blockX + centroidX);
 		        	e.onCollision(this, block, Entity.Side.LEFT, blockX, blockY, nanoseconds);
 		        	if(e.getVelocityX() < 0) {
@@ -408,13 +412,13 @@ public class World implements Transportable, Iterable<Entity> {
 					}
 		        }
 		    } else {
-		        if (wy > -hx) { /* collision on left of block, right of entity */
+		        if (wy > -hx && isOpen(blockX - 1, blockY)) { /* collision on left of block, right of entity */
 		        	e.setPositionX(blockX - centroidX);
 		        	e.onCollision(this, block, Entity.Side.RIGHT, blockX, blockY, nanoseconds);
 		        	if(e.getVelocityX() > 0) {
 						e.setVelocityX(0);
 					}
-		        } else { /* collision on top of block, bottom of entity */
+		        } else if(isOpen(blockX, blockY + 1)) { /* collision on top of block, bottom of entity */
 		        	e.setPositionY(blockY + centroidY);
 		        	e.onCollision(this, block, Entity.Side.BOTTOM, blockX, blockY, nanoseconds);
 		        	onCollisionEntity(e, block.getFriction(), nanoseconds);
