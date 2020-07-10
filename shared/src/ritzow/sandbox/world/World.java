@@ -168,6 +168,7 @@ public class World implements Transportable, Iterable<Entity> {
 			Entity next = it.next();
 			if(predicate.test(next)) {
 				it.remove();
+				entitiesID.remove(next.getID());
 				if(onRemove != null) onRemove.accept(next);
 			}
 		}
@@ -278,6 +279,7 @@ public class World implements Transportable, Iterable<Entity> {
 			Entity e = entities.get(i);
 			//remove entities that are below the world or are flagged for deletion
 			if(onRemove != null && e.getPositionY() < 0 || e.getShouldDelete()) {
+				entitiesID.remove(e.getID());
 				onRemove.accept(entities.remove(i));
 				size--;
 			} else {
