@@ -28,8 +28,8 @@ public final class InteractionController {
 				camera, display.getCursorY(), height));
 		renderer.loadViewMatrix(camera, width, height);
 		switch(player.selected()) {
-			case 1 -> renderToolOvelay(world, renderer, player, GameModels.MODEL_DIRT_BLOCK, blockX, blockY);
-			case 2 -> renderToolOvelay(world, renderer, player, GameModels.MODEL_GRASS_BLOCK, blockX, blockY);
+			case 1 -> renderToolOvelay(world, renderer, player, GameModels.MODEL_GRASS_BLOCK, blockX, blockY);
+			case 2 -> renderToolOvelay(world, renderer, player, GameModels.MODEL_DIRT_BLOCK, blockX, blockY);
 			default -> renderer.render(
 				GameModels.MODEL_RED_SQUARE,
 				computeOpacity(Utility.canBreak(player, lastPlace, world, blockX, blockY)),
