@@ -32,7 +32,6 @@ public final class Protocol {
 
 	public static final int
 		MESSAGE_HEADER_SIZE = 9, //type + id + predecessor id
-		RESPONSE_PACKET_SIZE = 5, //type + ack id
 		MIN_PACKET_SIZE = 5,
 		MAX_PACKET_SIZE = 1024,
 		MAX_MESSAGE_LENGTH = MAX_PACKET_SIZE - MESSAGE_HEADER_SIZE;

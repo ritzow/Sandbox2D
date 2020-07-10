@@ -173,10 +173,6 @@ public class Client implements AutoCloseable {
 		sendBuffer = ByteBuffer.allocateDirect(Protocol.MAX_PACKET_SIZE),
 		receiveBuffer = ByteBuffer.allocateDirect(Protocol.MAX_PACKET_SIZE);
 
-//	public void update(MessageProcessor processor) {
-//		update(Integer.MAX_VALUE, processor);
-//	}
-
 	public void update(MessageProcessor processor) {
 		try {
 			//already connected to server so no need to check SocketAddress
