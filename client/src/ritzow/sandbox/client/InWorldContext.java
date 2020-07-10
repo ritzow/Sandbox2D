@@ -43,7 +43,7 @@ class InWorldContext implements GameTalker {
 	private World world;
 	private ByteBuffer worldDownloadBuffer;
 	private CompletableFuture<World> worldBuildTask;
-	private Queue<QueuedPacket> bufferedMessages;
+	private Queue<ByteBuffer> bufferedMessages;
 
 	private static final long PLAYER_STATE_SEND_INTERVAL = Utility.frameRateToFrameTimeNanos(15);
 
@@ -56,15 +56,11 @@ class InWorldContext implements GameTalker {
 		this.playerID = playerID;
 	}
 
-	//TODO needs updating since message type no longer extracted by Client class
-	private static record QueuedPacket(short messageType, ByteBuffer packet) {}
-
 	public void updateJoining() {
 		if(worldBuildTask == null) {
 			client.update(data -> {
-				short messageType = data.getShort();
-				switch(messageType) {
-					case TYPE_SERVER_WORLD_DATA -> { //TODO maybe don't queue certain things (like ping)
+				switch(data.getShort()) {
+					case TYPE_SERVER_WORLD_DATA -> {
 						if(!worldDownloadBuffer.put(data).hasRemaining()) {
 							log().info("Received all world data");
 							//from https://docs.oracle.com/javase/tutorial/essential/concurrency/memconsist.html
@@ -77,6 +73,11 @@ class InWorldContext implements GameTalker {
 							worldBuildTask = CompletableFuture.supplyAsync(this::buildWorld);
 						}
 					}
+
+					case TYPE_PING, TYPE_SERVER_ENTITY_UPDATE -> {
+						//don't save streamed messages in queue
+					}
+
 					default -> queuePacket(data);
 				}
 				return true;
@@ -93,7 +94,12 @@ class InWorldContext implements GameTalker {
 		/* When building the world, queue any received packets so they are processed
 		 * and applied to the client state once the world is built. **/
 		ByteBuffer packet = ByteBuffer.allocate(data.remaining());
-		bufferedMessages.add(new QueuedPacket(data.getShort(), packet.put(data).flip()));
+		switch(data.getShort(data.position())) {
+			default -> bufferedMessages.add(packet.put(data).flip());
+			case TYPE_PING, TYPE_SERVER_ENTITY_UPDATE -> {
+				//don't save streamed messages
+			}
+		}
 		return true;
 	}
 
@@ -113,8 +119,7 @@ class InWorldContext implements GameTalker {
 		client.sendReliable(Bytes.of(TYPE_CLIENT_WORLD_BUILT));
 		//apply received packets
 		while(!bufferedMessages.isEmpty()) {
-			QueuedPacket packet = bufferedMessages.poll();
-			process(packet.packet);
+			process(bufferedMessages.poll());
 		}
 		bufferedMessages = null;
 		log().info("World built, joined world");
