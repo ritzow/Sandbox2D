@@ -1,16 +1,12 @@
-Short-to-Medium Term:
-fix constant game lag/stuttering
+User interface implementation
+Re-implement ping
+Implement dead reckoning
+when changing direction in air and jumping, there is a slight stutter
+synchronize random seed value (send from server to client on connect) for things like item entity bouncing so they can be performed client-side as well to look more in sync
 implement friction on entities
-game loop client/server sync
 openal device selection re-connection
-user interface implementation
-
-Long Term:
 Add chunk loading and generation to BlockGrid and Client/Server
-Client world mesh generation for faster graphics
-Use or create proper logging system
-create user interface system/renderer
-Optimize texture atlas space usage
-Rewrite rendering to use a single draw command, multi/indirect/instanced etc.
+Client world mesh generation for GPU for faster graphics
+Optimize texture atlas space usage (instead of curret dumb "solution")
 Implement Vulkan renderer
 Add binary glTF support
