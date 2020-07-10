@@ -155,7 +155,8 @@ public final class Utility {
 	}
 
 	public static void printFramerate(long nanoseconds) {
-		System.out.println(1_000_000_000/(System.nanoTime() - nanoseconds) + " FPS");
+		long frameTime = System.nanoTime() - nanoseconds;
+		System.out.println(1_000_000_000/frameTime + " FPS (" + Utility.formatTime(frameTime) + ")");
 	}
 
 	public static String formatSize(long bytes) {
