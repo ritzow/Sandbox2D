@@ -245,7 +245,7 @@ public class Server {
 				" players connected)"
 		);
 
-		if(client.player != null) {
+		if(client.player != null && world.contains(client.player)) {
 			world.remove(client.player);
 			broadcastRemoveEntity(client.player);
 		}
