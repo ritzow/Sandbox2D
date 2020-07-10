@@ -11,8 +11,8 @@ struct instance {
 	mat4 transform;
 };
 
-layout(binding = 1, std140) uniform instance_data { //TODO store the single view matrix in here as well
-	int offsets[300];
+layout(binding = 1, std140) uniform instance_data { //TODO store the single view matrix in here as well?
+	int offsets[300]; //TODO pack the offsets into vec4s for improved size (thus increasing upload speed)
 	instance instances[300]; //8 4x4 matrices
 };
 

@@ -1,6 +1,5 @@
 package ritzow.sandbox.client.graphics;
 
-import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.*;
@@ -198,16 +197,6 @@ public class ModelRenderProgram extends ShaderProgram {
 			.put(scaleY * rotY)	.put(scaleY * rotX)		.put(0).put(0)
 			.put(0)				.put(0)					.put(0).put(0)
 			.put(posX)			.put(posY)				.put(0).put(1);
-	}
-
-	protected static void prepInstanceData(ByteBuffer dest, float posX, float posY,
-										   float scaleX, float scaleY, float rotation) {
-		float rotX = (float)Math.cos(rotation);
-		float rotY = (float)Math.sin(rotation);
-		dest.putFloat(scaleX * rotX)	.putFloat(scaleX * -rotY)	.putFloat(0).putFloat(0) //column major
-			.putFloat(scaleY * rotY)	.putFloat(scaleY * rotX)	.putFloat(0).putFloat(0)
-			.putFloat(0)				.putFloat(0)				.putFloat(0).putFloat(0)
-			.putFloat(posX)				.putFloat(posY)				.putFloat(0).putFloat(1);
 	}
 
 	public void queueRender(Model model, float opacity,
