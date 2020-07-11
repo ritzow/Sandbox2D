@@ -7,7 +7,7 @@ import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GLCapabilities;
 import org.lwjgl.system.MemoryUtil;
 import ritzow.sandbox.client.data.StandardClientOptions;
-import ritzow.sandbox.client.graphics.ModelRenderProgram.ModelData;
+import ritzow.sandbox.client.graphics.ModelRenderProgramBase.ModelData;
 import ritzow.sandbox.client.graphics.Shader.ShaderType;
 import ritzow.sandbox.util.Utility;
 
@@ -23,7 +23,7 @@ public class RenderManager {
 	public static final int MAIN_DRAW_BUFFER_INDEX = 0;
 	public static GLCapabilities OPENGL_CAPS;
 
-	public static ModelRenderProgram setup() throws IOException {
+	public static ModelRenderer setup() throws IOException {
 		log().info("Loading OpenGL");
 		GL.create();
 		RenderManager.OPENGL_CAPS = GL.createCapabilities(true);
@@ -68,7 +68,7 @@ public class RenderManager {
 			spirv("model.frag.spv", ShaderType.FRAGMENT) :
 			source("model.frag", ShaderType.FRAGMENT);
 
-		var program = ModelRenderProgram.create(vertex, fragment, atlas.texture(), models);
+		var program = ModelRenderer.create(vertex, fragment, atlas.texture(), models);
 		GraphicsUtility.checkErrors();
 		return program;
 	}

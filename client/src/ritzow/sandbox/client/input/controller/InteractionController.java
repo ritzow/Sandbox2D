@@ -19,7 +19,7 @@ public final class InteractionController {
 		this.lastBreak = time;
 	}
 
-	public void render(Display display, ModelRenderProgram renderer,
+	public void render(Display display, ModelRenderer renderer,
 				Camera camera, World world, ClientPlayerEntity player) {
 		int width = display.width(), height = display.height();
 		int blockX = Math.round(ClientUtility.pixelHorizontalToWorld(
@@ -30,7 +30,7 @@ public final class InteractionController {
 		switch(player.selected()) {
 			case 1 -> renderToolOvelay(world, renderer, player, GameModels.MODEL_GRASS_BLOCK, blockX, blockY);
 			case 2 -> renderToolOvelay(world, renderer, player, GameModels.MODEL_DIRT_BLOCK, blockX, blockY);
-			default -> renderer.render(
+			default -> renderer.queueRender(
 				GameModels.MODEL_RED_SQUARE,
 				computeOpacity(Utility.canBreak(player, lastPlace, world, blockX, blockY)),
 				blockX, blockY, 1.0f, 1.0f, 0.0f
@@ -38,9 +38,9 @@ public final class InteractionController {
 		}
 	}
 
-	private void renderToolOvelay(World world, ModelRenderProgram renderer, PlayerEntity player, Model model, int blockX, int blockY) {
+	private void renderToolOvelay(World world, ModelRenderer renderer, PlayerEntity player, Model model, int blockX, int blockY) {
 		if(!world.getForeground().isValid(blockX, blockY) || !world.getForeground().isBlock(blockX, blockY)) {
-			renderer.render(
+			renderer.queueRender(
 				model,
 				computeOpacity(Utility.canPlace(player, lastPlace, world, blockX, blockY)),
 				blockX, blockY, 1.0f, 1.0f, 0.0f

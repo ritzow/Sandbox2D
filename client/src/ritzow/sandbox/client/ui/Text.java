@@ -1,6 +1,6 @@
 package ritzow.sandbox.client.ui;
 
-import ritzow.sandbox.client.graphics.ModelRenderProgram;
+import ritzow.sandbox.client.graphics.ModelRenderer;
 
 //TODO update Text after creating new UI framework
 public class Text {
@@ -16,11 +16,11 @@ public class Text {
 		this.spacing = spacing;
 	}
 
-	public void render(ModelRenderProgram renderer) {
+	public void render(ModelRenderer renderer) {
 		int index = 0;
 		float charWidth = (size * 0.02f) + (size * 0.02f * spacing);
 		for(float pos = getPositionX(); index < text.length(); pos += charWidth) {
-			renderer.render(font.getModel(text.charAt(index)), 1.0f, pos, getPositionY(), size * 0.02f, size * 0.02f, 0.0f);
+			renderer.queueRender(font.getModel(text.charAt(index)), 1.0f, pos, getPositionY(), size * 0.02f, size * 0.02f, 0.0f);
 			index++;
 		}
 	}

@@ -1,7 +1,7 @@
 package ritzow.sandbox.client.world.entity;
 
 import ritzow.sandbox.client.graphics.GameModels;
-import ritzow.sandbox.client.graphics.ModelRenderProgram;
+import ritzow.sandbox.client.graphics.ModelRenderer;
 import ritzow.sandbox.client.graphics.Renderable;
 import ritzow.sandbox.data.TransportableDataReader;
 import ritzow.sandbox.world.entity.PlayerEntity;
@@ -21,7 +21,7 @@ public class ClientPlayerEntity extends PlayerEntity implements Renderable {
 	}
 
 	@Override
-	public void render(ModelRenderProgram renderer) {
+	public void render(ModelRenderer renderer) {
 		float positionX = this.positionX;
 		float positionY = this.positionY;
 		renderer.queueRender(

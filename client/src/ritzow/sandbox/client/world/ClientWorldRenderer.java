@@ -8,11 +8,11 @@ import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.Entity;
 
 public final class ClientWorldRenderer implements Renderer {
-	private final ModelRenderProgram modelProgram;
+	private final ModelRenderer modelProgram;
 	private final World world;
 	private final Camera camera;
 
-	public ClientWorldRenderer(ModelRenderProgram modelProgram, Camera camera, World world) {
+	public ClientWorldRenderer(ModelRenderer modelProgram, Camera camera, World world) {
 		this.modelProgram = modelProgram;
 		this.camera = camera;
 		this.world = world;
@@ -22,7 +22,7 @@ public final class ClientWorldRenderer implements Renderer {
 	@Override
 	public void render(Framebuffer framebuffer, final int width, final int height) {
 		//ensure that model program, camera, world are cached on stack
-		ModelRenderProgram program = this.modelProgram;
+		ModelRenderer program = this.modelProgram;
 		Camera camera = this.camera;
 		World world = this.world;
 
@@ -34,8 +34,8 @@ public final class ClientWorldRenderer implements Renderer {
 
 		//render before loading view matrix
 		float scale = 2f * (width > height ? width / (float)height : height / (float)width);
-		program.render(GameModels.MODEL_SKY, 1.0f, 0, 0, scale, scale, 0);
-
+		program.queueRender(GameModels.MODEL_SKY, 1.0f, 0, 0, scale, scale, 0);
+		program.flush();
 		//load the view transformation
 		program.loadViewMatrix(camera, width, height);
 
@@ -84,7 +84,5 @@ public final class ClientWorldRenderer implements Renderer {
 				((Renderable)e).render(program);
 			}
 		}
-
-		program.render();
 	}
 }

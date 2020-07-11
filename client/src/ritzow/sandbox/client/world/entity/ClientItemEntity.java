@@ -1,7 +1,7 @@
 package ritzow.sandbox.client.world.entity;
 
 import ritzow.sandbox.client.graphics.Graphics;
-import ritzow.sandbox.client.graphics.ModelRenderProgram;
+import ritzow.sandbox.client.graphics.ModelRenderer;
 import ritzow.sandbox.client.graphics.Renderable;
 import ritzow.sandbox.data.TransportableDataReader;
 import ritzow.sandbox.util.Utility;
@@ -37,7 +37,7 @@ public final class ClientItemEntity<I extends Item> extends ItemEntity<I> implem
 	}
 
 	@Override
-	public void render(ModelRenderProgram renderer) {
+	public void render(ModelRenderer renderer) {
 		Graphics g = ((Graphics)item);
 		renderer.queueRender(
 			g.getModel(),

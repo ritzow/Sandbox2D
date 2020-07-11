@@ -1,12 +1,12 @@
 package ritzow.sandbox.client;
 
 import ritzow.sandbox.client.graphics.Display;
-import ritzow.sandbox.client.graphics.ModelRenderProgram;
+import ritzow.sandbox.client.graphics.ModelRenderer;
 
 class GameState {
 	private GameState() {}
 
-	private static ModelRenderProgram shader;
+	private static ModelRenderer shader;
 	private static Display display;
 	private static long cursorPick, cursorMallet;
 	private static MainMenuContext menuContext;
@@ -15,11 +15,11 @@ class GameState {
 		return display;
 	}
 
-	static ModelRenderProgram shader() {
+	static ModelRenderer shader() {
 		return shader;
 	}
 
-	static void setShader(ModelRenderProgram shader) {
+	static void setShader(ModelRenderer shader) {
 		GameState.shader = shader;
 	}
 

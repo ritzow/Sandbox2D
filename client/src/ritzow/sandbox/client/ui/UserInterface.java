@@ -3,16 +3,11 @@ package ritzow.sandbox.client.ui;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map.Entry;
-import ritzow.sandbox.client.graphics.Display;
-import ritzow.sandbox.client.graphics.Framebuffer;
-import ritzow.sandbox.client.graphics.Graphics;
-import ritzow.sandbox.client.graphics.ModelRenderProgram;
-import ritzow.sandbox.client.graphics.OpenGLException;
-import ritzow.sandbox.client.graphics.Renderer;
+import ritzow.sandbox.client.graphics.*;
 import ritzow.sandbox.client.ui.element.UIElement;
 
 public class UserInterface implements Renderer {
-	private final ModelRenderProgram modelProgram;
+	private final ModelRenderer modelProgram;
 	private final List<Entry<UIElement, Position>> elements;
 
 	public static final class Position {
@@ -30,11 +25,11 @@ public class UserInterface implements Renderer {
 	}
 
 	@SafeVarargs
-	public static UserInterface of(ModelRenderProgram program, Entry<UIElement, Position>... elements) {
+	public static UserInterface of(ModelRenderer program, Entry<UIElement, Position>... elements) {
 		return new UserInterface(program, elements);
 	}
 
-	private UserInterface(ModelRenderProgram modelProgram, Entry<UIElement, Position>[] elements) {
+	private UserInterface(ModelRenderer modelProgram, Entry<UIElement, Position>[] elements) {
 		this.modelProgram = modelProgram;
 		this.elements = new ArrayList<>(List.of(elements));
 	}
@@ -45,7 +40,7 @@ public class UserInterface implements Renderer {
 		dest.setDraw();
 
 		//ensure that model program is cached on stack
-		ModelRenderProgram program = this.modelProgram;
+		ModelRenderer program = this.modelProgram;
 
 		//load the view transformation
 		program.loadViewMatrixStandard(framebufferWidth, framebufferHeight);
@@ -60,8 +55,6 @@ public class UserInterface implements Renderer {
 						g.getScaleX(), g.getScaleY(), g.getRotation());
 			}
 		}
-
-		program.render();
 	}
 
 	public void update(Display display, long nanoseconds) {

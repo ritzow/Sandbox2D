@@ -1,7 +1,7 @@
 package ritzow.sandbox.client.graphics;
 
 public interface Renderable {
-	void render(ModelRenderProgram program);
+	void render(ModelRenderer program);
 	float getWidth();
 	float getHeight();
 }

@@ -2,11 +2,12 @@ package ritzow.sandbox.client.graphics;
 
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
+import java.util.Objects;
 import org.lwjgl.BufferUtils;
 
 import static org.lwjgl.opengl.GL46C.*;
 
-public final class ModelRenderProgramEnhanced extends ModelRenderProgram {
+public final class ModelRenderProgramEnhanced extends ModelRenderProgramBase {
 	private static final int INDIRECT_STRUCT_SIZE = 5 * Integer.BYTES;
 	private static final int INSTANCE_STRUCT_SIZE = (16 + 1 + 3) * Float.BYTES /* padding for opacity */;
 	private static final int OFFSET_SIZE = Integer.BYTES * 4;
@@ -17,6 +18,8 @@ public final class ModelRenderProgramEnhanced extends ModelRenderProgram {
 	private final int offsetsSize;
 	private final ByteBuffer drawBuffer;
 	private final ByteBuffer indirectBuffer;
+	private Model model;
+	private int renderIndex, commandIndex, instanceCount;
 
 	public ModelRenderProgramEnhanced(Shader vertexShader, Shader fragmentShader, int textureAtlas, ModelData... models) {
 		super(vertexShader, fragmentShader, textureAtlas, models);
@@ -26,29 +29,12 @@ public final class ModelRenderProgramEnhanced extends ModelRenderProgram {
 		  .put(GL_BUFFER_BINDING).put(GL_BUFFER_DATA_SIZE).flip();
 		int instanceDataIndex = glGetProgramResourceIndex(programID, GL_UNIFORM_BLOCK, "instance_data");
 		glGetProgramResourceiv(programID, GL_UNIFORM_BLOCK, instanceDataIndex, props, null, params);
-//		IntBuffer props2 = BufferUtils.createIntBuffer(1).put(GL_ACTIVE_VARIABLES).flip();
-//		IntBuffer params2 = BufferUtils.createIntBuffer(params.get(2));
-//		glGetProgramResourceiv(programID, GL_UNIFORM_BLOCK, instanceDataIndex, props2, null, params2);
-//		while(params2.hasRemaining()) {
-//			int index = params2.get();
-//			IntBuffer out = BufferUtils.createIntBuffer(2);
-//			glGetProgramResourceiv(programID, GL_UNIFORM, index,
-//				BufferUtils.createIntBuffer(2).put(GL_OFFSET).put(GL_ARRAY_SIZE).flip(), null, out);
-//			//System.out.println("Variable " + index + ": "
-//			+ glGetProgramResourceName(programID, GL_UNIFORM, index) + " offset " + out.get(0) + " array size " + out.get(1));
-//		}
 		int instanceDataBinding = params.get(0);
 		int bufferSize = params.get(1);
-
-		//draw data layout:
-		//1. all indirect structs (GL_DRAW_INDIRECT_BUFFER)
-		//2. offsets into glsl instance structs for the start of each gl_DrawID
-		//3. all glsl instance structs (GL_UNIFORM_BUFFER)
 		indirectVBO = glGenBuffers();
 		glBindBuffer(GL_DRAW_INDIRECT_BUFFER, indirectVBO);
 		glBufferStorage(GL_DRAW_INDIRECT_BUFFER, MAX_RENDER_COUNT * INDIRECT_STRUCT_SIZE, GL_DYNAMIC_STORAGE_BIT);
 		this.indirectBuffer = BufferUtils.createByteBuffer(MAX_RENDER_COUNT * INDIRECT_STRUCT_SIZE);
-
 		drawDataVBO = glGenBuffers();
 		glBindBuffer(GL_UNIFORM_BUFFER, drawDataVBO);
 		glBufferStorage(GL_UNIFORM_BUFFER, bufferSize, GL_DYNAMIC_STORAGE_BIT);
@@ -60,51 +46,83 @@ public final class ModelRenderProgramEnhanced extends ModelRenderProgram {
 	}
 
 	@Override
-	public void render(Model model, float opacity, float posX, float posY, float scaleX, float scaleY, float rotation) {
-		queueRender(model, opacity, posX, posY, scaleX, scaleY, rotation);
-		render();
+	public void queueRender(Model model, float opacity, float posX, float posY, float scaleX, float scaleY, float rotation) {
+		Objects.requireNonNull(model);
+		putRenderInstance(drawBuffer.position(offsetsSize + (renderIndex + instanceCount) * INSTANCE_STRUCT_SIZE),
+			opacity, posX, posY, scaleX, scaleY, rotation);
+		if(instanceCount == 0) { //aka this.model == null
+			this.model = model;
+			instanceCount++;
+		} else {
+			if(model.equals(this.model)) {
+				instanceCount++;
+			} else {
+				nextCommand(this.model);
+				this.model = model;
+				instanceCount = 1;
+			}
+
+			if(renderIndex + instanceCount == MAX_RENDER_COUNT) {
+				nextCommand(this.model);
+				render();
+			}
+		}
+	}
+
+	private void nextCommand(Model model) {
+		drawBuffer.position(commandIndex * OFFSET_SIZE).putInt(renderIndex);
+		ModelAttributes properties = modelProperties.get(model);
+		indirectBuffer
+			.putInt(properties.indexCount())
+			.putInt(instanceCount)
+			.putInt(properties.indexOffset())
+			.putInt(0) //baseVertex is always 0
+			.putInt(0); //baseInstance is always 0
+		commandIndex++;
+		renderIndex += instanceCount;
+	}
+
+	private void render() {
+		//upload all the data to the GPU
+		glBindVertexArray(vaoID);
+		glBindBuffer(GL_UNIFORM_BUFFER, drawDataVBO);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, drawBuffer.position(0).limit(offsetsSize + renderIndex * INSTANCE_STRUCT_SIZE));
+		glBindBuffer(GL_DRAW_INDIRECT_BUFFER, indirectVBO);
+		glBufferSubData(GL_DRAW_INDIRECT_BUFFER, 0, indirectBuffer.flip());
+		glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, 0, commandIndex, 0);
+		drawBuffer.clear();
+		indirectBuffer.clear();
+		renderIndex = 0;
+		commandIndex = 0;
+		instanceCount = 0;
 	}
 
 	@Override
-	public void render() {
-		while(!renderQueue.isEmpty()) {
-			int renderIndex = 0, commandIndex = 0;
-			while(renderIndex < MAX_RENDER_COUNT && !renderQueue.isEmpty()) {
-				RenderInstance render = renderQueue.poll();
-				putRenderInstance(drawBuffer.position(offsetsSize + renderIndex * INSTANCE_STRUCT_SIZE), render);
-				int instanceCount = 1;
-				while(renderIndex + instanceCount < MAX_RENDER_COUNT && !renderQueue.isEmpty() && render.model().equals(renderQueue.peek().model())) {
-					putRenderInstance(drawBuffer, renderQueue.poll());
-					instanceCount++;
-				}
-
-				//insert the starting index of the indirect command's transforms
-				drawBuffer
-					.position(commandIndex * OFFSET_SIZE)
-					.putInt(renderIndex);
-
-				ModelAttributes model = modelProperties.get(render.model());
-
-				indirectBuffer
-					.putInt(model.indexCount())
-					.putInt(instanceCount)
-					.putInt(model.indexOffset())
-					.putInt(0)
-					.putInt(0);
-				commandIndex++;
-				renderIndex += instanceCount;
-			}
-
-			//upload all the data to the GPU
-			glBindBuffer(GL_UNIFORM_BUFFER, drawDataVBO);
-			glBufferSubData(GL_UNIFORM_BUFFER, 0, drawBuffer.position(0).limit(offsetsSize + renderIndex * INSTANCE_STRUCT_SIZE));
-			drawBuffer.clear();
-			glBindVertexArray(vaoID);
-			glBindBuffer(GL_DRAW_INDIRECT_BUFFER, indirectVBO);
-			glBufferSubData(GL_DRAW_INDIRECT_BUFFER, 0, indirectBuffer.flip());
-			indirectBuffer.clear();
-			glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, 0, commandIndex, 0);
+	public void flush() {
+		//instanceCount will be at least 1 if queueRender didn't call render() immediately prior
+		if(instanceCount > 0) {
+			nextCommand(this.model);
+			render();
 		}
+	}
+
+	@Override
+	public void delete() {
+		super.delete();
+		glDeleteBuffers(drawDataVBO);
+		glDeleteBuffers(indirectVBO);
+	}
+
+	private static void putRenderInstance(ByteBuffer drawBuffer,
+		float opacity, float posX, float posY, float scaleX, float scaleY, float rotation) {
+		float rotX = (float)Math.cos(rotation);
+		float rotY = (float)Math.sin(rotation);
+		drawBuffer
+			.putFloat(opacity).putFloat(0).putFloat(0).putFloat(0)							 //opacity and padding
+			.putFloat(scaleX * rotX)	.putFloat(scaleX * -rotY)	.putFloat(0).putFloat(0) //column major matrix
+			.putFloat(scaleY * rotY)	.putFloat(scaleY * rotX)	.putFloat(0).putFloat(0)
+			.putFloat(0)				.putFloat(0)				.putFloat(0).putFloat(0)
+			.putFloat(posX)				.putFloat(posY)				.putFloat(0).putFloat(1);
 	}
 
 	private static void putRenderInstance(ByteBuffer drawBuffer, RenderInstance render) {

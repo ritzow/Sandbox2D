@@ -39,6 +39,7 @@ class MainMenuContext {
 		ui.update(GameState.display(), deltaTime);
 		RenderManager.preRender(width, height);
 		ui.render(RenderManager.DISPLAY_BUFFER, width, height);
+		GameState.shader().flush();
 		GameState.display().refresh();
 		if(joinContext != null) {
 			if(joinContext.hasFailed()) {

@@ -164,6 +164,7 @@ class InWorldContext implements GameTalker {
 		worldRenderer.render(RenderManager.DISPLAY_BUFFER, width, height);
 		interactionControls.update(display, cameraGrip.getCamera(), this, world, player);
 		interactionControls.render(display, GameState.shader(), cameraGrip.getCamera(), world, player);
+		GameState.shader().flush(); //TODO render any final queued unrendered models
 		display.refresh();
 	}
 
