@@ -27,12 +27,25 @@ import static ritzow.sandbox.network.Protocol.BLOCK_INTERACT_RANGE;
 **/
 public final class Utility {
 
+	private static final boolean USE_LOCK_SUPPORT = false;
+
 	private Utility() {
 		throw new UnsupportedOperationException("Utility class cannot be instantiated");
 	}
 
 	public static void limitFramerate(long frameStart, long frameTimeLimit) {
-		LockSupport.parkNanos(frameTimeLimit + frameStart - System.nanoTime());
+		//frameTimeLimit - (System.nanoTime() - frameStart)
+		long nanos = frameTimeLimit + frameStart - System.nanoTime();
+		if(USE_LOCK_SUPPORT) {
+			//TODO causing problems again, works when I run VisualVM (maybe has to do with high resolution timer configuration setting?)
+			LockSupport.parkNanos(nanos);
+		} else if(nanos > 0) {
+			try {
+				Thread.sleep(nanosToMillis(nanos));
+			} catch(InterruptedException e) {
+				throw new RuntimeException(e);
+			}
+		}
 	}
 
 	public static long frameRateToFrameTimeNanos(long fps) {
