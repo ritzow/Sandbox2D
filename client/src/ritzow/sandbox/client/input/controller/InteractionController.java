@@ -11,7 +11,7 @@ import ritzow.sandbox.world.entity.Entity;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
 public final class InteractionController {
-	private static final double ACTIVATE_INDICATOR_SPEED = Utility.degreesPerSecToRadiansPerMillis(10);
+	private static final double ACTIVATE_INDICATOR_SPEED = Utility.degreesPerSecToRadiansPerNano(240);
 
 	private long lastThrow, lastBreak, lastPlace;
 
@@ -49,9 +49,8 @@ public final class InteractionController {
 	}
 
 	private static float computeOpacity(boolean active) {
-		//float val = Utility.convertRange(0, 2*(float)Math.PI, 0.5f, 1.0f,
-		//		Utility.normalizeAngle(System.currentTimeMillis() * ACTIVATE_INDICATOR_SPEED));
-		return active ? 0.75f : 0.25f;
+		float value = (float)Math.cos(Utility.normalizeAngle(System.nanoTime() * ACTIVATE_INDICATOR_SPEED));
+		return active ? Utility.convertRange(-1.0f, 1.0f, 0.5f, 1.0f, value) : 0.25f;
 	}
 
 	//TODO wait for server response before sending more block break packets
