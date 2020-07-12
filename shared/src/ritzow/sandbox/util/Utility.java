@@ -133,8 +133,8 @@ public final class Utility {
 				blockX, blockY, BLOCK_INTERACT_RANGE);
 	}
 
-	public static double degreesPerSecToRadiansPerMillis(double degreesPerSec) {
-		return degreesPerSec * Math.PI/180d;
+	public static double degreesPerSecToRadiansPerNano(double degreesPerSec) {
+		return degreesPerSec / 1_000_000_000 * Math.PI / 180;
 	}
 
 	/** Put an angle, in radians, from 0 to 2 PI */
