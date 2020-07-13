@@ -125,12 +125,12 @@ public abstract class ModelRenderProgramBase extends ShaderProgram implements Mo
 
 	@Override
 	public void loadViewMatrix(Camera camera, int framebufferWidth, int framebufferHeight) {
-		float ratio = framebufferHeight/(float)framebufferWidth;
+		double ratio = (double)framebufferHeight/framebufferWidth;
 		float zoom = camera.getZoom();
-		float ratioZoom = ratio * zoom;
-		viewMatrix[0] = ratioZoom;
-		viewMatrix[2] = ratio;
-		viewMatrix[3] = -ratioZoom * camera.getPositionX();
+		double ratioZoom = ratio * zoom;
+		viewMatrix[0] = (float)ratioZoom;
+		viewMatrix[2] = (float)ratio;
+		viewMatrix[3] = (float)(-ratioZoom * camera.getPositionX());
 		viewMatrix[5] = zoom;
 		viewMatrix[7] = -zoom * camera.getPositionY();
 		setMatrix(uniform_view, viewMatrix);

@@ -115,30 +115,13 @@ public final class ModelRenderProgramEnhanced extends ModelRenderProgramBase {
 
 	private static void putRenderInstance(ByteBuffer drawBuffer,
 		float opacity, float posX, float posY, float scaleX, float scaleY, float rotation) {
-		float rotX = (float)Math.cos(rotation);
-		float rotY = (float)Math.sin(rotation);
+		double rotX = Math.cos(rotation);
+		double rotY = Math.sin(rotation);
 		drawBuffer
-			.putFloat(opacity).putFloat(0).putFloat(0).putFloat(0)							 //opacity and padding
-			.putFloat(scaleX * rotX)	.putFloat(scaleX * -rotY)	.putFloat(0).putFloat(0) //column major matrix
-			.putFloat(scaleY * rotY)	.putFloat(scaleY * rotX)	.putFloat(0).putFloat(0)
-			.putFloat(0)				.putFloat(0)				.putFloat(0).putFloat(0)
-			.putFloat(posX)				.putFloat(posY)				.putFloat(0).putFloat(1);
-	}
-
-	private static void putRenderInstance(ByteBuffer drawBuffer, RenderInstance render) {
-		float scaleX = render.scaleX();
-		float scaleY = render.scaleY();
-		float rotation = render.rotation();
-		float rotX = (float)Math.cos(rotation);
-		float rotY = (float)Math.sin(rotation);
-		drawBuffer
-			.putFloat(render.opacity())
-			.putFloat(0)
-			.putFloat(0)
-			.putFloat(0)
-			.putFloat(scaleX * rotX)	.putFloat(scaleX * -rotY)	.putFloat(0).putFloat(0) //column major
-			.putFloat(scaleY * rotY)	.putFloat(scaleY * rotX)	.putFloat(0).putFloat(0)
-			.putFloat(0)				.putFloat(0)				.putFloat(0).putFloat(0)
-			.putFloat(render.posX())	.putFloat(render.posY())	.putFloat(0).putFloat(1);
+			.putFloat(opacity).putInt(0).putInt(0).putInt(0) //align						 				 //opacity and padding
+			.putFloat((float)(scaleX * rotX))	.putFloat((float)(scaleX * -rotY))	.putFloat(0).putFloat(0) //column major matrix
+			.putFloat((float)(scaleY * rotY))	.putFloat((float)(scaleY * rotX))	.putFloat(0).putFloat(0)
+			.putFloat(0)						.putFloat(0)						.putFloat(0).putFloat(0)
+			.putFloat(posX)						.putFloat(posY)						.putFloat(0).putFloat(1);
 	}
 }
