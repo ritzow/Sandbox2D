@@ -31,10 +31,10 @@ import static ritzow.sandbox.server.network.ClientState.*;
 /** The server manages connected game clients, sends game updates,
  * receives client input, and broadcasts information for clients. */
 public class Server {
-	//TODO server needs to drop unreliable packets if it receives too many (ie client sending at 120 fps while server is 60 fps)
+	//TODO server needs to drop unreliable packets if it receives too many (ie client sending at 120 fps while server is 60 fps) ie rate limiting
 	//TODO implement encryption on client and server https://howtodoinjava.com/security/java-aes-encryption-example/
 	private static final long NETWORK_SEND_INTERVAL_NANOSECONDS = Utility.millisToNanos(200);
-	private static final long PLAYER_STATE_BROADCAST_INTERVAL = Utility.millisToNanos(100);
+	private static final long PLAYER_STATE_BROADCAST_INTERVAL = Utility.millisToNanos(500);
 
 	private final DatagramChannel channel;
 	private final ByteBuffer receiveBuffer, sendBuffer;
@@ -115,10 +115,7 @@ public class Server {
 		Bytes.putShort(packet, 0, TYPE_SERVER_CLIENT_DISCONNECT);
 		Bytes.putInteger(packet, 2, message.length);
 		Bytes.copy(message, packet, 6);
-		if(reliable)
-			sendReliableUnsafe(client, packet);
-		else
-			sendUnreliableUnsafe(client, packet);
+		client.send(packet, reliable);
 	}
 
 	private void onReceive(short type, ClientState client, ByteBuffer packet) {
@@ -200,8 +197,7 @@ public class Server {
 					} else if(Utility.nanosSince(client.lastPlayerStateUpdate)
 						> PLAYER_STATE_BROADCAST_INTERVAL) {
 						client.lastPlayerStateUpdate = System.nanoTime();
-						broadcastUnreliable(
-							buildPlayerStateMessage(client.player), ClientState::inGame);
+						broadcastUnsafe(buildPlayerStateMessage(client.player), false, ClientState::inGame);
 					}
 				}
 
@@ -209,8 +205,6 @@ public class Server {
 					if(!client.hasPending()) {
 						iterator.remove();
 						handleDisconnect(client);
-					} else {
-						log(client.sendQueue.toString());
 					}
 				}
 
@@ -277,7 +271,10 @@ public class Server {
 	}
 
 	public void broadcastConsoleMessage(String message) { //TODO still send for kicked, etc.
-		broadcastUnsafe(buildConsoleMessage(message), true, ClientState::isNotDisconnectState);
+		broadcastUnsafe(buildConsoleMessage(message), true, clientState -> switch (clientState.status) {
+			case STATUS_CONNECTED, STATUS_IN_GAME -> true;
+			default -> false;
+		});
 	}
 
 	private void broadcastAndPrint(String consoleMessage) {
@@ -287,6 +284,7 @@ public class Server {
 
 	private void processClientWorldBuilt(ClientState client) {
 		client.status = STATUS_IN_GAME;
+		client.sendRecorded();
 		log(NetworkUtility.formatAddress(client.address) + " joined ("
 			+ getClientCount() + " player(s) connected)");
 	}
@@ -304,8 +302,7 @@ public class Server {
 		if(world.contains(player)) {
 			short state = packet.getShort();
 			PlayerState.updatePlayer(player, state);
-			var msg = buildPlayerStateMessage(client.player);
-			broadcastUnreliable(msg, r -> r.inGame() && !r.equals(client));
+			broadcastUnsafe(buildPlayerStateMessage(client.player), false, r -> r.inGame() && !r.equals(client));
 			//TODO for now ignore the primary/secondary actions
 		} else {
 			//else what is the point of the player performing the action
@@ -350,7 +347,7 @@ public class Server {
 		byte[] packet = new byte[2 + 8];
 		Bytes.putShort(packet, 0, TYPE_SERVER_CLIENT_BREAK_BLOCK_COOLDOWN);
 		Bytes.putLong(packet, 2, currentTimeMillis);
-		sendReliableSafe(client, packet);
+		client.send(packet.clone(), true);
 	}
 
 	private void processClientPlaceBlock(ClientState client, ByteBuffer packet) {
@@ -380,7 +377,19 @@ public class Server {
 		Bytes.putShort(packet, 0, TYPE_SERVER_REMOVE_BLOCK);
 		Bytes.putInteger(packet, 2, x);
 		Bytes.putInteger(packet, 6, y);
-		broadcastUnsafe(packet, true, ClientState::isNotDisconnectState);
+		for(ClientState client : clients.values()) {
+			switch(client.status) {
+				case STATUS_CONNECTED -> {
+					client.recordedSend.add(packet);
+				}
+
+				case STATUS_IN_GAME -> {
+					client.send(packet, true);
+				}
+
+				//otherwise, don't ever send
+			}
+		}
 	}
 
 	private void broadcastPlaceBlock(Block block, int x, int y) {
@@ -390,7 +399,12 @@ public class Server {
 		Bytes.putInteger(packet, 2, x);
 		Bytes.putInteger(packet, 6, y);
 		Bytes.copy(blockData, packet, 10);
-		broadcastUnsafe(packet, true, ClientState::isNotDisconnectState);
+		for(ClientState client : clients.values()) {
+			switch(client.status) {
+				case STATUS_CONNECTED -> client.recordedSend.add(packet);
+				case STATUS_IN_GAME -> client.send(packet, true);
+			}
+		}
 	}
 
 	private static final float
@@ -421,14 +435,14 @@ public class Server {
 			log("Serializing world to send to " + client.formattedName());
 			//TODO don't send world size in ack, takes too long to serialize entire world
 			for(byte[] packet : buildAcknowledgementPackets(world, player.getID())) {
-				sendReliableUnsafe(client, packet);
+				client.send(packet, true);
 			}
 			log("World serialized and sent to " + client.formattedName());
 		} else {
 			byte[] response = new byte[3];
 			Bytes.putShort(response, 0, TYPE_SERVER_CONNECT_ACKNOWLEDGMENT);
 			response[2] = CONNECT_STATUS_REJECTED;
-			sendReliableUnsafe(client, response);
+			client.send(response, true);
 			client.status = STATUS_REJECTED;
 			client.disconnectReason = "client rejected";
 		}
@@ -471,7 +485,13 @@ public class Server {
 	}
 
 	public void broadcastAddEntity(Entity e) {
-		broadcastUnsafe(buildAddEntity(e), true, ClientState::isNotDisconnectState);
+		byte[] message = buildAddEntity(e);
+		for(ClientState client : clients.values()) {
+			switch(client.status) {
+				case STATUS_CONNECTED -> client.recordedSend.add(message);
+				case STATUS_IN_GAME -> client.send(message, true);
+			}
+		}
 	}
 
 	private static byte[] buildAddEntity(Entity e) {
@@ -489,7 +509,12 @@ public class Server {
 		byte[] packet = new byte[2 + 4];
 		Bytes.putShort(packet, 0, TYPE_SERVER_DELETE_ENTITY);
 		Bytes.putInteger(packet, 2, e.getID());
-		broadcastUnsafe(packet, true, ClientState::isNotDisconnectState);
+		for(ClientState client : clients.values()) {
+			switch(client.status) {
+				case STATUS_CONNECTED -> client.recordedSend.add(packet);
+				case STATUS_IN_GAME -> client.send(packet, true);
+			}
+		}
 	}
 
 	private void broadcastUnsafe(byte[] data, boolean reliable, Predicate<ClientState> sendToClient) {
@@ -498,31 +523,6 @@ public class Server {
 				client.send(data, reliable);
 			}
 		}
-	}
-
-	private void broadcastUnreliable(byte[] data, Predicate<ClientState> sendToClient) {
-		broadcastUnreliable(data, data.length, sendToClient);
-	}
-
-	private void broadcastUnreliable(byte[] data, int length, Predicate<ClientState> sendToClient) {
-		byte[] copy = Arrays.copyOfRange(data, 0, length);
-		for(ClientState client : clients.values()) {
-			if(sendToClient.test(client)) {
-				client.send(copy, false);
-			}
-		}
-	}
-
-	private static void sendReliableSafe(ClientState client, byte[] data) {
-		client.send(data.clone(), true);
-	}
-
-	private static void sendUnreliableUnsafe(ClientState client, byte[] data) {
-		client.send(data, false);
-	}
-
-	private static void sendReliableUnsafe(ClientState client, byte[] data) {
-		client.send(data, true);
 	}
 
 	private void receive() throws IOException {

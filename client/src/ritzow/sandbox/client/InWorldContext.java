@@ -2,10 +2,9 @@ package ritzow.sandbox.client;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayDeque;
 import java.util.Map;
-import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 import ritzow.sandbox.client.audio.AudioSystem;
 import ritzow.sandbox.client.data.StandardClientOptions;
@@ -44,7 +43,6 @@ class InWorldContext implements GameTalker {
 	private ByteBuffer worldDownloadBuffer;
 	private final Consumer<Float> downloadProgressAction;
 	private CompletableFuture<World> worldBuildTask;
-	private Queue<ByteBuffer> bufferedMessages;
 
 	private static final long PLAYER_STATE_SEND_INTERVAL = Utility.frameRateToFrameTimeNanos(15);
 
@@ -54,56 +52,31 @@ class InWorldContext implements GameTalker {
 		this.input = new InWorldInputContext();
 		this.worldDownloadBuffer = ByteBuffer.allocate(downloadSize);
 		this.downloadProgressAction = downloadProgress;
-		this.bufferedMessages = new ArrayDeque<>();
 		this.playerID = playerID;
 	}
 
 	public void updateJoining() {
 		if(worldBuildTask == null) {
 			client.update(data -> {
-				switch(data.getShort()) {
-					case TYPE_SERVER_WORLD_DATA -> {
-						if(!worldDownloadBuffer.put(data).hasRemaining()) {
-							log().info("Received all world data");
-							//from https://docs.oracle.com/javase/tutorial/essential/concurrency/memconsist.html
-							// https://docs.oracle.com/en/java/javase/13
-							// /docs/api/java.base/java/util/concurrent/package-summary.html
-							// When a statement invokes Thread.start, every statement that has a happens-before
-							// relationship with that statement also has a happens-before relationship with
-							// every statement executed by the new thread. The effects of the code that led up
-							// to the creation of the new thread are visible to the new thread.
-							worldBuildTask = CompletableFuture.supplyAsync(this::buildWorld);
-						}
+				if(data.getShort() == TYPE_SERVER_WORLD_DATA) {
 					downloadProgressAction.accept((float)worldDownloadBuffer.position()/worldDownloadBuffer.limit());
+					if(!worldDownloadBuffer.put(data).hasRemaining()) {
+						log().info("Received all world data");
+						//from https://docs.oracle.com/javase/tutorial/essential/concurrency/memconsist.html
+						// https://docs.oracle.com/en/java/javase/13
+						// /docs/api/java.base/java/util/concurrent/package-summary.html
+						// When a statement invokes Thread.start, every statement that has a happens-before
+						// relationship with that statement also has a happens-before relationship with
+						// every statement executed by the new thread. The effects of the code that led up
+						// to the creation of the new thread are visible to the new thread.
+						worldBuildTask = CompletableFuture.supplyAsync(this::buildWorld);
 					}
-
-					case TYPE_PING, TYPE_SERVER_ENTITY_UPDATE -> {
-						//don't save streamed messages in queue
-					}
-
-					default -> queuePacket(data);
-				}
+				} //TODO else should not have received message of any other type.
 				return true;
 			});
 		} else if(worldBuildTask.isDone()) {
 			setupAfterReceiveWorld();
-		} else {
-			//TODO maybe don't queue certain things (like ping)
-			client.update(this::queuePacket);
-		}
-	}
-
-	private boolean queuePacket(ByteBuffer data) {
-		/* When building the world, queue any received packets so they are processed
-		 * and applied to the client state once the world is built. **/
-		ByteBuffer packet = ByteBuffer.allocate(data.remaining());
-		switch(data.getShort(data.position())) {
-			default -> bufferedMessages.add(packet.put(data).flip());
-			case TYPE_PING, TYPE_SERVER_ENTITY_UPDATE -> {
-				//don't save streamed messages
-			}
-		}
-		return true;
+		} //TODO else maybe send a ping back to server or something?
 	}
 
 	private void setupAfterReceiveWorld() {
@@ -120,11 +93,6 @@ class InWorldContext implements GameTalker {
 			onDisconnected();
 		});
 		client.sendReliable(Bytes.of(TYPE_CLIENT_WORLD_BUILT));
-		//apply received packets
-		while(!bufferedMessages.isEmpty()) {
-			process(bufferedMessages.poll());
-		}
-		bufferedMessages = null;
 		log().info("World built, joined world");
 		GameLoop.setContext(this::updateInWorld);
 	}
@@ -194,6 +162,7 @@ class InWorldContext implements GameTalker {
 	}
 
 	private static void processServerConsoleMessage(ByteBuffer data) {
+		System.out.println(data.capacity());
 		log().info(Bytes.getString(data, data.remaining(), CHARSET));
 	}
 
