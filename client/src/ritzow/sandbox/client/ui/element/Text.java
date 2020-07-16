@@ -1,13 +1,13 @@
-package ritzow.sandbox.client.ui;
+package ritzow.sandbox.client.ui.element;
 
-import ritzow.sandbox.client.graphics.ModelRenderer;
+import ritzow.sandbox.client.ui.Font;
+import ritzow.sandbox.client.ui.GuiRenderer;
 
-//TODO update Text after creating new UI framework
-public class Text {
-	protected String text;
-	protected Font font;
-	protected int size;
-	protected float spacing;
+public class Text implements GuiElement {
+	private String text;
+	private final Font font;
+	private int size;
+	private float spacing;
 
 	public Text(String text, Font font, int size, float spacing) {
 		this.text = text;
@@ -16,11 +16,12 @@ public class Text {
 		this.spacing = spacing;
 	}
 
-	public void render(ModelRenderer renderer) {
+	@Override
+	public void render(GuiRenderer renderer) {
 		int index = 0;
 		float charWidth = (size * 0.02f) + (size * 0.02f * spacing);
 		for(float pos = getPositionX(); index < text.length(); pos += charWidth) {
-			renderer.queueRender(font.getModel(text.charAt(index)), 1.0f, pos, getPositionY(), size * 0.02f, size * 0.02f, 0.0f);
+			renderer.draw(font.getModel(text.charAt(index)), 1.0f, pos, getPositionY(), size * 0.02f, size * 0.02f, 0.0f);
 			index++;
 		}
 	}

@@ -1,12 +1,9 @@
 package ritzow.sandbox.client.ui;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.util.Scanner;
+import java.util.HashMap;
+import java.util.Map;
 import ritzow.sandbox.client.graphics.Model;
 import ritzow.sandbox.client.graphics.OpenGLTexture;
-import ritzow.sandbox.client.graphics.Textures;
 
 public final class Font {
 
@@ -18,61 +15,34 @@ public final class Font {
 	};
 
 	private final int[] glyphs;
-	private final OpenGLTexture charsetLatin;
-	private final String name;
 
-	private static final CharModel UNKNOWN_CHAR_MODEL = new CharModel(-1);
+	private final Map<Integer, CharModel> models;
 
-	/** A class for loading and managing fonts, should only be used in GraphicsManager
-	 * @throws IOException if unable to load texture
-	 * **/
-	public Font(File directory) throws IOException {
-		File info = new File(directory, "info.txt");
-		File latin = new File(directory, "sheet01.png");
+//	private static final CharModel UNKNOWN_CHAR_MODEL = new CharModel(-1);
 
-		glyphs = new int[200];
-
-		if(info.exists() && info.canRead()) {
-			try(Scanner reader = new Scanner(info)) {
-				this.name = reader.nextLine();
-			}
-		} else {
-			throw new IOException("Unable to access info.txt file in font");
-		}
-
-		if(latin.exists() && latin.canRead()) {
-			try(var in = new FileInputStream(latin)) {
-				charsetLatin = Textures.loadTexture(in);
-			}
-		} else {
-			throw new IOException("Font directory does not contain character sheet 1");
-		}
-
-		loadCharacters();
+	public Font(float startX, float startY, float endX, float endY) {
+		glyphs = new int[CHARACTER_LIST.length];
+		models = new HashMap<>(200);
+		loadCharacters(startX, startY, endX, endY);
 	}
 
-	public String getName() {
-		return name;
-	}
-
-	public void delete() {
-		charsetLatin.delete();
-	}
-
-	private static record CharModel(int c) implements Model {}
+	private static record CharModel(float[] coords) implements Model {}
 
 	public Model getModel(char c) {
-		return c < glyphs.length ? new CharModel(glyphs[c]) : UNKNOWN_CHAR_MODEL;
+//		return c < glyphs.length ? new CharModel(glyphs[c]) : UNKNOWN_CHAR_MODEL;
+		return null;
 	}
 
-	protected void loadCharacters() {
+	protected void loadCharacters(float startX, float startY, float endX, float endY) {
 		float textureWidth = 0.03515625f;
 		float textureHeight = 0.03515625f;
 		float horizontalPadding = 0.00390626f; //exact 0.00390625f, use 0.00390626f to fix texture edges
 		float verticalPadding = 0.00390625f;
 
 		for(int i = 0; i < CHARACTER_LIST.length; i++) {
-			loadCharacter(CHARACTER_LIST[i], charsetLatin, getTextureCoordinates(textureWidth, textureHeight, horizontalPadding, verticalPadding, i));
+			models.put(i, new CharModel(
+				getTextureCoordinates(textureWidth, textureHeight, horizontalPadding, verticalPadding, i)
+			));
 		}
 	}
 

@@ -1,24 +1,15 @@
 package ritzow.sandbox.client.ui.element;
 
-import java.util.Collections;
-import ritzow.sandbox.client.graphics.Graphics;
 import ritzow.sandbox.client.graphics.Model;
 import ritzow.sandbox.client.graphics.MutableGraphics;
+import ritzow.sandbox.client.ui.GuiRenderer;
 import ritzow.sandbox.util.Utility;
 
-public class Icon implements UIElement {
-	private final Iterable<Graphics> appearance;
+public class Icon implements GuiElement {
 	private final MutableGraphics graphics;
 
 	public Icon(Model modelID) {
-		var graphics = new MutableGraphics(modelID, 1.0f, 1.0f, Utility.randomAngleRadians(), 1.0f);
-		appearance = Collections.singleton(graphics);
-		this.graphics = graphics;
-	}
-
-	@Override
-	public Iterable<Graphics> appearance() {
-		return appearance;
+		this.graphics = new MutableGraphics(modelID, 1.0f, 1.0f, Utility.randomAngleRadians(), 1.0f);
 	}
 
 	@Override
@@ -27,23 +18,7 @@ public class Icon implements UIElement {
 	}
 
 	@Override
-	public void setOnClick(Runnable action) {
-
+	public void render(GuiRenderer renderer) {
+		renderer.draw(graphics, 0, 0);
 	}
-
-	@Override
-	public void onHover(float localX, float localY) {
-
-	}
-
-	@Override
-	public float width() {
-		return 1;
-	}
-
-	@Override
-	public float height() {
-		return 1;
-	}
-
 }
