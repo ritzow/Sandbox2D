@@ -6,20 +6,24 @@ import ritzow.sandbox.client.graphics.RenderManager;
 import ritzow.sandbox.client.input.Button;
 import ritzow.sandbox.client.input.Control;
 import ritzow.sandbox.client.input.InputContext;
-import ritzow.sandbox.client.ui.UserInterface;
-import ritzow.sandbox.client.ui.UserInterface.Position;
+import ritzow.sandbox.client.ui.Position;
+import ritzow.sandbox.client.ui.StandardGuiRenderer;
+import ritzow.sandbox.client.ui.element.AbsoluteGuiPositioner;
+import ritzow.sandbox.client.ui.element.GuiElement;
 import ritzow.sandbox.client.ui.element.Icon;
 
 class MainMenuContext {
-	private final UserInterface ui;
+	private final StandardGuiRenderer ui;
+	private final GuiElement root;
 	private final InputContext context;
 	private ServerJoinContext joinContext;
 
 	MainMenuContext() {
 		this.context = new MenuInputContext();
-		this.ui = UserInterface.of(GameState.shader(),
-			Map.entry(new Icon(GameModels.MODEL_GREEN_FACE), Position.of(0, 0))
-			//Map.entry(new Text("hello world", Fonts.getDefaultFont(), 1, 1), Position.of(0, 0))
+		this.ui = new StandardGuiRenderer(GameState.shader());
+		root = new AbsoluteGuiPositioner(
+			Map.entry(new Icon(GameModels.MODEL_GREEN_FACE), Position.of(-0.5f, 0)),
+			Map.entry(new Icon(GameModels.MODEL_GREEN_FACE), Position.of(0.5f, 0))
 		);
 	}
 
@@ -36,9 +40,9 @@ class MainMenuContext {
 	private void refresh(long deltaTime) {
 		int width = GameState.display().width();
 		int height = GameState.display().height();
-		ui.update(GameState.display(), deltaTime);
+		root.update(deltaTime);
 		RenderManager.preRender(width, height);
-		ui.render(RenderManager.DISPLAY_BUFFER, width, height);
+		ui.render(root, RenderManager.DISPLAY_BUFFER, width, height);
 		GameState.shader().flush();
 		GameState.display().refresh();
 		if(joinContext != null) {
