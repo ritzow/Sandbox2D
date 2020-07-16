@@ -22,8 +22,10 @@ class ServerJoinContext {
 		try {
 			log().info(() -> "Connecting to " + NetworkUtility.formatAddress(getServerAddress())
 				+ " from " + NetworkUtility.formatAddress(getLocalAddress()));
-			client = Client.create(getLocalAddress(), getServerAddress());
-			client.setOnTimeout(this::onTimeout).setOnException(this::onException).beginConnect();
+			client = Client.create(getLocalAddress(), getServerAddress())
+				.setOnTimeout(this::onTimeout)
+				.setOnException(this::onException)
+				.beginConnect();
 		} catch(BindException e) {
 			log().log(Level.WARNING, "Bind error", e);
 			throw new RuntimeException(e);
@@ -84,7 +86,9 @@ class ServerJoinContext {
 				case Protocol.CONNECT_STATUS_WORLD -> {
 					log().info("Connected to server");
 					//worldSize and playerID integers
-					worldContext = new InWorldContext(client, data.getInt(), data.getInt());
+					worldContext = new InWorldContext(client, data.getInt(), data.getInt(), progress -> {
+						log().info("Donwloaded " + Utility.formatNumber(progress * 100, 0) + "% of world.");
+					});
 					return false;
 				}
 

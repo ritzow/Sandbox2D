@@ -42,16 +42,18 @@ class InWorldContext implements GameTalker {
 	private ClientPlayerEntity player;
 	private World world;
 	private ByteBuffer worldDownloadBuffer;
+	private final Consumer<Float> downloadProgressAction;
 	private CompletableFuture<World> worldBuildTask;
 	private Queue<ByteBuffer> bufferedMessages;
 
 	private static final long PLAYER_STATE_SEND_INTERVAL = Utility.frameRateToFrameTimeNanos(15);
 
-	public InWorldContext(Client client, int downloadSize, int playerID) {
+	public InWorldContext(Client client, int downloadSize, int playerID, Consumer<Float> downloadProgress) {
 		log().info("Downloading " + Utility.formatSize(downloadSize) + " of world data");
 		this.client = client;
 		this.input = new InWorldInputContext();
 		this.worldDownloadBuffer = ByteBuffer.allocate(downloadSize);
+		this.downloadProgressAction = downloadProgress;
 		this.bufferedMessages = new ArrayDeque<>();
 		this.playerID = playerID;
 	}
@@ -72,6 +74,7 @@ class InWorldContext implements GameTalker {
 							// to the creation of the new thread are visible to the new thread.
 							worldBuildTask = CompletableFuture.supplyAsync(this::buildWorld);
 						}
+					downloadProgressAction.accept((float)worldDownloadBuffer.position()/worldDownloadBuffer.limit());
 					}
 
 					case TYPE_PING, TYPE_SERVER_ENTITY_UPDATE -> {
