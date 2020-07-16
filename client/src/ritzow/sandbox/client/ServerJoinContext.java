@@ -8,6 +8,7 @@ import java.util.logging.Level;
 import ritzow.sandbox.client.network.Client;
 import ritzow.sandbox.network.NetworkUtility;
 import ritzow.sandbox.network.Protocol;
+import ritzow.sandbox.util.Utility;
 
 import static ritzow.sandbox.client.data.StandardClientOptions.getLocalAddress;
 import static ritzow.sandbox.client.data.StandardClientOptions.getServerAddress;

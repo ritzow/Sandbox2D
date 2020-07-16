@@ -151,7 +151,7 @@ public class Client implements AutoCloseable {
 		SendPacket packet = new SendPacket(Arrays.copyOf(data, data.length), sendMessageID, lastSendReliableID, reliable, -1);
 		if(reliable) lastSendReliableID = sendMessageID;
 		sendMessageID++;
-		sendQueue.add(packet);
+		sendQueue.add(packet); //TODO don't queue the packet if it is unreliable and the send queue is empty
 	}
 
 	/**

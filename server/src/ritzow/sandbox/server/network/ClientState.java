@@ -31,6 +31,7 @@ final class ClientState {
 	long lastMessageReceiveTime;
 	final InetSocketAddress address;
 	final Queue<SendPacket> sendQueue;
+	final Queue<byte[]> recordedSend;
 	final PriorityQueue<ReceivePacket> receiveQueue;
 	byte status;
 	String disconnectReason;
@@ -47,11 +48,18 @@ final class ClientState {
 		status = STATUS_CONNECTED;
 		sendQueue = new ArrayDeque<>();
 		receiveQueue = new PriorityQueue<>();
+		recordedSend = new ArrayDeque<>();
 	}
 
 	@Override
 	public boolean equals(Object obj) {
 		return obj instanceof ClientState client && address.equals(client.address);
+	}
+
+	public void sendRecorded() {
+		while(!recordedSend.isEmpty()) {
+			send(recordedSend.poll(), true);
+		}
 	}
 
 	public void send(byte[] data, boolean reliable) {
@@ -80,13 +88,6 @@ final class ClientState {
 
 	boolean inGame() {
 		return status == STATUS_IN_GAME;
-	}
-
-	boolean isNotDisconnectState() {
-		return switch (status) {
-			case STATUS_CONNECTED, STATUS_IN_GAME -> true;
-			default -> false;
-		};
 	}
 
 	boolean hasPending() {

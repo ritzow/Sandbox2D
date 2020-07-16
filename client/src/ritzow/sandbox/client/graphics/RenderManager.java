@@ -2,11 +2,13 @@ package ritzow.sandbox.client.graphics;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.List;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GLCapabilities;
 import org.lwjgl.system.MemoryUtil;
 import ritzow.sandbox.client.data.StandardClientOptions;
+import ritzow.sandbox.client.data.StandardClientProperties;
 import ritzow.sandbox.client.graphics.ModelRenderProgramBase.ModelData;
 import ritzow.sandbox.client.graphics.Shader.ShaderType;
 import ritzow.sandbox.util.Utility;
@@ -49,28 +51,38 @@ public class RenderManager {
 			grass = Textures.loadTextureName("grass"),
 			face = Textures.loadTextureName("greenFace"),
 			red = Textures.loadTextureName("redSquare"),
-			sky = Textures.loadTextureName("clouds_online");
-		TextureAtlas atlas = Textures.buildAtlas(sky, grass, dirt, face, red);
+			sky = Textures.loadTextureName("clouds_online"),
+			fontTexture = Textures.loadTextureData(StandardClientProperties.ASSETS_PATH.resolve("fonts").resolve("default").resolve("sheet01.png"));
+
+		TextureAtlas atlas = Textures.buildAtlas(sky, grass, dirt, face, red, fontTexture);
 
 		//TODO look into using https://github.com/javagl/JglTF with Blender
-		ModelData[] models = {
+		List<ModelData> models = List.of(
 			new ModelData(GameModels.MODEL_DIRT_BLOCK, positions, atlas.getCoordinates(dirt), indices),
 			new ModelData(GameModels.MODEL_GRASS_BLOCK, positions, atlas.getCoordinates(grass), indices),
 			new ModelData(GameModels.MODEL_GREEN_FACE, positions, atlas.getCoordinates(face), indices),
 			new ModelData(GameModels.MODEL_RED_SQUARE, positions, atlas.getCoordinates(red), indices),
 			new ModelData(GameModels.MODEL_SKY, positions, atlas.getCoordinates(sky), indices)
-		};
+		);
 
-		Shader vertex = StandardClientOptions.USE_OPENGL_4_6 ?
-			spirv("model.vert.spv", ShaderType.VERTEX) :
-			source("model.vert", ShaderType.VERTEX);
-		Shader fragment = StandardClientOptions.USE_OPENGL_4_6 ?
-			spirv("model.frag.spv", ShaderType.FRAGMENT) :
-			source("model.frag", ShaderType.FRAGMENT);
+		float[] fontCoords = atlas.getCoordinates(fontTexture);
 
-		var program = ModelRenderer.create(vertex, fragment, atlas.texture(), models);
-		GraphicsUtility.checkErrors();
-		return program;
+		//Font font = new Font(fontCoords[0], fontCoords[1], fontCoords[4], fontCoords[5]);
+
+		int textureAtlas = atlas.texture();
+		ModelData[] models1 = models.toArray(ModelData[]::new);
+
+		if(StandardClientOptions.USE_OPENGL_4_6) {
+			return new ModelRenderProgramEnhanced(
+				spirv("model.vert.spv", ShaderType.VERTEX),
+				spirv("model.frag.spv", ShaderType.FRAGMENT),
+			textureAtlas, models1);
+		} else {
+			return new ModelRenderProgramOld(
+				source("model.vert", ShaderType.VERTEX),
+				source("model.frag", ShaderType.FRAGMENT),
+			textureAtlas, models1);
+		}
 	}
 
 	private static Shader source(String file, ShaderType type) throws IOException {

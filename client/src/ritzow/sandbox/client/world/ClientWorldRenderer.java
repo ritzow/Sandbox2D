@@ -7,7 +7,7 @@ import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.Entity;
 
-public final class ClientWorldRenderer implements Renderer {
+public final class ClientWorldRenderer {
 	private final ModelRenderer modelProgram;
 	private final World world;
 	private final Camera camera;
@@ -19,7 +19,6 @@ public final class ClientWorldRenderer implements Renderer {
 		GraphicsUtility.checkErrors();
 	}
 
-	@Override
 	public void render(Framebuffer framebuffer, final int width, final int height) {
 		//ensure that model program, camera, world are cached on stack
 		ModelRenderer program = this.modelProgram;

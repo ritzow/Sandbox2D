@@ -221,8 +221,6 @@ public final class Bytes {
 
 	public static String getString(ByteBuffer in, int length, Charset charset) {
 		//TODO optimize this by using Charset::newDecoder to convert to UTF-16 and pass to String constructor
-		//charset.newDecoder().decode
-		//new String()
 		return new String(get(in, length), charset);
 	}
 

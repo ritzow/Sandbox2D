@@ -13,6 +13,7 @@ import ritzow.sandbox.world.item.Item;
 
 /**
  * Represents a player controlled by a human
+ * TODO implement dead reckoning for client and server
  * @author Solomon Ritzow
  */
 public abstract class PlayerEntity extends Entity implements Living {

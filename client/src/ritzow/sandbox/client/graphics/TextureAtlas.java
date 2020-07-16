@@ -13,6 +13,17 @@ public class TextureAtlas {
 		texture = generateAtlas(textures, coordinates = new HashMap<TextureData, float[]>());
 	}
 
+	/**
+	 * new float[] {
+	 * 		leftX, topY, 		//top left
+	 * 		leftX, bottomY,	 	//bottom left
+	 * 		rightX, bottomY,	//bottom right
+	 * 		rightX, topY 		//top right
+	 * };
+	 *
+	 * @param texture The texture too acquire texture coordinates for
+	 * @return Texture coordinates in the above specified order
+	 */
 	public float[] getCoordinates(TextureData texture) {
 		return coordinates.get(texture);
 	}

@@ -196,8 +196,10 @@ public final class Utility {
 		}
 	}
 
+	//TODO fix formatNumber to not have edge cases and be faster
 	public static String formatNumber(double value, int decimals) {
 		long asInteger = Math.round(value);
+		//BigDecimal dec = new BigDecimal(value, new MathContext(decimals));
 		String number = Double.toString(value);
 		return asInteger == value ? Long.toString(asInteger) : (decimals > 0 ?
 			number.substring(0, Math.min(number.length(),

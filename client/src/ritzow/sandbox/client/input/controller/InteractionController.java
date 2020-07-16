@@ -53,7 +53,7 @@ public final class InteractionController {
 		return active ? Utility.convertRange(-1.0f, 1.0f, 0.5f, 1.0f, value) : 0.25f;
 	}
 
-	//TODO wait for server response before sending more block break packets
+	//TODO wait for server to ack that block place/break cooldown has expired before sending more
 	public void update(Display display, Camera camera, GameTalker client, World world, PlayerEntity player) {
 		final int mouseX = display.getCursorX(), mouseY = display.getCursorY();
 		final int frameWidth = display.width(), frameHeight = display.height();

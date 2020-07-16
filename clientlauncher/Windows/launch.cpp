@@ -4,7 +4,7 @@
 #include <shared.cpp>
 #include <cwchar>
 
-inline const bool SHOW_CONSOLE = true;
+inline const bool SHOW_CONSOLE = false;
 
 inline void DisplayError(const wchar_t* title, const wchar_t* message) {
 	MessageBoxW(nullptr, message, title, MB_OK | MB_ICONERROR);

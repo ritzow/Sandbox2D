@@ -17,6 +17,7 @@ public class ServerPlayerEntity extends PlayerEntity {
 	public void onCollision(World world, Entity e, long nanoseconds) {
 		if(e instanceof ItemEntity && e.getVelocityY() <= 0) {
 			Utility.launchAtRandomRatio(e, 1/8d, 3/8d, LAUNCH_VELOCITY * Utility.random(1, 2));
+			e.setVelocityX(e.getVelocityX() + this.velocityX);
 		}
 	}
 

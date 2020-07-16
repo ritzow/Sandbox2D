@@ -86,6 +86,7 @@ public final class ModelRenderProgramEnhanced extends ModelRenderProgramBase {
 		//upload all the data to the GPU
 		glBindVertexArray(vaoID);
 		glBindBuffer(GL_UNIFORM_BUFFER, drawDataVBO);
+		//TODO if less than 300 models, maybe just buffersubdata twice with only the offsets needed as well
 		glBufferSubData(GL_UNIFORM_BUFFER, 0, drawBuffer.position(0).limit(offsetsSize + renderIndex * INSTANCE_STRUCT_SIZE));
 		glBindBuffer(GL_DRAW_INDIRECT_BUFFER, indirectVBO);
 		glBufferSubData(GL_DRAW_INDIRECT_BUFFER, 0, indirectBuffer.flip());
