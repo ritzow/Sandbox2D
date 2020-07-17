@@ -2,17 +2,14 @@ package ritzow.sandbox.server.network;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayDeque;
-import java.util.PriorityQueue;
 import java.util.Queue;
+import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.network.NetworkUtility;
-import ritzow.sandbox.network.ReceivePacket;
-import ritzow.sandbox.network.SendPacket;
 import ritzow.sandbox.server.world.entity.ServerPlayerEntity;
-import ritzow.sandbox.util.Utility;
 
-final class ClientState {
-		/** after the client acks the connect ack */
-	static final byte
+public class ClientState extends ClientNetworkInfo {
+	/** after the client acks the connect ack */
+	public static final byte
 		STATUS_CONNECTED = 0,
 		/** if the client doesn't send an ack within ack interval */
 		STATUS_TIMED_OUT = 1,
@@ -27,50 +24,28 @@ final class ClientState {
 		/** if the client sent data that didn't make sense */
 		STATUS_INVALID = 6;
 
-	int sendMessageID = 0, lastSendReliableID = -1, headProcessedID = -1;
-	long lastMessageReceiveTime;
-	final InetSocketAddress address;
-	final Queue<SendPacket> sendQueue;
-	final Queue<byte[]> recordedSend;
-	final PriorityQueue<ReceivePacket> receiveQueue;
 	byte status;
 	String disconnectReason;
-
-	/** Client reliable message round trip time in nanoseconds */
-	long ping;
+	Queue<byte[]> recordedSend;
 
 	/** Last player action times in nanoseconds offset */
 	long lastBlockBreakTime, lastBlockPlaceTime, lastPlayerStateUpdate;
 	ServerPlayerEntity player;
 
 	ClientState(InetSocketAddress address) {
-		this.address = address;
+		super(address);
 		status = STATUS_CONNECTED;
-		sendQueue = new ArrayDeque<>();
-		receiveQueue = new PriorityQueue<>();
 		recordedSend = new ArrayDeque<>();
 	}
 
-	@Override
-	public boolean equals(Object obj) {
-		return obj instanceof ClientState client && address.equals(client.address);
-	}
-
 	public void sendRecorded() {
+		System.out.println(recordedSend.size());
 		while(!recordedSend.isEmpty()) {
-			send(recordedSend.poll(), true);
+			var val =recordedSend.poll();
+			System.out.println(Bytes.getShort(val, 0));
+			send(val, true);
 		}
-	}
-
-	public void send(byte[] data, boolean reliable) {
-		sendQueue.add(new SendPacket(data, sendMessageID, lastSendReliableID, reliable, -1));
-		if(reliable) lastSendReliableID = sendMessageID;
-		sendMessageID++;
-	}
-
-	@Override
-	public int hashCode() {
-		return super.hashCode();
+		recordedSend = null;
 	}
 
 	static String statusToString(byte status) {
@@ -96,24 +71,5 @@ final class ClientState {
 
 	public String formattedName() {
 		return NetworkUtility.formatAddress(address) + " (" + statusToString(status) + ')';
-	}
-
-	@Override
-	public String toString() {
-		return new StringBuilder()
-			.append("ClientState[address: ")
-			.append(NetworkUtility.formatAddress(address))
-			.append(" send: ")
-			.append(sendMessageID)
-			.append(" headProcessedID: ")
-			.append(headProcessedID)
-			.append(" ping: ")
-			.append(Utility.formatTime(ping))
-			.append(" queuedSend: ")
-			.append(sendQueue.size())
-			.append(" ")
-			.append(statusToString(status))
-			.append(']')
-			.toString();
 	}
 }

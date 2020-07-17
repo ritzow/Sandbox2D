@@ -34,7 +34,7 @@ import org.apache.commons.validator.routines.IntegerValidator;
 import ritzow.sandbox.network.NetworkUtility;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.server.SerializationProvider;
-import ritzow.sandbox.server.network.Server;
+import ritzow.sandbox.server.network.GameServer;
 import ritzow.sandbox.util.Utility;
 
 class LauncherController {
@@ -78,7 +78,7 @@ class LauncherController {
 		}
 	}
 
-	private static void runServer(Server server) {
+	private static void runServer(GameServer server) {
 		try {
 			long frameTime = Utility.frameRateToFrameTimeNanos(60);
 			System.out.println("Started server on " + server.getAddress());
@@ -185,7 +185,7 @@ class LauncherController {
 				throw new NumberFormatException("port not in proper range");
 			}
 			startButton.setDisable(true);
-			Server server = Server.start(new InetSocketAddress(ip, port));
+			GameServer server = new GameServer(new InetSocketAddress(ip, port));
 			server.setCurrentWorld(SerializationProvider
 				.getProvider()
 				.deserialize(Utility.loadCompressedFile(Path.of(worldFileField.getText().isEmpty() ?

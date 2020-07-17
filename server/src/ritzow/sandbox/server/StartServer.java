@@ -9,7 +9,7 @@ import java.util.stream.Collectors;
 import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.network.NetworkUtility;
 import ritzow.sandbox.network.Protocol;
-import ritzow.sandbox.server.network.Server;
+import ritzow.sandbox.server.network.GameServer;
 import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.ItemEntity;
@@ -20,7 +20,7 @@ class StartServer {
 	private static final long FRAME_TIME_LIMIT = Utility.frameRateToFrameTimeNanos(60);
 	private static final int WIDTH = 5000, HEIGHT = 500;
 
-	private static Server server;
+	private static GameServer server;
 	private static boolean save = true;
 
 	public static void main(String[] args) throws IOException {
@@ -43,7 +43,7 @@ class StartServer {
 	}
 
 	public static void startServer(InetSocketAddress bind) throws IOException {
-		server = Server.start(bind);
+		server = new GameServer(bind);
 		System.out.println("Started server on " + NetworkUtility.formatAddress(server.getAddress()) + ".");
 		long time = System.nanoTime();
 		boolean loadFromFile = Files.exists(SAVE_FILE);
@@ -122,12 +122,8 @@ class StartServer {
 	}
 
 	private static void killCommand(String args) {
-		try {
-			save = false;
-			server.close();
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		}
+		save = false;
+		server.shutdown(); //TODO was previously Server::close
 	}
 
 	private static void sayCommand(String args) {
