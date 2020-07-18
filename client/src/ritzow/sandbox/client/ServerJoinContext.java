@@ -5,6 +5,7 @@ import java.net.BindException;
 import java.net.PortUnreachableException;
 import java.nio.ByteBuffer;
 import java.util.logging.Level;
+import ritzow.sandbox.client.data.StandardClientOptions;
 import ritzow.sandbox.client.network.Client;
 import ritzow.sandbox.network.NetworkUtility;
 import ritzow.sandbox.network.Protocol;
@@ -87,9 +88,9 @@ class ServerJoinContext {
 				case Protocol.CONNECT_STATUS_WORLD -> {
 					log().info("Connected to server");
 					//worldSize and playerID integers
-					worldContext = new InWorldContext(client, data.getInt(), data.getInt(), progress -> {
+					worldContext = new InWorldContext(client, data.getInt(), data.getInt(), StandardClientOptions.DEBUG ? progress -> {
 						log().info("Donwloaded " + Utility.formatNumber(progress * 100, 0) + "% of world.");
-					});
+					} : progress -> {});
 					return false;
 				}
 

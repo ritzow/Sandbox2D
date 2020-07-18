@@ -20,6 +20,8 @@ public class StandardClientOptions {
 	public static final boolean LIMIT_FPS = FRAME_TIME_LIMIT > 0;
 	public static final boolean USE_INTERNET = get("use_internet", true, Boolean::parseBoolean);
 
+	public static final boolean DEBUG = false;
+
 	private static long frameTimeLimit(String value) {
 		return Utility.frameRateToFrameTimeNanos(Long.parseUnsignedLong(value));
 	}
