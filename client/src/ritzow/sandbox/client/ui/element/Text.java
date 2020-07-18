@@ -4,65 +4,50 @@ import ritzow.sandbox.client.ui.Font;
 import ritzow.sandbox.client.ui.GuiRenderer;
 
 public class Text implements GuiElement {
-	private String text;
-	private final Font font;
-	private int size;
-	private float spacing;
+	private static final float SIZE_SCALE = 0.02f;
 
-	public Text(String text, Font font, int size, float spacing) {
+	private final String text;
+	private final Font font;
+	private final float startPos, spacing, size;
+
+	public enum Layout {
+		LEFT,
+		CENTERED
+	}
+
+	/**
+	 *
+	 * @param text The text to display
+	 * @param font The character models usable with the provided GuiRenderer to display
+	 * @param layout How the text should be offset from the origin
+	 * @param size Font size, in points
+	 * @param spacing The fraction of a character width to put between each character
+	 */
+	public Text(String text, Font font, Layout layout, int size, float spacing) {
 		this.text = text;
 		this.font = font;
-		this.size = size;
-		this.spacing = spacing;
+		this.size = size * SIZE_SCALE;
+		this.spacing = this.size * (1 + spacing);
+		this.startPos = switch(layout) {
+			case LEFT -> 0;
+			case CENTERED -> {
+				float gap = this.spacing - this.size;
+				if(text.length() % 2 == 0) { //a   b   c | d   e   f
+					yield -gap/2f - (text.length()/2 * this.size) - (text.length()/2 - 1) * gap + this.size/2;
+				} else { //a b c|c d e
+					yield -(this.size + gap) * (text.length()/2);
+				}
+			}
+		};
 	}
 
 	@Override
 	public void render(GuiRenderer renderer) {
-		int index = 0;
-		float charWidth = (size * 0.02f) + (size * 0.02f * spacing);
-		for(float pos = getPositionX(); index < text.length(); pos += charWidth) {
-			renderer.draw(font.getModel(text.charAt(index)), 1.0f, pos, getPositionY(), size * 0.02f, size * 0.02f, 0.0f);
-			index++;
+		//TODO use text.codePoints().iterator() instead to more properly parse
+		//TODO include constructor field for whether to center text or start at left
+		float pos = startPos;
+		for(int index = 0; index < text.length(); pos += spacing, index++) {
+			renderer.draw(font.getModel(text.charAt(index)), 1.0f, pos, 0, size, size, 0);
 		}
-	}
-
-	public float getPositionY() {
-		return 0;
-	}
-
-	public float getPositionX() {
-		return 0;
-	}
-
-	public final String getText() {
-		return text;
-	}
-
-	public final int getSize() {
-		return size;
-	}
-
-	public final float getSpacing() {
-		return spacing;
-	}
-
-	public final void setText(String text) {
-		this.text = text;
-	}
-
-	public final void setSize(int size) {
-		this.size = size;
-	}
-
-	public final void setSpacing(float spacing) {
-		this.spacing = spacing;
-	}
-
-	public float getWidth() {
-		return 1;
-	}
-
-	public float getHeight() {
-		return size * 0.02f;
 	}
 }

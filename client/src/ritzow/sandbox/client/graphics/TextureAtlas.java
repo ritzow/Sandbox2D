@@ -9,18 +9,21 @@ public class TextureAtlas {
 	private final Map<TextureData, float[]> coordinates;
 	private final int texture;
 
+//	float[] atlasCoords = new float[] {
+//		0f, 1f,
+//		0f, 0f,
+//		1f, 0f,
+//		1f, 1f
+//	};
+
 	TextureAtlas(TextureData... textures) {
 		texture = generateAtlas(textures, coordinates = new HashMap<TextureData, float[]>());
 	}
 
 	/**
-	 * new float[] {
-	 * 		leftX, topY, 		//top left
-	 * 		leftX, bottomY,	 	//bottom left
-	 * 		rightX, bottomY,	//bottom right
-	 * 		rightX, topY 		//top right
-	 * };
-	 *
+	 * Texture coordinates are in OpenGL UV format as floats
+	 * in the range [0, 1) where {0, 0} is the bottom left corner. An array of format
+	 * {leftX, topY, leftX, bottomY, rightX, bottomY, rightX, topY}
 	 * @param texture The texture too acquire texture coordinates for
 	 * @return Texture coordinates in the above specified order
 	 */
@@ -80,14 +83,12 @@ public class TextureAtlas {
 		return GraphicsUtility.uploadTextureData(atlas, dimension, dimension);
 	}
 
-	private static final float OFFSET = 0.000005f;
-
 	//TODO fix having to add small offsets to fix texture bleeding
 	private static float[] convertCoordinates(TextureData tex, int pixelX, int pixelY, int atlasWidthPixels) {
-		float leftX = (pixelX)/ (float)atlasWidthPixels + OFFSET;
-		float rightX = (pixelX + tex.getWidth())/ (float)atlasWidthPixels - OFFSET;
-		float bottomY =  ((float)atlasWidthPixels - pixelY - tex.getHeight())/ atlasWidthPixels + OFFSET;
-		float topY = ((float)atlasWidthPixels - pixelY)/ atlasWidthPixels - OFFSET;
+		float leftX = pixelX/ (float)atlasWidthPixels;
+		float rightX = (pixelX + tex.getWidth())/ (float)atlasWidthPixels;
+		float bottomY =  ((float)atlasWidthPixels - pixelY - tex.getHeight())/ atlasWidthPixels;
+		float topY = ((float)atlasWidthPixels - pixelY)/ atlasWidthPixels;
 
 		return new float[] {
 				leftX, topY, //top left

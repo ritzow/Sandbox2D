@@ -8,9 +8,9 @@ import ritzow.sandbox.client.input.Control;
 import ritzow.sandbox.client.input.InputContext;
 import ritzow.sandbox.client.ui.Position;
 import ritzow.sandbox.client.ui.StandardGuiRenderer;
-import ritzow.sandbox.client.ui.element.AbsoluteGuiPositioner;
-import ritzow.sandbox.client.ui.element.GuiElement;
-import ritzow.sandbox.client.ui.element.Icon;
+import ritzow.sandbox.client.ui.element.*;
+import ritzow.sandbox.client.ui.element.Text.Layout;
+import ritzow.sandbox.util.Utility;
 
 class MainMenuContext {
 	private final StandardGuiRenderer ui;
@@ -21,10 +21,12 @@ class MainMenuContext {
 	MainMenuContext() {
 		this.context = new MenuInputContext();
 		this.ui = new StandardGuiRenderer(GameState.shader());
-		root = new AbsoluteGuiPositioner(
-			Map.entry(new Icon(GameModels.MODEL_GREEN_FACE), Position.of(-0.5f, 0)),
-			Map.entry(new Icon(GameModels.MODEL_GREEN_FACE), Position.of(0.5f, 0))
-		);
+		root = new RotationAnimation(new AbsoluteGuiPositioner(
+			Map.entry(new Icon(GameModels.MODEL_GREEN_FACE), Position.of(-0.75f, -0.35f)),
+			Map.entry(new Icon(GameModels.MODEL_GREEN_FACE), Position.of(0.75f, -0.35f)),
+			Map.entry(new Text("Hello World!", RenderManager.FONT, Layout.CENTERED, 15, 0), Position.of(0, 0.5f)),
+			Map.entry(new RotationAnimation(new Text("blah", RenderManager.FONT, Layout.LEFT, 10, 0), Utility.degreesPerSecToRadiansPerNano(60)), Position.of(0.75f, 0))
+		), Utility.degreesPerSecToRadiansPerNano(70));
 	}
 
 	public void returnToMenu() {
@@ -42,7 +44,7 @@ class MainMenuContext {
 		int height = GameState.display().height();
 		root.update(deltaTime);
 		RenderManager.preRender(width, height);
-		ui.render(root, RenderManager.DISPLAY_BUFFER, width, height);
+		ui.render(root, RenderManager.DISPLAY_BUFFER, width, height, Utility.oscillate(Utility.degreesPerSecToRadiansPerNano(70), 0, 0.5f));
 		GameState.shader().flush();
 		GameState.display().refresh();
 		if(joinContext != null) {

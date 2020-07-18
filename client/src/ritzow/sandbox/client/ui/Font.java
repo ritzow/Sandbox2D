@@ -1,67 +1,50 @@
 package ritzow.sandbox.client.ui;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Collection;
 import ritzow.sandbox.client.graphics.Model;
-import ritzow.sandbox.client.graphics.OpenGLTexture;
+import ritzow.sandbox.client.graphics.ModelRenderProgramBase.ModelData;
 
 public final class Font {
 
-	private static final char[] CHARACTER_LIST = new char[] {
-			'!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-			':', ';', '<', '=', '>', '?', '@', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R',
-			'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '[', '\\', ']', '^', '_', '`', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k',
-			'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '{', '|', '}', '~', ' ',
+	private static final char[] CHARACTER_LIST = new char[]{
+		'!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+		':', ';', '<', '=', '>', '?', '@', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R',
+		'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '[', '\\', ']', '^', '_', '`', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k',
+		'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '{', '|', '}', '~', ' ',
 	};
 
-	private final int[] glyphs;
+	//TODO some font characters are not in correct ascii order, such as the space character
 
-	private final Map<Integer, CharModel> models;
-
-//	private static final CharModel UNKNOWN_CHAR_MODEL = new CharModel(-1);
-
-	public Font(float startX, float startY, float endX, float endY) {
-		glyphs = new int[CHARACTER_LIST.length];
-		models = new HashMap<>(200);
-		loadCharacters(startX, startY, endX, endY);
+	public static Font load(int glyphsPerRow, int glyphWidth, int glyphHeight, int paddingSize, int textureWidth, int textureHeight, Collection<ModelData> out,
+		float[] pos, int[] indices, float startX, float startY, float endX, float endY) {
+		return new Font(glyphsPerRow, glyphWidth, glyphHeight, paddingSize, textureWidth, textureHeight, out, pos, indices, startX, startY, endX, endY);
 	}
 
-	private static record CharModel(float[] coords) implements Model {}
+	private static class CharModel implements Model {}
 
-	public Model getModel(char c) {
-//		return c < glyphs.length ? new CharModel(glyphs[c]) : UNKNOWN_CHAR_MODEL;
-		return null;
-	}
+	private final CharModel[] glyphs;
+	private static final CharModel UNKNOWN_CHAR_MODEL = null; //TODO create an unknown char model
 
-	protected void loadCharacters(float startX, float startY, float endX, float endY) {
-		float textureWidth = 0.03515625f;
-		float textureHeight = 0.03515625f;
-		float horizontalPadding = 0.00390626f; //exact 0.00390625f, use 0.00390626f to fix texture edges
-		float verticalPadding = 0.00390625f;
-
+	public Font(int glyphsPerRow, int glyphWidth, int glyphHeight, int paddingSize, int textureWidth, int textureHeight,
+		Collection<ModelData> out, float[] pos, int[] indices, float leftX, float bottomY, float rightX, float topY) {
+		glyphs = new CharModel[256];
+		float width = (float)glyphWidth / textureWidth * (rightX - leftX);
+		float height = (float)glyphHeight / textureHeight * (topY - bottomY);
+		float paddingX = (float)paddingSize / textureWidth * (rightX - leftX);
+		float paddingY = (float)paddingSize / textureHeight * (topY - bottomY);
 		for(int i = 0; i < CHARACTER_LIST.length; i++) {
-			models.put(i, new CharModel(
-				getTextureCoordinates(textureWidth, textureHeight, horizontalPadding, verticalPadding, i)
-			));
+			int row = i / glyphsPerRow;
+			int column = i % glyphsPerRow;
+			float top = topY - paddingY - (paddingY + height) * row;
+			float left = leftX + paddingX + (paddingX + width) * column;
+			float bottom = top - height;
+			float right = left + width;
+			float[] coords = new float[] {left, top, left, bottom, right, bottom, right, top};
+			out.add(new ModelData(glyphs[CHARACTER_LIST[i]] = new CharModel(), pos, coords, indices));
 		}
 	}
 
-	@SuppressWarnings("static-method")
-	protected void loadCharacter(char c, OpenGLTexture characterSheet, float[] textureCoordinates) {
-		throw new UnsupportedOperationException("character loading needs to be rewritten");
-		//glyphs[(int)c] = new Model(6, Models.SQUARE_POSITIONS_BUFFER, characterSheet, new TextureCoordinateBuffer(textureCoordinates), Models.RECTANGLE_INDICES_BUFFER);
-	}
-
-	protected static float[] getTextureCoordinates(float textureWidth, float textureHeight, float horizontalPadding, float verticalPadding, int index) {
-		int charsPerRow = (int)Math.floor(1.0f / (horizontalPadding + textureWidth));
-		int row = index / charsPerRow;
-		int column = index % charsPerRow;
-
-		float top = 1 - (verticalPadding + (textureHeight + verticalPadding) * row);
-		float left = horizontalPadding + (textureWidth + horizontalPadding) * column;
-		float bottom = top - textureHeight;
-		float right = left + textureWidth;
-
-		return new float[] {left, top, left, bottom, right, bottom, right, top};
+	public Model getModel(int character) {
+		return character < glyphs.length ? glyphs[character] : UNKNOWN_CHAR_MODEL;
 	}
 }
