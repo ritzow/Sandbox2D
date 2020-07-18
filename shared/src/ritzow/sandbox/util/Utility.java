@@ -249,6 +249,13 @@ public final class Utility {
 		return (float)RANDOM.nextDouble(min, max);
 	}
 
+	public static float oscillate(double radiansPerNano) {
+		return oscillate(radiansPerNano, 0, 0, 1);
+	}
+	public static float oscillate(double radiansPerNano, float offsetRadians, float min, float max) {
+		return Utility.convertRange(-1.0f, 1.0f, min, max, (float)Math.cos(Utility.normalizeAngle(System.nanoTime() * radiansPerNano + offsetRadians)));
+	}
+
 	public static void launchAtAngle(Entity e, float angle, float velocity) {
 		e.setVelocityX((float)Math.cos(angle) * velocity);
 		e.setVelocityY((float)Math.sin(angle) * velocity);

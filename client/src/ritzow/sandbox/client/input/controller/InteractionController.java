@@ -49,8 +49,7 @@ public final class InteractionController {
 	}
 
 	private static float computeOpacity(boolean active) {
-		float value = (float)Math.cos(Utility.normalizeAngle(System.nanoTime() * ACTIVATE_INDICATOR_SPEED));
-		return active ? Utility.convertRange(-1.0f, 1.0f, 0.5f, 1.0f, value) : 0.25f;
+		return active ? Utility.oscillate(ACTIVATE_INDICATOR_SPEED, 0, 0.5f, 1.0f) : 0.25f;
 	}
 
 	//TODO wait for server to ack that block place/break cooldown has expired before sending more
