@@ -14,6 +14,7 @@ import ritzow.sandbox.world.item.Item;
 /**
  * Represents a player controlled by a human
  * TODO implement dead reckoning for client and server
+ * https://www.gamasutra.com/view/feature/131638/dead_reckoning_latency_hiding_for_.php
  * @author Solomon Ritzow
  */
 public abstract class PlayerEntity extends Entity implements Living {
@@ -26,9 +27,10 @@ public abstract class PlayerEntity extends Entity implements Living {
 	protected static final float
 			SIZE_SCALE		= 1f,
 			MOVEMENT_SPEED	= Utility.convertPerSecondToPerNano(
-				12.5f /* human running speed meters */) * SIZE_SCALE,
+				12.5f /* human running speed meters */ * 0.8f) * SIZE_SCALE,
 			JUMP_VELOCITY	= Utility.convertPerSecondToPerNano(11),
 			AIR_ACCELERATION	= Utility.convertAccelerationSecondsNanos(50),
+			GROUND_ACCELERATION = Utility.convertAccelerationSecondsNanos(100),
 			AIR_MAX_SPEED = 0.5f * MOVEMENT_SPEED;
 
 	public PlayerEntity(int entityID) {
@@ -60,11 +62,11 @@ public abstract class PlayerEntity extends Entity implements Living {
 	public void update(World world, long ns) {
 		if(isGrounded) {
 			if(left && right) {
-				velocityX = 0;
+				//velocityX = 0;
 			} else if(left) {
-				velocityX = -MOVEMENT_SPEED;
+				velocityX = Math.max(-MOVEMENT_SPEED, velocityX - GROUND_ACCELERATION * ns);
 			} else if(right) {
-				velocityX = MOVEMENT_SPEED;
+				velocityX = Math.min(MOVEMENT_SPEED, velocityX + GROUND_ACCELERATION * ns);
 			}
 			if(!JETPACK_MODE && up) {
 				velocityY = JUMP_VELOCITY;
