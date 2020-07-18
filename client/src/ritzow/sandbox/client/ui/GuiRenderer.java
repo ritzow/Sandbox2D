@@ -1,10 +1,9 @@
 package ritzow.sandbox.client.ui;
 
 import ritzow.sandbox.client.graphics.Model;
-import ritzow.sandbox.client.ui.element.GuiElement;
 
 /**
- * The GuiRenderer interface renders GUI elements using the standard coordinate space of [-1, 1]
+ * The GuiRenderer interface renders GUI elements using the standard coordinate space of [-1, 1] TODO this isn't correct, need to involve framebuffer pixel sizes
  * in the X and Y dimensions to indicate positions within the game window. Nested draws will
  * be affected by parent element transformations and opacities.
  */

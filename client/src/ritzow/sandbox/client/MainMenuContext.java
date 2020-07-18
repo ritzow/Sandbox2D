@@ -42,9 +42,10 @@ class MainMenuContext {
 	private void refresh(long deltaTime) {
 		int width = GameState.display().width();
 		int height = GameState.display().height();
-		root.update(deltaTime);
+		//root.update(deltaTime);
 		RenderManager.preRender(width, height);
-		ui.render(root, RenderManager.DISPLAY_BUFFER, width, height, Utility.oscillate(Utility.degreesPerSecToRadiansPerNano(70), 0, 0.5f));
+		//ui.update(root, deltaTime, GameState.display().getCursorX(), GameState.display().getCursorY(), width, height);
+		ui.render(root, RenderManager.DISPLAY_BUFFER, GameState.display(), deltaTime, 500f); //Utility.oscillate(Utility.degreesPerSecToRadiansPerNano(70), 0, 0.5f, 1.0f)
 		GameState.shader().flush();
 		GameState.display().refresh();
 		if(joinContext != null) {

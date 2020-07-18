@@ -3,8 +3,7 @@ package ritzow.sandbox.client.ui.element;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map.Entry;
-import ritzow.sandbox.client.ui.GuiRenderer;
-import ritzow.sandbox.client.ui.Position;
+import ritzow.sandbox.client.ui.*;
 
 public class AbsoluteGuiPositioner implements GuiElement {
 	private static record ElementPos(GuiElement element, Position pos) {}
@@ -19,16 +18,14 @@ public class AbsoluteGuiPositioner implements GuiElement {
 	}
 
 	@Override
-	public void render(GuiRenderer renderer) {
+	public void render(GuiRenderer renderer, long nanos) {
 		for(ElementPos element : elements) {
 			renderer.draw(element.element, element.pos.x(), element.pos.y());
 		}
 	}
 
 	@Override
-	public void update(long nanoseconds) {
-		for(ElementPos element : elements) {
-			element.element.update(nanoseconds);
-		}
+	public Shape shape() {
+		return new InfinitePlane();
 	}
 }

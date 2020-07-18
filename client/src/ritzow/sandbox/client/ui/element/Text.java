@@ -1,7 +1,6 @@
 package ritzow.sandbox.client.ui.element;
 
-import ritzow.sandbox.client.ui.Font;
-import ritzow.sandbox.client.ui.GuiRenderer;
+import ritzow.sandbox.client.ui.*;
 
 public class Text implements GuiElement {
 	private static final float SIZE_SCALE = 0.02f;
@@ -42,12 +41,17 @@ public class Text implements GuiElement {
 	}
 
 	@Override
-	public void render(GuiRenderer renderer) {
+	public void render(GuiRenderer renderer, long nanos) {
 		//TODO use text.codePoints().iterator() instead to more properly parse
 		//TODO include constructor field for whether to center text or start at left
 		float pos = startPos;
 		for(int index = 0; index < text.length(); pos += spacing, index++) {
 			renderer.draw(font.getModel(text.charAt(index)), 1.0f, pos, 0, size, size, 0);
 		}
+	}
+
+	@Override
+	public Shape shape() {
+		return new Rectangle(Math.abs(startPos) * 2, size);
 	}
 }
