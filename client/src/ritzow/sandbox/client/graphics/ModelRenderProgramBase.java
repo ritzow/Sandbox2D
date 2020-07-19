@@ -94,7 +94,7 @@ public abstract class ModelRenderProgramBase extends ShaderProgram implements Mo
 		int vao = glGenVertexArrays();
 		glBindVertexArray(vao);
 
-		//TODO interleave positions and texture coordinates, and make it possible to add more components
+		//TODO interleave positions and texture coordinates, and make it possible to add more components with more dynamic placement
 		int positionsID = glGenBuffers();
 		glBindBuffer(GL_ARRAY_BUFFER, positionsID);
 		glBufferData(GL_ARRAY_BUFFER, positionData, GL_STATIC_DRAW);

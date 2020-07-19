@@ -199,7 +199,7 @@ public final class Display implements InputProvider {
 
 	public void poll(InputContext input) {
 		handler = input;
-		glfwPollEvents();
+		glfwPollEvents(); //TODO add a barrier around this and run all of the main thread code on a different thread when this is blocking?
 	}
 
 	private InputContext handler = InputContext.EMPTY_CONTEXT;

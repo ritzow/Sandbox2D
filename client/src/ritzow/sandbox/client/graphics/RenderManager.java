@@ -120,4 +120,9 @@ public class RenderManager {
 		if(fbWidth != framebufferWidth || fbHeight != framebufferHeight)
 			glViewport(0, 0, fbWidth = framebufferWidth, fbHeight = framebufferHeight);
 	}
+
+	public static void postRender() {
+		glFlush();
+		glFinish();
+	}
 }
