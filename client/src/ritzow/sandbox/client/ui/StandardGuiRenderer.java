@@ -2,6 +2,7 @@ package ritzow.sandbox.client.ui;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
+import ritzow.sandbox.client.data.StandardClientOptions;
 import ritzow.sandbox.client.graphics.*;
 import ritzow.sandbox.util.Utility;
 
@@ -16,7 +17,7 @@ public class StandardGuiRenderer implements GuiRenderer {
 	private final ModelRenderer program;
 	private final Deque<GuiLevel> rt;
 	private float mouseX, mouseY;
-	private float scaleX, scaleY;
+	private float scaleX, scaleY, ratio;
 	private long nanos;
 
 	private static class GuiLevel {
@@ -46,6 +47,26 @@ public class StandardGuiRenderer implements GuiRenderer {
 				//this.scissor == null ? null : new Scissor(this.scaleX * this.scissor.width(), this.scaleY * this.scissor.height())
 			);
 		}
+
+		Position transform(float x, float y) {
+			float cos = (float)Math.cos(-rotation);
+			float sin = (float)Math.sin(-rotation);
+			return Position.of(
+				(x * cos - y * sin) * this.scaleX + this.x,
+				(x * sin + y * cos) * this.scaleY + this.y
+			);
+		}
+
+		Position transformInverse(float x, float y) {
+			float cos = (float)Math.cos(-rotation);
+			float sin = (float)Math.sin(-rotation);
+			x = (x - this.x) / this.scaleX;
+			y = (y - this.y) / this.scaleY;
+			return Position.of(
+				(x * cos + y * sin),
+				(x * -sin + y * cos)
+			);
+		}
 	}
 
 	public StandardGuiRenderer(ModelRenderer modelProgram) {
@@ -59,7 +80,15 @@ public class StandardGuiRenderer implements GuiRenderer {
 		//TODO glScissor if exists
 		//if exists program.flush() before and after, etc.
 		RenderTransform transform = rt.peekFirst().transform.combine(opacity, posX, posY, scaleX, scaleY, rotation);
-		program.queueRender(model, transform.opacity, transform.x, transform.y, transform.scaleX, transform.scaleY, transform.rotation);
+		program.queueRender(
+			model,
+			transform.opacity,
+			transform.x,
+			transform.y,
+			transform.scaleX,
+			transform.scaleY,
+			transform.rotation
+		);
 		//TODO exit glScissor
 	}
 
@@ -74,7 +103,11 @@ public class StandardGuiRenderer implements GuiRenderer {
 		RenderTransform transform = parent.transform.combine(opacity, posX, posY, scaleX, scaleY, rotation);
 		if(parent.cursorHover && intersect(element, transform)) {
 			rt.addFirst(new GuiLevel(transform, true));
-			element.render(this, nanos, 0, 0);
+			Position pos = transform.transformInverse(mouseX, mouseY);
+			element.render(this, nanos, pos.x(), pos.y());
+			//TODO implement event consumption (ie prevent consumed events from being propogated further)
+			//TODO mouse event processing must happen after render, so that lower elements dont received consumed event, maybe that just means encouraging proper draw
+			//and update order?
 		} else {
 			rt.addFirst(new GuiLevel(transform, false));
 			element.render(this, nanos);
@@ -87,19 +120,44 @@ public class StandardGuiRenderer implements GuiRenderer {
 		//transform represents this gui element centered at the origin
 		Shape shape = element.shape();
 		if(shape instanceof Rectangle rect) {
-			float cos = (float)Math.cos(-transform.rotation);
-			float sin = (float)Math.sin(-transform.rotation);
-			float mouseX = (this.mouseX * cos - this.mouseY * sin) * transform.scaleX + transform.x;
-			float mouseY = (this.mouseX * sin + this.mouseY * cos) * transform.scaleY + transform.y;
-			//TODO convert cursor coordinates into normalized coordinates within the Shape (rectangle in this case)
-			boolean temp = Math.abs(mouseX) <= rect.width()/2 && Math.abs(mouseY) <= rect.height()/2;
-			//System.out.println(mouseX + " " + mouseY + " " + rect.width()/2 + " " + rect.height()/2 + (temp ? "!!!" : ""));
-			return temp;
+			//Transform the rectangle back to origin (basically just the rectangle width and height)
+			//and I transform (translate, scale, rotate) the mouse back to origin based on how the rectangle was transformed
+			//basically, I perform the inverse of 'transform' to the mouse position then check bounds.
+			Position mouseInverse = transform.transformInverse(mouseX, mouseY);
+			if(StandardClientOptions.DEBUG) {
+				program.queueRender(GameModels.MODEL_DIRT_BLOCK, 1, mouseInverse.x(), mouseInverse.y(), 0.05f,0.05f, 0);
+				program.queueRender(GameModels.MODEL_GREEN_FACE, 1, 0, 0, rect.width(), rect.height(), 0);
+			}
+			return Math.abs(mouseInverse.x()) <= rect.width()/2 && Math.abs(mouseInverse.y()) <= rect.height()/2;
 		} else if(shape instanceof InfinitePlane) {
 			return true;
+		} else if(shape instanceof Position) {
+			return false;
 		} else {
 			throw new UnsupportedOperationException("unsupported Shape type");
 		}
+	}
+
+	private float viewportRight, viewportTop;
+
+	@Override
+	public float viewportLeft() {
+		return -viewportRight;
+	}
+
+	@Override
+	public float viewportRight() {
+		return viewportRight;
+	}
+
+	@Override
+	public float viewportBottom() {
+		return -viewportTop;
+	}
+
+	@Override
+	public float viewportTop() {
+		return viewportTop;
 	}
 
 	public void render(GuiElement gui, Framebuffer dest, Display display, long nanos, float guiScale) throws OpenGLException {
@@ -107,19 +165,15 @@ public class StandardGuiRenderer implements GuiRenderer {
 		dest.setDraw();
 		int windowWidth = display.width();
 		int windowHeight = display.height();
-		this.mouseX = Utility.convertRange(0, 1, -1, 1, (float)display.getCursorX()/windowWidth);
-		this.mouseY = Utility.convertRange(0, 1, -1, 1, (float)display.getCursorY()/windowHeight);
 		this.scaleX = guiScale/windowWidth;
 		this.scaleY = guiScale/windowHeight;
+		//convert from pixel coords (from top left) to UI coords
+		this.mouseX = Utility.convertRange(0, windowWidth, -1/scaleX, 1/scaleX, display.getCursorX());
+		this.mouseY = -Utility.convertRange(0, windowHeight, -1/scaleY, 1/scaleY, display.getCursorY());
 		this.nanos = nanos;
-
-		//load the view transformation
-		//program.loadViewMatrixStandard(windowWidth, windowHeight);
-		program.loadIdentityMatrix();
-
-		//set the current shader program
+		program.loadViewMatrixScale(guiScale, windowWidth, windowHeight);
 		program.setCurrent();
-
-		draw(gui, 1, 0, 0, scaleX, scaleY, 0);
+		draw(gui, 1, 0, 0, 1, 1, 0);
+		//draw(GameModels.MODEL_RED_SQUARE, 1.0f, mouseX, mouseY, 1.0f, 1.0f, 0);
 	}
 }

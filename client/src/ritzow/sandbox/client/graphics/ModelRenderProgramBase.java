@@ -118,20 +118,24 @@ public abstract class ModelRenderProgramBase extends ShaderProgram implements Mo
 	}
 
 	@Override
-	public void loadIdentityMatrix() {
+	public void loadViewMatrixIdentity() {
 		aspectMatrix[0] = 1;
+		aspectMatrix[5] = 1;
 		setMatrix(uniform_view, aspectMatrix);
 	}
 
 	@Override
-	public void loadViewMatrix(float ratio) {
-		aspectMatrix[0] = ratio;
+	public void loadViewMatrixScale(float guiScale, int framebufferWidth, int framebufferHeight) {
+		//aspectMatrix[0] = framebufferHeight/(float)framebufferWidth;
+		aspectMatrix[0] = guiScale/framebufferWidth;
+		aspectMatrix[5] = guiScale/framebufferHeight;
 		setMatrix(uniform_view, aspectMatrix);
 	}
 
 	@Override
 	public void loadViewMatrixStandard(int framebufferWidth, int framebufferHeight) {
 		aspectMatrix[0] = framebufferHeight/(float)framebufferWidth;
+		aspectMatrix[5] = 1;
 		setMatrix(uniform_view, aspectMatrix);
 	}
 
