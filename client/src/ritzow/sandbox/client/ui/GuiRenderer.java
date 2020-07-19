@@ -17,8 +17,5 @@ public interface GuiRenderer {
 	/** Draws a GUI element relative to its parent **/
 	void draw(GuiElement element, float opacity, float posX, float posY, float scaleX, float scaleY, float rotation);
 
-	float viewportLeft();
-	float viewportRight();
-	float viewportBottom();
-	float viewportTop();
+	Rectangle parent();
 }

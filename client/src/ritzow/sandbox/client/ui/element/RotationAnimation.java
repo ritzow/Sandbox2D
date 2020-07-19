@@ -1,8 +1,7 @@
 package ritzow.sandbox.client.ui.element;
 
-import ritzow.sandbox.client.ui.GuiElement;
-import ritzow.sandbox.client.ui.GuiRenderer;
-import ritzow.sandbox.client.ui.Shape;
+import ritzow.sandbox.client.ui.*;
+import ritzow.sandbox.util.Utility;
 
 public record RotationAnimation(GuiElement child, double radiansPerNano) implements GuiElement {
 	@Override
@@ -12,6 +11,8 @@ public record RotationAnimation(GuiElement child, double radiansPerNano) impleme
 
 	@Override
 	public Shape shape() {
-		return child.shape();
+		//account for any orientation of child element (could optimize this further for certain shapes)
+		Rectangle shape = child.shape().toRectangle();
+		return new Circle(Utility.distance(0, 0, shape.width()/2, shape.height()/2));
 	}
 }

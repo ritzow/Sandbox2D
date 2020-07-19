@@ -22,11 +22,13 @@ public class StandardGuiRenderer implements GuiRenderer {
 
 	private static class GuiLevel {
 		private final RenderTransform transform;
-		private final boolean cursorHover;
+		private boolean cursorHover;
+		private final Rectangle bounds;
 
-		public GuiLevel(RenderTransform transform, boolean cursorHover) {
+		public GuiLevel(RenderTransform transform, boolean cursorHover, Rectangle bounds) {
 			this.transform = transform;
 			this.cursorHover = cursorHover;
+			this.bounds = bounds;
 		}
 	}
 
@@ -72,7 +74,6 @@ public class StandardGuiRenderer implements GuiRenderer {
 	public StandardGuiRenderer(ModelRenderer modelProgram) {
 		this.program = modelProgram;
 		this.rt = new ArrayDeque<>();
-		this.rt.addFirst(new GuiLevel(new RenderTransform(1, 0, 0, 1, 1, 0), true));
 	}
 
 	@Override
@@ -97,28 +98,38 @@ public class StandardGuiRenderer implements GuiRenderer {
 		draw(element, 1, posX, posY, 1, 1, 0);
 	}
 
+	private Rectangle parentBounds;
+
+	@Override
+	public Rectangle parent() {
+		return parentBounds;
+	}
+
 	@Override
 	public void draw(GuiElement element, float opacity, float posX, float posY, float scaleX, float scaleY, float rotation) {
 		GuiLevel parent = rt.peekFirst();
+		parentBounds = parent.bounds;
 		RenderTransform transform = parent.transform.combine(opacity, posX, posY, scaleX, scaleY, rotation);
-		if(parent.cursorHover && intersect(element, transform)) {
-			rt.addFirst(new GuiLevel(transform, true));
+		Rectangle bounds = element.shape(parent.bounds).toRectangle(); //TODO if parent is dynamically sized by children, shape() should be called instead
+		if(parent.cursorHover && intersect(element, parent.bounds, transform)) {
+			rt.addFirst(new GuiLevel(transform, true, bounds));
 			Position pos = transform.transformInverse(mouseX, mouseY);
-			element.render(this, nanos, pos.x(), pos.y());
+			//TODO set cursorHover to false if render with cursor returns true
+			parent.cursorHover  = element.render(this, nanos, pos.x(), pos.y());
 			//TODO implement event consumption (ie prevent consumed events from being propogated further)
 			//TODO mouse event processing must happen after render, so that lower elements dont received consumed event, maybe that just means encouraging proper draw
 			//and update order?
 		} else {
-			rt.addFirst(new GuiLevel(transform, false));
+			rt.addFirst(new GuiLevel(transform, false, bounds));
 			element.render(this, nanos);
 		}
 
 		rt.removeFirst();
 	}
 
-	private boolean intersect(GuiElement element, RenderTransform transform) {
+	private boolean intersect(GuiElement element, Rectangle parent, RenderTransform transform) {
 		//transform represents this gui element centered at the origin
-		Shape shape = element.shape();
+		Shape shape = element.shape(parent);
 		if(shape instanceof Rectangle rect) {
 			//Transform the rectangle back to origin (basically just the rectangle width and height)
 			//and I transform (translate, scale, rotate) the mouse back to origin based on how the rectangle was transformed
@@ -129,8 +140,9 @@ public class StandardGuiRenderer implements GuiRenderer {
 				program.queueRender(GameModels.MODEL_GREEN_FACE, 1, 0, 0, rect.width(), rect.height(), 0);
 			}
 			return Math.abs(mouseInverse.x()) <= rect.width()/2 && Math.abs(mouseInverse.y()) <= rect.height()/2;
-		} else if(shape instanceof InfinitePlane) {
-			return true;
+		} else if(shape instanceof Circle c) {
+			Position mouseInverse = transform.transformInverse(mouseX, mouseY);
+			return Utility.withinDistance(mouseInverse.x(), mouseInverse.y(), 0, 0, c.radius());
 		} else if(shape instanceof Position) {
 			return false;
 		} else {
@@ -138,28 +150,7 @@ public class StandardGuiRenderer implements GuiRenderer {
 		}
 	}
 
-	private float viewportRight, viewportTop;
-
-	@Override
-	public float viewportLeft() {
-		return -viewportRight;
-	}
-
-	@Override
-	public float viewportRight() {
-		return viewportRight;
-	}
-
-	@Override
-	public float viewportBottom() {
-		return -viewportTop;
-	}
-
-	@Override
-	public float viewportTop() {
-		return viewportTop;
-	}
-
+	//TODO have this return whether a "UI user action" was consumed so it is known whether to apply it to other UI-like things such as the game world
 	public void render(GuiElement gui, Framebuffer dest, Display display, long nanos, float guiScale) throws OpenGLException {
 		dest.clear(161 / 256f, 252 / 256f, 156 / 256f, 1.0f);
 		dest.setDraw();
@@ -170,10 +161,14 @@ public class StandardGuiRenderer implements GuiRenderer {
 		//convert from pixel coords (from top left) to UI coords
 		this.mouseX = Utility.convertRange(0, windowWidth, -1/scaleX, 1/scaleX, display.getCursorX());
 		this.mouseY = -Utility.convertRange(0, windowHeight, -1/scaleY, 1/scaleY, display.getCursorY());
+
+		//boolean leftMouse = display.isControlActivated(Control.UI_ACTIVATE);
+		//TODO should wrap mouseX, mouseY, and left/right/middle mouse into single "UI user action" event
+
 		this.nanos = nanos;
 		program.loadViewMatrixScale(guiScale, windowWidth, windowHeight);
 		program.setCurrent();
+		this.rt.addFirst(new GuiLevel(new RenderTransform(1, 0, 0, 1, 1, 0), true, new Rectangle(-2/scaleX, 2/scaleY)));
 		draw(gui, 1, 0, 0, 1, 1, 0);
-		//draw(GameModels.MODEL_RED_SQUARE, 1.0f, mouseX, mouseY, 1.0f, 1.0f, 0);
 	}
 }

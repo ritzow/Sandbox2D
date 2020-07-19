@@ -16,7 +16,7 @@ public class Icon implements GuiElement {
 
 	@Override
 	public boolean render(GuiRenderer renderer, long nanos, float mouseX, float mouseY) {
-		renderer.draw(graphics.model, graphics.opacity, 0, 0, graphics.scaleX * 2, graphics.scaleY * 2, graphics.rotation);
+		renderer.draw(graphics.model, graphics.opacity, 0, 0, graphics.scaleX, graphics.scaleY, graphics.rotation);
 		return false;
 	}
 
