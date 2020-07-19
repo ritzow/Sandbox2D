@@ -21,6 +21,7 @@ public class StandardClientOptions {
 	public static final boolean USE_INTERNET = get("use_internet", true, Boolean::parseBoolean);
 
 	public static final boolean DEBUG = false;
+	public static final boolean LEFTY = get("lefty", false, Boolean::parseBoolean);
 
 	private static long frameTimeLimit(String value) {
 		return Utility.frameRateToFrameTimeNanos(Long.parseUnsignedLong(value));

@@ -19,21 +19,21 @@ public final class TrackingCameraController {
 	}
 
 	public void update(Display display, Entity target, AudioSystem audio, long nanoseconds) {
-		if(display.isControlActivated(Control.RESET_ZOOM)) {
+		if(display.isControlActivated(Control.ZOOM_RESET)) {
 			resetZoom();
-		} else if(display.isControlActivated(Control.INCREASEZOOM)) {
+		} else if(display.isControlActivated(Control.ZOOM_INCREASE)) {
 			computeZoom(zoomSpeedNanos, nanoseconds);
-		} else if(display.isControlActivated(Control.DECREASEZOOM)) {
+		} else if(display.isControlActivated(Control.ZOOM_DECREASE)) {
 			computeZoom(-zoomSpeedNanos, nanoseconds);
 		}
-		
+
 		float posX = target.getPositionX();
 		float posY = target.getPositionY();
 		camera.setPositionX(posX);
 		camera.setPositionY(posY);
 		audio.setPosition(posX, posY);
 	}
-	
+
 	public void resetZoom() {
 		camera.setZoom(Math.fma(0.1f, maxZoom, minZoom));
 	}
@@ -42,7 +42,7 @@ public final class TrackingCameraController {
 	public void mouseScroll(double xoffset, double yoffset) {
 		computeZoom(0.2f, (float)yoffset);
 	}
-	
+
 	private void computeZoom(float scale, float offset) {
 		camera.setZoom(Utility.clamp(minZoom, camera.getZoom() * Math.fma(scale, offset, 1.0f), maxZoom));
 	}

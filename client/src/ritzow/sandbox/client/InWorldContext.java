@@ -106,7 +106,7 @@ class InWorldContext implements GameTalker {
 			updatePlayerState(display);
 		}
 		if(!display.minimized()) { //TODO need to be more checks, this will run no matter what
-			if(display.isControlActivated(Control.RESET_ZOOM)) cameraGrip.resetZoom();
+			if(display.isControlActivated(Control.ZOOM_RESET)) cameraGrip.resetZoom();
 			updateRender(display, delta);
 		}
 	}
