@@ -30,7 +30,7 @@ class StartClient {
 		AudioSystem audio = AudioSystem.getDefault(); //load default audio system
 		setupGLFW();
 		GameState.display().setGraphicsContextOnThread();
-		GameState.setShader(RenderManager.setup());
+		GameState.modelRenderer(RenderManager.setup());
 		MainMenuContext mainMenu = new MainMenuContext();
 		GameState.setMenuContext(mainMenu);
 		log().info("Game startup took " + Utility.formatTime(Utility.nanosSince(startupStart)));
@@ -39,7 +39,7 @@ class StartClient {
 			GameLoop.start(mainMenu::update);
 		} finally {
 			log().info("Exiting game");
-			GameState.shader().delete();
+			GameState.modelRenderer().delete();
 			RenderManager.closeContext();
 			GameState.display().destroy();
 			audio.close();

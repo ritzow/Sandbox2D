@@ -2,25 +2,27 @@ package ritzow.sandbox.client;
 
 import ritzow.sandbox.client.graphics.Display;
 import ritzow.sandbox.client.graphics.ModelRenderer;
+import ritzow.sandbox.client.ui.StandardGuiRenderer;
 
 class GameState {
 	private GameState() {}
 
-	private static ModelRenderer shader;
+	private static ModelRenderer modelRenderer;
 	private static Display display;
 	private static long cursorPick, cursorMallet;
 	private static MainMenuContext menuContext;
+	private static StandardGuiRenderer guiRenderer;
 
 	static Display display() {
 		return display;
 	}
 
-	static ModelRenderer shader() {
-		return shader;
+	static ModelRenderer modelRenderer() {
+		return modelRenderer;
 	}
 
-	static void setShader(ModelRenderer shader) {
-		GameState.shader = shader;
+	static void modelRenderer(ModelRenderer program) {
+		GameState.modelRenderer = program;
 	}
 
 	static void setDisplay(Display display) {
@@ -49,5 +51,13 @@ class GameState {
 
 	static void setMenuContext(MainMenuContext menuContext) {
 		GameState.menuContext = menuContext;
+	}
+
+	static StandardGuiRenderer guiRenderer() {
+		return guiRenderer;
+	}
+
+	static void setGuiRenderer(StandardGuiRenderer guiRenderer) {
+		GameState.guiRenderer = guiRenderer;
 	}
 }

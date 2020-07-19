@@ -85,7 +85,7 @@ class InWorldContext implements GameTalker {
 		worldBuildTask = null;
 		player = getEntity(playerID);
 		cameraGrip = new TrackingCameraController(2.5f, player.getWidth() / 20f, player.getWidth() / 2f);
-		worldRenderer = new ClientWorldRenderer(GameState.shader(), cameraGrip.getCamera(), world);
+		worldRenderer = new ClientWorldRenderer(GameState.modelRenderer(), cameraGrip.getCamera(), world);
 		interactionControls = new InteractionController();
 		GameState.display().setCursor(GameState.cursorPick());
 		client.setOnTimeout(() -> {
@@ -134,8 +134,8 @@ class InWorldContext implements GameTalker {
 		RenderManager.preRender(width, height);
 		worldRenderer.render(RenderManager.DISPLAY_BUFFER, width, height);
 		interactionControls.update(display, cameraGrip.getCamera(), this, world, player);
-		interactionControls.render(display, GameState.shader(), cameraGrip.getCamera(), world, player);
-		GameState.shader().flush(); //TODO render any final queued unrendered models
+		interactionControls.render(display, GameState.modelRenderer(), cameraGrip.getCamera(), world, player);
+		GameState.modelRenderer().flush(); //TODO render any final queued unrendered models
 		display.refresh();
 	}
 
