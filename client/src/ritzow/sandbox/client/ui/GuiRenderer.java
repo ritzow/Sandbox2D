@@ -1,5 +1,6 @@
 package ritzow.sandbox.client.ui;
 
+import java.time.Duration;
 import ritzow.sandbox.client.graphics.Model;
 
 /**
@@ -17,5 +18,16 @@ public interface GuiRenderer {
 	/** Draws a GUI element relative to its parent **/
 	void draw(GuiElement element, float opacity, float posX, float posY, float scaleX, float scaleY, float rotation);
 
+	void play(Animation animation, Duration duration);
+
 	Rectangle parent();
+
+	//TODO implement these, and they can all be "consumed"
+	//boolean contextActionFired()
+	//boolean primaryActionFired()
+	//boolean tertiaryActionFired()
+	//float mouseScrolled()
+	//Position mousePos() //TODO move from render to here.
+
+	//TODO add a way to poll cursor/mouse events, etc.
 }

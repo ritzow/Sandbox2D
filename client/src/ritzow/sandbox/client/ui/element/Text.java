@@ -48,12 +48,6 @@ public class Text implements GuiElement {
 	}
 
 	@Override
-	public boolean render(GuiRenderer renderer, long nanos, float mouseX, float mouseY) {
-		render(renderer, nanos);
-		return false;
-	}
-
-	@Override
 	public Shape shape() {
 		return bounds;
 	}

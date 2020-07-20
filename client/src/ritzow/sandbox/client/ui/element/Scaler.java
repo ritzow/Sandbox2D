@@ -12,6 +12,6 @@ public record Scaler(GuiElement element, float scale) implements GuiElement {
 
 	@Override
 	public Shape shape() {
-		return element.shape();
+		return element.shape().scale(scale); //TODO multiply by scale?
 	}
 }

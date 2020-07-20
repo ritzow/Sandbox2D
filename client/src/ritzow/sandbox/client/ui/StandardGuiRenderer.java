@@ -1,11 +1,15 @@
 package ritzow.sandbox.client.ui;
 
+import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.PriorityQueue;
+import java.util.Queue;
 import ritzow.sandbox.client.data.StandardClientOptions;
 import ritzow.sandbox.client.graphics.*;
 import ritzow.sandbox.util.Utility;
 
+//TODO investigate laggy rotations and stuff
 //TODO implement mouse and keyboard events.
 //TODO add scissoring in order to display elements "inside" other elements, cropped.
 //TODO make world renderer a GuiElement (will take quite a bit of work possibly)
@@ -16,9 +20,22 @@ import ritzow.sandbox.util.Utility;
 public class StandardGuiRenderer implements GuiRenderer {
 	private final ModelRenderer program;
 	private final Deque<GuiLevel> rt;
+	private final Queue<AnimationEvent> animations;
 	private float mouseX, mouseY;
-	private float scaleX, scaleY, ratio;
 	private long nanos;
+
+	private static final boolean DEBUG_PRINT_RENDER_TREE = true;
+
+	private static record AnimationEvent(Animation animation, long start, long duration) implements Comparable<AnimationEvent> {
+		@Override
+		public int compareTo(AnimationEvent o) {
+			return Long.compare(endTime(), o.endTime());
+		}
+
+		public long endTime() {
+			return start + duration;
+		}
+	}
 
 	private static class GuiLevel {
 		private final RenderTransform transform;
@@ -74,6 +91,7 @@ public class StandardGuiRenderer implements GuiRenderer {
 	public StandardGuiRenderer(ModelRenderer modelProgram) {
 		this.program = modelProgram;
 		this.rt = new ArrayDeque<>();
+		this.animations = new PriorityQueue<>();
 	}
 
 	@Override
@@ -107,6 +125,9 @@ public class StandardGuiRenderer implements GuiRenderer {
 
 	@Override
 	public void draw(GuiElement element, float opacity, float posX, float posY, float scaleX, float scaleY, float rotation) {
+		if(StandardClientOptions.DEBUG && DEBUG_PRINT_RENDER_TREE) {
+			System.out.println("  ".repeat(rt.size()) + element);
+		}
 		GuiLevel parent = rt.peekFirst();
 		parentBounds = parent.bounds;
 		RenderTransform transform = parent.transform.combine(opacity, posX, posY, scaleX, scaleY, rotation);
@@ -150,17 +171,36 @@ public class StandardGuiRenderer implements GuiRenderer {
 		}
 	}
 
+	@Override
+	public void play(Animation animation, Duration duration) {
+		animations.add(new AnimationEvent(animation, System.nanoTime(), duration.toNanos()));
+	}
+
 	//TODO have this return whether a "UI user action" was consumed so it is known whether to apply it to other UI-like things such as the game world
 	public void render(GuiElement gui, Framebuffer dest, Display display, long nanos, float guiScale) throws OpenGLException {
+		if(!animations.isEmpty()) {
+			long currentTime = System.nanoTime();
+			while(!animations.isEmpty() && animations.peek().endTime() < currentTime) {
+				animations.poll().animation.onEnd();
+			}
+
+			for(AnimationEvent event : animations) {
+				long progressNanos = currentTime - event.start;
+				event.animation().update(progressNanos, (float)((double)progressNanos/event.duration), nanos);
+			}
+		}
+
+
 		dest.clear(161 / 256f, 252 / 256f, 156 / 256f, 1.0f);
 		dest.setDraw();
 		int windowWidth = display.width();
 		int windowHeight = display.height();
-		this.scaleX = guiScale/windowWidth;
-		this.scaleY = guiScale/windowHeight;
+
 		//convert from pixel coords (from top left) to UI coords
-		this.mouseX = Utility.convertRange(0, windowWidth, -1/scaleX, 1/scaleX, display.getCursorX());
-		this.mouseY = -Utility.convertRange(0, windowHeight, -1/scaleY, 1/scaleY, display.getCursorY());
+		float scaleX = guiScale / windowWidth;
+		this.mouseX = Utility.convertRange(0, windowWidth, -1/ scaleX, 1/ scaleX, display.getCursorX());
+		float scaleY = guiScale / windowHeight;
+		this.mouseY = -Utility.convertRange(0, windowHeight, -1/ scaleY, 1/ scaleY, display.getCursorY());
 
 		//boolean leftMouse = display.isControlActivated(Control.UI_ACTIVATE);
 		//TODO should wrap mouseX, mouseY, and left/right/middle mouse into single "UI user action" event
@@ -168,7 +208,8 @@ public class StandardGuiRenderer implements GuiRenderer {
 		this.nanos = nanos;
 		program.loadViewMatrixScale(guiScale, windowWidth, windowHeight);
 		program.setCurrent();
-		this.rt.addFirst(new GuiLevel(new RenderTransform(1, 0, 0, 1, 1, 0), true, new Rectangle(-2/scaleX, 2/scaleY)));
+		this.rt.addFirst(new GuiLevel(new RenderTransform(1, 0, 0, 1, 1, 0), true, new Rectangle(2/scaleX, 2/scaleY)));
 		draw(gui, 1, 0, 0, 1, 1, 0);
+		this.rt.removeFirst();
 	}
 }

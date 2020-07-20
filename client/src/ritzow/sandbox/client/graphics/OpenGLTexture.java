@@ -7,6 +7,7 @@ import static org.lwjgl.opengl.GL12C.GL_CLAMP_TO_EDGE;
 
 /**
  * Represents an OpenGL texture
+ * UNUSED TODO delete!
  */
 public final class OpenGLTexture {
 	public final int id;

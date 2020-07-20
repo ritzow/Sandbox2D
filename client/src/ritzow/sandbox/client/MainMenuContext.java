@@ -9,10 +9,11 @@ import ritzow.sandbox.client.input.Control;
 import ritzow.sandbox.client.input.InputContext;
 import ritzow.sandbox.client.ui.GuiElement;
 import ritzow.sandbox.client.ui.StandardGuiRenderer;
-import ritzow.sandbox.client.ui.element.AbsoluteGuiPositioner;
+import ritzow.sandbox.client.ui.element.BorderAnchor;
+import ritzow.sandbox.client.ui.element.BorderAnchor.Anchor;
+import ritzow.sandbox.client.ui.element.BorderAnchor.Side;
 import ritzow.sandbox.client.ui.element.Text;
 
-import static ritzow.sandbox.client.ui.element.AbsoluteGuiPositioner.alignCenter;
 import static ritzow.sandbox.client.util.ClientUtility.log;
 
 class MainMenuContext {
@@ -24,18 +25,33 @@ class MainMenuContext {
 	MainMenuContext() {
 		this.context = new MenuInputContext();
 		this.ui = new StandardGuiRenderer(GameState.modelRenderer());
-		root = new AbsoluteGuiPositioner(
-			alignCenter(new ritzow.sandbox.client.ui.element.Button("press me!",
-				GameModels.MODEL_GREEN_FACE, () -> log().info("you pressed me!")), 0, -0.5f), //TODO implement VBox (perhaps share implementation with HBox)
-			//Map.entry(new Icon(GameModels.MODEL_GREEN_FACE), Position.of(-0.75f, -0.35f)),
-			//Map.entry(new Icon(GameModels.MODEL_GREEN_FACE), Position.of(0.75f, -0.35f)),
-			alignCenter(new Text("Hello World!", RenderManager.FONT, 15, 0), 0, 0.5f)
-//			Map.entry(new RotationAnimation(new Scaler(new AbsoluteGuiPositioner(
-//
-//				//Map.entry(new Icon(GameModels.MODEL_RED_SQUARE), Position.of(0, 0)),
-//				//Map.entry(new Text("blah", RenderManager.FONT, Layout.CENTERED, 10, 0), Position.of(0, 0))
-//			), 0.5f), Utility.degreesPerSecToRadiansPerNano(0)), Position.of(-0.5f, -0.5f))
+
+		root = new BorderAnchor(
+			new Anchor(new ritzow.sandbox.client.ui.element.Button("press me!",
+				GameModels.MODEL_GREEN_FACE, () -> log().info("you pressed me!")), Side.LEFT, 0.1f, 0.1f),
+			new Anchor(new Text("Sandbox2D", RenderManager.FONT, 15, 0), Side.BOTTOM, 0, 0.1f)
+//			new Anchor(
+//				new RotationAnimation(new AbsoluteGuiPositioner(
+//					AbsoluteGuiPositioner.alignCenter(new Icon(GameModels.MODEL_DIRT_BLOCK), 0, 0),
+//					AbsoluteGuiPositioner.alignCenter(new Icon(GameModels.MODEL_GRASS_BLOCK), 0, -1f)
+//				), Utility.degreesPerSecToRadiansPerNano(60)),
+//				Side.RIGHT,
+//				0, 0
+//			)
 		);
+
+//		root = new AbsoluteGuiPositioner(
+//			alignCenter(new ritzow.sandbox.client.ui.element.Button("press me!",
+//				GameModels.MODEL_GREEN_FACE, () -> log().info("you pressed me!")), 0, -0.5f), //TODO implement VBox (perhaps share implementation with HBox)
+//			//Map.entry(new Icon(GameModels.MODEL_GREEN_FACE), Position.of(-0.75f, -0.35f)),
+//			//Map.entry(new Icon(GameModels.MODEL_GREEN_FACE), Position.of(0.75f, -0.35f)),
+//			alignCenter(new Text("Hello World!", RenderManager.FONT, 15, 0), 0, 0.5f)
+////			Map.entry(new RotationAnimation(new Scaler(new AbsoluteGuiPositioner(
+////
+////				//Map.entry(new Icon(GameModels.MODEL_RED_SQUARE), Position.of(0, 0)),
+////				//Map.entry(new Text("blah", RenderManager.FONT, Layout.CENTERED, 10, 0), Position.of(0, 0))
+////			), 0.5f), Utility.degreesPerSecToRadiansPerNano(0)), Position.of(-0.5f, -0.5f))
+//		);
 	}
 
 	public void returnToMenu() {
