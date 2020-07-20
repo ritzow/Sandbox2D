@@ -101,10 +101,7 @@ class InWorldContext implements GameTalker {
 		client.update(this::process);
 		Display display = GameState.display();
 		display.poll(input);
-		if(Utility.nanosSince(lastPlayerStateSend) > PLAYER_STATE_SEND_INTERVAL) {
-			lastPlayerStateSend = System.nanoTime();
-			updatePlayerState(display);
-		}
+		updatePlayerState(display);
 		if(!display.minimized()) { //TODO need to be more checks, this will run no matter what
 			if(display.isControlActivated(Control.ZOOM_RESET)) cameraGrip.resetZoom();
 			updateRender(display, delta);
@@ -112,6 +109,7 @@ class InWorldContext implements GameTalker {
 	}
 
 	private long lastPlayerStateSend;
+	short lastPlayerState = 0;
 
 	private void updatePlayerState(Display display) {
 		boolean isLeft = display.isControlActivated(Control.MOVE_LEFT);
@@ -124,7 +122,18 @@ class InWorldContext implements GameTalker {
 		player.setRight(isRight);
 		player.setUp(isUp);
 		player.setDown(isDown);
-		sendPlayerState(player, isPrimary, isSecondary);
+		short playerState = PlayerState.getState(player, isPrimary, isSecondary);
+
+		if(playerState != lastPlayerState || Utility.nanosSince(lastPlayerStateSend) > PLAYER_STATE_SEND_INTERVAL) {
+			//TODO this inteval is what's causing the jitter when moving left and right really fast
+			//The player may do something client side, but not send the player state
+			//Solution: only send player state MORE FREQUENTLY (every frame) if it has changed from last state, and ALWAYS send it in that case
+			byte[] packet = new byte[4];
+			Bytes.putShort(packet, 0, TYPE_CLIENT_PLAYER_STATE);
+			Bytes.putShort(packet, 2, playerState);
+			client.sendUnreliable(packet);
+			lastPlayerStateSend = System.nanoTime();
+		}
 	}
 
 	private void updateRender(Display display, long deltaTime) {
@@ -136,6 +145,7 @@ class InWorldContext implements GameTalker {
 		interactionControls.update(display, cameraGrip.getCamera(), this, world, player);
 		interactionControls.render(display, GameState.modelRenderer(), cameraGrip.getCamera(), world, player);
 		GameState.modelRenderer().flush(); //TODO render any final queued unrendered models
+		RenderManager.postRender();
 		display.refresh();
 	}
 
@@ -250,13 +260,6 @@ class InWorldContext implements GameTalker {
 	private World buildWorld() {
 		return SerializationProvider.getProvider().deserialize(COMPRESS_WORLD_DATA ?
 			Bytes.decompress(worldDownloadBuffer.flip()) : worldDownloadBuffer.flip());
-	}
-
-	public void sendPlayerState(PlayerEntity player, boolean primary, boolean secondary) {
-		byte[] packet = new byte[4];
-		Bytes.putShort(packet, 0, TYPE_CLIENT_PLAYER_STATE);
-		Bytes.putShort(packet, 2, PlayerState.getState(player, primary, secondary));
-		client.sendUnreliable(packet);
 	}
 
 	@Override
