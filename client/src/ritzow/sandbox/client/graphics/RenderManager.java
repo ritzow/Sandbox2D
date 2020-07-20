@@ -40,7 +40,7 @@ public class RenderManager {
 		glDisable(GL_DEPTH_TEST);
 		glDisable(GL_MULTISAMPLE);
 		glEnablei(GL_BLEND, RenderManager.MAIN_DRAW_BUFFER_INDEX);
-		glfwSwapInterval(0);
+		glfwSwapInterval(StandardClientOptions.VSYNC ? 1 : 0);
 
 		int[] indices = {0, 1, 2, 0, 2, 3};
 
@@ -124,5 +124,6 @@ public class RenderManager {
 	public static void postRender() {
 		glFlush();
 		glFinish();
+		//TODO call GameState.display().refresh()?
 	}
 }

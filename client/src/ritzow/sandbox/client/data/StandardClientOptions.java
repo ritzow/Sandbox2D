@@ -18,6 +18,7 @@ public class StandardClientOptions {
 	public static final long FRAME_TIME_LIMIT =
 		get("fps_limit", 0, StandardClientOptions::frameTimeLimit).longValue();
 	public static final boolean LIMIT_FPS = FRAME_TIME_LIMIT > 0;
+	public static final boolean VSYNC = get("vsync", false, Boolean::parseBoolean); //TODO make LIMIT_FPS a combo with this as a string enum
 	public static final boolean USE_INTERNET = get("use_internet", true, Boolean::parseBoolean);
 	public static final float GUI_SCALE = get("gui_scale", 500f, Float::parseFloat);
 
