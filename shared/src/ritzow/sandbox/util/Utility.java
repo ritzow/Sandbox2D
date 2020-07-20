@@ -252,8 +252,13 @@ public final class Utility {
 	public static float oscillate(double radiansPerNano) {
 		return oscillate(radiansPerNano, 0, 0, 1);
 	}
+
 	public static float oscillate(double radiansPerNano, float offsetRadians, float min, float max) {
-		return Utility.convertRange(-1.0f, 1.0f, min, max, (float)Math.cos(Utility.normalizeAngle(System.nanoTime() * radiansPerNano + offsetRadians)));
+		return oscillate(System.nanoTime(), radiansPerNano, offsetRadians, min, max);
+	}
+
+	public static float oscillate(long time, double radiansPerNano, float offsetRadians, float min, float max) {
+		return convertRange(-1.0f, 1.0f, min, max, (float)Math.cos(Utility.normalizeAngle(time * radiansPerNano + offsetRadians)));
 	}
 
 	public static void launchAtAngle(Entity e, float angle, float velocity) {
@@ -266,7 +271,7 @@ public final class Utility {
 	}
 
 	public static float randomAngleRadians() {
-		return Utility.random(0, Math.PI * 2);
+		return random(0, Math.PI * 2);
 	}
 
 	public static boolean intersection(float rectangleX, float rectangleY,
