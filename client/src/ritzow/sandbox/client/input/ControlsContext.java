@@ -3,7 +3,7 @@ package ritzow.sandbox.client.input;
 import java.util.Arrays;
 
 /** Similar to Android's SparseIntArray **/
-public class ControlsContext {
+public class ControlsContext implements ControlsQuery {
 	public void framebufferSize(int width, int height) {}
 	public void mouseScroll(double horizontal, double vertical) {}
 	public void windowClose() {}
@@ -87,6 +87,17 @@ public class ControlsContext {
 		for(ButtonState state : store) {
 			state.state &= 1; //set the left bit to 0 to indicate it isn't new state
 		}
+	}
+
+	@Override
+	public State state(Button control) {
+		return switch(store[indexOf(control.type(), control.code())].state) {
+			case PREVIOUSLY_PRESSED -> State.PREVIOUSLY_PRESSED;
+			case PREVIOUSLY_RELEASED -> State.PREVIOUSLY_RELEASED;
+			case NEWLY_PRESSED -> State.NEWLY_PRESSED;
+			case NEWLY_RELEASED -> State.NEWLY_RELEASED;
+			default -> throw new IllegalStateException("Unexpected value: " + store[indexOf(control.type(), control.code())].state);
+		};
 	}
 
 	public boolean isPressed(Button control) {

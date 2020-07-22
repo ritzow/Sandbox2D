@@ -217,6 +217,7 @@ public final class Display implements InputProvider {
 			}
 		});
 
+		//TODO implement mouse scroll polling, interaction with ControlsContext
 		glfwSetScrollCallback(displayID, (windowID, xoffset, yoffset) -> context.mouseScroll(xoffset, yoffset));
 		glfwSetFramebufferSizeCallback(displayID, (windowID, width, height) -> context.framebufferSize(width, height));
 		glfwSetWindowRefreshCallback(displayID, windowID -> context.windowRefresh());
