@@ -5,8 +5,7 @@ import ritzow.sandbox.client.data.StandardClientOptions;
 import ritzow.sandbox.client.graphics.GameModels;
 import ritzow.sandbox.client.graphics.RenderManager;
 import ritzow.sandbox.client.input.Button;
-import ritzow.sandbox.client.input.Control;
-import ritzow.sandbox.client.input.InputContext;
+import ritzow.sandbox.client.input.ControlsContext;
 import ritzow.sandbox.client.ui.GuiElement;
 import ritzow.sandbox.client.ui.StandardGuiRenderer;
 import ritzow.sandbox.client.ui.element.BorderAnchor;
@@ -14,16 +13,39 @@ import ritzow.sandbox.client.ui.element.BorderAnchor.Anchor;
 import ritzow.sandbox.client.ui.element.BorderAnchor.Side;
 import ritzow.sandbox.client.ui.element.Text;
 
+import static ritzow.sandbox.client.input.Control.*;
 import static ritzow.sandbox.client.util.ClientUtility.log;
 
 class MainMenuContext {
 	private final StandardGuiRenderer ui;
 	private final GuiElement root;
-	private final InputContext context;
 	private ServerJoinContext joinContext;
 
+	private final ControlsContext MAIN_MENU_CONTEXT = new ControlsContext(
+		UI_ACTIVATE,
+		UI_CONTEXT,
+		UI_TERTIARY,
+		QUIT,
+		FULLSCREEN,
+		CONNECT) {
+		@Override
+		public void windowClose() {
+			GameLoop.stop();
+		}
+
+		@Override
+		public void windowRefresh() {
+			refresh(GameLoop.updateDeltaTime());
+		}
+	};
+
+	private final Map<Button, Runnable> controls = Map.ofEntries(
+		Map.entry(FULLSCREEN, GameState.display()::toggleFullscreen),
+		Map.entry(QUIT, GameLoop::stop),
+		Map.entry(CONNECT, MainMenuContext.this::startJoin)
+	);
+
 	MainMenuContext() {
-		this.context = new MenuInputContext();
 		this.ui = new StandardGuiRenderer(GameState.modelRenderer());
 
 		root = new BorderAnchor(
@@ -60,7 +82,13 @@ class MainMenuContext {
 	}
 
 	public void update(long delta) {
-		GameState.display().poll(context);
+		MAIN_MENU_CONTEXT.nextFrame();
+		GameState.display().handleEvents(MAIN_MENU_CONTEXT);
+		for(var entry : controls.entrySet()) {
+			if(MAIN_MENU_CONTEXT.isNewlyPressed(entry.getKey())) {
+				entry.getValue().run();
+			}
+		}
 		refresh(delta);
 	}
 
@@ -83,28 +111,5 @@ class MainMenuContext {
 
 	private void startJoin() {
 		joinContext = new ServerJoinContext();
-	}
-
-	private final class MenuInputContext implements InputContext {
-		@Override
-		public void windowClose() {
-			GameLoop.stop();
-		}
-
-		@Override
-		public void windowRefresh() {
-			refresh(GameLoop.updateDeltaTime());
-		}
-
-		private final Map<Button, Runnable> controls = Map.ofEntries(
-			Map.entry(Control.FULLSCREEN, GameState.display()::toggleFullscreen),
-			Map.entry(Control.QUIT, GameLoop::stop),
-			Map.entry(Control.CONNECT, MainMenuContext.this::startJoin)
-		);
-
-		@Override
-		public Map<Button, Runnable> buttonControls() {
-			return controls;
-		}
 	}
 }

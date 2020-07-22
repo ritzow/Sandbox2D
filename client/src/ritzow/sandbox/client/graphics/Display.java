@@ -5,10 +5,7 @@ import java.nio.IntBuffer;
 import org.lwjgl.glfw.GLFWImage;
 import org.lwjgl.glfw.GLFWVidMode;
 import org.lwjgl.system.MemoryStack;
-import ritzow.sandbox.client.input.Control;
-import ritzow.sandbox.client.input.Button;
-import ritzow.sandbox.client.input.InputContext;
-import ritzow.sandbox.client.input.InputProvider;
+import ritzow.sandbox.client.input.*;
 
 import static org.lwjgl.glfw.GLFW.*;
 
@@ -197,33 +194,34 @@ public final class Display implements InputProvider {
 		focus();
 	}
 
-	public void poll(InputContext input) {
-		handler = input;
-		glfwPollEvents(); //TODO add a barrier around this and run all of the main thread code on a different thread when this is blocking?
+	//TODO add a barrier around this and run all of the main thread code on a different thread when this is blocking?
+	public void handleEvents(ControlsContext store) {
+		this.context = store;
+		glfwPollEvents();
 	}
 
-	private InputContext handler = InputContext.EMPTY_CONTEXT;
+	private ControlsContext context = new ControlsContext();
 
 	private void setupCallbacks() {
 		glfwSetKeyCallback(displayID, (windowID, key, scancode, action, mods) -> {
-			handler.keyboardButton(key, scancode, action, mods);
-			if(action == GLFW_PRESS) {
-				handler.buttonControls().getOrDefault(new Button(Control.BUTTON_TYPE_KEYBOARD, key), () -> {}).run();
+			switch(action) {
+				case GLFW_PRESS -> context.press(Control.BUTTON_TYPE_KEYBOARD, key);
+				case GLFW_RELEASE -> context.release(Control.BUTTON_TYPE_KEYBOARD, key);
 			}
 		});
 
 		glfwSetMouseButtonCallback(displayID, (windowID, button, action, mods) -> {
-			handler.mouseButton(button, action, mods);
-			if(action == GLFW_PRESS) {
-				handler.buttonControls().getOrDefault(new Button(Control.BUTTON_TYPE_MOUSE, button), () -> {}).run();
+			switch(action) {
+				case GLFW_PRESS -> context.press(Control.BUTTON_TYPE_MOUSE, button);
+				case GLFW_RELEASE -> context.release(Control.BUTTON_TYPE_MOUSE, button);
 			}
 		});
 
-		glfwSetScrollCallback(displayID, (windowID, xoffset, yoffset) -> handler.mouseScroll(xoffset, yoffset));
-		glfwSetFramebufferSizeCallback(displayID, (windowID, width, height) -> handler.framebufferSize(width, height));
-		glfwSetWindowRefreshCallback(displayID, windowID -> handler.windowRefresh());
-		glfwSetWindowCloseCallback(displayID, windowID -> handler.windowClose());
-		glfwSetWindowIconifyCallback(displayID, (windowID, iconified) -> handler.windowIconify(iconified));
-		glfwSetWindowFocusCallback(displayID, (windowID, focused) -> handler.windowFocus(focused));
+		glfwSetScrollCallback(displayID, (windowID, xoffset, yoffset) -> context.mouseScroll(xoffset, yoffset));
+		glfwSetFramebufferSizeCallback(displayID, (windowID, width, height) -> context.framebufferSize(width, height));
+		glfwSetWindowRefreshCallback(displayID, windowID -> context.windowRefresh());
+		glfwSetWindowCloseCallback(displayID, windowID -> context.windowClose());
+		glfwSetWindowIconifyCallback(displayID, (windowID, iconified) -> context.windowIconify(iconified));
+		glfwSetWindowFocusCallback(displayID, (windowID, focused) -> context.windowFocus(focused));
 	}
 }

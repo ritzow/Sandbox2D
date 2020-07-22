@@ -11,8 +11,7 @@ import ritzow.sandbox.client.data.StandardClientOptions;
 import ritzow.sandbox.client.graphics.Display;
 import ritzow.sandbox.client.graphics.RenderManager;
 import ritzow.sandbox.client.input.Button;
-import ritzow.sandbox.client.input.Control;
-import ritzow.sandbox.client.input.InputContext;
+import ritzow.sandbox.client.input.ControlsContext;
 import ritzow.sandbox.client.input.controller.InteractionController;
 import ritzow.sandbox.client.input.controller.TrackingCameraController;
 import ritzow.sandbox.client.network.Client;
@@ -28,12 +27,12 @@ import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.Entity;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
+import static ritzow.sandbox.client.input.Control.*;
 import static ritzow.sandbox.client.util.ClientUtility.log;
 import static ritzow.sandbox.network.Protocol.*;
 
 class InWorldContext implements GameTalker {
 	private final Client client;
-	private final InputContext input;
 	private final int playerID;
 	private InteractionController interactionControls;
 	private ClientWorldRenderer worldRenderer;
@@ -44,12 +43,76 @@ class InWorldContext implements GameTalker {
 	private final Consumer<Float> downloadProgressAction;
 	private CompletableFuture<World> worldBuildTask;
 
+	private final ControlsContext IN_GAME_CONTEXT = new ControlsContext(
+		FULLSCREEN,
+		QUIT,
+		ZOOM_INCREASE,
+		ZOOM_DECREASE,
+		ZOOM_RESET,
+		SCROLL_MODIFIER,
+		USE_HELD_ITEM,
+		THROW_BOMB,
+		MOVE_UP,
+		MOVE_DOWN,
+		MOVE_LEFT,
+		MOVE_RIGHT,
+		SLOT_SELECT_1,
+		SLOT_SELECT_2,
+		SLOT_SELECT_3) {
+		@Override
+		public void windowFocus(boolean focused) {
+			AudioSystem.getDefault().setVolume(focused ? 1.0f : 0.0f);
+		}
+
+		@Override
+		public void windowRefresh() {
+			sendPing();
+			client.update(InWorldContext.this::process);
+			updateRender(GameState.display(), GameLoop.updateDeltaTime());
+		}
+
+		@Override
+		public void windowClose() {
+			leaveServer();
+		}
+
+		double slotOffset = 0;
+
+		@Override
+		public void mouseScroll(double xoffset, double yoffset) {
+			if(IN_GAME_CONTEXT.isPressed(SCROLL_MODIFIER)) {
+				if(slotOffset == 0) slotOffset += yoffset;
+
+				if(slotOffset > 0) {
+					slotOffset = yoffset >= 0 ? slotOffset + yoffset : 0;
+					if(slotOffset > StandardClientOptions.SELECT_SENSITIVITY) {
+						selectSlot(Math.max(player.selected() - 1, 0));
+						slotOffset = 0;
+					}
+				} else if(slotOffset < 0) {
+					slotOffset = yoffset <= 0 ? slotOffset + yoffset : 0;
+					if(slotOffset < -StandardClientOptions.SELECT_SENSITIVITY) {
+						selectSlot(Math.min(player.selected() + 1, player.inventory().getSize() - 1));
+						slotOffset = 0;
+					}
+				}
+			} else if(cameraGrip != null) cameraGrip.mouseScroll(xoffset, yoffset);
+		}
+	};
+
+	private final Map<Button, Runnable> controls = Map.ofEntries(
+		Map.entry(FULLSCREEN, GameState.display()::toggleFullscreen),
+		Map.entry(QUIT,  InWorldContext.this::leaveServer),
+		Map.entry(SLOT_SELECT_1, () -> selectSlot(0)),
+		Map.entry(SLOT_SELECT_2, () -> selectSlot(1)),
+		Map.entry(SLOT_SELECT_3, () -> selectSlot(2))
+	);
+
 	private static final long PLAYER_STATE_SEND_INTERVAL = Utility.frameRateToFrameTimeNanos(15);
 
 	public InWorldContext(Client client, int downloadSize, int playerID, Consumer<Float> downloadProgress) {
 		log().info("Downloading " + Utility.formatSize(downloadSize) + " of world data");
 		this.client = client;
-		this.input = new InWorldInputContext();
 		this.worldDownloadBuffer = ByteBuffer.allocate(downloadSize);
 		this.downloadProgressAction = downloadProgress;
 		this.playerID = playerID;
@@ -100,10 +163,16 @@ class InWorldContext implements GameTalker {
 	private void updateInWorld(long delta) {
 		client.update(this::process);
 		Display display = GameState.display();
-		display.poll(input);
-		updatePlayerState(display);
+		IN_GAME_CONTEXT.nextFrame();
+		display.handleEvents(IN_GAME_CONTEXT);
+		for(var entry : controls.entrySet()) {
+			if(IN_GAME_CONTEXT.isNewlyPressed(entry.getKey())) {
+				entry.getValue().run();
+			}
+		}
+		updatePlayerState();
 		if(!display.minimized()) { //TODO need to be more checks, this will run no matter what
-			if(display.isControlActivated(Control.ZOOM_RESET)) cameraGrip.resetZoom();
+			if(IN_GAME_CONTEXT.isNewlyPressed(ZOOM_RESET)) cameraGrip.resetZoom();
 			updateRender(display, delta);
 		}
 	}
@@ -111,21 +180,16 @@ class InWorldContext implements GameTalker {
 	private long lastPlayerStateSend;
 	short lastPlayerState = 0;
 
-	private void updatePlayerState(Display display) {
-		boolean isLeft = display.isControlActivated(Control.MOVE_LEFT);
-		boolean isRight = display.isControlActivated(Control.MOVE_RIGHT);
-		boolean isUp = display.isControlActivated(Control.MOVE_UP);
-		boolean isDown = display.isControlActivated(Control.MOVE_DOWN);
-		boolean isPrimary = display.isControlActivated(Control.USE_HELD_ITEM);
-		boolean isSecondary = display.isControlActivated(Control.THROW_BOMB);
-		player.setLeft(isLeft);
-		player.setRight(isRight);
-		player.setUp(isUp);
-		player.setDown(isDown);
+	private void updatePlayerState() {
+		boolean isPrimary = IN_GAME_CONTEXT.isPressed(USE_HELD_ITEM);
+		boolean isSecondary = IN_GAME_CONTEXT.isPressed(THROW_BOMB);
+		player.setLeft(IN_GAME_CONTEXT.isPressed(MOVE_LEFT));
+		player.setRight(IN_GAME_CONTEXT.isPressed(MOVE_RIGHT));
+		player.setUp(IN_GAME_CONTEXT.isPressed(MOVE_UP));
+		player.setDown(IN_GAME_CONTEXT.isPressed(MOVE_DOWN));
 		short playerState = PlayerState.getState(player, isPrimary, isSecondary);
 
 		if(playerState != lastPlayerState || Utility.nanosSince(lastPlayerStateSend) > PLAYER_STATE_SEND_INTERVAL) {
-			//TODO this inteval is what's causing the jitter when moving left and right really fast
 			//The player may do something client side, but not send the player state
 			//Solution: only send player state MORE FREQUENTLY (every frame) if it has changed from last state, and ALWAYS send it in that case
 			byte[] packet = new byte[4];
@@ -142,9 +206,9 @@ class InWorldContext implements GameTalker {
 		int width = display.width(), height = display.height();
 		RenderManager.preRender(width, height);
 		worldRenderer.render(RenderManager.DISPLAY_BUFFER, width, height);
-		interactionControls.update(display, cameraGrip.getCamera(), this, world, player);
+		interactionControls.update(display, IN_GAME_CONTEXT, cameraGrip.getCamera(), this, world, player);
 		interactionControls.render(display, GameState.modelRenderer(), cameraGrip.getCamera(), world, player);
-		GameState.modelRenderer().flush(); //TODO render any final queued unrendered models
+		GameState.modelRenderer().flush(); //render any final queued unrendered models
 		RenderManager.postRender();
 		display.refresh();
 	}
@@ -298,60 +362,5 @@ class InWorldContext implements GameTalker {
 			case 1, 2 -> GameState.cursorMallet();
 			default -> GameState.cursorPick();
 		});
-	}
-
-	private final class InWorldInputContext implements InputContext {
-		@Override
-		public void windowFocus(boolean focused) {
-			AudioSystem.getDefault().setVolume(focused ? 1.0f : 0.0f);
-		}
-
-		@Override
-		public void windowRefresh() {
-			sendPing();
-			client.update(InWorldContext.this::process);
-			updateRender(GameState.display(), GameLoop.updateDeltaTime());
-		}
-
-		@Override
-		public void windowClose() {
-			leaveServer();
-		}
-
-		private final Map<Button, Runnable> controls = Map.ofEntries(
-			Map.entry(Control.FULLSCREEN, GameState.display()::toggleFullscreen),
-			Map.entry(Control.QUIT,  InWorldContext.this::leaveServer),
-			Map.entry(Control.SLOT_SELECT_1, () -> selectSlot(0)),
-			Map.entry(Control.SLOT_SELECT_2, () -> selectSlot(1)),
-			Map.entry(Control.SLOT_SELECT_3, () -> selectSlot(2))
-		);
-
-		@Override
-		public Map<Button, Runnable> buttonControls() {
-			return controls;
-		}
-
-		double slotOffset = 0;
-
-		@Override
-		public void mouseScroll(double xoffset, double yoffset) {
-			if(GameState.display().isControlActivated(Control.SCROLL_MODIFIER)) {
-				if(slotOffset == 0) slotOffset += yoffset;
-
-				if(slotOffset > 0) {
-					slotOffset = yoffset >= 0 ? slotOffset + yoffset : 0;
-					if(slotOffset > StandardClientOptions.SELECT_SENSITIVITY) {
-						selectSlot(Math.max(player.selected() - 1, 0));
-						slotOffset = 0;
-					}
-				} else if(slotOffset < 0) {
-					slotOffset = yoffset <= 0 ? slotOffset + yoffset : 0;
-					if(slotOffset < -StandardClientOptions.SELECT_SENSITIVITY) {
-						selectSlot(Math.min(player.selected() + 1, player.inventory().getSize() - 1));
-						slotOffset = 0;
-					}
-				}
-			} else if(cameraGrip != null) cameraGrip.mouseScroll(xoffset, yoffset);
-		}
 	}
 }

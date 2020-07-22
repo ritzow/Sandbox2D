@@ -2,6 +2,7 @@ package ritzow.sandbox.client.input.controller;
 
 import ritzow.sandbox.client.graphics.*;
 import ritzow.sandbox.client.input.Control;
+import ritzow.sandbox.client.input.ControlsContext;
 import ritzow.sandbox.client.network.GameTalker;
 import ritzow.sandbox.client.util.ClientUtility;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
@@ -53,10 +54,10 @@ public final class InteractionController {
 	}
 
 	//TODO wait for server to ack that block place/break cooldown has expired before sending more
-	public void update(Display display, Camera camera, GameTalker client, World world, PlayerEntity player) {
+	public void update(Display display, ControlsContext controls, Camera camera, GameTalker client, World world, PlayerEntity player) {
 		final int mouseX = display.getCursorX(), mouseY = display.getCursorY();
 		final int frameWidth = display.width(), frameHeight = display.height();
-		if(display.isControlActivated(Control.USE_HELD_ITEM)) {
+		if(controls.isPressed(Control.USE_HELD_ITEM)) {
 			int blockX = Math.round(ClientUtility.pixelHorizontalToWorld(camera, mouseX, frameWidth, frameHeight));
 			int blockY = Math.round(ClientUtility.pixelVerticalToWorld(camera, mouseY, frameHeight));
 			if(player.selected() == 0) {
@@ -75,7 +76,7 @@ public final class InteractionController {
 			}
 		}
 
-		if(display.isControlActivated(Control.THROW_BOMB) && Utility.canThrow(lastThrow)) {
+		if(controls.isNewlyPressed(Control.THROW_BOMB) && Utility.canThrow(lastThrow)) {
 			float worldX = ClientUtility.pixelHorizontalToWorld(camera, mouseX, frameWidth, frameHeight);
 			float worldY = ClientUtility.pixelVerticalToWorld(camera, mouseY, frameHeight);
 			client.sendBombThrow(computeThrowAngle(player, worldX, worldY));
