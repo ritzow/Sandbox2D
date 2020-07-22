@@ -46,6 +46,7 @@ public abstract class ModelRenderProgramBase extends ShaderProgram implements Mo
 		this.atlasTexture = textureAtlas;
 		this.modelProperties = new HashMap<String, Model>();
 		this.vaoID = register(models);
+		setInteger(getUniformLocation("atlasSampler"), ATLAS_TEXTURE_UNIT);
 	}
 
 	@Override
@@ -122,6 +123,7 @@ public abstract class ModelRenderProgramBase extends ShaderProgram implements Mo
 
 	@Override
 	public void loadViewMatrixIdentity() {
+		flush();
 		aspectMatrix[0] = 1;
 		aspectMatrix[5] = 1;
 		setMatrix(uniform_view, aspectMatrix);
@@ -129,7 +131,7 @@ public abstract class ModelRenderProgramBase extends ShaderProgram implements Mo
 
 	@Override
 	public void loadViewMatrixScale(float guiScale, int framebufferWidth, int framebufferHeight) {
-		//aspectMatrix[0] = framebufferHeight/(float)framebufferWidth;
+		flush();
 		aspectMatrix[0] = guiScale/framebufferWidth;
 		aspectMatrix[5] = guiScale/framebufferHeight;
 		setMatrix(uniform_view, aspectMatrix);
@@ -137,6 +139,7 @@ public abstract class ModelRenderProgramBase extends ShaderProgram implements Mo
 
 	@Override
 	public void loadViewMatrixStandard(int framebufferWidth, int framebufferHeight) {
+		flush();
 		aspectMatrix[0] = framebufferHeight/(float)framebufferWidth;
 		aspectMatrix[5] = 1;
 		setMatrix(uniform_view, aspectMatrix);
@@ -144,6 +147,7 @@ public abstract class ModelRenderProgramBase extends ShaderProgram implements Mo
 
 	@Override
 	public void loadViewMatrix(Camera camera, int framebufferWidth, int framebufferHeight) {
+		flush();
 		double ratio = (double)framebufferHeight/framebufferWidth;
 		float zoom = camera.getZoom();
 		double ratioZoom = ratio * zoom;
