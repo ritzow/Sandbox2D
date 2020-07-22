@@ -16,17 +16,26 @@ public final class Font {
 	//TODO some font characters are not in correct ascii order, such as the space character
 
 	public static Font load(double texelWidth, int glyphsPerRow, int glyphWidth, int glyphHeight, int paddingSize,
-		int textureWidth, int textureHeight, Collection<ModelData> out, float[] pos, int[] indices, float startX, float startY, float endX, float endY) {
-		return new Font(texelWidth, glyphsPerRow, glyphWidth, glyphHeight, paddingSize, textureWidth, textureHeight, out, pos, indices, startX, startY, endX, endY);
+		int textureWidth, int textureHeight, Collection<ModelData> out, int[] indices, float startX, float startY, float endX, float endY) {
+		return new Font(texelWidth, glyphsPerRow, glyphWidth, glyphHeight, paddingSize, textureWidth, textureHeight, out, indices, startX, startY, endX, endY);
 	}
 
-	private static class CharModel implements Model {}
+	private final Model[] glyphs;
+	private final int glyphWidth, glyphHeight;
 
-	private final CharModel[] glyphs;
+	public int getGlyphWidth() {
+		return glyphWidth;
+	}
+
+	public int getGlyphHeight() {
+		return glyphHeight;
+	}
 
 	public Font(double texelWidth, int glyphsPerRow, int glyphWidth, int glyphHeight, int paddingSize, int textureWidth, int textureHeight,
-		Collection<ModelData> out, float[] pos, int[] indices, float leftX, float bottomY, float rightX, float topY) {
-		glyphs = new CharModel[256];
+		Collection<ModelData> out, int[] indices, float leftX, float bottomY, float rightX, float topY) {
+		glyphs = new Model[256];
+		this.glyphWidth = glyphWidth;
+		this.glyphHeight = glyphHeight;
 		double texelWidthHalf = 0;//texelWidth/4d/textureWidth;
 		double texelHeightHalf = 0;//texelWidth/4d/textureHeight;
 		double width = (double)glyphWidth / textureWidth * (rightX - leftX);
@@ -40,8 +49,24 @@ public final class Font {
 			float left = (float)(leftX + paddingX + (paddingX + width) * column + texelWidthHalf);
 			float bottom = (float)(top - height + texelHeightHalf);
 			float right = (float)(left + width - texelWidthHalf);
-			float[] coords = new float[] {left, top, left, bottom, right, bottom, right, top};
-			out.add(new ModelData(glyphs[CHARACTER_LIST[i]] = new CharModel(), pos, coords, indices));
+			float[] coords = new float[] {
+				left, top,
+				left, bottom,
+				right, bottom,
+				right, top
+			};
+
+			float halfWidth = (float)(glyphWidth/2d);
+			float halfHeight = (float)(glyphHeight/2d);
+			float[] positions = {
+				-halfWidth,	 halfHeight,
+				-halfWidth,	-halfHeight,
+				halfWidth,	-halfHeight,
+				halfWidth,	 halfHeight
+			};
+
+			int charIndex = i;
+			out.add(new ModelData(model -> glyphs[CHARACTER_LIST[charIndex]] = model, glyphWidth, glyphHeight, positions, coords, indices));
 		}
 	}
 

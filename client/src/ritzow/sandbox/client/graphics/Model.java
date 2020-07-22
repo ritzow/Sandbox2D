@@ -1,5 +1,6 @@
 package ritzow.sandbox.client.graphics;
 
-public interface Model {
-
+public /*sealed*/ interface Model /*permits ModelRenderProgramBase.ModelAttributes*/ {
+	float width();
+	float height();
 }

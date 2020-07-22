@@ -13,6 +13,7 @@ import java.util.logging.Logger;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.glfw.GLFWImage;
 import ritzow.sandbox.client.graphics.Camera;
+import ritzow.sandbox.client.graphics.Model;
 import ritzow.sandbox.util.Utility;
 
 import static org.lwjgl.glfw.GLFW.glfwCreateCursor;
@@ -93,6 +94,28 @@ public class ClientUtility {
 	@SuppressWarnings("unused")
 	public static float getViewBottomBound(Camera camera, int framebufferWidth, int framebufferHeight) {
 		return -1f / camera.getZoom() + camera.getPositionY();
+	}
+
+	public static float scaleToWidth(float width, Model model) {
+		return width/model.width();
+	}
+
+	public static float scaleToHeight(float height, Model model) {
+		return height/model.height();
+	}
+
+	public static float scaleToFit(float width, float height, Model model) {
+		//https://stackoverflow.com/questions/1373035/how-do-i-scale-one-rectangle-to-the-maximum-size-possible-within-another-rectang
+		float h = width/model.width();
+		float v = height/model.height();
+		return h <= v ? h : v;
+	}
+
+	public static float scaleToFit(float widthNew, float heightNew, float widthOriginal, float heightOriginal) {
+		//https://stackoverflow.com/questions/1373035/how-do-i-scale-one-rectangle-to-the-maximum-size-possible-within-another-rectang
+		float h = widthNew/widthOriginal;
+		float v = heightNew/heightOriginal;
+		return h <= v ? h : v;
 	}
 
 	private static final Logger FPS_LOGGER = Logger.getLogger("framerate");

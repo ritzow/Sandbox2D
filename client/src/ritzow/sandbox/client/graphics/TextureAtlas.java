@@ -6,32 +6,50 @@ import java.util.Map;
 import org.lwjgl.BufferUtils;
 
 public class TextureAtlas {
-	private final Map<TextureData, float[]> coordinates;
+	private final Map<TextureData, AtlasRegion> coordinates;
 	private final int texture;
 	private int dimension;
 
-//	float[] atlasCoords = new float[] {
-//		0f, 1f,
-//		0f, 0f,
-//		1f, 0f,
-//		1f, 1f
-//	};
+	public static final float[] ATLAS_COORDS = new float[] {
+		0f, 1f,
+		0f, 0f,
+		1f, 0f,
+		1f, 1f
+	};
+
+	public static final float[] NORMAL_POS = {
+		-0.5f,	 0.5f,
+		-0.5f,	-0.5f,
+		0.5f,	-0.5f,
+		0.5f,	 0.5f
+	};
 
 	//TODO maybe try https://stackoverflow.com/a/9251578 (similar to what I already did, a bit of a hack)
 
 	TextureAtlas(TextureData... textures) {
-		texture = generateAtlas(textures, coordinates = new HashMap<TextureData, float[]>());
+		texture = generateAtlas(textures, coordinates = new HashMap<>());
 	}
 
-	/**
-	 * Texture coordinates are in OpenGL UV format as floats
-	 * in the range [0, 1) where {0, 0} is the bottom left corner. An array of format
-	 * {leftX, topY, leftX, bottomY, rightX, bottomY, rightX, topY}
-	 * @param texture The texture too acquire texture coordinates for
-	 * @return Texture coordinates in the above specified order
-	 */
-	public float[] getCoordinates(TextureData texture) {
+	public AtlasRegion getRegion(TextureData texture) {
 		return coordinates.get(texture);
+	}
+
+	public static record AtlasRegion(float leftX, float rightX, float bottomY, float topY) {
+
+		/**
+		 * Texture coordinates are in OpenGL UV format as floats
+		 * in the range [0, 1) where {0, 0} is the bottom left corner. An array of format
+		 * {leftX, topY, leftX, bottomY, rightX, bottomY, rightX, topY}
+		 * @return Texture coordinates in the above specified order
+		 */
+		public float[] toTextureCoordinates() {
+			return new float[] {
+				leftX, topY, //top left
+				leftX, bottomY, //bottom left
+				rightX, bottomY,	//bottom right
+				rightX, topY 	//top right
+			};
+		}
 	}
 
 	public int texture() {
@@ -43,7 +61,7 @@ public class TextureAtlas {
 	}
 
 	//TODO optimize texture packing https://gamedev.stackexchange.com/questions/2829/texture-packing-algorithm
-	private int generateAtlas(TextureData[] textures, Map<TextureData, float[]> coords) {
+	private int generateAtlas(TextureData[] textures, Map<TextureData, AtlasRegion> coords) {
 		int bytesPerPixel = textures[0].getBytesPerPixel();
 
 		int totalWidth = 0, height = 0;
@@ -92,7 +110,7 @@ public class TextureAtlas {
 	}
 
 	//TODO fix having to add small offsets to fix texture bleeding
-	private static float[] convertCoordinates(TextureData tex, int pixelX, int pixelY, int atlasWidthPixels) {
+	private static AtlasRegion convertCoordinates(TextureData tex, int pixelX, int pixelY, int atlasWidthPixels) {
 		//TODO texel offset did not work, still happens in large worlds
 		double texelWidthHalf = 0.25d/atlasWidthPixels; //for some reason 0.25 (quarter pixel?) works as well or better than 0.5?
 		//OpenGL texture coordinates range from 0 to 1, with the origin in the bottom left
@@ -102,16 +120,10 @@ public class TextureAtlas {
 		float rightX = (float)((pixelX + tex.getWidth() - texelWidthHalf)/atlasWidthPixels);
 		float bottomY = (float)((atlasWidthPixels - pixelY - tex.getHeight() + texelWidthHalf)/atlasWidthPixels);
 		float topY = (float)((atlasWidthPixels - pixelY - texelWidthHalf)/atlasWidthPixels);
-
-		return new float[] {
-				leftX, topY, //top left
-				leftX, bottomY, //bottom left
-				rightX, bottomY,	//bottom right
-				rightX, topY 	//top right
-		};
+		return new AtlasRegion(leftX, rightX, bottomY, topY);
 	}
 
-	private static float[] placeTexture(TextureData texture,
+	private static AtlasRegion placeTexture(TextureData texture,
 			ByteBuffer dest, int pixelX, int pixelY, int atlasWidthPixels) {
 		int bpp = texture.getBytesPerPixel();
 		place(texture.getData(),texture.getWidth() * bpp,texture.getHeight(),

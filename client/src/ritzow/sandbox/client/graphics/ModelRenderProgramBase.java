@@ -35,7 +35,7 @@ public abstract class ModelRenderProgramBase extends ShaderProgram implements Mo
 	};
 
 	protected final int uniform_opacity, uniform_view, attribute_position, attribute_textureCoord, vaoID, atlasTexture;
-	protected final Map<Model, ModelAttributes> modelProperties;
+	protected final Map<String, Model> modelProperties;
 
 	public ModelRenderProgramBase(Shader vertex, Shader fragment, int textureAtlas, ModelData... models) {
 		super(vertex, fragment);
@@ -44,7 +44,7 @@ public abstract class ModelRenderProgramBase extends ShaderProgram implements Mo
 		this.attribute_position = getAttributeLocation("position");
 		this.attribute_textureCoord = getAttributeLocation("textureCoord");
 		this.atlasTexture = textureAtlas;
-		this.modelProperties = new HashMap<Model, ModelAttributes>();
+		this.modelProperties = new HashMap<String, Model>();
 		this.vaoID = register(models);
 	}
 
@@ -56,6 +56,10 @@ public abstract class ModelRenderProgramBase extends ShaderProgram implements Mo
 		//set the blending mode to allow transparency
 		glBlendFunci(RenderManager.MAIN_DRAW_BUFFER_INDEX, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glBlendEquationi(RenderManager.MAIN_DRAW_BUFFER_INDEX, GL_FUNC_ADD);
+	}
+
+	public Model forName(String name) {
+		return modelProperties.get(name);
 	}
 
 	protected int register(ModelData[] models) {
@@ -84,8 +88,7 @@ public abstract class ModelRenderProgramBase extends ShaderProgram implements Mo
 			for(int index : model.indices) {
 				indexData.put(vertexOffset + index); //adjust index to be absolute instead of relative to model
 			}
-
-			modelProperties.put(model.model, new ModelAttributes(indexOffset, model.indexCount()));
+			model.out().set(new ModelAttributes(indexOffset, model.indexCount(), model.width, model.height));
 		}
 		positionData.flip();
 		textureCoordsData.flip();
@@ -152,21 +155,13 @@ public abstract class ModelRenderProgramBase extends ShaderProgram implements Mo
 		setMatrix(uniform_view, viewMatrix);
 	}
 
-	public static final record RenderInstance(
-		Model model,
-		float opacity,
-		float posX,
-		float posY,
-		float scaleX,
-		float scaleY,
-		float rotation) {}
-
 	protected static record ModelAttributes(
 		int indexOffset,
-		int indexCount) {}
+		int indexCount, float width, float height) implements Model {}
 
 	public static record ModelData(
-		Model model,
+		ModelDestination out,
+		float width, float height,
 		float[] positions,
 		float[] textureCoords,
 		int[] indices) {

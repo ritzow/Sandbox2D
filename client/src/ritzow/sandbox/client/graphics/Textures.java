@@ -3,7 +3,6 @@ package ritzow.sandbox.client.graphics;
 import de.matthiasmann.twl.utils.PNGDecoder;
 import de.matthiasmann.twl.utils.PNGDecoder.Format;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,13 +28,5 @@ public final class Textures {
 			pixels.get(data);
 			return new TextureData(decoder.getWidth(), 4, data);
 		}
-	}
-
-	public static OpenGLTexture loadTexture(InputStream input) throws IOException {
-		PNGDecoder decoder = new PNGDecoder(input);
-		ByteBuffer pixels = BufferUtils.createByteBuffer(decoder.getWidth() * decoder.getHeight() * 4);
-		decoder.decode(pixels, decoder.getWidth() * 4, Format.RGBA);
-		pixels.flip();
-		return new OpenGLTexture(pixels, decoder.getWidth(), decoder.getHeight());
 	}
 }

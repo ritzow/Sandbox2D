@@ -11,7 +11,7 @@ public final class ModelRenderProgramEnhanced extends ModelRenderProgramBase {
 	private static final int INDIRECT_STRUCT_SIZE = 5 * Integer.BYTES;
 	private static final int INSTANCE_STRUCT_SIZE = (16 + 1 + 3) * Float.BYTES /* padding for opacity */;
 	private static final int OFFSET_SIZE = Integer.BYTES * 4;
-	private static final int MAX_RENDER_COUNT = 300;
+	private static final int MAX_RENDER_COUNT = 600;
 
 	/** Used to store all per-frame rendering data for a fixed maximum number of model renders **/
 	private final int indirectVBO, drawDataVBO;
@@ -71,7 +71,7 @@ public final class ModelRenderProgramEnhanced extends ModelRenderProgramBase {
 
 	private void nextCommand(Model model) {
 		drawBuffer.position(commandIndex * OFFSET_SIZE).putInt(renderIndex);
-		ModelAttributes properties = modelProperties.get(model);
+		ModelAttributes properties = (ModelAttributes)model;
 		indirectBuffer
 			.putInt(properties.indexCount())
 			.putInt(instanceCount)
@@ -105,6 +105,7 @@ public final class ModelRenderProgramEnhanced extends ModelRenderProgramBase {
 
 	@Override
 	public void flush() {
+		//TODO call this inside the view matrix load methods
 		//instanceCount will be at least 1 if queueRender didn't call render() immediately prior
 		if(instanceCount > 0) {
 			nextCommand(this.model);

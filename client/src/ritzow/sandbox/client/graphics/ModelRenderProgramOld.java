@@ -26,7 +26,7 @@ public class ModelRenderProgramOld extends ModelRenderProgramBase {
 	public void queueRender(Model model, float opacity,
 							float posX, float posY, float scaleX, float scaleY,
 							float rotation) {
-		renderQueue.add(new RenderInstance(model, opacity, posX, posY, scaleX, scaleY, rotation));
+		renderQueue.add(new RenderInstance((ModelAttributes)model, opacity, posX, posY, scaleX, scaleY, rotation));
 	}
 
 	@Override
@@ -36,13 +36,13 @@ public class ModelRenderProgramOld extends ModelRenderProgramBase {
 			glBindVertexArray(vaoID);
 			while(!renderQueue.isEmpty()) {
 				RenderInstance render = renderQueue.poll();
-				ModelAttributes model = modelProperties.get(render.model());
 				prepInstanceData(instanceData, render.posX(), render.posY(), render.scaleX(), render.scaleY(), render.rotation());
 				glUniformMatrix4fv(uniform_transform, false, instanceData.flip());
 				if(render.opacity() != lastOpacity) {
 					setFloat(uniform_opacity, render.opacity());
 					lastOpacity = render.opacity();
 				}
+				ModelAttributes model = render.model;
 				glDrawElements(GL_TRIANGLES, model.indexCount(), GL_UNSIGNED_INT, model.indexOffset() * Integer.BYTES);
 			}
 		}
@@ -57,4 +57,13 @@ public class ModelRenderProgramOld extends ModelRenderProgramBase {
 			.put(0)				.put(0)					.put(0).put(0)
 			.put(posX)			.put(posY)				.put(0).put(1);
 	}
+
+	public static final record RenderInstance(
+		ModelAttributes model,
+		float opacity,
+		float posX,
+		float posY,
+		float scaleX,
+		float scaleY,
+		float rotation) {}
 }

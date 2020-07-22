@@ -12,7 +12,9 @@ import ritzow.sandbox.client.data.StandardClientOptions;
 import ritzow.sandbox.client.data.StandardClientProperties;
 import ritzow.sandbox.client.graphics.ModelRenderProgramBase.ModelData;
 import ritzow.sandbox.client.graphics.Shader.ShaderType;
+import ritzow.sandbox.client.graphics.TextureAtlas.AtlasRegion;
 import ritzow.sandbox.client.ui.Font;
+import ritzow.sandbox.client.util.ClientUtility;
 import ritzow.sandbox.util.Utility;
 
 import static org.lwjgl.glfw.GLFW.glfwMakeContextCurrent;
@@ -40,16 +42,10 @@ public class RenderManager {
 		glDisable(GL_DEPTH_TEST);
 		glDisable(GL_MULTISAMPLE);
 		glEnablei(GL_BLEND, RenderManager.MAIN_DRAW_BUFFER_INDEX);
+		//TODO vsync doesnt work in fullscreen
 		glfwSwapInterval(StandardClientOptions.VSYNC ? 1 : 0);
 
 		int[] indices = {0, 1, 2, 0, 2, 3};
-
-		float[] positions = {
-			-0.5f,	 0.5f,
-			-0.5f,	-0.5f,
-			0.5f,	-0.5f,
-			0.5f,	 0.5f
-		};
 
 		TextureData
 			dirt = Textures.loadTextureName("dirt"),
@@ -57,37 +53,65 @@ public class RenderManager {
 			face = Textures.loadTextureName("greenFace"),
 			red = Textures.loadTextureName("redSquare"),
 			sky = Textures.loadTextureName("clouds_online"),
+			blue = Textures.loadTextureName("blueSquare"),
 			fontTexture = Textures.loadTextureData(StandardClientProperties.ASSETS_PATH.resolve("fonts").resolve("default").resolve("sheet01.png"));
 
 		//TODO implement half-pixel correction to prevent bleeding and the weird artifacting stuff
 		//https://gamedev.stackexchange.com/a/49585
-		TextureAtlas atlas = Textures.buildAtlas(sky, grass, dirt, face, red, fontTexture);
+		TextureAtlas atlas = Textures.buildAtlas(sky, grass, dirt, face, red, blue, fontTexture);
 
 		//TODO look into using https://github.com/javagl/JglTF with Blender
 		List<ModelData> models = new ArrayList<>(List.of(
-			new ModelData(GameModels.MODEL_DIRT_BLOCK, positions, atlas.getCoordinates(dirt), indices),
-			new ModelData(GameModels.MODEL_GRASS_BLOCK, positions, atlas.getCoordinates(grass), indices),
-			new ModelData(GameModels.MODEL_GREEN_FACE, positions, atlas.getCoordinates(face), indices),
-			new ModelData(GameModels.MODEL_RED_SQUARE, positions, atlas.getCoordinates(red), indices),
-			new ModelData(GameModels.MODEL_SKY, positions, atlas.getCoordinates(sky), indices)
+			textureToModel(model -> GameModels.MODEL_DIRT_BLOCK = model, dirt, atlas, 1),
+			textureToModel(model -> GameModels.MODEL_GRASS_BLOCK = model, grass, atlas, 1),
+			textureToModel(model -> GameModels.MODEL_GREEN_FACE = model, face, atlas, 1),
+			textureToModel(model -> GameModels.MODEL_RED_SQUARE = model, red, atlas, 1),
+			textureToModel(model -> GameModels.MODEL_SKY = model, sky, atlas, 1),
+			textureToModel(model -> GameModels.MODEL_BLUE_SQUARE = model, blue, atlas, 1)
+			//new ModelData("atlas", 1, 1, TextureAtlas.NORMAL_POS, TextureAtlas.ATLAS_COORDS, indices)
 		));
 
-		float[] fontCoords = atlas.getCoordinates(fontTexture);
-		FONT = Font.load(25, 9, 9, 1, fontTexture.getWidth(), fontTexture.getHeight(), models,
-			positions, indices, /*left x */ fontCoords[0], /* bottom y */ fontCoords[3], /* right x */ fontCoords[4], /* top y */ fontCoords[1]);
+		AtlasRegion region = atlas.getRegion(fontTexture);
+		FONT = Font.load(1.0d / atlas.width(), 25, 9, 9, 1, fontTexture.getWidth(), fontTexture.getHeight(), models,
+			indices, region.leftX(), region.bottomY(), region.rightX(), region.topY());
 
 		int textureAtlas = atlas.texture();
 		if(StandardClientOptions.USE_OPENGL_4_6) {
 			return new ModelRenderProgramEnhanced(
 				spirv("model.vert.spv", ShaderType.VERTEX),
 				spirv("model.frag.spv", ShaderType.FRAGMENT),
-			textureAtlas, models.toArray(ModelData[]::new));
+				textureAtlas, models.toArray(ModelData[]::new)
+			);
 		} else {
 			return new ModelRenderProgramOld(
 				source("model.vert", ShaderType.VERTEX),
 				source("model.frag", ShaderType.FRAGMENT),
-			textureAtlas, models.toArray(ModelData[]::new));
+				textureAtlas, models.toArray(ModelData[]::new)
+			);
 		}
+	}
+
+	private static final int[] indices = {0, 1, 2, 0, 2, 3};
+
+	private static ModelData textureToModel(ModelDestination dest, TextureData texture, TextureAtlas atlas, float fitDimension) {
+		float scale = ClientUtility.scaleToFit(fitDimension, fitDimension, texture.getWidth(), texture.getHeight());
+		return textureToModel(dest, texture, atlas, texture.getWidth() * scale, texture.getHeight() * scale);
+	}
+
+	private static ModelData textureToModel(ModelDestination dest, TextureData texture, TextureAtlas atlas) {
+		return textureToModel(dest, texture, atlas, texture.getWidth(), texture.getHeight());
+	}
+
+	private static ModelData textureToModel(ModelDestination dest, TextureData texture, TextureAtlas atlas, float width, float height) {
+		float halfWidth = width / 2f;
+		float halfHeight = height / 2f;
+		float[] positions = {
+			-halfWidth, halfHeight,
+			-halfWidth, -halfHeight,
+			halfWidth, -halfHeight,
+			halfWidth, halfHeight
+		};
+		return new ModelData(dest, width, height, positions, atlas.getRegion(texture).toTextureCoordinates(), indices);
 	}
 
 	private static Shader source(String file, ShaderType type) throws IOException {
@@ -99,7 +123,7 @@ public class RenderManager {
 	}
 
 	private static void debugCallback(int source, int type, int id, int severity,
-			int length, long message, long userParam) {
+									  int length, long message, long userParam) {
 		if(severity == GL_DEBUG_SEVERITY_NOTIFICATION) {
 			log().info(MemoryUtil.memASCII(message, length));
 		} else {
