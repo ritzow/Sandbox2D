@@ -4,6 +4,7 @@ import ritzow.sandbox.client.ui.*;
 
 public class BorderAnchor implements GuiElement {
 
+	//TODO add corners as well, maybe remove the other offset value
 	public enum Side {
 		LEFT {
 			@Override
@@ -55,7 +56,7 @@ public class BorderAnchor implements GuiElement {
 
 	@Override
 	public Shape shape() {
-		return new Position(0, 0); //TODO implement minimum size so elements don't overlap or which is pleasing to the eye
+		return new Rectangle(1, 1); //TODO implement minimum size so elements don't overlap or which is pleasing to the eye
 	}
 
 	@Override

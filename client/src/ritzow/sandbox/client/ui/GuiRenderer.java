@@ -1,7 +1,9 @@
 package ritzow.sandbox.client.ui;
 
 import java.time.Duration;
+import java.util.Optional;
 import ritzow.sandbox.client.graphics.Model;
+import ritzow.sandbox.client.input.ControlsQuery;
 
 /**
  * The GuiRenderer interface renders GUI elements using the standard coordinate space of [-1, 1] TODO this isn't correct, need to involve framebuffer pixel sizes
@@ -21,13 +23,6 @@ public interface GuiRenderer {
 	void play(Animation animation, Duration duration);
 
 	Rectangle parent();
-
-	//TODO implement these, and they can all be "consumed"
-	//boolean contextActionFired()
-	//boolean primaryActionFired()
-	//boolean tertiaryActionFired()
-	//float mouseScrolled()
-	//Position mousePos() //TODO move from render to here.
-
-	//TODO add a way to poll cursor/mouse events, etc.
+	ControlsQuery controls();
+	Optional<Position> mousePos();
 }

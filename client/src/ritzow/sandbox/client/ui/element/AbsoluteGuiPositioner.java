@@ -23,7 +23,7 @@ public class AbsoluteGuiPositioner implements GuiElement {
 				rightX = Math.max(entry.getValue().x() + rect.width()/2, rightX);
 				bottomY = Math.min(entry.getValue().y() - rect.height()/2, bottomY);
 				topY = Math.max(entry.getValue().y() + rect.height()/2, topY);
-				//width = Math.max(Math.abs(entry.getValue().x()) + rect.width()/2, width);
+				//width = Math.max(Math.abs(entry.getValue().y()) + rect.width()/2, width);
 				//height = Math.max(Math.abs(entry.getValue().y()) + rect.height()/2, height);
 			}
 			this.elements.add(new ElementPos(entry.getKey(), entry.getValue()));
@@ -50,12 +50,6 @@ public class AbsoluteGuiPositioner implements GuiElement {
 		for(ElementPos element : elements) {
 			renderer.draw(element.element, element.pos.x(), element.pos.y());
 		}
-	}
-
-	@Override
-	public boolean render(GuiRenderer renderer, long nanos, float mouseX, float mouseY) {
-		render(renderer, nanos);
-		return false;
 	}
 
 	@Override

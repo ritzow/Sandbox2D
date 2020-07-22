@@ -1,12 +1,10 @@
 package ritzow.sandbox.client.ui;
 
 import java.time.Duration;
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.PriorityQueue;
-import java.util.Queue;
+import java.util.*;
 import ritzow.sandbox.client.data.StandardClientOptions;
 import ritzow.sandbox.client.graphics.*;
+import ritzow.sandbox.client.input.ControlsQuery;
 import ritzow.sandbox.util.Utility;
 
 //TODO investigate laggy rotations and stuff
@@ -19,9 +17,13 @@ import ritzow.sandbox.util.Utility;
 //Input events will be processed entirely separately from drawing, but in a similar fashion using the same "offsets" system.
 public class StandardGuiRenderer implements GuiRenderer {
 	private final ModelRenderer program;
-	private final Deque<GuiLevel> rt;
+	private final Deque<GuiLevel> rt; //TODO compress this by adding a boolean or int field indicating the child has the exact same properties
 	private final Queue<AnimationEvent> animations;
-	private float mouseX, mouseY;
+
+	private ControlsQuery controls;
+	private Rectangle parentBounds;
+	private Optional<Position> mousePos;
+	private float mouseX, mouseY; //TODO these might need to be in a stack
 	private long nanos;
 
 	private static final boolean DEBUG_PRINT_RENDER_TREE = true;
@@ -52,19 +54,24 @@ public class StandardGuiRenderer implements GuiRenderer {
 	//Apply this Offset's transformation to the parameters (ie a left matrix multiply)
 	private static record RenderTransform(float opacity, float x, float y, float scaleX, float scaleY, float rotation) {
 		RenderTransform combine(float opacity, float x, float y, float scaleX, float scaleY, float rotation) {
-			//https://en.wikipedia.org/wiki/Rotation_matrix
-			//TODO deal with weird negatives required for clockwise/proper rotation
-			float cos = (float)Math.cos(-this.rotation);
-			float sin = (float)Math.sin(-this.rotation);
-			return new RenderTransform(
-				this.opacity() * opacity,
-				(x * cos - y * sin) * this.scaleX + this.x,
-				(x * sin + y * cos) * this.scaleY + this.y,
-				this.scaleX * scaleX,
-				this.scaleY * scaleY,
-				this.rotation + rotation
-				//this.scissor == null ? null : new Scissor(this.scaleX * this.scissor.width(), this.scaleY * this.scissor.height())
-			);
+
+			if(x == 0.0f && y == 0.0f && scaleX == 1.0f && scaleY == 1.0f && rotation == 0.0f && opacity == 1.0f) {
+				return this;
+			} else {
+				//https://en.wikipedia.org/wiki/Rotation_matrix
+				//TODO deal with weird negatives required for clockwise/proper rotation
+				float cos = (float)Math.cos(-this.rotation);
+				float sin = (float)Math.sin(-this.rotation);
+				return new RenderTransform(
+					this.opacity() * opacity,
+					(x * cos - y * sin) * this.scaleX + this.x,
+					(x * sin + y * cos) * this.scaleY + this.y,
+					this.scaleX * scaleX,
+					this.scaleY * scaleY,
+					this.rotation + rotation
+					//this.scissor == null ? null : new Scissor(this.scaleX * this.scissor.width(), this.scaleY * this.scissor.height())
+				);
+			}
 		}
 
 		Position transform(float x, float y) {
@@ -95,6 +102,21 @@ public class StandardGuiRenderer implements GuiRenderer {
 	}
 
 	@Override
+	public Rectangle parent() {
+		return parentBounds;
+	}
+
+	@Override
+	public ControlsQuery controls() {
+		return controls;
+	}
+
+	@Override
+	public Optional<Position> mousePos() {
+		return mousePos;
+	}
+
+	@Override
 	public void draw(Model model, float opacity, float posX, float posY, float scaleX, float scaleY, float rotation) {
 		//TODO glScissor if exists
 		//if exists program.flush() before and after, etc.
@@ -116,13 +138,6 @@ public class StandardGuiRenderer implements GuiRenderer {
 		draw(element, 1, posX, posY, 1, 1, 0);
 	}
 
-	private Rectangle parentBounds;
-
-	@Override
-	public Rectangle parent() {
-		return parentBounds;
-	}
-
 	@Override
 	public void draw(GuiElement element, float opacity, float posX, float posY, float scaleX, float scaleY, float rotation) {
 		if(StandardClientOptions.DEBUG && DEBUG_PRINT_RENDER_TREE) {
@@ -131,44 +146,27 @@ public class StandardGuiRenderer implements GuiRenderer {
 		GuiLevel parent = rt.peekFirst();
 		parentBounds = parent.bounds;
 		RenderTransform transform = parent.transform.combine(opacity, posX, posY, scaleX, scaleY, rotation);
-		Rectangle bounds = element.shape(parent.bounds).toRectangle(); //TODO if parent is dynamically sized by children, shape() should be called instead
-		if(parent.cursorHover && intersect(element, parent.bounds, transform)) {
+		//TODO if parent is dynamically sized by children, shape() should be called instead
+		Rectangle bounds = element.shape(parent.bounds).toRectangle();
+		//transform mouse position into GUI element's coordinate system.
+		Position mouseInverse = transform.transformInverse(mouseX, mouseY);
+		if(StandardClientOptions.DEBUG) {
+			Rectangle rect = element.shape(parent.bounds).toRectangle();
+			program.queueRender(GameModels.MODEL_DIRT_BLOCK, 1, mouseInverse.x(), mouseInverse.y(), 0.05f,0.05f, 0);
+			program.queueRender(GameModels.MODEL_GREEN_FACE, 1, 0, 0, rect.width(), rect.height(), 0);
+		}
+
+		//TODO I can remove parent.cursorHover if it doesn't help optimize this at all.
+		if(parent.cursorHover && element.shape(parent.bounds).intersects(mouseInverse)) {
 			rt.addFirst(new GuiLevel(transform, true, bounds));
-			Position pos = transform.transformInverse(mouseX, mouseY);
-			//TODO set cursorHover to false if render with cursor returns true
-			parent.cursorHover  = element.render(this, nanos, pos.x(), pos.y());
-			//TODO implement event consumption (ie prevent consumed events from being propogated further)
-			//TODO mouse event processing must happen after render, so that lower elements dont received consumed event, maybe that just means encouraging proper draw
-			//and update order?
+			mousePos = Optional.of(mouseInverse);
 		} else {
 			rt.addFirst(new GuiLevel(transform, false, bounds));
-			element.render(this, nanos);
+			mousePos = Optional.empty();
 		}
+		element.render(this, nanos);
 
 		rt.removeFirst();
-	}
-
-	private boolean intersect(GuiElement element, Rectangle parent, RenderTransform transform) {
-		//transform represents this gui element centered at the origin
-		Shape shape = element.shape(parent);
-		if(shape instanceof Rectangle rect) {
-			//Transform the rectangle back to origin (basically just the rectangle width and height)
-			//and I transform (translate, scale, rotate) the mouse back to origin based on how the rectangle was transformed
-			//basically, I perform the inverse of 'transform' to the mouse position then check bounds.
-			Position mouseInverse = transform.transformInverse(mouseX, mouseY);
-			if(StandardClientOptions.DEBUG) {
-				program.queueRender(GameModels.MODEL_DIRT_BLOCK, 1, mouseInverse.x(), mouseInverse.y(), 0.05f,0.05f, 0);
-				program.queueRender(GameModels.MODEL_GREEN_FACE, 1, 0, 0, rect.width(), rect.height(), 0);
-			}
-			return Math.abs(mouseInverse.x()) <= rect.width()/2 && Math.abs(mouseInverse.y()) <= rect.height()/2;
-		} else if(shape instanceof Circle c) {
-			Position mouseInverse = transform.transformInverse(mouseX, mouseY);
-			return Utility.withinDistance(mouseInverse.x(), mouseInverse.y(), 0, 0, c.radius());
-		} else if(shape instanceof Position) {
-			return false;
-		} else {
-			throw new UnsupportedOperationException("unsupported Shape type");
-		}
 	}
 
 	@Override
@@ -177,7 +175,7 @@ public class StandardGuiRenderer implements GuiRenderer {
 	}
 
 	//TODO have this return whether a "UI user action" was consumed so it is known whether to apply it to other UI-like things such as the game world
-	public void render(GuiElement gui, Framebuffer dest, Display display, long nanos, float guiScale) throws OpenGLException {
+	public void render(GuiElement gui, Framebuffer dest, Display display, ControlsQuery controls, long nanos, float guiScale) throws OpenGLException {
 		if(!animations.isEmpty()) {
 			long currentTime = System.nanoTime();
 			while(!animations.isEmpty() && animations.peek().endTime() < currentTime) {
@@ -186,28 +184,24 @@ public class StandardGuiRenderer implements GuiRenderer {
 
 			for(AnimationEvent event : animations) {
 				long progressNanos = currentTime - event.start;
+				//TODO nanos doesn't necessarily represent the update delta.
 				event.animation().update(progressNanos, (float)((double)progressNanos/event.duration), nanos);
 			}
 		}
 
-
-		dest.clear(161 / 256f, 252 / 256f, 156 / 256f, 1.0f);
 		dest.setDraw();
 		int windowWidth = display.width();
 		int windowHeight = display.height();
 
 		//convert from pixel coords (from top left) to UI coords
-		float scaleX = guiScale / windowWidth;
+		float scaleX = guiScale / windowWidth; float scaleY = guiScale / windowHeight;
 		this.mouseX = Utility.convertRange(0, windowWidth, -1/ scaleX, 1/ scaleX, display.getCursorX());
-		float scaleY = guiScale / windowHeight;
 		this.mouseY = -Utility.convertRange(0, windowHeight, -1/ scaleY, 1/ scaleY, display.getCursorY());
-
-		//boolean leftMouse = display.isControlActivated(Control.UI_ACTIVATE);
-		//TODO should wrap mouseX, mouseY, and left/right/middle mouse into single "UI user action" event
-
 		this.nanos = nanos;
+		this.controls = controls;
 		program.loadViewMatrixScale(guiScale, windowWidth, windowHeight);
 		program.setCurrent();
+		//TODO cache the GuiLevels, possibly use dirty flag to determine if transforms need to change
 		this.rt.addFirst(new GuiLevel(new RenderTransform(1, 0, 0, 1, 1, 0), true, new Rectangle(2/scaleX, 2/scaleY)));
 		draw(gui, 1, 0, 0, 1, 1, 0);
 		this.rt.removeFirst();
