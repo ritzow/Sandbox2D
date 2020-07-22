@@ -2,8 +2,8 @@ package ritzow.sandbox.client.input.controller;
 
 import ritzow.sandbox.client.audio.AudioSystem;
 import ritzow.sandbox.client.graphics.Camera;
-import ritzow.sandbox.client.graphics.Display;
 import ritzow.sandbox.client.input.Control;
+import ritzow.sandbox.client.input.ControlsQuery;
 import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.entity.Entity;
 
@@ -18,12 +18,12 @@ public final class TrackingCameraController {
 		this.maxZoom = maxZoom;
 	}
 
-	public void update(Display display, Entity target, AudioSystem audio, long nanoseconds) {
-		if(display.isControlActivated(Control.ZOOM_RESET)) {
+	public void update(ControlsQuery controls, Entity target, AudioSystem audio, long nanoseconds) {
+		if(controls.isNewlyPressed(Control.ZOOM_RESET)) {
 			resetZoom();
-		} else if(display.isControlActivated(Control.ZOOM_INCREASE)) {
+		} else if(controls.isPressed(Control.ZOOM_INCREASE)) {
 			computeZoom(zoomSpeedNanos, nanoseconds);
-		} else if(display.isControlActivated(Control.ZOOM_DECREASE)) {
+		} else if(controls.isPressed(Control.ZOOM_DECREASE)) {
 			computeZoom(-zoomSpeedNanos, nanoseconds);
 		}
 
