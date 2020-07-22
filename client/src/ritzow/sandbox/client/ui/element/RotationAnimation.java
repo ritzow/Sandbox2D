@@ -3,10 +3,20 @@ package ritzow.sandbox.client.ui.element;
 import ritzow.sandbox.client.ui.*;
 import ritzow.sandbox.util.Utility;
 
-public record RotationAnimation(GuiElement child, double radiansPerNano) implements GuiElement {
+public class RotationAnimation implements GuiElement {
+	private final GuiElement child;
+	private final double radiansPerNano;
+	private float rotation;
+
+	public RotationAnimation(GuiElement child, double radiansPerNano) {
+		this.child = child;
+		this.radiansPerNano = radiansPerNano;
+	}
+
 	@Override
 	public void render(GuiRenderer renderer, long nanos) {
-		renderer.draw(child, 1, 0, 0, 1, 1, (float)(System.nanoTime() * radiansPerNano));
+		renderer.draw(child, 1, 0, 0, 1, 1, rotation);
+		rotation += nanos * radiansPerNano;
 	}
 
 	@Override
