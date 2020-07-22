@@ -1,65 +1,76 @@
 package ritzow.sandbox.client.ui.element;
 
-import java.util.PrimitiveIterator.OfInt;
+import java.util.Objects;
+import java.util.PrimitiveIterator;
 import ritzow.sandbox.client.graphics.GameModels;
 import ritzow.sandbox.client.graphics.Model;
 import ritzow.sandbox.client.ui.*;
 
 public class Text implements GuiElement {
-	private static final float SIZE_SCALE = 0.02f;
+	private static final float SIZE_SCALE = 0.002f; //0.02f
 
-	private final CharSequence text;
-	private final Font font;
-	private final float startPos, startSpacing, size;
+	private final CharPos[] text;
+	private final float scale;
 	private final Rectangle bounds;
+
+	private static record CharPos(Model model, float x) {}
+
+	private static final Model MISSING_CHAR_MODEL = GameModels.MODEL_RED_SQUARE;
 
 	/**
 	 *
 	 * @param text The text to display
 	 * @param font The character models usable with the provided GuiRenderer to display
 	 * @param size Font size, in points
-	 * @param spacing The fraction of a character width to put between each character
+	 * @param spacing The distance between characters //The fraction of a character width to put between each character
+	 * TODO add left justify/centering to constructor and new lines
 	 */
 	public Text(CharSequence text, Font font, int size, float spacing) {
-		this.text = text;
-		this.font = font;
-		this.size = size * SIZE_SCALE;
-		this.startSpacing = this.size * (1 + spacing);
-		long length = text.codePoints().count();
-		this.startPos = computeStart(length);
-		//TODO remove left vs centered (moved to stuff like absolueguipositioner)
-		this.bounds = new Rectangle(length * this.size + Math.max(0, (length - 1) * (this.startSpacing - this.size)), this.size);
-	}
+		this.scale = size * SIZE_SCALE;
+		PrimitiveIterator.OfInt scan = text.codePoints().iterator();
 
-	private float computeStart(long length) {
-		float gap = this.startSpacing - this.size;
-		int half = (int)(length/2);
-		if(length % 2 == 0) { //a   b   c | d   e   f
-			return -gap/2f - (half * this.size) - (half - 1) * gap + this.size/2;
-		} else { //a b c|c d e
-			return -(this.size + gap) * half;
+		//Compute totals
+		int length = 0;
+		float glyphWidths = 0;
+		float maxHeight = 0;
+		while(scan.hasNext()) {
+			Model model = Objects.requireNonNullElse(font.getModel(scan.nextInt()), MISSING_CHAR_MODEL);
+			glyphWidths += model.width();
+			if(model.height() > maxHeight) maxHeight = model.height();
+			length++;
+		}
+		float totalWidth = glyphWidths * scale + Math.max(length - 1, 0) * spacing;
+		this.bounds = new Rectangle(totalWidth, maxHeight * scale);
+		this.text = new CharPos[(int)length];
+
+		//TODO fix positioning of error model
+		//Compute positions
+		int index = 0;
+		float pos = -totalWidth/2f;
+		PrimitiveIterator.OfInt iterator = text.codePoints().iterator();
+		while(iterator.hasNext()) {
+			Model model = Objects.requireNonNullElse(font.getModel(iterator.nextInt()), MISSING_CHAR_MODEL);
+			pos += model.width()/2f * scale;
+			this.text[index] = new CharPos(model, pos);
+			pos += model.width()/2f * scale + spacing;
+			index++;
 		}
 	}
 
 	@Override
 	public void render(GuiRenderer renderer, long nanos) {
-		//TODO use text.codePoints().iterator() instead to more properly parse
-		//TODO include constructor field for whether to center text or start at left
-		float pos = startPos;
-		OfInt iterator = text.codePoints().iterator();
-		while(iterator.hasNext()) {
-			Model model = font.getModel(iterator.nextInt());
-			if(model == null) {
-				renderer.draw(GameModels.MODEL_RED_SQUARE, 1.0f, pos, 0, size/2, size/2, 0);
-			} else {
-				renderer.draw(model, 1.0f, pos, 0, size, size, 0);
-			}
-			pos += startSpacing;
+		for(CharPos data : text) {
+			renderer.draw(data.model, 1.0f, data.x, 0, scale, scale, 0);
 		}
 	}
 
 	@Override
 	public Shape shape() {
+		return bounds;
+	}
+
+	@Override
+	public Shape shape(Rectangle parent) {
 		return bounds;
 	}
 }
