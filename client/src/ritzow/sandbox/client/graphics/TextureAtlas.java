@@ -8,6 +8,7 @@ import org.lwjgl.BufferUtils;
 public class TextureAtlas {
 	private final Map<TextureData, float[]> coordinates;
 	private final int texture;
+	private int dimension;
 
 //	float[] atlasCoords = new float[] {
 //		0f, 1f,
@@ -15,6 +16,8 @@ public class TextureAtlas {
 //		1f, 0f,
 //		1f, 1f
 //	};
+
+	//TODO maybe try https://stackoverflow.com/a/9251578 (similar to what I already did, a bit of a hack)
 
 	TextureAtlas(TextureData... textures) {
 		texture = generateAtlas(textures, coordinates = new HashMap<TextureData, float[]>());
@@ -35,8 +38,12 @@ public class TextureAtlas {
 		return texture;
 	}
 
+	public int width() {
+		return dimension;
+	}
+
 	//TODO optimize texture packing https://gamedev.stackexchange.com/questions/2829/texture-packing-algorithm
-	private static int generateAtlas(TextureData[] textures, Map<TextureData, float[]> coords) {
+	private int generateAtlas(TextureData[] textures, Map<TextureData, float[]> coords) {
 		int bytesPerPixel = textures[0].getBytesPerPixel();
 
 		int totalWidth = 0, height = 0;
@@ -50,6 +57,7 @@ public class TextureAtlas {
 
 		//create the atlas buffer
 		int dimension = Math.max(totalWidth, height);
+		this.dimension = dimension;
 		ByteBuffer atlas = BufferUtils.createByteBuffer(dimension * dimension * bytesPerPixel);
 
 		//initially fill the texture with purple
@@ -85,10 +93,15 @@ public class TextureAtlas {
 
 	//TODO fix having to add small offsets to fix texture bleeding
 	private static float[] convertCoordinates(TextureData tex, int pixelX, int pixelY, int atlasWidthPixels) {
-		float leftX = pixelX/ (float)atlasWidthPixels;
-		float rightX = (pixelX + tex.getWidth())/ (float)atlasWidthPixels;
-		float bottomY =  ((float)atlasWidthPixels - pixelY - tex.getHeight())/ atlasWidthPixels;
-		float topY = ((float)atlasWidthPixels - pixelY)/ atlasWidthPixels;
+		//TODO texel offset did not work, still happens in large worlds
+		double texelWidthHalf = 0.25d/atlasWidthPixels; //for some reason 0.25 (quarter pixel?) works as well or better than 0.5?
+		//OpenGL texture coordinates range from 0 to 1, with the origin in the bottom left
+		//TODO this causes some slightly incorrect pixel sizes, but removes most errors (still some gaps in places), might be possible to improve?
+		//TODO do the same half texel thing with the texture atlas.
+		float leftX = (float)((pixelX + texelWidthHalf)/atlasWidthPixels);
+		float rightX = (float)((pixelX + tex.getWidth() - texelWidthHalf)/atlasWidthPixels);
+		float bottomY = (float)((atlasWidthPixels - pixelY - tex.getHeight() + texelWidthHalf)/atlasWidthPixels);
+		float topY = (float)((atlasWidthPixels - pixelY - texelWidthHalf)/atlasWidthPixels);
 
 		return new float[] {
 				leftX, topY, //top left
