@@ -1,9 +1,7 @@
 package ritzow.sandbox.client.graphics;
 
 import java.nio.FloatBuffer;
-import java.util.ArrayDeque;
-import java.util.Queue;
-import org.lwjgl.system.MemoryStack;
+import org.lwjgl.BufferUtils;
 
 import static org.lwjgl.opengl.GL46C.*;
 
@@ -11,59 +9,43 @@ import static org.lwjgl.opengl.GL46C.*;
 //TODO create common superclass for ModelRenderProgram460 and ModelRenderProgram450
 public class ModelRenderProgramOld extends ModelRenderProgramBase {
 	protected final int uniform_transform;
-	protected final Queue<RenderInstance> renderQueue;
 	private float lastOpacity = 0;
+	private final FloatBuffer transform;
 
 	ModelRenderProgramOld(Shader vertexShader, Shader fragmentShader,
 						  int textureAtlas, ModelData... models) {
 		super(vertexShader, fragmentShader, textureAtlas, models);
 		this.uniform_transform = getUniformLocation("transform");
-		setInteger(getUniformLocation("atlasSampler"), ATLAS_TEXTURE_UNIT);
-		this.renderQueue = new ArrayDeque<RenderInstance>();
+		this.transform = BufferUtils.createFloatBuffer(16);
 	}
 
 	@Override
 	public void queueRender(Model model, float opacity,
 							float posX, float posY, float scaleX, float scaleY,
 							float rotation) {
-		renderQueue.add(new RenderInstance((ModelAttributes)model, opacity, posX, posY, scaleX, scaleY, rotation));
-	}
-
-	@Override
-	public void flush() { //TODO move this code to queueRender and stop using a queue.
-		try(MemoryStack stack = MemoryStack.stackPush()) {
-			FloatBuffer instanceData = stack.mallocFloat(16);
-			glBindVertexArray(vaoID);
-			while(!renderQueue.isEmpty()) {
-				RenderInstance render = renderQueue.poll();
-				prepInstanceData(instanceData, render.posX(), render.posY(), render.scaleX(), render.scaleY(), render.rotation());
-				glUniformMatrix4fv(uniform_transform, false, instanceData.flip());
-				if(render.opacity() != lastOpacity) {
-					setFloat(uniform_opacity, render.opacity());
-					lastOpacity = render.opacity();
-				}
-				ModelAttributes model = render.model;
-				glDrawElements(GL_TRIANGLES, model.indexCount(), GL_UNSIGNED_INT, model.indexOffset() * Integer.BYTES);
-			}
+		if(opacity != lastOpacity) {
+			setFloat(uniform_opacity, opacity);
+			lastOpacity = opacity;
 		}
+		glUniformMatrix4fv(uniform_transform, false,
+			prepInstanceData(transform, posX, posY, scaleX, scaleY, rotation).flip());
+		transform.clear();
+		ModelAttributes modelAttribs = (ModelAttributes)model;
+		glBindVertexArray(vaoID);
+		glDrawElements(GL_TRIANGLES, modelAttribs.indexCount(), GL_UNSIGNED_INT, modelAttribs.indexOffset() * Integer.BYTES);
 	}
 
-	private static void prepInstanceData(FloatBuffer dest, float posX, float posY,
+	private static FloatBuffer prepInstanceData(FloatBuffer dest, float posX, float posY,
 								 float scaleX, float scaleY, float rotation) {
 		float rotX = (float)Math.cos(rotation);
 		float rotY = (float)Math.sin(rotation);
-		dest.put(scaleX * rotX)	.put(scaleX * -rotY)	.put(0).put(0) //column major
-			.put(scaleY * rotY)	.put(scaleY * rotX)		.put(0).put(0)
-			.put(0)				.put(0)					.put(0).put(0)
-			.put(posX)			.put(posY)				.put(0).put(1);
+		return dest
+				.put(scaleX * rotX)	.put(scaleX * -rotY).put(0).put(0) //column major
+				.put(scaleY * rotY)	.put(scaleY * rotX)	.put(0).put(0)
+				.put(0)				.put(0)				.put(0).put(0)
+				.put(posX)			.put(posY)			.put(0).put(1);
 	}
 
-	public static final record RenderInstance(
-		ModelAttributes model,
-		float opacity,
-		float posX,
-		float posY,
-		float scaleX,
-		float scaleY,
-		float rotation) {}
+	@Override
+	public void flush() {}
 }
