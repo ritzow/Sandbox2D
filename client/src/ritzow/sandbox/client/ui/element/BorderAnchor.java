@@ -12,22 +12,53 @@ public class BorderAnchor implements GuiElement {
 				return Position.of((bounds.width() - border.width())/2f + x, y);
 			}
 		},
+
 		RIGHT {
 			@Override
 			Position translate(float x, float y, Rectangle bounds, Rectangle border) {
 				return Position.of((border.width() - bounds.width())/2f - x, y);
 			}
 		},
+
 		BOTTOM {
 			@Override
 			Position translate(float x, float y, Rectangle bounds, Rectangle border) {
 				return Position.of(x, (bounds.height() - border.height())/2f + y);
 			}
 		},
+
 		TOP {
 			@Override
 			Position translate(float x, float y, Rectangle bounds, Rectangle border) {
 				return Position.of(x, (border.height() - bounds.height())/2f - y);
+			}
+		},
+
+		BOTTOM_LEFT {
+			@Override
+			Position translate(float x, float y, Rectangle bounds, Rectangle border) {
+				return Position.of((bounds.width() - border.width())/2f + x, (bounds.height() - border.height())/2f + y);
+			}
+		},
+
+		BOTTOM_RIGHT {
+			@Override
+			Position translate(float x, float y, Rectangle bounds, Rectangle border) {
+				return Position.of((border.width() - bounds.width())/2f - x, (bounds.height() - border.height())/2f + y);
+			}
+		},
+
+		TOP_LEFT {
+			@Override
+			Position translate(float x, float y, Rectangle bounds, Rectangle border) {
+				return Position.of((bounds.width() - border.width())/2f + x, (border.height() - bounds.height())/2f - y);
+			}
+		},
+
+		TOP_RIGHT {
+			@Override
+			Position translate(float x, float y, Rectangle bounds, Rectangle border) {
+				return Position.of((border.width() - bounds.width())/2f - x, (border.height() - bounds.height())/2f - y);
 			}
 		};
 

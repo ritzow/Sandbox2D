@@ -22,6 +22,6 @@ public class Icon implements GuiElement {
 	@Override
 	public Shape shape() {
 		//TODO rotated rectangle?
-		return new Rectangle(graphics.scaleX, graphics.scaleY);
+		return new Rectangle(graphics.model.width() * graphics.scaleX, graphics.model.height() * graphics.scaleY);
 	}
 }

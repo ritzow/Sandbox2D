@@ -54,16 +54,24 @@ public class StandardGuiRenderer implements GuiRenderer {
 	//Apply this Offset's transformation to the parameters (ie a left matrix multiply)
 	private static record RenderTransform(float opacity, float x, float y, float scaleX, float scaleY, float rotation) {
 		RenderTransform combine(float opacity, float x, float y, float scaleX, float scaleY, float rotation) {
-
 			if(x == 0.0f && y == 0.0f && scaleX == 1.0f && scaleY == 1.0f && rotation == 0.0f && opacity == 1.0f) {
 				return this;
+			} else if(this.rotation == 0.0f) {
+				return new RenderTransform(
+					this.opacity * opacity,
+					x * this.scaleX + this.x,
+					y * this.scaleY + this.y,
+					this.scaleX * scaleX,
+					this.scaleY * scaleY,
+					rotation
+				);
 			} else {
 				//https://en.wikipedia.org/wiki/Rotation_matrix
 				//TODO deal with weird negatives required for clockwise/proper rotation
 				float cos = (float)Math.cos(-this.rotation);
 				float sin = (float)Math.sin(-this.rotation);
 				return new RenderTransform(
-					this.opacity() * opacity,
+					this.opacity * opacity,
 					(x * cos - y * sin) * this.scaleX + this.x,
 					(x * sin + y * cos) * this.scaleY + this.y,
 					this.scaleX * scaleX,
@@ -134,18 +142,33 @@ public class StandardGuiRenderer implements GuiRenderer {
 	}
 
 	@Override
+	public void draw(GuiElement element) {
+		drawInternal(element, rt.peekFirst().transform);
+	}
+
+	@Override
 	public void draw(GuiElement element, float posX, float posY) {
 		draw(element, 1, posX, posY, 1, 1, 0);
 	}
 
+	//TODO add draw(GuiElement) which copies RenderTransform from parent
+
+	@Override
+	public void draw(GuiElement element, float opacity, float posX, float posY, float scaleX, float scaleY) {
+		drawInternal(element, rt.peekFirst().transform.combine(opacity, posX, posY, scaleX, scaleY, 0));
+	}
+
 	@Override
 	public void draw(GuiElement element, float opacity, float posX, float posY, float scaleX, float scaleY, float rotation) {
+		drawInternal(element, rt.peekFirst().transform.combine(opacity, posX, posY, scaleX, scaleY, rotation));
+	}
+
+	private void drawInternal(GuiElement element, RenderTransform transform) {
 		if(StandardClientOptions.DEBUG && DEBUG_PRINT_RENDER_TREE) {
 			System.out.println("  ".repeat(rt.size()) + element);
 		}
 		GuiLevel parent = rt.peekFirst();
 		parentBounds = parent.bounds;
-		RenderTransform transform = parent.transform.combine(opacity, posX, posY, scaleX, scaleY, rotation);
 		//TODO if parent is dynamically sized by children, shape() should be called instead
 		Rectangle bounds = element.shape(parent.bounds).toRectangle();
 		//transform mouse position into GUI element's coordinate system.

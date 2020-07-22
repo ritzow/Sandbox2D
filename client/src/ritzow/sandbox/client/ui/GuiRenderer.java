@@ -14,8 +14,14 @@ public interface GuiRenderer {
 	/** Draws a GUI element relative to its parent **/
 	void draw(Model model, float opacity, float posX, float posY, float scaleX, float scaleY, float rotation);
 
+	/** Draws a GUI element relative to its parent with no extra transformation **/
+	void draw(GuiElement element);
+
 	/** Draws a GUI element relative to its parent with no relative opacity, scaling, or rotation **/
 	void draw(GuiElement element, float posX, float posY);
+
+	/** Draws a GUI element relative to its parent with no rotation **/
+	void draw(GuiElement element, float opacity, float posX, float posY, float scaleX, float scaleY);
 
 	/** Draws a GUI element relative to its parent **/
 	void draw(GuiElement element, float opacity, float posX, float posY, float scaleX, float scaleY, float rotation);

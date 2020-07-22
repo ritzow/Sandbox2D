@@ -42,7 +42,7 @@ public class Button implements GuiElement {
 			renderer.draw(content, 1.0f, 0.0f, 0.0f, scale, scale, 0.0f);
 			this.scale = Math.max(1, scale);
 		} else {
-			renderer.draw(content, 0, 0);
+			renderer.draw(content);
 			scale = 1;
 		}
 
