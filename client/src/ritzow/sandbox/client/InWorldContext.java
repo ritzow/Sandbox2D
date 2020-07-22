@@ -9,6 +9,7 @@ import java.util.logging.Level;
 import ritzow.sandbox.client.audio.AudioSystem;
 import ritzow.sandbox.client.data.StandardClientOptions;
 import ritzow.sandbox.client.graphics.Display;
+import ritzow.sandbox.client.graphics.GameModels;
 import ritzow.sandbox.client.graphics.RenderManager;
 import ritzow.sandbox.client.input.Button;
 import ritzow.sandbox.client.input.ControlsContext;
@@ -16,6 +17,10 @@ import ritzow.sandbox.client.input.controller.InteractionController;
 import ritzow.sandbox.client.input.controller.TrackingCameraController;
 import ritzow.sandbox.client.network.Client;
 import ritzow.sandbox.client.network.GameTalker;
+import ritzow.sandbox.client.ui.GuiElement;
+import ritzow.sandbox.client.ui.element.*;
+import ritzow.sandbox.client.ui.element.BorderAnchor.Anchor;
+import ritzow.sandbox.client.ui.element.BorderAnchor.Side;
 import ritzow.sandbox.client.util.SerializationProvider;
 import ritzow.sandbox.client.world.ClientWorldRenderer;
 import ritzow.sandbox.client.world.block.ClientBlockProperties;
@@ -32,13 +37,18 @@ import static ritzow.sandbox.client.util.ClientUtility.log;
 import static ritzow.sandbox.network.Protocol.*;
 
 class InWorldContext implements GameTalker {
+	private static final long PLAYER_STATE_SEND_INTERVAL = Utility.frameRateToFrameTimeNanos(60);
+
 	private final Client client;
 	private final int playerID;
 	private InteractionController interactionControls;
 	private ClientWorldRenderer worldRenderer;
 	private TrackingCameraController cameraGrip;
 	private ClientPlayerEntity player;
+	private GuiElement overlayGUI;
+	private Holder<Icon> blockGUI;
 	private World world;
+
 	private ByteBuffer worldDownloadBuffer;
 	private final Consumer<Float> downloadProgressAction;
 	private CompletableFuture<World> worldBuildTask;
@@ -108,8 +118,6 @@ class InWorldContext implements GameTalker {
 		Map.entry(SLOT_SELECT_3, () -> selectSlot(2))
 	);
 
-	private static final long PLAYER_STATE_SEND_INTERVAL = Utility.frameRateToFrameTimeNanos(15);
-
 	public InWorldContext(Client client, int downloadSize, int playerID, Consumer<Float> downloadProgress) {
 		log().info("Downloading " + Utility.formatSize(downloadSize) + " of world data");
 		this.client = client;
@@ -150,6 +158,20 @@ class InWorldContext implements GameTalker {
 		cameraGrip = new TrackingCameraController(2.5f, player.getWidth() / 20f, player.getWidth() / 2f);
 		worldRenderer = new ClientWorldRenderer(GameState.modelRenderer(), cameraGrip.getCamera(), world);
 		interactionControls = new InteractionController();
+
+		overlayGUI = new BorderAnchor(
+			new Anchor(
+				new Text(client.getServerAddress().getAddress().toString(), RenderManager.FONT, 8, 0), Side.BOTTOM_RIGHT, 0.05f, 0.05f
+			),
+			new Anchor(
+				new Scaler(
+					blockGUI = new Holder<>(
+						new Icon(GameModels.MODEL_RED_SQUARE)
+					), 0.5f
+				), Side.BOTTOM_LEFT, 0.1f, 0.1f
+			)
+		);
+
 		GameState.display().setCursor(GameState.cursorPick());
 		client.setOnTimeout(() -> {
 			log().info("Timed out");
@@ -202,13 +224,15 @@ class InWorldContext implements GameTalker {
 
 	private void updateRender(Display display, long deltaTime) {
 		world.update(deltaTime);
-		cameraGrip.update(display, player, AudioSystem.getDefault(), deltaTime);
+		cameraGrip.update(IN_GAME_CONTEXT, player, AudioSystem.getDefault(), deltaTime);
 		int width = display.width(), height = display.height();
 		RenderManager.preRender(width, height);
 		worldRenderer.render(RenderManager.DISPLAY_BUFFER, width, height);
 		interactionControls.update(display, IN_GAME_CONTEXT, cameraGrip.getCamera(), this, world, player);
 		interactionControls.render(display, GameState.modelRenderer(), cameraGrip.getCamera(), world, player);
 		GameState.modelRenderer().flush(); //render any final queued unrendered models
+		GameState.guiRenderer().render(overlayGUI, RenderManager.DISPLAY_BUFFER, display, IN_GAME_CONTEXT, deltaTime, StandardClientOptions.GUI_SCALE);
+		GameState.modelRenderer().flush();
 		RenderManager.postRender();
 		display.refresh();
 	}
@@ -359,8 +383,19 @@ class InWorldContext implements GameTalker {
 	private void selectSlot(int slot) {
 		player.setSlot(slot);
 		GameState.display().setCursor(switch(slot) {
-			case 1, 2 -> GameState.cursorMallet();
-			default -> GameState.cursorPick();
+			case InteractionController.GRASS_PLACER -> {
+				blockGUI.set(new Icon(GameModels.MODEL_GRASS_BLOCK));
+				yield GameState.cursorMallet();
+			}
+			case InteractionController.DIRT_PLACER -> {
+				blockGUI.set(new Icon(GameModels.MODEL_DIRT_BLOCK));
+				yield GameState.cursorMallet();
+			}
+
+			default -> {
+				blockGUI.set(new Icon(GameModels.MODEL_RED_SQUARE));
+				yield GameState.cursorPick();
+			}
 		});
 	}
 }

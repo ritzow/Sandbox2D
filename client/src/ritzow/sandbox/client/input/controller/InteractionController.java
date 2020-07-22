@@ -14,6 +14,8 @@ import ritzow.sandbox.world.entity.PlayerEntity;
 public final class InteractionController {
 	private static final double ACTIVATE_INDICATOR_SPEED = Utility.degreesPerSecToRadiansPerNano(240);
 
+	public static final byte GRASS_PLACER = 1, DIRT_PLACER = 2, BLOCK_BREAKER = 0;
+
 	private long lastThrow, lastBreak, lastPlace;
 
 	public void setLastBreak(long time) {
@@ -29,8 +31,8 @@ public final class InteractionController {
 				camera, display.getCursorY(), height));
 		renderer.loadViewMatrix(camera, width, height);
 		switch(player.selected()) {
-			case 1 -> renderToolOvelay(world, renderer, player, GameModels.MODEL_GRASS_BLOCK, blockX, blockY);
-			case 2 -> renderToolOvelay(world, renderer, player, GameModels.MODEL_DIRT_BLOCK, blockX, blockY);
+			case GRASS_PLACER -> renderToolOvelay(world, renderer, player, GameModels.MODEL_GRASS_BLOCK, blockX, blockY);
+			case DIRT_PLACER -> renderToolOvelay(world, renderer, player, GameModels.MODEL_DIRT_BLOCK, blockX, blockY);
 			default -> renderer.queueRender(
 				GameModels.MODEL_RED_SQUARE,
 				computeOpacity(Utility.canBreak(player, lastPlace, world, blockX, blockY)),
