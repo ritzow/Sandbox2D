@@ -34,7 +34,6 @@ public final class ClientWorldRenderer {
 		//render before loading view matrix
 		float scale = 2f * (width > height ? width / (float)height : height / (float)width);
 		program.queueRender(GameModels.MODEL_SKY, 1.0f, 0, 0, scale, scale, 0);
-		program.flush();
 		//load the view transformation
 		program.loadViewMatrix(camera, width, height);
 
@@ -59,13 +58,14 @@ public final class ClientWorldRenderer {
 			for(int column = leftBound; column <= rightBound; column++) {
 				var back = (ClientBlockProperties)background.get(column, row);
 				var front = (ClientBlockProperties)foreground.get(column, row);
+				float exposure = (float)row/foreground.getHeight();
 
 				if(back != null && (front == null || front.isTransparent())) {
-					program.queueRender(back.getModel(), 0.5f, column, row, 1.0f, 1.0f, 0.0f);
+					program.queueRender(back.getModel(), 1.0f, exposure/2f, column, row, 1.0f, 1.0f, 0.0f);
 				}
 
 				if(front != null) {
-					program.queueRender(front.getModel(), 1.0f, column, row, 1.0f, 1.0f, 0.0f);
+					program.queueRender(front.getModel(), 1.0f, exposure, column, row, 1.0f, 1.0f, 0.0f);
 				}
 			}
 		}
