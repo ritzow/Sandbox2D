@@ -7,12 +7,9 @@ import ritzow.sandbox.client.graphics.RenderManager;
 import ritzow.sandbox.client.input.ControlsContext;
 import ritzow.sandbox.client.ui.GuiElement;
 import ritzow.sandbox.client.ui.StandardGuiRenderer;
-import ritzow.sandbox.client.ui.element.BorderAnchor;
+import ritzow.sandbox.client.ui.element.*;
 import ritzow.sandbox.client.ui.element.BorderAnchor.Anchor;
 import ritzow.sandbox.client.ui.element.BorderAnchor.Side;
-import ritzow.sandbox.client.ui.element.Button;
-import ritzow.sandbox.client.ui.element.Text;
-import ritzow.sandbox.client.ui.element.VBox;
 
 import static ritzow.sandbox.client.input.Control.*;
 
@@ -45,13 +42,12 @@ class MainMenuContext {
 
 	MainMenuContext() {
 		GameState.setGuiRenderer(new StandardGuiRenderer(GameState.modelRenderer()));
-
 		root = new BorderAnchor(
 			new Anchor(new VBox(0.1f,
-				new Button("Join Server", GameModels.MODEL_GREEN_FACE, MainMenuContext.this::startJoin),
+				new Scaler(new Button("Join Server", GameModels.MODEL_GREEN_FACE, MainMenuContext.this::startJoin),0.5f),
 				new Button("Quit", GameModels.MODEL_SKY, GameLoop::stop)
 			), Side.LEFT, 0.1f, 0),
-			new Anchor(new Text("Sandbox2D 😎 cool!", RenderManager.FONT, 15, -0.3f), Side.TOP, 0, 0.01f),
+			new Anchor(new Text("Sandbox2D", RenderManager.FONT, 15, -0.03f), Side.TOP, 0, 0.05f),
 			new Anchor(new Text(StandardClientOptions.getServerAddress().toString(), RenderManager.FONT, 7, 0), Side.BOTTOM, 0, 0.05f)
 		);
 	}

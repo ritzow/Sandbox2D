@@ -304,8 +304,6 @@ public class World implements Transportable, Iterable<Entity> {
 					resolveEntityCollision(e, entities.get(j), nanoseconds);
 				}
 
-				//TODO fix getting stuck on block edges when movement during jumping is disabled.
-				//can revert to previous system
 				//Check for entity collisions with blocks
 				if(e.collidesWithBlocks()) {
 					resolveBlockCollisions(e, nanoseconds);

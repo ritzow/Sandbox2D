@@ -37,11 +37,12 @@ public final class ClientItemEntity<I extends Item> extends ItemEntity<I> implem
 	}
 
 	@Override
-	public void render(ModelRenderer renderer) {
+	public void render(ModelRenderer renderer, float exposure) {
 		Graphics g = ((Graphics)item);
 		renderer.queueRender(
 			g.getModel(),
 			g.getOpacity(),
+			exposure,
 			positionX,
 			positionY,
 			g.getScaleX() * 0.5f,

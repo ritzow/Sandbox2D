@@ -1,9 +1,10 @@
 #Options file
 
 use_new_opengl	= true
+vsync			= false
 fps_print		= false
 fps_limit		= 120
 use_internet	= false
-gui_scale		= 501
+gui_scale		= 500
 debug			= false
 lefty			= true

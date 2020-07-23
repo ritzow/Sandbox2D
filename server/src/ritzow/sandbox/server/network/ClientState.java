@@ -39,7 +39,6 @@ public class ClientState extends ClientNetworkInfo {
 	}
 
 	public void sendRecorded() {
-		System.out.println(recordedSend.size());
 		while(!recordedSend.isEmpty()) {
 			var val =recordedSend.poll();
 			System.out.println(Bytes.getShort(val, 0));

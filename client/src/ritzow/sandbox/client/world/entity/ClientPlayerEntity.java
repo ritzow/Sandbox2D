@@ -21,12 +21,13 @@ public class ClientPlayerEntity extends PlayerEntity implements Renderable {
 	}
 
 	@Override
-	public void render(ModelRenderer renderer) {
+	public void render(ModelRenderer renderer, float exposure) {
 		float positionX = this.positionX;
 		float positionY = this.positionY;
 		renderer.queueRender(
 			GameModels.MODEL_GREEN_FACE,
 			1.0f,
+			exposure,
 			positionX,
 			positionY + (down ? 0 : SIZE_SCALE / 2),
 			SIZE_SCALE,
@@ -37,6 +38,7 @@ public class ClientPlayerEntity extends PlayerEntity implements Renderable {
 			renderer.queueRender(
 				GameModels.MODEL_RED_SQUARE,
 				1.0f,
+				exposure,
 				positionX,
 				positionY - SIZE_SCALE / 2,
 				SIZE_SCALE,

@@ -152,6 +152,7 @@ public class Client implements AutoCloseable {
 		if(reliable) lastSendReliableID = sendMessageID;
 		sendMessageID++;
 		sendQueue.add(packet); //TODO don't queue the packet if it is unreliable and the send queue is empty
+		//TODO send immediately when there are no queued packets, even if reliable?
 	}
 
 	/**

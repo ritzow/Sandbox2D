@@ -17,7 +17,7 @@ public class ClientBombEntity extends BombEntity implements Renderable {
 	}
 
 	@Override
-	public void render(ModelRenderer program) {
+	public void render(ModelRenderer program, float exposure) {
 		program.queueRender(
 			GameModels.MODEL_RED_SQUARE,
 			1.0f,

@@ -80,7 +80,7 @@ public final class ClientWorldRenderer {
 
 			//check if the entity is visible inside the viewport and render it
 			if(posX < worldRight + halfWidth && posX > worldLeft - halfWidth && posY < worldTop + halfHeight && posY > worldBottom - halfHeight) {
-				((Renderable)e).render(program);
+				((Renderable)e).render(program, posY/foreground.getHeight());
 			}
 		}
 	}

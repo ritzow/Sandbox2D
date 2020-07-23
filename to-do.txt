@@ -12,3 +12,6 @@ Implement Vulkan renderer
 Add binary glTF support
 Create a positioning system for in-game complex models that GUI elements have (ie can assume standard scaling and centered at origin rendering)
 Possibly implement GUI control "consumption" ie a gui element can prevent other gui elements from knowing about mouse hovers, button presses, etc.
+Edge of rotation animations are really choppy, investigate
+For lighting system, I can use "exposure" system to create someone realistic darkness in underground areas and normal or brighter exposure above ground during day,
+then use dynamic lighting system to light up areas with light sources (which could also be used in tandem with exposure system, but not necessary).

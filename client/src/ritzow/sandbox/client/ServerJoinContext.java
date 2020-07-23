@@ -16,6 +16,7 @@ import static ritzow.sandbox.client.data.StandardClientOptions.getServerAddress;
 import static ritzow.sandbox.client.util.ClientUtility.log;
 import static ritzow.sandbox.network.Protocol.TYPE_SERVER_CONNECT_ACKNOWLEDGMENT;
 
+//TODO merge this class with MainMenuContext
 class ServerJoinContext {
 	private Client client;
 	private InWorldContext worldContext;
