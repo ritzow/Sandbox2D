@@ -1,13 +1,11 @@
-#version 450 core
+#version 410 core
 
-layout(location = 1) in vec2 passTextureCoord;
-layout(location = 0) out vec4 pixelColor;
-
+in vec2 passTextureCoord;
+out vec4 pixelColor;
 uniform sampler2D atlasTexture;
-layout(location = 0) uniform float opacity;
+uniform float opacity, exposure;
 
 void main() {
 	vec4 color = texture(atlasTexture, passTextureCoord);
-	color.a = color.a * opacity;
-	pixelColor = color;
+	pixelColor = vec4(color.rgb * exposure, color.a * opacity);
 }

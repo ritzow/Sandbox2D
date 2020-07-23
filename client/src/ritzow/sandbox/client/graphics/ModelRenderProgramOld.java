@@ -5,17 +5,17 @@ import org.lwjgl.BufferUtils;
 
 import static org.lwjgl.opengl.GL46C.*;
 
-//TODO revert this and optimize it for single glDrawElements calls, make queueRender just render each individually or something.
-//TODO create common superclass for ModelRenderProgram460 and ModelRenderProgram450
 public class ModelRenderProgramOld extends ModelRenderProgramBase {
-	protected final int uniform_transform;
-	private float lastOpacity = 0;
+	private final int uniform_transform, uniform_opacity, uniform_exposure;
+	private float lastOpacity = 0, lastExposure = 0;
 	private final FloatBuffer transform;
 
 	ModelRenderProgramOld(Shader vertexShader, Shader fragmentShader,
 						  int textureAtlas, ModelData... models) {
 		super(vertexShader, fragmentShader, textureAtlas, models);
+		this.uniform_opacity = getUniformLocation("opacity");
 		this.uniform_transform = getUniformLocation("transform");
+		this.uniform_exposure = getUniformLocation("exposure");
 		this.transform = BufferUtils.createFloatBuffer(16);
 	}
 
@@ -23,10 +23,25 @@ public class ModelRenderProgramOld extends ModelRenderProgramBase {
 	public void queueRender(Model model, float opacity,
 							float posX, float posY, float scaleX, float scaleY,
 							float rotation) {
+		queueRender(model, opacity, 1.0f, posX, posY, scaleX, scaleY, rotation);
+	}
+
+	@Override
+	public void queueRender(Model model, float opacity, float exposure,
+							float posX, float posY, float scaleX, float scaleY,
+							float rotation) {
+
+		//TODO optimize uniforms with a uniform buffer object
 		if(opacity != lastOpacity) {
 			setFloat(uniform_opacity, opacity);
 			lastOpacity = opacity;
 		}
+
+		if(exposure != lastExposure) {
+			setFloat(uniform_exposure, exposure);
+			lastExposure = exposure;
+		}
+
 		glUniformMatrix4fv(uniform_transform, false,
 			prepInstanceData(transform, posX, posY, scaleX, scaleY, rotation).flip());
 		transform.clear();

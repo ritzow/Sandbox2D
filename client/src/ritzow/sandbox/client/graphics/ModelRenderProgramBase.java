@@ -34,12 +34,11 @@ public abstract class ModelRenderProgramBase extends ShaderProgram implements Mo
 		0, 0, 0, 1,
 	};
 
-	protected final int uniform_opacity, uniform_view, attribute_position, attribute_textureCoord, vaoID, atlasTexture;
+	protected final int uniform_view, attribute_position, attribute_textureCoord, vaoID, atlasTexture;
 	protected final Map<String, Model> modelProperties;
 
 	public ModelRenderProgramBase(Shader vertex, Shader fragment, int textureAtlas, ModelData... models) {
 		super(vertex, fragment);
-		this.uniform_opacity = getUniformLocation("opacity");
 		this.uniform_view = getUniformLocation("view");
 		this.attribute_position = getAttributeLocation("position");
 		this.attribute_textureCoord = getAttributeLocation("textureCoord");

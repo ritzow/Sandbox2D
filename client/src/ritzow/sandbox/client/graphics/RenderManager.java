@@ -39,7 +39,8 @@ public class RenderManager {
 			glEnable(GL_DEBUG_OUTPUT);
 			glDebugMessageCallback(RenderManager::debugCallback, 0);
 		}
-		glDisable(GL_DEPTH_TEST);
+		//glDisable(GL_DEPTH_TEST);
+		glDepthMask(false);
 		glDisable(GL_MULTISAMPLE);
 		glEnablei(GL_BLEND, RenderManager.MAIN_DRAW_BUFFER_INDEX);
 		//TODO vsync doesnt work in fullscreen

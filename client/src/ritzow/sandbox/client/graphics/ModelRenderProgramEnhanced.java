@@ -47,9 +47,14 @@ public final class ModelRenderProgramEnhanced extends ModelRenderProgramBase {
 
 	@Override
 	public void queueRender(Model model, float opacity, float posX, float posY, float scaleX, float scaleY, float rotation) {
+		queueRender(model, opacity, 1.0f, posX, posY, scaleX, scaleY, rotation);
+	}
+
+	@Override
+	public void queueRender(Model model, float opacity, float exposure, float posX, float posY, float scaleX, float scaleY, float rotation) {
 		Objects.requireNonNull(model);
 		putRenderInstance(drawBuffer.position(offsetsSize + (renderIndex + instanceCount) * INSTANCE_STRUCT_SIZE),
-			opacity, posX, posY, scaleX, scaleY, rotation);
+			opacity, exposure, posX, posY, scaleX, scaleY, rotation);
 		if(instanceCount == 0) { //aka this.model == null
 			this.model = model;
 			instanceCount++;
@@ -121,11 +126,11 @@ public final class ModelRenderProgramEnhanced extends ModelRenderProgramBase {
 	}
 
 	private static void putRenderInstance(ByteBuffer drawBuffer,
-		float opacity, float posX, float posY, float scaleX, float scaleY, float rotation) {
+		float opacity, float exposure, float posX, float posY, float scaleX, float scaleY, float rotation) {
 		double rotX = Math.cos(rotation);
 		double rotY = Math.sin(rotation);
 		drawBuffer
-			.putFloat(opacity).putInt(0).putInt(0).putInt(0) //align						 				 //opacity and padding
+			.putFloat(opacity)					.putFloat(exposure)					.putInt(0).putInt(0) //align //opacity and padding
 			.putFloat((float)(scaleX * rotX))	.putFloat((float)(scaleX * -rotY))	.putFloat(0).putFloat(0) //column major matrix
 			.putFloat((float)(scaleY * rotY))	.putFloat((float)(scaleY * rotX))	.putFloat(0).putFloat(0)
 			.putFloat(0)						.putFloat(0)						.putFloat(0).putFloat(0)
