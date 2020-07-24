@@ -69,16 +69,15 @@ public final class Bytes {
 	public static int concatenate(byte[] destination, int offset, int headerSize, byte[]... arrays) {
 		if(offset < 0)
 			throw new IndexOutOfBoundsException("offset cannot be less than zero");
+		if(headerSize < 0)
+			throw new IndexOutOfBoundsException("headerSize cannot be less than zero");
 		int index = offset;
 		for(byte[] array : arrays) {
-			System.arraycopy(array, headerSize, destination, index, array.length - headerSize);
-			index += array.length;
+			int length = array.length - headerSize;
+			System.arraycopy(array, headerSize, destination, index, length);
+			index += length;
 		}
 		return index - offset;
-	}
-
-	public static int concatenate(byte[] destination, int offset, byte[]... arrays) {
-		return concatenate(destination, offset, 0, arrays);
 	}
 
 	/**
@@ -88,15 +87,17 @@ public final class Bytes {
 	 * @return a new byte array containing the provided arrays
 	 */
 	public static byte[] concatenate(int offset, byte[]... arrays) {
-		int length = offset;
+		int length = 0;
 		for(byte[] array : arrays)
 			length += array.length;
-		return concatenate(offset, length, arrays);
+		byte[] dest = new byte[offset + length];
+		concatenate(dest, offset, 0, arrays);
+		return dest;
 	}
 
 	private static byte[] concatenate(int offset, int totalBytes, byte[]... arrays) {
 		byte[] dest = new byte[offset + totalBytes];
-		concatenate(dest, offset, arrays);
+		concatenate(dest, offset, 0, arrays);
 		return dest;
 	}
 

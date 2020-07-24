@@ -10,6 +10,8 @@ public class SerializerReaderWriter implements Serializer, Deserializer {
 	private final Map<Short, ObjectBuilder> deserializeLookup;
 	private final Map<Class<? extends Transportable>, Short> serializeLookup;
 
+	public static final short NULL_TYPE = 0;
+
 	public SerializerReaderWriter() {
 		this.deserializeLookup = new HashMap<Short, ObjectBuilder>();
 		this.serializeLookup = new HashMap<Class<? extends Transportable>, Short>();
@@ -42,25 +44,21 @@ public class SerializerReaderWriter implements Serializer, Deserializer {
 	public byte[] serialize(Transportable object) {
 		//null objects have 0 length
 		if(object == null)
-			return new byte[4]; //init to zero
+			return Bytes.of(NULL_TYPE); //just a type ID of 0 to represent null
 
 		Short typeID = serializeLookup.get(object.getClass());
 		if(typeID == null)
 			throw new TypeNotRegisteredException("Class " + object.getClass().getName() + " is not registered");
 		byte[] objectBytes = object.getBytes(this);
 
-		int objectLength = objectBytes.length + 2;
 		//serialized object length, typeID, object data
-		byte[] data = new byte[4 + objectLength];
-
-		//first four bytes are the length of the rest of the data (INCLUDING THE TYPE)
-		Bytes.putInteger(data, 0, objectLength);
+		byte[] data = Bytes.concatenate(Short.BYTES + Integer.BYTES, objectBytes);
 
 		//put the short value representing the type of object serialized after the data length
-		Bytes.putShort(data, 4, typeID);
+		Bytes.putShort(data, 0, typeID);
 
-		//put the object data into the final byte array
-		Bytes.copy(objectBytes, data, 6);
+		//first four bytes are the length of the data (EXCLUDING THE TYPE)
+		Bytes.putInteger(data, Short.BYTES, objectBytes.length);
 
 		return data;
 	}
@@ -72,7 +70,7 @@ public class SerializerReaderWriter implements Serializer, Deserializer {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public <T> T deserialize(byte[] object) throws TypeNotRegisteredException { //TODO add inputstream version
+	public <T> T deserialize(byte[] object) throws TypeNotRegisteredException {
 		return getReader(object).readObject();
 	}
 
@@ -91,6 +89,31 @@ public class SerializerReaderWriter implements Serializer, Deserializer {
 			@Override
 			public byte readByte() {
 				return bytes.get();
+			}
+
+			@Override
+			public double readDouble() {
+				return bytes.getDouble();
+			}
+
+			@Override
+			public float readFloat() {
+				return bytes.getFloat();
+			}
+
+			@Override
+			public long readLong() {
+				return bytes.getLong();
+			}
+
+			@Override
+			public int readInteger() {
+				return bytes.getInt();
+			}
+
+			@Override
+			public short readShort() {
+				return bytes.getShort();
 			}
 
 			@Override
@@ -156,39 +179,35 @@ public class SerializerReaderWriter implements Serializer, Deserializer {
 
 	private abstract class AbstractDataReader implements TransportableDataReader {
 		@Override
-		public abstract byte readByte();
-		@Override
-		public abstract byte[] readBytes(int count);
-		@Override
-		public abstract void readBytes(byte[] dest, int offset);
-		@Override
-		public abstract int remaining();
-		@Override
-		public abstract void skip(int bytes);
-
-		@Override
 		@SuppressWarnings("unchecked")
 		public <T extends Transportable> T readObject() {
 			try {
-				int length = readInteger();
-				if(length == 0) { //length of 0 represents null
-					return null;
-				} else {
-					int rem = remaining();
-					short type = readShort();
-					//System.out.println("Reading object of type " + type + " with length " + length);
-					ObjectBuilder func = deserializeLookup.get(type); //get associated function
-					if(func == null) throw new TypeNotRegisteredException(
-						"Cannot deserialize unregistered type " + type);
-					T obj = (T)func.apply(this);
-					int bytesRead = rem - remaining();
-					if(bytesRead != length)
-						throw new SerializationException("Read "
-							+ (bytesRead > length ? (bytesRead - length)
-							+ " bytes too many" : (length - bytesRead) + " bytes too few")
-							+ " while deserializing type " + type + " of length " + length + ".");
-					return obj;
-				}
+				short type = readShort();
+				return switch(type) {
+					default -> {
+						int length = readInteger();
+						int totalRemaining = remaining();
+						ObjectBuilder func = deserializeLookup.get(type); //get associated function
+						if(func == null) throw new TypeNotRegisteredException(
+							"Cannot deserialize unregistered type " + type);
+						T obj = (T)func.apply(this);
+						int bytesRead = totalRemaining - remaining();
+						if(bytesRead > length) {
+							throw new SerializationException("Read " +
+							 (bytesRead - length) + " bytes too many while deserializing type "
+								+ type + " of length " + length + ".");
+						} else if(bytesRead < length) {
+							throw new SerializationException("Read " +
+								(length - bytesRead) + " bytes too few while deserializing type "
+								+ type + " of length " + length + ".");
+						}
+						yield obj;
+					}
+
+					case NULL_TYPE -> {
+						yield null;
+					}
+				};
 			} catch(IndexOutOfBoundsException | BufferUnderflowException e) {
 				throw new SerializationException("object read too many bytes and reached the end of the data");
 			}
@@ -209,6 +228,7 @@ public class SerializerReaderWriter implements Serializer, Deserializer {
 			long value = 0;
 			for (int i = 0; i < 8; i++) {
 				value = (value << 8) + (readByte() & 0xff);
+				//TODo does value = (value << 8) & readByte() work?
 			}
 			return value;
 		}
