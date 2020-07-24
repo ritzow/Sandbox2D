@@ -15,6 +15,7 @@ import static ritzow.sandbox.client.input.Control.*;
 
 class MainMenuContext {
 	private final GuiElement root;
+	private final Holder<Text> serverLoadProgress;
 	private ServerJoinContext joinContext;
 
 	private final ControlsContext MAIN_MENU_CONTEXT = new ControlsContext(
@@ -48,7 +49,10 @@ class MainMenuContext {
 				new Button("Quit", GameModels.MODEL_SKY, GameLoop::stop)
 			), Side.LEFT, 0.1f, 0),
 			new Anchor(new Text("Sandbox2D", RenderManager.FONT, 15, -0.03f), Side.TOP, 0, 0.05f),
-			new Anchor(new Text(StandardClientOptions.getServerAddress().toString(), RenderManager.FONT, 7, 0), Side.BOTTOM, 0, 0.05f)
+			new Anchor(new VBox(0.1f,
+				serverLoadProgress = new Holder<>(new Text("Not loading", RenderManager.FONT, 7, 0)),
+				new Text(StandardClientOptions.getServerAddress().toString(), RenderManager.FONT, 7, 0)
+			), Side.BOTTOM, 0, 0.05f)
 		);
 	}
 
@@ -93,6 +97,8 @@ class MainMenuContext {
 	}
 
 	private void startJoin() {
-		joinContext = new ServerJoinContext();
+		serverLoadProgress.set(new Text("Joining server", RenderManager.FONT, 7, 0));
+		joinContext = new ServerJoinContext(progress ->
+			serverLoadProgress.set(new Text("Loading " + (int)(progress * 100) + "%", RenderManager.FONT, 7, 0)));
 	}
 }

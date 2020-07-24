@@ -4,12 +4,11 @@ import java.io.IOException;
 import java.net.BindException;
 import java.net.PortUnreachableException;
 import java.nio.ByteBuffer;
+import java.util.function.DoubleConsumer;
 import java.util.logging.Level;
-import ritzow.sandbox.client.data.StandardClientOptions;
 import ritzow.sandbox.client.network.Client;
 import ritzow.sandbox.network.NetworkUtility;
 import ritzow.sandbox.network.Protocol;
-import ritzow.sandbox.util.Utility;
 
 import static ritzow.sandbox.client.data.StandardClientOptions.getLocalAddress;
 import static ritzow.sandbox.client.data.StandardClientOptions.getServerAddress;
@@ -20,9 +19,11 @@ import static ritzow.sandbox.network.Protocol.TYPE_SERVER_CONNECT_ACKNOWLEDGMENT
 class ServerJoinContext {
 	private Client client;
 	private InWorldContext worldContext;
+	private final DoubleConsumer progressCallback;
 
-	public ServerJoinContext() {
+	public ServerJoinContext(DoubleConsumer progressCallback) {
 		try {
+			this.progressCallback = progressCallback;
 			log().info(() -> "Connecting to " + NetworkUtility.formatAddress(getServerAddress())
 				+ " from " + NetworkUtility.formatAddress(getLocalAddress()));
 			client = Client.create(getLocalAddress(), getServerAddress())
@@ -89,9 +90,7 @@ class ServerJoinContext {
 				case Protocol.CONNECT_STATUS_WORLD -> {
 					log().info("Connected to server");
 					//worldSize and playerID integers
-					worldContext = new InWorldContext(client, data.getInt(), data.getInt(), StandardClientOptions.DEBUG ? progress -> {
-						log().info("Donwloaded " + Utility.formatNumber(progress * 100, 0) + "% of world.");
-					} : progress -> {});
+					worldContext = new InWorldContext(client, data.getInt(), data.getInt(), progressCallback);
 					return false;
 				}
 
