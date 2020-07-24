@@ -1,6 +1,7 @@
 package ritzow.sandbox.world;
 
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.Objects;
 import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.data.Serializer;
@@ -10,43 +11,37 @@ import ritzow.sandbox.world.block.Block;
 
 public final class BlockGrid implements Transportable {
 	private final Block[] blocks;
-	private final int width;
+	private final int width, height, layers;
 
-	public BlockGrid(int width, int height) {
-		blocks = new Block[width * height];
+	public BlockGrid(int layers, int width, int height) {
+		blocks = new Block[layers * width * height];
 		this.width = width;
+		this.layers = layers;
+		this.height = height;
 	}
 
 	public BlockGrid(TransportableDataReader data) {
-		int width = data.readInteger();
-		int height = data.readInteger();
-		this.width = width;
-		blocks = new Block[width * height];
-		for(int row = 0; row < height; row++) {
-			for(int column = 0; column < width; column++) {
-				blocks[width * row + column] = data.readObject();
-			}
+		//instance fields are evaluated inthe order they appear in the constructor
+		this.width = data.readInteger();
+		this.height = data.readInteger();
+		this.layers = data.readInteger();
+		blocks = new Block[layers * width * height];
+		for(int i = 0; i < blocks.length; i++) {
+			blocks[i] = data.readObject();
 		}
-		data.readInteger(); //TODO WHYHYHYHYHYHYHY??
-		data.readInteger();
 	}
 
 	@Override
 	public byte[] getBytes(Serializer ser) {
-		int width = getWidth();
-		int height = getHeight();
-
-		byte[][] blockData = new byte[width * height][];
-
-		for(int row = 0; row < height; row++) {
-			for(int column = 0; column < width; column++) {
-				blockData[row * width + column] = ser.serialize(get(column, row));
-			}
+		//Store all serialized block data
+		byte[][] blockData = new byte[blocks.length][];
+		for(int i = 0; i < blocks.length; i++) {
+			blockData[i] = ser.serialize(blocks[i]);
 		}
-
-		byte[] data = Bytes.concatenate(8, blockData);
-		Bytes.putInteger(data, 0, width);
-		Bytes.putInteger(data, 4, height);
+		byte[] data = Bytes.concatenate(12, blockData);
+		Bytes.putInteger(data, 0, getWidth());
+		Bytes.putInteger(data, 4, getHeight());
+		Bytes.putInteger(data, 8, layers);
 		return data;
 	}
 
@@ -55,21 +50,29 @@ public final class BlockGrid implements Transportable {
 		int width = getWidth();
 		int height = getHeight();
 		String border = "─".repeat(width);
-		StringBuilder builder = new StringBuilder(width * height)
-				.append('┌').append(border).append('┐').append('\n');
-		for(int row = height - 1; row >= 0; --row) {
-			builder.append('│');
-			for(int column = 0; column < width; ++column) {
-				Block block = get(column, row);
-				builder.append(block == null ? " " : Character.toUpperCase(block.getName().charAt(0)));
+		StringBuilder builder = new StringBuilder(layers * (width + 2) * (height + 2));
+		for(int layer = 0; layer < layers; layer++) {
+			builder.append('┌').append(border).append('┐').append('\n');
+			for(int row = height - 1; row >= 0; --row) {
+				builder.append('│');
+				for(int column = 0; column < width; ++column) {
+					Block block = get(layer, column, row);
+					System.out.println(column + " " + row + " " + compute(layer, column, row));
+					builder.append(block == null ? " " : Character.toUpperCase(block.getName().charAt(0)));
+				}
+				builder.append('│').append('\n');
 			}
-			builder.append('│').append('\n');
+			builder.append('└').append(border).append('┘').append('\n');
 		}
-		return builder.append('└').append(border).append('┘').toString();
+		return builder.toString();
 	}
 
-	public boolean isValid(int x, int y) {
-		return y >= 0 && x >= 0 && y < getHeight() && x < getWidth();
+	public boolean isValid(int layer, int x, int y) {
+		return layer < layers && y >= 0 && x >= 0 && y < getHeight() && x < getWidth();
+	}
+
+	public boolean isValidAndBlock(int layer, int x, int y) {
+		return isValid(layer, x, y) && blocks[compute(layer, x, y)] != null;
 	}
 
 	/**
@@ -79,55 +82,104 @@ public final class BlockGrid implements Transportable {
 	 * @return true if there is a block at x, y
 	 * @throws IllegalArgumentException if x or y is not in the block grid
 	 */
-	public Block get(int x, int y) {
+	public Block get(int layer, int x, int y) {
 		try {
-			return blocks[width * y + x];
+			return blocks[compute(checkLayer(layer), x, y)];
 		} catch(ArrayIndexOutOfBoundsException e) {
-			throw new IllegalArgumentException("invalid coordinates " + x + ", " + y);
+			throw new IllegalArgumentException("Invalid coordinates layer "
+				+ layer + ", pos ("  + x + ", " + y + ") in world sized "
+				+ getWidth() + " X " + getHeight() + " X " + layers
+				+ " layers, element " + compute(layer, x, y) + "/" + blocks.length);
 		}
 	}
 
-	public Block get(float worldX, float worldY) {
-		return get(Math.round(worldX), Math.round(worldY));
+	private int checkLayer(int layer) {
+		if(layer >= layers)
+			throw new IllegalArgumentException("invalid layer " + layer + ", maximum is " + (layers - 1));
+		return layer;
 	}
 
-	public Block set(int x, int y, Block block) {
+	public Block get(int layer, float worldX, float worldY) {
+		return get(layer, Math.round(worldX), Math.round(worldY));
+	}
+
+	public Block set(int layer, int x, int y, Block block) {
 		try {
-			Block previous = blocks[width * y + x];
-			blocks[width * y + x] = block;
+			int index = compute(checkLayer(layer), x, y);
+			Block previous = blocks[index];
+			blocks[index] = block;
 			return previous;
 		} catch(ArrayIndexOutOfBoundsException e) {
 			throw new IllegalArgumentException("invalid coordinates " + x + ", " + y);
 		}
 	}
 
+	/** Determines the memory layout of the block grid dimensions **/
+	private int compute(int layer, int x, int y) {
+		//Want layout to be row -> column ->
+		//return width * layers * y + x * layers;
+		//get start of row: width * layers * y
+		//get offset into a single row: layers * x + layer
+		//combined: (width * layers * y) + (layers * x + layer)
+		//optimized:
+		return layers * (width * y + x) + layer;
+	}
+
+	/** Fills all layers of a rectangular region with the provided block instance **/
 	public void fill(Block block, int x1, int y1, int width, int height) {
-		int x2 = x1 + width;
 		int y2 = y1 + height;
+		int columnStart = x1 * layers;
+		int columnEnd = (x1 + width) * layers;
 		for(int row = y1; row < y2; ++row) {
-			int rowStart = this.width * row;
-			Arrays.fill(blocks, rowStart + x1, rowStart + x2, block);
+			int rowStart = this.width * layers * row;
+			Arrays.fill(blocks, rowStart + columnStart, rowStart + columnEnd, block);
 		}
 	}
 
-	public Block destroy(World world, float x, float y) {
-		return destroy(world, Math.round(x), Math.round(y));
+	public Iterator<Block> blockIterator(int layerLast, int layerFirst, int x, int y, int width, int height) {
+		return new Iterator<Block>() { //TODO test this to see that it works
+			int current;
+			final int last;
+
+			{
+
+				last = (layerLast - layerFirst) * (width * height) - 1;
+					//compute(layerLast, x + width, y + height);
+			}
+
+			@Override
+			public boolean hasNext() {
+				return current < last;
+			}
+
+			@Override
+			public Block next() {
+				//current = width * y + x + layer;
+				//x = current - layer - width * y
+				throw new UnsupportedOperationException("not implemented");
+				//return null; //blocks[]; //TODO implement blockIterator
+			}
+		};
 	}
 
-	public Block destroy(World world, int x, int y) {
-		Block prev = set(x, y, null);
+	public Block destroy(World world, int layer, float x, float y) {
+		return destroy(world, layer, Math.round(x), Math.round(y));
+	}
+
+	public Block destroy(World world, int layer, int x, int y) {
+		Block prev = set(layer, x, y, null);
 		if(prev != null)
 			prev.onBreak(world, this, x, y);
 		return prev;
 	}
 
-	public boolean place(World world, float x, float y, Block block) {
-		return place(world, Math.round(x), Math.round(y), block);
+	public boolean place(World world, int layer, float x, float y, Block block) {
+		return place(world, layer, Math.round(x), Math.round(y), block);
 	}
 
-	public boolean place(World world, int x, int y, Block block) {
-		if(!isBlock(x, y)) {
-			set(x, y, Objects.requireNonNull(block));
+	public boolean place(World world, int layer, int x, int y, Block block) {
+		if(!isBlock(layer, x, y)) {
+			set(layer, x, y, Objects.requireNonNull(block));
 			block.onPlace(world, this, x, y);
 			return true;
 		}
@@ -140,23 +192,23 @@ public final class BlockGrid implements Transportable {
 	 * @param y the vertical block coordinate to check
 	 * @return whether or not there is a block at the specified block coordinates
 	 */
-	public boolean isBlock(int x, int y) {
-		return get(x, y) != null;
+	public boolean isBlock(int layer, int x, int y) {
+		return get(layer, x, y) != null;
 	}
 
 	/** Returns whether or not there is a block at the specified world coordinates
 	 * @param worldX The world x coordinate to check.
 	 * @param worldY The world y coordinate to check.
 	 * @return true if there is a block at the specified coordinates. **/
-	public boolean isBlock(float worldX, float worldY) {
-		return isBlock(Math.round(worldX), Math.round(worldY));
+	public boolean isBlock(int layer, float worldX, float worldY) {
+		return isBlock(layer, Math.round(worldX), Math.round(worldY));
 	}
 
-	public boolean isSolidBlockAdjacent(int blockX, int blockY) {
-		return 	(isValid(blockX + 1, blockY) && isBlock(blockX + 1, blockY)) ||
-				(isValid(blockX - 1, blockY) && isBlock(blockX - 1, blockY)) ||
-				(isValid(blockX, blockY + 1) && isBlock(blockX, blockY + 1)) ||
-				(isValid(blockX, blockY - 1) && isBlock(blockX, blockY - 1));
+	public boolean isSolidBlockAdjacent(int layer, int blockX, int blockY) {
+		return 	(isValidAndBlock(layer, blockX + 1, blockY)) ||
+				(isValidAndBlock(layer, blockX - 1, blockY)) ||
+				(isValidAndBlock(layer, blockX, blockY + 1)) ||
+				(isValidAndBlock(layer, blockX, blockY - 1));
 	}
 
 	public int getWidth() {
@@ -164,6 +216,10 @@ public final class BlockGrid implements Transportable {
 	}
 
 	public int getHeight() {
-		return blocks.length/width;
+		return height;
+	}
+
+	public int getLayers() {
+		return layers;
 	}
 }

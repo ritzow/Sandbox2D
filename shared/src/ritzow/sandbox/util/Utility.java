@@ -112,20 +112,16 @@ public final class Utility {
 
 	public static boolean canBreak(PlayerEntity player, long lastBreakTime, World world, int blockX, int blockY) {
 		return Utility.nanosSince(lastBreakTime) > BLOCK_INTERACT_COOLDOWN_NANOSECONDS &&
-			world.getForeground().isValid(blockX, blockY) &&
-			world.getForeground().isBlock(blockX, blockY) &&
+			world.getBlocks().isValidAndBlock(World.LAYER_MAIN, blockX, blockY) &&
 			Utility.withinDistance(player.getPositionX(), player.getPositionY(), blockX, blockY, BLOCK_INTERACT_RANGE);
 	}
 
 	public static boolean canPlace(PlayerEntity player, long lastPlaceTime, World world, int blockX, int blockY) {
-		BlockGrid front = world.getForeground();
-		BlockGrid back = world.getBackground();
+		BlockGrid blocks = world.getBlocks();
 		return Utility.nanosSince(lastPlaceTime) > BLOCK_INTERACT_COOLDOWN_NANOSECONDS &&
-				inRange(player, blockX, blockY) &&
-				front.isValid(blockX, blockY) &&
-				!front.isBlock(blockX, blockY) &&
-				(front.isSolidBlockAdjacent(blockX, blockY) ||
-				back.isSolidBlockAdjacent(blockX, blockY));
+			inRange(player, blockX, blockY) &&
+			blocks.isValid(World.LAYER_MAIN, blockX, blockY) && !blocks.isBlock(World.LAYER_MAIN, blockX, blockY) &&
+			(blocks.isSolidBlockAdjacent(World.LAYER_MAIN, blockX, blockY) || blocks.isSolidBlockAdjacent(World.LAYER_BACKGROUND, blockX, blockY));
 	}
 
 	public static boolean inRange(Entity player, int blockX, int blockY) {

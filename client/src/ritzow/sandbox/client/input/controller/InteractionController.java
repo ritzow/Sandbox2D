@@ -41,8 +41,9 @@ public final class InteractionController {
 		}
 	}
 
+	//refactor this a bit, very confusing
 	private void renderToolOvelay(World world, ModelRenderer renderer, PlayerEntity player, Model model, int blockX, int blockY) {
-		if(!world.getForeground().isValid(blockX, blockY) || !world.getForeground().isBlock(blockX, blockY)) {
+		if(!world.getBlocks().isValid(World.LAYER_MAIN, blockX, blockY) || !world.getBlocks().isBlock(World.LAYER_MAIN, blockX, blockY)) {
 			renderer.queueRender(
 				model,
 				computeOpacity(Utility.canPlace(player, lastPlace, world, blockX, blockY)),

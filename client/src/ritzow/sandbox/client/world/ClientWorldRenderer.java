@@ -44,21 +44,20 @@ public final class ClientWorldRenderer {
 		float worldBottom = ClientUtility.getViewBottomBound(camera, width, height);
 
 		//cache foreground and background of world
-		BlockGrid foreground = world.getForeground();
-		BlockGrid background = world.getBackground();
+		BlockGrid blocks = world.getBlocks();
 
 		//get visible block grid bounds
 		int leftBound = Math.max(0, (int)worldLeft);
 		int bottomBound = Math.max(0, (int)worldBottom);
-		int topBound = Math.min(Math.round(worldTop), foreground.getHeight() - 1);
-		int rightBound = Math.min(Math.round(worldRight), foreground.getWidth() - 1);
+		int topBound = Math.min(Math.round(worldTop), blocks.getHeight() - 1);
+		int rightBound = Math.min(Math.round(worldRight), blocks.getWidth() - 1);
 
 		//render the blocks visible in the viewport
 		for(int row = bottomBound; row <= topBound; row++) {
 			for(int column = leftBound; column <= rightBound; column++) {
-				var back = (ClientBlockProperties)background.get(column, row);
-				var front = (ClientBlockProperties)foreground.get(column, row);
-				float exposure = (float)row/foreground.getHeight();
+				var back = (ClientBlockProperties)blocks.get(World.LAYER_BACKGROUND, column, row);
+				var front = (ClientBlockProperties)blocks.get(World.LAYER_MAIN, column, row);
+				float exposure = (float)row/blocks.getHeight();
 
 				if(back != null && (front == null || front.isTransparent())) {
 					program.queueRender(back.getModel(), 1.0f, exposure/2f, column, row, 1.0f, 1.0f, 0.0f);
@@ -80,7 +79,7 @@ public final class ClientWorldRenderer {
 
 			//check if the entity is visible inside the viewport and render it
 			if(posX < worldRight + halfWidth && posX > worldLeft - halfWidth && posY < worldTop + halfHeight && posY > worldBottom - halfHeight) {
-				((Renderable)e).render(program, posY/foreground.getHeight());
+				((Renderable)e).render(program, posY/blocks.getHeight());
 			}
 		}
 	}

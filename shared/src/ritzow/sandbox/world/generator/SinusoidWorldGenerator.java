@@ -58,20 +58,18 @@ public class SinusoidWorldGenerator implements WorldGenerator {
 	@Override
 	public World generate() {
 		World world = new World(width, baseHeight + terrainAmplitude + skyHeight);
-		BlockGrid fg = world.getForeground();
-		BlockGrid bg = world.getBackground();
+		BlockGrid blocks = world.getBlocks();
 		int midpoint = terrainAmplitude/2;
 		int base = baseHeight - 1;
-		fg.fill(DirtBlock.INSTANCE, 0, 0, fg.getWidth(), baseHeight);
-		bg.fill(DirtBlock.INSTANCE, 0, 0, bg.getWidth(), baseHeight);
+		blocks.fill(DirtBlock.INSTANCE, 0, 0, blocks.getWidth(), baseHeight);
 		for(int column = 0; column < width; ++column) {
 			int max = base + midpoint + Math.round(midpoint * (float)Math.sin(column * frequency));
-			for(int row = base; row <= max; ++row) {
-				fg.set(column, row, DirtBlock.INSTANCE);
-				bg.set(column, row, DirtBlock.INSTANCE);
+			for(int row = base; row < max; ++row) {
+				blocks.set(World.LAYER_MAIN, column, row, DirtBlock.INSTANCE);
+				blocks.set(World.LAYER_BACKGROUND, column, row, DirtBlock.INSTANCE);
 			}
-			fg.set(column, max, GrassBlock.INSTANCE);
-			bg.set(column, max, DirtBlock.INSTANCE);
+			blocks.set(World.LAYER_MAIN, column, max, GrassBlock.INSTANCE);
+			blocks.set(World.LAYER_BACKGROUND, column, max, DirtBlock.INSTANCE);
 		}
 		return world;
 	}

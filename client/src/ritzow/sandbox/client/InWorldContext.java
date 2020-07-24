@@ -302,15 +302,15 @@ class InWorldContext implements GameTalker {
 
 	private void processServerRemoveBlock(ByteBuffer data) {
 		int x = data.getInt(), y = data.getInt();
-		ClientBlockProperties prev = (ClientBlockProperties)world.getForeground().set(x, y, null);
-		if(prev != null) prev.onBreak(world, world.getForeground(), cameraGrip.getCamera(), x, y);
+		ClientBlockProperties prev = (ClientBlockProperties)world.getBlocks().set(World.LAYER_MAIN, x, y, null);
+		if(prev != null) prev.onBreak(world, world.getBlocks(), cameraGrip.getCamera(), x, y);
 	}
 
 	private void processServerPlaceBlock(ByteBuffer data) {
 		int x = data.getInt(), y = data.getInt();
 		ClientBlockProperties newBlock = deserialize(data);
-		world.getForeground().set(x, y, newBlock);
-		newBlock.onPlace(world, world.getForeground(), cameraGrip.getCamera(), x, y);
+		world.getBlocks().set(World.LAYER_MAIN, x, y, newBlock);
+		newBlock.onPlace(world, world.getBlocks(), cameraGrip.getCamera(), x, y);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -336,7 +336,6 @@ class InWorldContext implements GameTalker {
 		for(int count = data.getInt(); count > 0; --count) {
 			Entity e = world.getEntityFromIdOrNull(data.getInt());
 			if(e != null) {
-				//getEntity(data.getInt());
 				e.setPositionX(data.getFloat());
 				e.setPositionY(data.getFloat());
 				e.setVelocityX(data.getFloat());

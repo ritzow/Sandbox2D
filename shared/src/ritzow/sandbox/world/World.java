@@ -22,6 +22,8 @@ public class World implements Transportable, Iterable<Entity> {
 
 	private static final float GRAVITY = Utility.convertAccelerationSecondsNanos(9.8f * 3);
 
+	public static final int LAYER_MAIN = 0, LAYER_BACKGROUND = 1;
+
 	//Entity operations:
 	//Get an entity by ID
 	//Remove an entity by ID or by object
@@ -34,7 +36,7 @@ public class World implements Transportable, Iterable<Entity> {
 	private final Map<Integer, Entity> entitiesID;
 
 	/** blocks in the world that collide with entities and and are rendered **/
-	private final BlockGrid foreground, background;
+	private final BlockGrid blocks;
 
 	/** Entity ID counter **/
 	private int lastEntityID;
@@ -53,13 +55,11 @@ public class World implements Transportable, Iterable<Entity> {
 	public World(int width, int height) {
 		entities = new ArrayList<>();
 		entitiesID = new HashMap<>();
-		foreground = new BlockGrid(width, height);
-		background = new BlockGrid(width, height);
+		blocks = new BlockGrid(2, width, height);
 	}
 
 	public World(TransportableDataReader reader) {
-		foreground = Objects.requireNonNull(reader.readObject(), "Foreground can't be null.");
-		background = Objects.requireNonNull(reader.readObject(), "Background can't be null.");
+		blocks = Objects.requireNonNull(reader.readObject(), "block grid can't be null.");
 		int entityCount = reader.readInteger();
 		entities = new ArrayList<>(entityCount);
 		entitiesID = new HashMap<>(entityCount);
@@ -80,8 +80,7 @@ public class World implements Transportable, Iterable<Entity> {
 
 	public final byte[] getBytesFiltered(Predicate<Entity> entityFilter, Serializer ser) {
 		//serialize foreground and background
-		byte[] foregroundBytes = ser.serialize(foreground);
-		byte[] backgroundBytes = ser.serialize(background);
+		byte[] blocksBytes = ser.serialize(blocks);
 
 		List<byte[]> elist = new ArrayList<>();
 		int totalEntityBytes = entities.stream()
@@ -92,20 +91,16 @@ public class World implements Transportable, Iterable<Entity> {
 				.sum();
 
 		//foreground data, background data, number of entities, entity data (size)
-		byte[] bytes = new byte[foregroundBytes.length + backgroundBytes.length + 4 + totalEntityBytes];
+		byte[] bytes = new byte[blocksBytes.length + Integer.BYTES + totalEntityBytes];
 		int index = 0;
 
 		//write foreground data
-		Bytes.copy(foregroundBytes, bytes, index);
-		index += foregroundBytes.length;
-
-		//write background data
-		Bytes.copy(backgroundBytes, bytes, index);
-		index += backgroundBytes.length;
+		Bytes.copy(blocksBytes, bytes, index);
+		index += blocksBytes.length;
 
 		//write number of entities
-		Bytes.putInteger(bytes, index, entities.size());
-		index += 4;
+		Bytes.putInteger(bytes, index, elist.size());
+		index += Integer.BYTES;
 
 		for(byte[] dat : elist) {
 			Bytes.copy(dat, bytes, index);
@@ -118,8 +113,7 @@ public class World implements Transportable, Iterable<Entity> {
 	public String toString() {
 		return new StringJoiner("\n", "Entity Count: ", "")
 			.add(Integer.toString(entities.size()))
-			.add(foreground.toString())
-			.add(background.toString())
+			.add(blocks.toString())
 			.toString();
 	}
 
@@ -135,16 +129,8 @@ public class World implements Transportable, Iterable<Entity> {
 	 * Get the foreground {@code BlockGrid} of the world, which interacts physically with entities.
 	 * @return The foreground terrain.
 	 */
-	public final BlockGrid getForeground() {
-		return foreground;
-	}
-
-	/**
-	 * Get the background {@code BlockGrid} of the world.
-	 * @return the background terrain.
-	 */
-	public final BlockGrid getBackground() {
-		return background;
+	public final BlockGrid getBlocks() {
+		return blocks;
 	}
 
 	/**
@@ -314,21 +300,21 @@ public class World implements Transportable, Iterable<Entity> {
 	}
 
 	private void resolveBlockCollisions(Entity e, long nanoseconds) {
-		var foreground = this.foreground;
+		BlockGrid blocks = this.blocks;
 		float posX = e.getPositionX();
 		float posY = e.getPositionY();
 		float width = e.getWidth();
 		float height = e.getHeight();
 		int leftBound = Math.max(0, (int)(posX - width));
 		int bottomBound = Math.max(0, (int)(posY - height));
-		int topBound = Math.min((int)(posY + height), foreground.getHeight() - 1);
-		int rightBound = Math.min((int)(posX + width), foreground.getWidth() - 1);
+		int topBound = Math.min((int)(posY + height), blocks.getHeight() - 1);
+		int rightBound = Math.min((int)(posX + width), blocks.getWidth() - 1);
 
 		//TODO is there redundancy between this and resolveBlockCollision
 		//System.out.println(leftBound + ", " + bottomBound + ", " + rightBound + ", " + topBound);
 		for(int row = bottomBound; row <= topBound; row++) {
 			for(int column = leftBound; column <= rightBound; column++) {
-				Block block = foreground.get(column, row);
+				Block block = blocks.get(LAYER_MAIN, column, row);
 				if(block != null && block.isSolid()) {
 					//TODO re-add other block checks to see if surface is smooth
 					resolveBlockCollision(e, block, column, row, nanoseconds);
@@ -364,7 +350,7 @@ public class World implements Transportable, Iterable<Entity> {
 				    if (wy > hx) {
 				        if (wy > -hx) { /* collision on the bottom of other */
 				        	e.setPositionY(o.getPositionY() - height);
-				        	onCollisionEntity(e, o.getFriction(), nanoseconds);
+				        	onCollisionEntityVertical(e, o.getFriction(), nanoseconds);
 				        } else { /* collision on the right of other */
 				        	e.setPositionX(o.getPositionX() + width);
 				        	if(e.getVelocityX() < 0) {
@@ -379,7 +365,7 @@ public class World implements Transportable, Iterable<Entity> {
 							}
 				        } else { /* collision on the top of other */
 				        	e.setPositionY(o.getPositionY() + height);
-				        	onCollisionEntity(e, o.getFriction(), nanoseconds);
+				        	onCollisionEntityVertical(e, o.getFriction(), nanoseconds);
 				        }
 				    }
 				}
@@ -388,7 +374,7 @@ public class World implements Transportable, Iterable<Entity> {
 	}
 
 	private boolean isOpen(int x, int y) {
-		return !(foreground.isValid(x, y) && foreground.isBlock(x, y) && foreground.get(x, y).isSolid());
+		return !(blocks.isValid(LAYER_MAIN, x, y) && blocks.isBlock(LAYER_MAIN, x, y) && blocks.get(LAYER_MAIN, x, y).isSolid());
 	}
 
 	private void resolveBlockCollision(Entity e, Block block, int blockX, int blockY, long nanoseconds) {
@@ -403,7 +389,7 @@ public class World implements Transportable, Iterable<Entity> {
 		        if (wy > -hx && isOpen(blockX, blockY - 1)) { /* collision on the bottom of block, top of entity */
 		        	e.setPositionY(blockY - centroidY);
 					e.onCollision(this, block, Entity.Side.TOP, blockX, blockY, nanoseconds);
-		        	onCollisionEntity(e, block.getFriction(), nanoseconds);
+		        	onCollisionEntityVertical(e, block.getFriction(), nanoseconds);
 		        } else if(isOpen(blockX + 1, blockY)) { /* collision on right of block */
 		        	e.setPositionX(blockX + centroidX);
 		        	e.onCollision(this, block, Entity.Side.LEFT, blockX, blockY, nanoseconds);
@@ -421,7 +407,7 @@ public class World implements Transportable, Iterable<Entity> {
 		        } else if(isOpen(blockX, blockY + 1)) { /* collision on top of block, bottom of entity */
 		        	e.setPositionY(blockY + centroidY);
 		        	e.onCollision(this, block, Entity.Side.BOTTOM, blockX, blockY, nanoseconds);
-		        	onCollisionEntity(e, block.getFriction(), nanoseconds);
+		        	onCollisionEntityVertical(e, block.getFriction(), nanoseconds);
 		        }
 		    }
 		}
@@ -432,7 +418,7 @@ public class World implements Transportable, Iterable<Entity> {
 	 * @param nanoseconds The duration of the collision?
 	 */
 	@SuppressWarnings("unused")
-	private static void onCollisionEntity(Entity e, float surfaceFriction, long nanoseconds) {
+	private static void onCollisionEntityVertical(Entity e, float surfaceFriction, long nanoseconds) {
 		//friction force = normal force * friction
 		//TODO maybe implement normal forces some time (for when entities are stacked)?
 		//TODO must be independent of number of collisions, rely on Entity state (lastCollision)?

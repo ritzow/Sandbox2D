@@ -312,7 +312,7 @@ public class GameServer {
 	private void processClientBreakBlock(ClientState client, ByteBuffer data) {
 		int x = data.getInt();
 		int y = data.getInt();
-		if(!world.getForeground().isValid(x, y))
+		if(!world.getBlocks().isValid(World.LAYER_MAIN, x, y))
 			throw new ClientBadDataException("client sent invalid block coordinates x=" + x + " y=" + y);
 		if(Utility.canBreak(client.player, client.lastBlockBreakTime, world, x, y)) {
 			//TODO sync block break cooldowns (System.currentTimeMillis() + cooldown)
@@ -334,7 +334,7 @@ public class GameServer {
 		int y = packet.getInt();
 		PlayerEntity player = client.player;
 		//TODO sync block place cooldowns (System.currentTimeMillis() + cooldown)
-		if(!world.getForeground().isValid(x, y))
+		if(!world.getBlocks().isValid(World.LAYER_MAIN, x, y))
 			throw new ClientBadDataException("client sent invalid block coordinates x=" + x + " y=" + y);
 		if(Utility.canPlace(player, client.lastBlockPlaceTime, world, x, y)) {
 			Block blockType = switch(player.selected()) {
@@ -344,7 +344,7 @@ public class GameServer {
 			};
 
 			if(blockType != null) {
-				world.getForeground().place(world, x, y, blockType);
+				world.getBlocks().place(world, World.LAYER_MAIN, x, y, blockType);
 				broadcastPlaceBlock(blockType, x, y);
 				client.lastBlockPlaceTime = System.nanoTime();
 			}
@@ -383,7 +383,7 @@ public class GameServer {
 		BLOCK_DROP_VELOCITY = Utility.convertPerSecondToPerNano(7f);
 
 	public void breakBlock(int blockX, int blockY) {
-		Block block = world.getForeground().destroy(world, blockX, blockY);
+		Block block = world.getBlocks().destroy(world, World.LAYER_MAIN, blockX, blockY);
 		broadcastRemoveBlock(blockX, blockY);
 		if(block != null) {
 			var drop = new ItemEntity<>(world.nextEntityID(), new BlockItem(block), blockX, blockY);
@@ -398,7 +398,7 @@ public class GameServer {
 	private void processClientConnectRequest(ClientState client) {
 		if(world != null) {
 			ServerPlayerEntity player = new ServerPlayerEntity(world.nextEntityID());
-			placePlayer(player, world.getForeground());
+			placePlayer(player, world.getBlocks());
 			world.add(player);
 			client.player = player;
 			//send entity to already connected players
@@ -424,7 +424,7 @@ public class GameServer {
 		float posX = grid.getWidth()/2f;
 		player.setPositionX(posX);
 		for(int blockY = grid.getHeight() - 1; blockY > 0; blockY--) {
-			if(grid.isBlock(posX, blockY)) {
+			if(grid.isBlock(World.LAYER_MAIN, posX, blockY)) {
 				player.setPositionY(blockY + 0.5f + player.getHeight()/2);
 				return;
 			}
