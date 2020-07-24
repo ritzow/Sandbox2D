@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
+import java.util.function.DoubleConsumer;
 import java.util.logging.Level;
 import ritzow.sandbox.client.audio.AudioSystem;
 import ritzow.sandbox.client.data.StandardClientOptions;
@@ -50,7 +50,7 @@ class InWorldContext implements GameTalker {
 	private World world;
 
 	private ByteBuffer worldDownloadBuffer;
-	private final Consumer<Float> downloadProgressAction;
+	private final DoubleConsumer downloadProgressAction;
 	private CompletableFuture<World> worldBuildTask;
 
 	private final ControlsContext IN_GAME_CONTEXT = new ControlsContext(
@@ -118,7 +118,7 @@ class InWorldContext implements GameTalker {
 		Map.entry(SLOT_SELECT_3, () -> selectSlot(2))
 	);
 
-	public InWorldContext(Client client, int downloadSize, int playerID, Consumer<Float> downloadProgress) {
+	public InWorldContext(Client client, int downloadSize, int playerID, DoubleConsumer downloadProgress) {
 		log().info("Downloading " + Utility.formatSize(downloadSize) + " of world data");
 		this.client = client;
 		this.worldDownloadBuffer = ByteBuffer.allocate(downloadSize);
@@ -163,6 +163,7 @@ class InWorldContext implements GameTalker {
 			new Anchor(
 				new Text(client.getServerAddress().getAddress().toString(), RenderManager.FONT, 8, 0), Side.BOTTOM_RIGHT, 0.05f, 0.05f
 			),
+			new Anchor(new ritzow.sandbox.client.ui.element.Button(new Text("Quit", RenderManager.FONT, 9, 0), this::leaveServer), Side.TOP_RIGHT, 0.1f, 0.1f),
 			new Anchor(
 				new Scaler(
 					blockGUI = new Holder<>(
@@ -302,14 +303,19 @@ class InWorldContext implements GameTalker {
 
 	private void processServerRemoveBlock(ByteBuffer data) {
 		int x = data.getInt(), y = data.getInt();
-		ClientBlockProperties prev = (ClientBlockProperties)world.getBlocks().set(World.LAYER_MAIN, x, y, null);
-		if(prev != null) prev.onBreak(world, world.getBlocks(), cameraGrip.getCamera(), x, y);
+		for(int layer = World.LAYER_MAIN; layer < world.getBlocks().getLayers(); layer++) {
+			if(world.getBlocks().isBlock(layer, x, y)) {
+				ClientBlockProperties prev = (ClientBlockProperties)world.getBlocks().set(layer, x, y, null);
+				if(prev != null) prev.onBreak(world, world.getBlocks(), cameraGrip.getCamera(), x, y);
+				return;
+			}
+		}
 	}
 
 	private void processServerPlaceBlock(ByteBuffer data) {
 		int x = data.getInt(), y = data.getInt();
 		ClientBlockProperties newBlock = deserialize(data);
-		world.getBlocks().set(World.LAYER_MAIN, x, y, newBlock);
+		world.getBlocks().set(Utility.getBlockPlaceLayer(world.getBlocks(), x, y), x, y, newBlock);
 		newBlock.onPlace(world, world.getBlocks(), cameraGrip.getCamera(), x, y);
 	}
 
@@ -382,11 +388,11 @@ class InWorldContext implements GameTalker {
 	private void selectSlot(int slot) {
 		player.setSlot(slot);
 		GameState.display().setCursor(switch(slot) {
-			case InteractionController.GRASS_PLACER -> {
+			case SLOT_PLACE_GRASS -> {
 				blockGUI.set(new Icon(GameModels.MODEL_GRASS_BLOCK));
 				yield GameState.cursorMallet();
 			}
-			case InteractionController.DIRT_PLACER -> {
+			case SLOT_PLACE_DIRT -> {
 				blockGUI.set(new Icon(GameModels.MODEL_DIRT_BLOCK));
 				yield GameState.cursorMallet();
 			}

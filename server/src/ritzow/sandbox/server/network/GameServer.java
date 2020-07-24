@@ -31,6 +31,7 @@ public class GameServer {
 	//TODO implement encryption on client and server https://howtodoinjava.com/security/java-aes-encryption-example/
 	private static final long NETWORK_SEND_INTERVAL_NANOSECONDS = Utility.millisToNanos(200);
 	private static final long PLAYER_STATE_BROADCAST_INTERVAL = Utility.millisToNanos(500);
+	private static final float BLOCK_DROP_VELOCITY = Utility.convertPerSecondToPerNano(7f);
 
 	private final Server<ClientState> server;
 	private World world;
@@ -312,13 +313,27 @@ public class GameServer {
 	private void processClientBreakBlock(ClientState client, ByteBuffer data) {
 		int x = data.getInt();
 		int y = data.getInt();
-		if(!world.getBlocks().isValid(World.LAYER_MAIN, x, y))
+		BlockGrid blocks = world.getBlocks();
+		if(!blocks.isValid(x, y))
 			throw new ClientBadDataException("client sent invalid block coordinates x=" + x + " y=" + y);
 		if(Utility.canBreak(client.player, client.lastBlockBreakTime, world, x, y)) {
 			//TODO sync block break cooldowns (System.currentTimeMillis() + cooldown)
-			sendBreakCooldown(client, System.currentTimeMillis());
-			breakBlock(x, y);
-			client.lastBlockBreakTime = System.nanoTime();
+			int layer = Utility.getBlockBreakLayer(blocks, x, y);
+			if(layer >= 0) {
+				sendBreakCooldown(client, System.currentTimeMillis());
+				Block block = world.getBlocks().destroy(world, layer, x, y);
+				broadcastRemoveBlock(x, y);
+				if(block != null) {
+					var drop = new ItemEntity<>(world.nextEntityID(), new BlockItem(block), x, y);
+					float angle = Utility.random(0, Math.PI);
+					drop.setVelocityX((float)Math.cos(angle) * BLOCK_DROP_VELOCITY);
+					drop.setVelocityY((float)Math.sin(angle) * BLOCK_DROP_VELOCITY);
+					world.add(drop);
+					broadcastAddEntity(drop);
+				}
+
+				client.lastBlockBreakTime = System.nanoTime();
+			}
 		}
 	}
 
@@ -334,19 +349,24 @@ public class GameServer {
 		int y = packet.getInt();
 		PlayerEntity player = client.player;
 		//TODO sync block place cooldowns (System.currentTimeMillis() + cooldown)
-		if(!world.getBlocks().isValid(World.LAYER_MAIN, x, y))
+		if(!world.getBlocks().isValid(x, y))
 			throw new ClientBadDataException("client sent invalid block coordinates x=" + x + " y=" + y);
 		if(Utility.canPlace(player, client.lastBlockPlaceTime, world, x, y)) {
 			Block blockType = switch(player.selected()) {
-				case 1 -> GrassBlock.INSTANCE;
-				case 2 -> DirtBlock.INSTANCE;
-				default -> null;
+				case SLOT_BREAK -> null;
+				case SLOT_PLACE_GRASS -> GrassBlock.INSTANCE;
+				case SLOT_PLACE_DIRT -> DirtBlock.INSTANCE;
+				default -> throw new ClientBadDataException("invalid item slot " + player.selected());
 			};
 
 			if(blockType != null) {
-				world.getBlocks().place(world, World.LAYER_MAIN, x, y, blockType);
-				broadcastPlaceBlock(blockType, x, y);
-				client.lastBlockPlaceTime = System.nanoTime();
+				//TODO there is redundancy here with Utility.canPlace
+				int layer = Utility.getBlockPlaceLayer(world.getBlocks(), x, y);
+				if(layer >= 0 && (layer < world.getBlocks().getLayers() - 1 || world.getBlocks().isSolidBlockAdjacent(layer, x, y))) {
+					world.getBlocks().place(world, layer, x, y, blockType);
+					broadcastPlaceBlock(blockType, x, y);
+					client.lastBlockPlaceTime = System.nanoTime();
+				}
 			}
 		}
 	}
@@ -379,22 +399,6 @@ public class GameServer {
 		}
 	}
 
-	private static final float
-		BLOCK_DROP_VELOCITY = Utility.convertPerSecondToPerNano(7f);
-
-	public void breakBlock(int blockX, int blockY) {
-		Block block = world.getBlocks().destroy(world, World.LAYER_MAIN, blockX, blockY);
-		broadcastRemoveBlock(blockX, blockY);
-		if(block != null) {
-			var drop = new ItemEntity<>(world.nextEntityID(), new BlockItem(block), blockX, blockY);
-			float angle = Utility.random(0, Math.PI);
-			drop.setVelocityX((float)Math.cos(angle) * BLOCK_DROP_VELOCITY);
-			drop.setVelocityY((float)Math.sin(angle) * BLOCK_DROP_VELOCITY);
-			world.add(drop);
-			broadcastAddEntity(drop);
-		}
-	}
-
 	private void processClientConnectRequest(ClientState client) {
 		if(world != null) {
 			ServerPlayerEntity player = new ServerPlayerEntity(world.nextEntityID());
@@ -424,7 +428,7 @@ public class GameServer {
 		float posX = grid.getWidth()/2f;
 		player.setPositionX(posX);
 		for(int blockY = grid.getHeight() - 1; blockY > 0; blockY--) {
-			if(grid.isBlock(World.LAYER_MAIN, posX, blockY)) {
+			if(grid.isBlockAtLayer(World.LAYER_MAIN, posX, blockY)) {
 				player.setPositionY(blockY + 0.5f + player.getHeight()/2);
 				return;
 			}

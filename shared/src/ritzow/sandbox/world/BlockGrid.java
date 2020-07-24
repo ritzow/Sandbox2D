@@ -7,6 +7,7 @@ import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.data.Serializer;
 import ritzow.sandbox.data.Transportable;
 import ritzow.sandbox.data.TransportableDataReader;
+import ritzow.sandbox.util.Optimized;
 import ritzow.sandbox.world.block.Block;
 
 public final class BlockGrid implements Transportable {
@@ -67,12 +68,12 @@ public final class BlockGrid implements Transportable {
 		return builder.toString();
 	}
 
-	public boolean isValid(int layer, int x, int y) {
-		return layer < layers && y >= 0 && x >= 0 && y < getHeight() && x < getWidth();
+	public boolean isValid(int x, int y) {
+		return y >= 0 && x >= 0 && y < getHeight() && x < getWidth();
 	}
 
-	public boolean isValidAndBlock(int layer, int x, int y) {
-		return isValid(layer, x, y) && blocks[compute(layer, x, y)] != null;
+	public boolean isValid(int layer, int x, int y) {
+		return layer < layers && isValid(x, y);
 	}
 
 	/**
@@ -186,7 +187,18 @@ public final class BlockGrid implements Transportable {
 		return false;
 	}
 
-	//TODO make every cell non-null (air blocks) and remove this method
+	@Optimized("compute")
+	public boolean isBlock(int x, int y) {
+		int start = layers * (width * y + x);
+		for(int layer = 0; layer < layers; layer++) {
+			if(blocks[start + layer] != null) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	//TODO make blocks non-nullable and use air blocks to represent absence of block.
 	/**
 	 * @param x the horizontal block coordinate to check
 	 * @param y the vertical block coordinate to check
@@ -200,15 +212,28 @@ public final class BlockGrid implements Transportable {
 	 * @param worldX The world x coordinate to check.
 	 * @param worldY The world y coordinate to check.
 	 * @return true if there is a block at the specified coordinates. **/
-	public boolean isBlock(int layer, float worldX, float worldY) {
+	public boolean isBlockAtLayer(int layer, float worldX, float worldY) {
 		return isBlock(layer, Math.round(worldX), Math.round(worldY));
 	}
 
+	@Optimized("compute")
+	public boolean isBlockInRange(int layerStart, int layerEnd, int x, int y) {
+		checkLayer(layerStart);
+		checkLayer(layerEnd);
+		int start = layers * (width * y + x);
+		for(int layer = layerStart; layer <= layerEnd; layer++) {
+			if(blocks[start + layer] != null) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	public boolean isSolidBlockAdjacent(int layer, int blockX, int blockY) {
-		return 	(isValidAndBlock(layer, blockX + 1, blockY)) ||
-				(isValidAndBlock(layer, blockX - 1, blockY)) ||
-				(isValidAndBlock(layer, blockX, blockY + 1)) ||
-				(isValidAndBlock(layer, blockX, blockY - 1));
+		return 	(isValid(layer, blockX + 1, blockY) && blocks[compute(layer, blockX + 1, blockY)] != null) ||
+				(isValid(layer, blockX - 1, blockY) && blocks[compute(layer, blockX - 1, blockY)] != null) ||
+				(isValid(layer, blockX, blockY + 1) && blocks[compute(layer, blockX, blockY + 1)] != null) ||
+				(isValid(layer, blockX, blockY - 1) && blocks[compute(layer, blockX, blockY - 1)] != null);
 	}
 
 	public int getWidth() {

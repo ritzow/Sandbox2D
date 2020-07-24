@@ -110,18 +110,38 @@ public final class Utility {
 		return Utility.nanosSince(lastThrowTime) > Protocol.THROW_COOLDOWN_NANOSECONDS;
 	}
 
+	public static int getBlockBreakLayer(BlockGrid blocks, int x, int y) {
+		for(int i = 0; i < blocks.getLayers(); i++) {
+			if(blocks.isBlock(i, x, y)) {
+				return i;
+			}
+		}
+		return -1;
+	}
+
+	public static int getBlockPlaceLayer(BlockGrid blocks, int x, int y) {
+		for(int i = blocks.getLayers() - 1; i >= 0; i--) {
+			if(!blocks.isBlock(i, x, y)) {
+				return i;
+			}
+		}
+		return -1;
+	}
+
+	public static boolean canBreak(PlayerEntity player, long lastBreakTime, World world, int layer, int blockX, int blockY) {
+		return canBreak(player, lastBreakTime, world, layer, blockX, blockY) && getBlockBreakLayer(world.getBlocks(), blockX, blockY) == layer;
+	}
+
 	public static boolean canBreak(PlayerEntity player, long lastBreakTime, World world, int blockX, int blockY) {
-		return Utility.nanosSince(lastBreakTime) > BLOCK_INTERACT_COOLDOWN_NANOSECONDS &&
-			world.getBlocks().isValidAndBlock(World.LAYER_MAIN, blockX, blockY) &&
+		return world.getBlocks().isValid(blockX, blockY)&& Utility.nanosSince(lastBreakTime) > BLOCK_INTERACT_COOLDOWN_NANOSECONDS &&
 			Utility.withinDistance(player.getPositionX(), player.getPositionY(), blockX, blockY, BLOCK_INTERACT_RANGE);
 	}
 
 	public static boolean canPlace(PlayerEntity player, long lastPlaceTime, World world, int blockX, int blockY) {
 		BlockGrid blocks = world.getBlocks();
-		return Utility.nanosSince(lastPlaceTime) > BLOCK_INTERACT_COOLDOWN_NANOSECONDS &&
-			inRange(player, blockX, blockY) &&
-			blocks.isValid(World.LAYER_MAIN, blockX, blockY) && !blocks.isBlock(World.LAYER_MAIN, blockX, blockY) &&
-			(blocks.isSolidBlockAdjacent(World.LAYER_MAIN, blockX, blockY) || blocks.isSolidBlockAdjacent(World.LAYER_BACKGROUND, blockX, blockY));
+		return blocks.isValid(blockX, blockY) &&
+				   Utility.nanosSince(lastPlaceTime) > BLOCK_INTERACT_COOLDOWN_NANOSECONDS &&
+				   inRange(player, blockX, blockY);
 	}
 
 	public static boolean inRange(Entity player, int blockX, int blockY) {

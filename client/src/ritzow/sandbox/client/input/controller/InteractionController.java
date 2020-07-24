@@ -6,6 +6,7 @@ import ritzow.sandbox.client.input.ControlsContext;
 import ritzow.sandbox.client.network.GameTalker;
 import ritzow.sandbox.client.util.ClientUtility;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
+import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.Entity;
@@ -14,9 +15,8 @@ import ritzow.sandbox.world.entity.PlayerEntity;
 public final class InteractionController {
 	private static final double ACTIVATE_INDICATOR_SPEED = Utility.degreesPerSecToRadiansPerNano(240);
 
-	public static final byte GRASS_PLACER = 1, DIRT_PLACER = 2, BLOCK_BREAKER = 0;
-
 	private long lastThrow, lastBreak, lastPlace;
+	private int layer;
 
 	public void setLastBreak(long time) {
 		this.lastBreak = time;
@@ -31,8 +31,8 @@ public final class InteractionController {
 				camera, display.getCursorY(), height));
 		renderer.loadViewMatrix(camera, width, height);
 		switch(player.selected()) {
-			case GRASS_PLACER -> renderToolOvelay(world, renderer, player, GameModels.MODEL_GRASS_BLOCK, blockX, blockY);
-			case DIRT_PLACER -> renderToolOvelay(world, renderer, player, GameModels.MODEL_DIRT_BLOCK, blockX, blockY);
+			case Protocol.SLOT_PLACE_GRASS -> renderToolOvelay(world, renderer, player, GameModels.MODEL_GRASS_BLOCK, blockX, blockY);
+			case Protocol.SLOT_PLACE_DIRT -> renderToolOvelay(world, renderer, player, GameModels.MODEL_DIRT_BLOCK, blockX, blockY);
 			default -> renderer.queueRender(
 				GameModels.MODEL_RED_SQUARE,
 				computeOpacity(Utility.canBreak(player, lastPlace, world, blockX, blockY)),
@@ -63,18 +63,38 @@ public final class InteractionController {
 		if(controls.isPressed(Control.USE_HELD_ITEM)) {
 			int blockX = Math.round(ClientUtility.pixelHorizontalToWorld(camera, mouseX, frameWidth, frameHeight));
 			int blockY = Math.round(ClientUtility.pixelVerticalToWorld(camera, mouseY, frameHeight));
-			if(player.selected() == 0) {
-				if(Utility.canBreak(player, lastBreak, world, blockX, blockY)) {
-					client.sendBlockBreak(blockX, blockY);
-					//TODO comm. with server, only reset cooldown to server provided value if a block is actually broken
-					//requires a different approach, lastBreak won't be set here
-					lastBreak = System.nanoTime();
+			switch(player.selected()) {
+				case Protocol.SLOT_BREAK -> {
+					if(Utility.canBreak(player, lastBreak, world, blockX, blockY)) {
+						//TODO only break or place on a single layer (which must be top layer) until mouse button is released
+						if(controls.isNewlyPressed(Control.USE_HELD_ITEM)) {
+							//TODO this won't work if the network ping is more than a single frame duration.
+							layer = Utility.getBlockBreakLayer(world.getBlocks(), blockX, blockY);
+						}
+
+						if(world.getBlocks().isBlock(layer, blockX, blockY) && (layer == 0 || !world.getBlocks().isBlockInRange(0, layer - 1, blockX, blockY))) {
+							client.sendBlockBreak(blockX, blockY);
+							//TODO comm. with server, only reset cooldown to server provided value if a block is actually broken
+							//requires a different approach, lastBreak won't be set here
+							lastBreak = System.nanoTime();
+						}
+					}
 				}
-			} else {
-				if(Utility.canPlace(player, lastPlace, world, blockX, blockY)) {
-					client.sendBlockPlace(blockX, blockY);
-					lastPlace = System.nanoTime();
-					//TODO comm. with server, only reset cooldown to server provided value if a block is actually broken
+
+				case Protocol.SLOT_PLACE_GRASS, Protocol.SLOT_PLACE_DIRT -> {
+					if(Utility.canPlace(player, lastPlace, world, blockX, blockY)) {
+						if(controls.isNewlyPressed(Control.USE_HELD_ITEM)) {
+							//TODO this won't work if the network ping is more than a single frame duration.
+							layer = Utility.getBlockPlaceLayer(world.getBlocks(), blockX, blockY);
+						}
+
+						if(!world.getBlocks().isBlockInRange(World.LAYER_MAIN, layer, blockX, blockY) && (layer < world.getBlocks().getLayers() - 1 ||
+							   world.getBlocks().isSolidBlockAdjacent(layer, blockX, blockY))) {
+							client.sendBlockPlace(blockX, blockY);
+							lastPlace = System.nanoTime();
+							//TODO comm. with server, only reset cooldown to server provided value if a block is actually broken
+						}
+					}
 				}
 			}
 		}
