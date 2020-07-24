@@ -13,9 +13,11 @@ struct instance {
 	mat4 transform;
 };
 
+const int MAX_RENDER_COUNT = 600;
+
 layout(binding = 1, std140) uniform instance_data { //TODO store the single view matrix in here as well?
-	int offsets[600]; //TODO pack the offsets into vec4s for improved size (increasing upload speed)
-	instance instances[600];
+	int offsets[MAX_RENDER_COUNT]; //TODO pack the offsets into vec4s for improved size (increasing upload speed)
+	instance instances[MAX_RENDER_COUNT];
 };
 
 void main() {
