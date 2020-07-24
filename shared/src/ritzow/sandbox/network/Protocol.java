@@ -74,8 +74,7 @@ public final class Protocol {
 		DATA_BLOCK_ITEM = 6,
 		DATA_INVENTORY = 7,
 		DATA_DIRT_BLOCK = 8,
-		DATA_GRASS_BLOCK = 9,
-		DATA_BOMB_ENTITY = 11;
+		DATA_GRASS_BLOCK = 9;
 
 	public static final byte
 		CONNECT_STATUS_REJECTED = 0,

@@ -2,7 +2,6 @@ package ritzow.sandbox.server;
 
 import ritzow.sandbox.data.SerializerReaderWriter;
 import ritzow.sandbox.network.Protocol;
-import ritzow.sandbox.server.world.entity.ServerBombEntity;
 import ritzow.sandbox.server.world.entity.ServerPlayerEntity;
 import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
@@ -20,10 +19,9 @@ public class SerializationProvider {
 			.register(Protocol.DATA_DIRT_BLOCK, DirtBlock.class, reader -> DirtBlock.INSTANCE)
 			.register(Protocol.DATA_GRASS_BLOCK, GrassBlock.class, reader -> GrassBlock.INSTANCE)
 			.register(Protocol.DATA_ITEM_ENTITY, ItemEntity.class, ItemEntity::new)
-			.register(Protocol.DATA_BOMB_ENTITY, ServerBombEntity.class, ServerBombEntity::new)
 			.registerWrite(Protocol.DATA_INVENTORY, Inventory.class)
 			.registerWrite(Protocol.DATA_PLAYER_ENTITY, ServerPlayerEntity.class);
-	
+
 	public static SerializerReaderWriter getProvider() {
 		return provider;
 	}
