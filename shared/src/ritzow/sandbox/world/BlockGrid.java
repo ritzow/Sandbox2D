@@ -217,7 +217,7 @@ public final class BlockGrid implements Transportable {
 	}
 
 	@Optimized("compute")
-	public boolean isBlockInRange(int layerStart, int layerEnd, int x, int y) {
+	public boolean isBlockInLayers(int layerStart, int layerEnd, int x, int y) {
 		checkLayer(layerStart);
 		checkLayer(layerEnd);
 		int start = layers * (width * y + x);
