@@ -1,28 +1,33 @@
 package ritzow.sandbox.client.input.controller;
 
+import java.time.Instant;
 import ritzow.sandbox.client.graphics.*;
 import ritzow.sandbox.client.input.Control;
 import ritzow.sandbox.client.input.ControlsContext;
+import ritzow.sandbox.client.input.ControlsQuery;
 import ritzow.sandbox.client.network.GameTalker;
 import ritzow.sandbox.client.util.ClientUtility;
+import ritzow.sandbox.client.world.ClientWorldRenderer;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.World;
-import ritzow.sandbox.world.entity.Entity;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
 public final class InteractionController {
 	private static final double ACTIVATE_INDICATOR_SPEED = Utility.degreesPerSecToRadiansPerNano(240);
-
-	private long lastThrow, lastBreak, lastPlace;
+	private Instant nextUseTime;
 	private int layer;
 
-	public void setLastBreak(long time) {
-		this.lastBreak = time;
+	public InteractionController() {
+		nextUseTime = Instant.MIN;
 	}
 
-	public void render(Display display, ModelRenderer renderer,
+	public void setNextUseTime(Instant time) {
+		this.nextUseTime = time;
+	}
+
+	public void render(Display display, ModelRenderer renderer, ControlsQuery controls,
 				Camera camera, World world, ClientPlayerEntity player) {
 		int width = display.width(), height = display.height();
 		int blockX = Math.round(ClientUtility.pixelHorizontalToWorld(
@@ -33,9 +38,11 @@ public final class InteractionController {
 		switch(player.selected()) {
 			case Protocol.SLOT_PLACE_GRASS -> renderToolOvelay(world, renderer, player, GameModels.MODEL_GRASS_BLOCK, blockX, blockY);
 			case Protocol.SLOT_PLACE_DIRT -> renderToolOvelay(world, renderer, player, GameModels.MODEL_DIRT_BLOCK, blockX, blockY);
-			default -> renderer.queueRender(
+			case Protocol.SLOT_BREAK -> renderer.queueRender(
 				GameModels.MODEL_RED_SQUARE,
-				computeOpacity(Utility.canBreak(player, lastPlace, world, blockX, blockY)),
+				1.0f,
+				//computeOpacity(Utility.canBreak(player, world, blockX, blockY) && Utility.isBreakable(world.getBlocks(), layer, blockX, blockY)),
+				layer * ClientWorldRenderer.LAYER_EXPOSURE_FACTOR,
 				blockX, blockY, 1.0f, 1.0f, 0.0f
 			);
 		}
@@ -46,7 +53,8 @@ public final class InteractionController {
 		if(!world.getBlocks().isValid(World.LAYER_MAIN, blockX, blockY) || !world.getBlocks().isBlock(World.LAYER_MAIN, blockX, blockY)) {
 			renderer.queueRender(
 				model,
-				computeOpacity(Utility.canPlace(player, lastPlace, world, blockX, blockY)),
+				computeOpacity(Utility.canPlace(player, world, blockX, blockY)),
+				layer * ClientWorldRenderer.LAYER_EXPOSURE_FACTOR,
 				blockX, blockY, 1.0f, 1.0f, 0.0f
 			);
 		}
@@ -68,12 +76,11 @@ public final class InteractionController {
 						layer = Utility.getBlockBreakLayer(world.getBlocks(), blockX, blockY);
 					}
 
-					if(Utility.canBreak(player, lastBreak, world, blockX, blockY)) {
+					if(Instant.now().isAfter(nextUseTime) && Utility.getBlockBreakLayer(world.getBlocks(), blockX, blockY) == layer) {
 						if(Utility.isBreakable(world.getBlocks(), layer, blockX, blockY)) {
 							client.sendBlockBreak(blockX, blockY);
-							//TODO comm. with server, only reset cooldown to server provided value if a block is actually broken
+							nextUseTime = Instant.MAX;
 							//requires a different approach, lastBreak won't be set here
-							lastBreak = System.nanoTime();
 						}
 					}
 				}
@@ -84,27 +91,14 @@ public final class InteractionController {
 						layer = Utility.getBlockPlaceLayer(world.getBlocks(), blockX, blockY);
 					}
 
-					if(Utility.canPlace(player, lastPlace, world, blockX, blockY)) {
+					if(Instant.now().isAfter(nextUseTime) && Utility.canPlace(player, world, blockX, blockY)) {
 						if(Utility.isPlaceable(world.getBlocks(), layer, blockX, blockY)) {
 							client.sendBlockPlace(blockX, blockY);
-							lastPlace = System.nanoTime();
-							//TODO comm. with server, only reset cooldown to server provided value if a block is actually broken
+							nextUseTime = Instant.MAX;
 						}
 					}
 				}
 			}
 		}
-
-		if(controls.isNewlyPressed(Control.THROW_BOMB) && Utility.canThrow(lastThrow)) {
-			float worldX = ClientUtility.pixelHorizontalToWorld(camera, mouseX, frameWidth, frameHeight);
-			float worldY = ClientUtility.pixelVerticalToWorld(camera, mouseY, frameHeight);
-			client.sendBombThrow(computeThrowAngle(player, worldX, worldY));
-			lastThrow = System.nanoTime();
-		}
-	}
-
-	private static float computeThrowAngle(Entity player, float worldX, float worldY) {
-		return (float)Math.atan2(worldY - player.getPositionY(), worldX - player.getPositionX())
-				+ Utility.random(-Math.PI/8, Math.PI/8);
 	}
 }

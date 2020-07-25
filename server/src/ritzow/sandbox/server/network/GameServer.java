@@ -3,6 +3,7 @@ package ritzow.sandbox.server.network;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.time.Instant;
 import java.util.Iterator;
 import java.util.StringJoiner;
 import java.util.function.Predicate;
@@ -316,11 +317,11 @@ public class GameServer {
 		BlockGrid blocks = world.getBlocks();
 		if(!blocks.isValid(x, y))
 			throw new ClientBadDataException("client sent invalid block coordinates x=" + x + " y=" + y);
-		if(Utility.canBreak(client.player, client.lastBlockBreakTime, world, x, y)) {
+		if(world.getBlocks().isValid(x, y) && Utility.inRange(client.player, x, y) && Instant.now().isAfter(client.nextUseTime)) {
 			//TODO sync block break cooldowns (System.currentTimeMillis() + cooldown)
 			int layer = Utility.getBlockBreakLayer(blocks, x, y);
 			if(layer >= 0) {
-				sendBreakCooldown(client, System.currentTimeMillis());
+				client.nextUseTime = sendUseCooldown(client);
 				Block block = world.getBlocks().destroy(world, layer, x, y);
 				broadcastRemoveBlock(x, y);
 				if(block != null) {
@@ -331,17 +332,17 @@ public class GameServer {
 					world.add(drop);
 					broadcastAddEntity(drop);
 				}
-
-				client.lastBlockBreakTime = System.nanoTime();
 			}
 		}
 	}
 
-	private static void sendBreakCooldown(ClientState client, long currentTimeMillis) {
+	private static Instant sendUseCooldown(ClientState client) {
+		Instant nextUse = Instant.now().plusNanos(BLOCK_INTERACT_COOLDOWN_NANOSECONDS);
 		byte[] packet = new byte[2 + 8];
-		Bytes.putShort(packet, 0, TYPE_SERVER_CLIENT_BREAK_BLOCK_COOLDOWN);
-		Bytes.putLong(packet, 2, currentTimeMillis);
-		client.send(packet.clone(), true);
+		Bytes.putShort(packet, 0, TYPE_SERVER_CLIENT_SLOT_USE_COOLDOWN);
+		Bytes.putLong(packet, 2, nextUse.toEpochMilli());
+		client.send(packet, true);
+		return nextUse;
 	}
 
 	private void processClientPlaceBlock(ClientState client, ByteBuffer packet) {
@@ -351,7 +352,7 @@ public class GameServer {
 		//TODO sync block place cooldowns (System.currentTimeMillis() + cooldown)
 		if(!world.getBlocks().isValid(x, y))
 			throw new ClientBadDataException("client sent invalid block coordinates x=" + x + " y=" + y);
-		if(Utility.canPlace(player, client.lastBlockPlaceTime, world, x, y)) {
+		if(world.getBlocks().isValid(x, y) && Utility.inRange(player, x, y) && Instant.now().isAfter(client.nextUseTime)) {
 			Block blockType = switch(player.selected()) {
 				case SLOT_BREAK -> null;
 				case SLOT_PLACE_GRASS -> GrassBlock.INSTANCE;
@@ -363,9 +364,9 @@ public class GameServer {
 				//TODO there is redundancy here with Utility.canPlace
 				int layer = Utility.getBlockPlaceLayer(world.getBlocks(), x, y);
 				if(Utility.isPlaceable(world.getBlocks(), layer, x, y)) {
+					client.nextUseTime = sendUseCooldown(client);
 					world.getBlocks().place(world, layer, x, y, blockType);
 					broadcastPlaceBlock(blockType, x, y);
-					client.lastBlockPlaceTime = System.nanoTime();
 				}
 			}
 		}

@@ -68,7 +68,7 @@ public final class Protocol {
 		TYPE_CLIENT_WORLD_BUILT = 17,
 		TYPE_CLIENT_PLACE_BLOCK = 18,
 		TYPE_SERVER_PLACE_BLOCK = 19,
-		TYPE_SERVER_CLIENT_BREAK_BLOCK_COOLDOWN = 20;
+		TYPE_SERVER_CLIENT_SLOT_USE_COOLDOWN = 20;
 
 	/** Serialization Type ID **/
 	public static final short

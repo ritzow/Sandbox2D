@@ -2,6 +2,7 @@ package ritzow.sandbox.client;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.DoubleConsumer;
@@ -250,7 +251,7 @@ class InWorldContext implements GameTalker {
 			case TYPE_SERVER_PLACE_BLOCK -> processServerPlaceBlock(data);
 			case TYPE_CLIENT_PLAYER_STATE -> processPlayerState(data);
 			case TYPE_SERVER_CLIENT_DISCONNECT -> processServerDisconnect(data);
-			case TYPE_SERVER_CLIENT_BREAK_BLOCK_COOLDOWN -> processBlockBreakCooldown(data);
+			case TYPE_SERVER_CLIENT_SLOT_USE_COOLDOWN -> processBlockBreakCooldown(data);
 			default -> log().severe("Client received message of unknown protocol " + messageType);
 		}
 		return true;
@@ -258,7 +259,7 @@ class InWorldContext implements GameTalker {
 
 	@SuppressWarnings("unused")
 	private void processBlockBreakCooldown(ByteBuffer data) {
-		//interactionControls.setLastBreak(data.getLong());
+		interactionControls.setNextUseTime(Instant.ofEpochMilli(data.getLong()));
 	}
 
 	private static void processServerConsoleMessage(ByteBuffer data) {

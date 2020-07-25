@@ -1,6 +1,7 @@
 package ritzow.sandbox.server.network;
 
 import java.net.InetSocketAddress;
+import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.Queue;
 import ritzow.sandbox.data.Bytes;
@@ -29,13 +30,15 @@ public class ClientState extends ClientNetworkInfo {
 	Queue<byte[]> recordedSend;
 
 	/** Last player action times in nanoseconds offset */
-	long lastBlockBreakTime, lastBlockPlaceTime, lastPlayerStateUpdate;
+	long lastPlayerStateUpdate;
+	Instant nextUseTime;
 	ServerPlayerEntity player;
 
 	ClientState(InetSocketAddress address) {
 		super(address);
 		status = STATUS_CONNECTED;
 		recordedSend = new ArrayDeque<>();
+		nextUseTime = Instant.MIN;
 	}
 
 	public void sendRecorded() {
