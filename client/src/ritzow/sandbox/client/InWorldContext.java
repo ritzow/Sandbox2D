@@ -123,6 +123,7 @@ class InWorldContext implements GameTalker {
 		this.client = client;
 		this.worldDownloadBuffer = ByteBuffer.allocate(downloadSize);
 		this.downloadProgressAction = downloadProgress;
+		downloadProgressAction.accept(0);
 		this.playerID = playerID;
 	}
 
@@ -130,8 +131,8 @@ class InWorldContext implements GameTalker {
 		if(worldBuildTask == null) {
 			client.update(data -> {
 				if(data.getShort() == TYPE_SERVER_WORLD_DATA) {
-					downloadProgressAction.accept((float)worldDownloadBuffer.position()/worldDownloadBuffer.limit());
-					if(!worldDownloadBuffer.put(data).hasRemaining()) {
+					downloadProgressAction.accept((float)worldDownloadBuffer.put(data).position()/worldDownloadBuffer.limit());
+					if(!worldDownloadBuffer.hasRemaining()) {
 						log().info("Received all world data");
 						//from https://docs.oracle.com/javase/tutorial/essential/concurrency/memconsist.html
 						// https://docs.oracle.com/en/java/javase/13
@@ -230,7 +231,7 @@ class InWorldContext implements GameTalker {
 		RenderManager.preRender(width, height);
 		worldRenderer.render(RenderManager.DISPLAY_BUFFER, width, height);
 		interactionControls.update(display, IN_GAME_CONTEXT, cameraGrip.getCamera(), this, world, player);
-		interactionControls.render(display, GameState.modelRenderer(), cameraGrip.getCamera(), world, player);
+		interactionControls.render(display, GameState.modelRenderer(), IN_GAME_CONTEXT, cameraGrip.getCamera(), world, player);
 		GameState.modelRenderer().flush(); //render any final queued unrendered models
 		GameState.guiRenderer().render(overlayGUI, RenderManager.DISPLAY_BUFFER, display, IN_GAME_CONTEXT, deltaTime, StandardClientOptions.GUI_SCALE);
 		GameState.modelRenderer().flush();

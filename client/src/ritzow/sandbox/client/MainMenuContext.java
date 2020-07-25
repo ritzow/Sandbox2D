@@ -98,7 +98,10 @@ class MainMenuContext {
 
 	private void startJoin() {
 		serverLoadProgress.set(new Text("Joining server", RenderManager.FONT, 7, 0));
-		joinContext = new ServerJoinContext(progress ->
-			serverLoadProgress.set(new Text("Loading " + (int)(progress * 100) + "%", RenderManager.FONT, 7, 0)));
+		joinContext = new ServerJoinContext(progress -> {
+			if(progress < 1.0) {
+				serverLoadProgress.set(new Text("Loading " + (int)(progress * 100) + "%", RenderManager.FONT, 7, 0));
+			} else serverLoadProgress.set(new Text("Building world", RenderManager.FONT, 7, 0));
+		});
 	}
 }
