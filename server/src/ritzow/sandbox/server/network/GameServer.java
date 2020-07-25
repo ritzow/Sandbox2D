@@ -362,7 +362,7 @@ public class GameServer {
 			if(blockType != null) {
 				//TODO there is redundancy here with Utility.canPlace
 				int layer = Utility.getBlockPlaceLayer(world.getBlocks(), x, y);
-				if(layer >= 0 && (layer < world.getBlocks().getLayers() - 1 || world.getBlocks().isSolidBlockAdjacent(layer, x, y))) {
+				if(Utility.isPlaceable(world.getBlocks(), layer, x, y)) {
 					world.getBlocks().place(world, layer, x, y, blockType);
 					broadcastPlaceBlock(blockType, x, y);
 					client.lastBlockPlaceTime = System.nanoTime();

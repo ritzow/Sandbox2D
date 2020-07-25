@@ -58,21 +58,18 @@ public final class InteractionController {
 
 	//TODO wait for server to ack that block place/break cooldown has expired before sending more
 	public void update(Display display, ControlsContext controls, Camera camera, GameTalker client, World world, PlayerEntity player) {
-		final int mouseX = display.getCursorX(), mouseY = display.getCursorY();
-		final int frameWidth = display.width(), frameHeight = display.height();
 		if(controls.isPressed(Control.USE_HELD_ITEM)) {
-			int blockX = Math.round(ClientUtility.pixelHorizontalToWorld(camera, mouseX, frameWidth, frameHeight));
-			int blockY = Math.round(ClientUtility.pixelVerticalToWorld(camera, mouseY, frameHeight));
+			int blockX = Math.round(ClientUtility.pixelHorizontalToWorld(camera, display.getCursorX(), display.width(), display.height()));
+			int blockY = Math.round(ClientUtility.pixelVerticalToWorld(camera, display.getCursorY(), display.height()));
 			switch(player.selected()) {
 				case Protocol.SLOT_BREAK -> {
-					if(Utility.canBreak(player, lastBreak, world, blockX, blockY)) {
-						//TODO only break or place on a single layer (which must be top layer) until mouse button is released
-						if(controls.isNewlyPressed(Control.USE_HELD_ITEM)) {
-							//TODO this won't work if the network ping is more than a single frame duration.
-							layer = Utility.getBlockBreakLayer(world.getBlocks(), blockX, blockY);
-						}
+					if(controls.isNewlyPressed(Control.USE_HELD_ITEM) || layer < 0) {
+						//TODO this won't work if the network ping is more than a single frame duration.
+						layer = Utility.getBlockBreakLayer(world.getBlocks(), blockX, blockY);
+					}
 
-						if(world.getBlocks().isBlock(layer, blockX, blockY) && (layer == 0 || !world.getBlocks().isBlockInRange(0, layer - 1, blockX, blockY))) {
+					if(Utility.canBreak(player, lastBreak, world, blockX, blockY)) {
+						if(Utility.isBreakable(world.getBlocks(), layer, blockX, blockY)) {
 							client.sendBlockBreak(blockX, blockY);
 							//TODO comm. with server, only reset cooldown to server provided value if a block is actually broken
 							//requires a different approach, lastBreak won't be set here
@@ -82,14 +79,13 @@ public final class InteractionController {
 				}
 
 				case Protocol.SLOT_PLACE_GRASS, Protocol.SLOT_PLACE_DIRT -> {
-					if(Utility.canPlace(player, lastPlace, world, blockX, blockY)) {
-						if(controls.isNewlyPressed(Control.USE_HELD_ITEM)) {
-							//TODO this won't work if the network ping is more than a single frame duration.
-							layer = Utility.getBlockPlaceLayer(world.getBlocks(), blockX, blockY);
-						}
+					if(controls.isNewlyPressed(Control.USE_HELD_ITEM) || layer < 0) {
+						//TODO this won't work if the network ping is more than a single frame duration.
+						layer = Utility.getBlockPlaceLayer(world.getBlocks(), blockX, blockY);
+					}
 
-						if(!world.getBlocks().isBlockInRange(World.LAYER_MAIN, layer, blockX, blockY) && (layer < world.getBlocks().getLayers() - 1 ||
-							   world.getBlocks().isSolidBlockAdjacent(layer, blockX, blockY))) {
+					if(Utility.canPlace(player, lastPlace, world, blockX, blockY)) {
+						if(Utility.isPlaceable(world.getBlocks(), layer, blockX, blockY)) {
 							client.sendBlockPlace(blockX, blockY);
 							lastPlace = System.nanoTime();
 							//TODO comm. with server, only reset cooldown to server provided value if a block is actually broken

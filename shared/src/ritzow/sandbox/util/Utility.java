@@ -128,13 +128,29 @@ public final class Utility {
 		return -1;
 	}
 
+	public static boolean isBreakable(BlockGrid blocks, int layer, int blockX, int blockY) {
+		return blocks.isBlock(layer, blockX, blockY) && (layer == 0 || !blocks.isBlockInLayers(0, layer - 1, blockX, blockY));
+	}
+
 	public static boolean canBreak(PlayerEntity player, long lastBreakTime, World world, int layer, int blockX, int blockY) {
-		return canBreak(player, lastBreakTime, world, layer, blockX, blockY) && getBlockBreakLayer(world.getBlocks(), blockX, blockY) == layer;
+		return canBreak(player, lastBreakTime, world, blockX, blockY) && getBlockBreakLayer(world.getBlocks(), blockX, blockY) == layer;
 	}
 
 	public static boolean canBreak(PlayerEntity player, long lastBreakTime, World world, int blockX, int blockY) {
 		return world.getBlocks().isValid(blockX, blockY)&& Utility.nanosSince(lastBreakTime) > BLOCK_INTERACT_COOLDOWN_NANOSECONDS &&
 			Utility.withinDistance(player.getPositionX(), player.getPositionY(), blockX, blockY, BLOCK_INTERACT_RANGE);
+	}
+
+	public static boolean isPlaceable(BlockGrid blocks, int layer, int blockX, int blockY) {
+		if(layer >= 0 && !blocks.isBlockInLayers(World.LAYER_MAIN, layer, blockX, blockY)) {
+			if(layer < blocks.getLayers() - 1) {
+				return blocks.isBlock(layer + 1, blockX, blockY);
+			} else {
+				return blocks.isSolidBlockAdjacent(layer, blockX, blockY);
+			}
+		} else {
+			return false;
+		}
 	}
 
 	public static boolean canPlace(PlayerEntity player, long lastPlaceTime, World world, int blockX, int blockY) {
