@@ -38,9 +38,8 @@ public final class TrackingCameraController {
 		camera.setZoom(Math.fma(0.1f, maxZoom, minZoom));
 	}
 
-	@SuppressWarnings("unused")
-	public void mouseScroll(double xoffset, double yoffset) {
-		computeZoom(0.2f, (float)yoffset);
+	public void zoom(float amount) {
+		computeZoom(0.2f, amount);
 	}
 
 	private void computeZoom(float scale, float offset) {

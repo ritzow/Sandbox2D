@@ -196,6 +196,7 @@ public final class Display implements InputProvider {
 
 	//TODO add a barrier around this and run all of the main thread code on a different thread when this is blocking?
 	public void handleEvents(ControlsContext store) {
+		store.nextFrame();
 		this.context = store;
 		glfwPollEvents();
 	}

@@ -18,6 +18,7 @@ import ritzow.sandbox.client.input.controller.InteractionController;
 import ritzow.sandbox.client.input.controller.TrackingCameraController;
 import ritzow.sandbox.client.network.Client;
 import ritzow.sandbox.client.network.GameTalker;
+import ritzow.sandbox.client.network.ServerBadDataException;
 import ritzow.sandbox.client.ui.GuiElement;
 import ritzow.sandbox.client.ui.element.*;
 import ritzow.sandbox.client.ui.element.BorderAnchor.Anchor;
@@ -48,13 +49,14 @@ class InWorldContext implements GameTalker {
 	private ClientPlayerEntity player;
 	private GuiElement overlayGUI;
 	private Holder<Icon> blockGUI;
+	private Holder<Text> framerateDisplay;
 	private World world;
 
 	private ByteBuffer worldDownloadBuffer;
 	private final DoubleConsumer downloadProgressAction;
 	private CompletableFuture<World> worldBuildTask;
 
-	private final ControlsContext IN_GAME_CONTEXT = new ControlsContext(
+	private final ControlsContext controlsContext = new ControlsContext(
 		FULLSCREEN,
 		QUIT,
 		ZOOM_INCREASE,
@@ -91,7 +93,7 @@ class InWorldContext implements GameTalker {
 
 		@Override
 		public void mouseScroll(double xoffset, double yoffset) {
-			if(IN_GAME_CONTEXT.isPressed(SCROLL_MODIFIER)) {
+			if(controlsContext.isPressed(SCROLL_MODIFIER)) {
 				if(slotOffset == 0) slotOffset += yoffset;
 
 				if(slotOffset > 0) {
@@ -107,7 +109,9 @@ class InWorldContext implements GameTalker {
 						slotOffset = 0;
 					}
 				}
-			} else if(cameraGrip != null) cameraGrip.mouseScroll(xoffset, yoffset);
+			} else if(cameraGrip != null) {
+				cameraGrip.zoom((float)yoffset);
+			}
 		}
 	};
 
@@ -131,20 +135,16 @@ class InWorldContext implements GameTalker {
 	public void updateJoining() {
 		if(worldBuildTask == null) {
 			client.update(data -> {
-				if(data.getShort() == TYPE_SERVER_WORLD_DATA) {
-					downloadProgressAction.accept((float)worldDownloadBuffer.put(data).position()/worldDownloadBuffer.limit());
+				short type = data.getShort();
+				if(type == TYPE_SERVER_WORLD_DATA) {
+					downloadProgressAction.accept(worldDownloadBuffer.put(data).position()/(double)worldDownloadBuffer.limit());
 					if(!worldDownloadBuffer.hasRemaining()) {
 						log().info("Received all world data");
-						//from https://docs.oracle.com/javase/tutorial/essential/concurrency/memconsist.html
-						// https://docs.oracle.com/en/java/javase/13
-						// /docs/api/java.base/java/util/concurrent/package-summary.html
-						// When a statement invokes Thread.start, every statement that has a happens-before
-						// relationship with that statement also has a happens-before relationship with
-						// every statement executed by the new thread. The effects of the code that led up
-						// to the creation of the new thread are visible to the new thread.
 						worldBuildTask = CompletableFuture.supplyAsync(this::buildWorld);
 					}
-				} //TODO else should not have received message of any other type.
+				} else {
+					throw new ServerBadDataException("Received incorrect message type " + type + " during world download");
+				}
 				return true;
 			});
 		} else if(worldBuildTask.isDone()) {
@@ -165,14 +165,15 @@ class InWorldContext implements GameTalker {
 			new Anchor(
 				new Text(client.getServerAddress().getAddress().toString(), RenderManager.FONT, 8, 0), Side.BOTTOM_RIGHT, 0.05f, 0.05f
 			),
-			new Anchor(new ritzow.sandbox.client.ui.element.Button(new Text("Quit", RenderManager.FONT, 9, 0), this::leaveServer), Side.TOP_RIGHT, 0.1f, 0.1f),
+			new Anchor(new ritzow.sandbox.client.ui.element.Button(new Text("Quit", RenderManager.FONT, 5, 0), this::leaveServer), Side.TOP_RIGHT, 0.1f, 0.1f),
 			new Anchor(
 				new Scaler(
 					blockGUI = new Holder<>(
 						new Icon(GameModels.MODEL_RED_SQUARE)
 					), 0.5f
 				), Side.BOTTOM_LEFT, 0.1f, 0.1f
-			)
+			),
+			new Anchor(framerateDisplay = new Holder<>(new Text("0", RenderManager.FONT, 7, 0)), Side.TOP_LEFT, 0.1f, 0.1f)
 		);
 
 		GameState.display().setCursor(GameState.cursorPick());
@@ -188,16 +189,15 @@ class InWorldContext implements GameTalker {
 	private void updateInWorld(long delta) {
 		client.update(this::process);
 		Display display = GameState.display();
-		IN_GAME_CONTEXT.nextFrame();
-		display.handleEvents(IN_GAME_CONTEXT);
+		display.handleEvents(controlsContext);
 		for(var entry : controls.entrySet()) {
-			if(IN_GAME_CONTEXT.isNewlyPressed(entry.getKey())) {
+			if(controlsContext.isNewlyPressed(entry.getKey())) {
 				entry.getValue().run();
 			}
 		}
 		updatePlayerState();
 		if(!display.minimized()) { //TODO need to be more checks, this will run no matter what
-			if(IN_GAME_CONTEXT.isNewlyPressed(ZOOM_RESET)) cameraGrip.resetZoom();
+			if(controlsContext.isNewlyPressed(ZOOM_RESET)) cameraGrip.resetZoom();
 			updateRender(display, delta);
 		}
 	}
@@ -206,12 +206,12 @@ class InWorldContext implements GameTalker {
 	short lastPlayerState = 0;
 
 	private void updatePlayerState() {
-		boolean isPrimary = IN_GAME_CONTEXT.isPressed(USE_HELD_ITEM);
-		boolean isSecondary = IN_GAME_CONTEXT.isPressed(THROW_BOMB);
-		player.setLeft(IN_GAME_CONTEXT.isPressed(MOVE_LEFT));
-		player.setRight(IN_GAME_CONTEXT.isPressed(MOVE_RIGHT));
-		player.setUp(IN_GAME_CONTEXT.isPressed(MOVE_UP));
-		player.setDown(IN_GAME_CONTEXT.isPressed(MOVE_DOWN));
+		boolean isPrimary = controlsContext.isPressed(USE_HELD_ITEM);
+		boolean isSecondary = controlsContext.isPressed(THROW_BOMB);
+		player.setLeft(controlsContext.isPressed(MOVE_LEFT));
+		player.setRight(controlsContext.isPressed(MOVE_RIGHT));
+		player.setUp(controlsContext.isPressed(MOVE_UP));
+		player.setDown(controlsContext.isPressed(MOVE_DOWN));
 		short playerState = PlayerState.getState(player, isPrimary, isSecondary);
 
 		if(playerState != lastPlayerState || Utility.nanosSince(lastPlayerStateSend) > PLAYER_STATE_SEND_INTERVAL) {
@@ -226,18 +226,23 @@ class InWorldContext implements GameTalker {
 	}
 
 	private void updateRender(Display display, long deltaTime) {
-		world.update(deltaTime);
-		cameraGrip.update(IN_GAME_CONTEXT, player, AudioSystem.getDefault(), deltaTime);
+		if(!StandardClientOptions.DISABLE_CLIENT_UPDATE) {
+			world.update(deltaTime);
+		}
+		cameraGrip.update(controlsContext, player, AudioSystem.getDefault(), deltaTime);
 		int width = display.width(), height = display.height();
 		RenderManager.preRender(width, height);
-		worldRenderer.render(RenderManager.DISPLAY_BUFFER, width, height);
-		interactionControls.update(display, IN_GAME_CONTEXT, cameraGrip.getCamera(), this, world, player);
-		interactionControls.render(display, GameState.modelRenderer(), IN_GAME_CONTEXT, cameraGrip.getCamera(), world, player);
-		GameState.modelRenderer().flush(); //render any final queued unrendered models
-		GameState.guiRenderer().render(overlayGUI, RenderManager.DISPLAY_BUFFER, display, IN_GAME_CONTEXT, deltaTime, StandardClientOptions.GUI_SCALE);
+		worldRenderer.render(RenderManager.DISPLAY_BUFFER, width, height, computeDaylight());
+		interactionControls.update(display, controlsContext, GameState.modelRenderer(), cameraGrip.getCamera(), this, world, player);
+		framerateDisplay.set(new Text(Utility.frameTimeToString(GameLoop.getLastUpdateTime()), RenderManager.FONT, 7, 0));
+		GameState.guiRenderer().render(overlayGUI, RenderManager.DISPLAY_BUFFER, display, controlsContext, deltaTime, StandardClientOptions.GUI_SCALE);
 		GameState.modelRenderer().flush();
 		RenderManager.postRender();
 		display.refresh();
+	}
+
+	private static float computeDaylight() {
+		return Utility.oscillate(System.currentTimeMillis(), Utility.degreesPerSecToRadiansPerMillis(5), 0, 0.1f, 1.0f);
 	}
 
 	private boolean process(ByteBuffer data) {
@@ -257,13 +262,11 @@ class InWorldContext implements GameTalker {
 		return true;
 	}
 
-	@SuppressWarnings("unused")
 	private void processBlockBreakCooldown(ByteBuffer data) {
 		interactionControls.setNextUseTime(Instant.ofEpochMilli(data.getLong()));
 	}
 
 	private static void processServerConsoleMessage(ByteBuffer data) {
-		System.out.println(data.capacity());
 		log().info(Bytes.getString(data, data.remaining(), CHARSET));
 	}
 
@@ -289,9 +292,9 @@ class InWorldContext implements GameTalker {
 		} finally {
 			GameState.display().resetCursor();
 			if(GameState.display().wasClosed()) {
-				GameLoop.stop(); //TODO what if mainmenu or something has resources to clean up?
+				GameLoop.setContext(StartClient::shutdown);
 			} else {
-				GameState.menuContext().returnToMenu();
+				GameLoop.setContext(GameState.menuContext()::onLeaveWorld);
 			}
 		}
 	}

@@ -23,7 +23,7 @@ public class StandardClientOptions {
 	public static final float GUI_SCALE = get("gui_scale", 500f, Float::parseFloat);
 
 	public static final boolean DEBUG = get("debug", false, Boolean::parseBoolean);
-
+	public static final boolean DISABLE_CLIENT_UPDATE = get("disable_client_update", false, Boolean::parseBoolean);
 	public static final boolean LEFTY = get("lefty", false, Boolean::parseBoolean);
 
 	private static long frameTimeLimit(String value) {

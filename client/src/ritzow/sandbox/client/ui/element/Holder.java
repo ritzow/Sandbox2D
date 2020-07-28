@@ -3,6 +3,7 @@ package ritzow.sandbox.client.ui.element;
 import java.util.Objects;
 import ritzow.sandbox.client.ui.GuiElement;
 import ritzow.sandbox.client.ui.GuiRenderer;
+import ritzow.sandbox.client.ui.Rectangle;
 import ritzow.sandbox.client.ui.Shape;
 
 public class Holder<T extends GuiElement> implements GuiElement {
@@ -22,12 +23,13 @@ public class Holder<T extends GuiElement> implements GuiElement {
 
 	@Override
 	public void render(GuiRenderer renderer, long nanos) {
-		renderer.draw(element, 1, 0, 0, 1, 1, 0);
-		//element.render(renderer, nanos); //TODO test that this shortcut works properly
+		if(element != null) {
+			renderer.draw(element);
+		}
 	}
 
 	@Override
 	public Shape shape() {
-		return element.shape();
+		return element == null ? new Rectangle(0, 0) : element.shape();
 	}
 }

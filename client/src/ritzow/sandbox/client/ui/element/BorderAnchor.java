@@ -60,6 +60,13 @@ public class BorderAnchor implements GuiElement {
 			Position translate(float x, float y, Rectangle bounds, Rectangle border) {
 				return Position.of((border.width() - bounds.width())/2f - x, (border.height() - bounds.height())/2f - y);
 			}
+		},
+
+		CENTER {
+			@Override
+			Position translate(float x, float y, Rectangle bounds, Rectangle border) {
+				return Position.of(x, y);
+			}
 		};
 
 		abstract Position translate(float x, float y, Rectangle bounds, Rectangle border);
