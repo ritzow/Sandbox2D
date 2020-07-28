@@ -27,7 +27,7 @@ class StartClient {
 	public static void main(String[] args) throws IOException {
 		log().info("Starting game");
 		long startupStart = System.nanoTime();
-		AudioSystem audio = AudioSystem.getDefault(); //load default audio system
+		AudioSystem.getDefault(); //load default audio system
 		setupGLFW();
 		GameState.display().setGraphicsContextOnThread();
 		GameState.modelRenderer(RenderManager.setup());
@@ -35,19 +35,20 @@ class StartClient {
 		GameState.setMenuContext(mainMenu);
 		log().info("Game startup took " + Utility.formatTime(Utility.nanosSince(startupStart)));
 		GameState.display().show();
-		try {
-			GameLoop.start(mainMenu::update);
-		} finally {
-			log().info("Exiting game");
-			GameState.modelRenderer().delete();
-			RenderManager.closeContext();
-			GameState.display().destroy();
-			audio.close();
-			glfwDestroyCursor(GameState.cursorPick());
-			glfwDestroyCursor(GameState.cursorMallet());
-			glfwTerminate();
-			log().info("Game exited");
-		}
+		GameLoop.start(mainMenu::update);
+	}
+
+	public static void shutdown() {
+		log().info("Exiting game");
+		GameState.modelRenderer().delete();
+		RenderManager.closeContext();
+		GameState.display().destroy();
+		AudioSystem.getDefault().close();
+		glfwDestroyCursor(GameState.cursorPick());
+		glfwDestroyCursor(GameState.cursorMallet());
+		glfwTerminate();
+		log().info("Game exited");
+		GameLoop.stop();
 	}
 
 	private static void setupGLFW() throws IOException {

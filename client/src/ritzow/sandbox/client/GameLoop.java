@@ -12,7 +12,7 @@ class GameLoop {
 
 	private static GameContext current;
 
-	private static long lastUpdate;
+	private static long lastUpdate, lastUpdateTime;
 
 	public static void start(GameContext initial) {
 		if(current != null)
@@ -21,11 +21,17 @@ class GameLoop {
 		lastUpdate = System.nanoTime();
 		while(current != null) {
 			long frameStart = System.nanoTime();
-			current.run(frameStart - lastUpdate);
+			long delta = frameStart - lastUpdate;
+			current.run(delta);
 			lastUpdate = Math.max(frameStart, lastUpdate);
-			if(LIMIT_FPS) Utility.limitFramerate(frameStart, FRAME_TIME_LIMIT); //TODO this is causing problems again I think?
+			lastUpdateTime = delta;
+			if(LIMIT_FPS) Utility.limitFramerate(frameStart, FRAME_TIME_LIMIT);
 			if(PRINT_FPS) Utility.printFramerate(frameStart);
 		}
+	}
+
+	public static long getLastUpdateTime() {
+		return lastUpdateTime;
 	}
 
 	public static long updateDeltaTime() {

@@ -18,7 +18,6 @@ import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.Entity;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
-import static ritzow.sandbox.network.Protocol.BLOCK_INTERACT_COOLDOWN_NANOSECONDS;
 import static ritzow.sandbox.network.Protocol.BLOCK_INTERACT_RANGE;
 
 /**
@@ -111,12 +110,7 @@ public final class Utility {
 	}
 
 	public static int getBlockBreakLayer(BlockGrid blocks, int x, int y) {
-		for(int i = 0; i < blocks.getLayers(); i++) {
-			if(blocks.isBlock(i, x, y)) {
-				return i;
-			}
-		}
-		return -1;
+		return blocks.getTopBlockLayer(x, y);
 	}
 
 	public static int getBlockPlaceLayer(BlockGrid blocks, int x, int y) {
@@ -130,12 +124,6 @@ public final class Utility {
 
 	public static boolean isBreakable(BlockGrid blocks, int layer, int blockX, int blockY) {
 		return blocks.isBlock(layer, blockX, blockY) && (layer == 0 || !blocks.isBlockInLayers(0, layer - 1, blockX, blockY));
-	}
-
-	public static boolean canBreak(PlayerEntity player, long lastBreakTime, World world, int blockX, int blockY) {
-		return world.getBlocks().isValid(blockX, blockY) &&
-			Utility.nanosSince(lastBreakTime) > BLOCK_INTERACT_COOLDOWN_NANOSECONDS &&
-			inRange(player, blockX, blockY);
 	}
 
 	public static boolean isPlaceable(BlockGrid blocks, int layer, int blockX, int blockY) {
@@ -154,12 +142,6 @@ public final class Utility {
 		return world.getBlocks().isValid(blockX, blockY) && inRange(player, blockX, blockY);
 	}
 
-	public static boolean canPlace(PlayerEntity player, long lastPlaceTime, World world, int blockX, int blockY) {
-		return world.getBlocks().isValid(blockX, blockY) &&
-				   Utility.nanosSince(lastPlaceTime) > BLOCK_INTERACT_COOLDOWN_NANOSECONDS &&
-				   inRange(player, blockX, blockY);
-	}
-
 	public static boolean inRange(Entity player, int blockX, int blockY) {
 		return Utility.withinDistance(player.getPositionX(), player.getPositionY(),
 				blockX, blockY, BLOCK_INTERACT_RANGE);
@@ -167,6 +149,10 @@ public final class Utility {
 
 	public static double degreesPerSecToRadiansPerNano(double degreesPerSec) {
 		return degreesPerSec / 1_000_000_000 * Math.PI / 180;
+	}
+
+	public static double degreesPerSecToRadiansPerMillis(double degreesPerSec) {
+		return degreesPerSec / 1_000 * Math.PI / 180;
 	}
 
 	/** Put an angle, in radians, from 0 to 2 PI */
@@ -199,9 +185,13 @@ public final class Utility {
 		System.out.println(formatTime(System.nanoTime() - nanoseconds));
 	}
 
-	public static void printFramerate(long nanoseconds) {
-		long frameTime = System.nanoTime() - nanoseconds;
-		System.out.println(1_000_000_000/frameTime + " FPS (" + Utility.formatTime(frameTime) + ")");
+	public static void printFramerate(long frameStart) {
+		long frameTime = System.nanoTime() - frameStart;
+		System.out.println(frameTimeToString(frameTime));
+	}
+
+	public static String frameTimeToString(long durationNanos) {
+		return 1_000_000_000/durationNanos + " FPS (" + Utility.formatTime(durationNanos) + ")";
 	}
 
 	public static String formatSize(long bytes) {
@@ -277,6 +267,7 @@ public final class Utility {
 
 	private static final SplittableRandom RANDOM = new SplittableRandom();
 
+	/** Not thread safe **/
 	public static float random(double min, double max) {
 		return (float)RANDOM.nextDouble(min, max);
 	}
@@ -302,10 +293,6 @@ public final class Utility {
 		launchAtAngle(e, random(minFraction * 2 * Math.PI, maxFraction * 2 * Math.PI), velocity);
 	}
 
-	public static float randomAngleRadians() {
-		return random(0, Math.PI * 2);
-	}
-
 	public static boolean intersection(float rectangleX, float rectangleY,
 			float width, float height, float pointX, float pointY) {
 		return (pointX <= Math.fma(0.5f, width, rectangleX) && pointX >= Math.fma(width, 0.5f, -rectangleX)) &&
@@ -318,7 +305,9 @@ public final class Utility {
 	}
 
 	public static double distance(double x1, double y1, double x2, double y2) {
-		return Math.sqrt(Math.fma((x1-x2), (x1-x2), (y1-y2)*(y1-y2)));
+		double deltaX = x1 - x2;
+		double deltaY = y1 - y2;
+		return Math.sqrt(Math.fma(deltaX, deltaX, deltaY * deltaY));
 	}
 
 	public static float distance(float x1, float y1, float x2, float y2) {
@@ -330,14 +319,12 @@ public final class Utility {
 	}
 
 	private static float distanceSquared(float x1, float y1, float x2, float y2) {
-		return Math.fma((x1-x2), (x1-x2), (y1-y2)*(y1-y2));
+		float deltaX = x1 - x2;
+		float deltaY = y1 - y2;
+		return Math.fma(deltaX, deltaX, deltaY * deltaY);
 	}
 
-	/** Returns the maximum value of the component opposite the one passed in (x if y given) within a given radius
-	 * @param otherComp x or y component
-	 * @param radius radius from given component
-	 * @return the other component **/
-	public static float maxComponentInRadius(float otherComp, float radius) {
-		return (float)Math.sqrt(Math.fma(radius, radius, -otherComp * otherComp));
+	public static float average(float a, float b) {
+		return (a + b)/2f;
 	}
 }

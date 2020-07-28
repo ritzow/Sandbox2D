@@ -7,5 +7,6 @@ public class GameModels {
 		 MODEL_GREEN_FACE,
 		 MODEL_RED_SQUARE,
 		 MODEL_SKY,
-		 MODEL_BLUE_SQUARE;
+		 MODEL_BLUE_SQUARE,
+		MODEL_NIGHT_SKY;
 }

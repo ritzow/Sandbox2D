@@ -3,7 +3,7 @@ package ritzow.sandbox.client.input;
 import java.util.Arrays;
 
 /** Similar to Android's SparseIntArray **/
-public class ControlsContext implements ControlsQuery {
+public class ControlsContext implements ControlsQuery { //TODO allow only one control toggle per frame, queue last event that happens within frame for next frame
 	public void framebufferSize(int width, int height) {}
 	public void mouseScroll(double horizontal, double vertical) {}
 	public void windowClose() {}
@@ -100,14 +100,17 @@ public class ControlsContext implements ControlsQuery {
 		};
 	}
 
+	@Override
 	public boolean isPressed(Button control) {
 		return (store[indexOf(control.type(), control.code())].state & 1) == 1; //test right bit
 	}
 
+	@Override
 	public boolean isNewlyPressed(Button control) {
 		return store[indexOf(control.type(), control.code())].state == NEWLY_PRESSED;
 	}
 
+	@Override
 	public boolean isNewlyReleased(Button control) {
 		return store[indexOf(control.type(), control.code())].state == NEWLY_RELEASED;
 	}
