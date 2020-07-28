@@ -249,6 +249,8 @@ public class World implements Transportable, Iterable<Entity> {
 		return e;
 	}
 
+	private static final float FRICTION_COEFFICIENT = 100_000_000_000_000_000f;
+
 	/**
 	 * Updates the entities in the world, simulating a single timestep of the provided amount.
 	 * Entities are updated, gravity is applied, entity vs entity collisions are resolved,
@@ -269,20 +271,13 @@ public class World implements Transportable, Iterable<Entity> {
 				onRemove.accept(entities.remove(i));
 				size--;
 			} else {
-				//update entity position and velocity, and anything else specific to an entity
+				//update anything specific to an entity, can update position and velocity
 				e.update(this, nanoseconds);
 
-				//apply gravity e.getVelocityY() - GRAVITY * nanoseconds
-				float velocityY = Math.fma(-GRAVITY, nanoseconds, e.getVelocityY());
-				e.setVelocityY(velocityY);
-//				float velocityX = e.getVelocityX();
-//				float speedSquared = velocityX*velocityX + velocityY*velocityY;
-//				if(speedSquared > TERMINAL_VELOCITY_SQUARED) {
-//					float scale = (float)(TERMINAL_VELOCITY / Math.sqrt(speedSquared));
-//					e.setVelocityY(velocityY * scale);
-//					e.setVelocityX(velocityX * scale);
-//				}
-//				e.setVelocityY(velocityY);
+				//update position and velocity
+				e.setPositionX(Math.fma(e.getVelocityX(), nanoseconds, e.getPositionX()));
+				e.setVelocityY(Math.fma(-GRAVITY, nanoseconds, e.getVelocityY()));
+				e.setPositionY(Math.fma(e.getVelocityY(), nanoseconds, e.getPositionY()));
 
 				//check for entity vs. entity collisions with all entities that have not already been
 				//collision checked with (for first element, all entites, for last, no entities)
@@ -292,14 +287,23 @@ public class World implements Transportable, Iterable<Entity> {
 
 				//Check for entity collisions with blocks
 				if(e.collidesWithBlocks()) {
-					resolveBlockCollisions(e, nanoseconds);
+					float friction = resolveBlockCollisions(e, nanoseconds);
+					if(friction != 0) {
+						friction = Utility.average(e.getFriction(), friction);
+						float delta = nanoseconds / friction / FRICTION_COEFFICIENT;
+						if(e.getVelocityX() > 0) {
+							e.setVelocityX(Math.max(0, e.getVelocityX() - delta));
+						} else if(e.getVelocityX() < 0) {
+							e.setVelocityX(Math.min(e.getVelocityX() + delta, 0));
+						}
+					}
 				}
 			}
 		}
 		isEntitiesUnmodifiable = false;
 	}
 
-	private void resolveBlockCollisions(Entity e, long nanoseconds) {
+	private float resolveBlockCollisions(Entity e, long nanoseconds) {
 		BlockGrid blocks = this.blocks;
 		float posX = e.getPositionX();
 		float posY = e.getPositionY();
@@ -309,6 +313,8 @@ public class World implements Transportable, Iterable<Entity> {
 		int bottomBound = Math.max(0, (int)(posY - height));
 		int topBound = Math.min((int)(posY + height), blocks.getHeight() - 1);
 		int rightBound = Math.min((int)(posX + width), blocks.getWidth() - 1);
+		float friction = 0;
+		int frictionCollisions = 0;
 
 		//TODO is there redundancy between this and resolveBlockCollision
 		//System.out.println(leftBound + ", " + bottomBound + ", " + rightBound + ", " + topBound);
@@ -317,10 +323,15 @@ public class World implements Transportable, Iterable<Entity> {
 				Block block = blocks.get(LAYER_MAIN, column, row);
 				if(block != null && block.isSolid()) {
 					//TODO re-add other block checks to see if surface is smooth
-					resolveBlockCollision(e, block, column, row, nanoseconds);
+					float f = resolveBlockCollision(e, block, column, row, nanoseconds);
+					if(f != 0) {
+						friction += f;
+						frictionCollisions++;
+					}
 				}
 			}
 		}
+		return frictionCollisions > 0 ? friction / frictionCollisions : 0; //average of frictions
 	}
 
 	/**
@@ -350,7 +361,7 @@ public class World implements Transportable, Iterable<Entity> {
 				    if (wy > hx) {
 				        if (wy > -hx) { /* collision on the bottom of other */
 				        	e.setPositionY(o.getPositionY() - height);
-				        	onCollisionEntityVertical(e, o.getFriction(), nanoseconds);
+					        e.setVelocityY(0);
 				        } else { /* collision on the right of other */
 				        	e.setPositionX(o.getPositionX() + width);
 				        	if(e.getVelocityX() < 0) {
@@ -365,7 +376,7 @@ public class World implements Transportable, Iterable<Entity> {
 							}
 				        } else { /* collision on the top of other */
 				        	e.setPositionY(o.getPositionY() + height);
-				        	onCollisionEntityVertical(e, o.getFriction(), nanoseconds);
+					        e.setVelocityY(0);
 				        }
 				    }
 				}
@@ -377,7 +388,8 @@ public class World implements Transportable, Iterable<Entity> {
 		return !(blocks.isValid(LAYER_MAIN, x, y) && blocks.isBlock(LAYER_MAIN, x, y) && blocks.get(LAYER_MAIN, x, y).isSolid());
 	}
 
-	private void resolveBlockCollision(Entity e, Block block, int blockX, int blockY, long nanoseconds) {
+	/** Returns true if entity is grounded **/
+	private float resolveBlockCollision(Entity e, Block block, int blockX, int blockY, long nanoseconds) {
 		float centroidX = Math.fma(0.5f, e.getWidth(), 0.5f);
 		float centroidY = Math.fma(0.5f, e.getHeight(), 0.5f);
 		float deltaX = blockX - e.getPositionX();
@@ -389,7 +401,9 @@ public class World implements Transportable, Iterable<Entity> {
 		        if (wy > -hx && isOpen(blockX, blockY - 1)) { /* collision on the bottom of block, top of entity */
 		        	e.setPositionY(blockY - centroidY);
 					e.onCollision(this, block, Entity.Side.TOP, blockX, blockY, nanoseconds);
-		        	onCollisionEntityVertical(e, block.getFriction(), nanoseconds);
+					if(e.getVelocityY() > 0) {
+						e.setVelocityY(0);
+					}
 		        } else if(isOpen(blockX + 1, blockY)) { /* collision on right of block */
 		        	e.setPositionX(blockX + centroidX);
 		        	e.onCollision(this, block, Entity.Side.LEFT, blockX, blockY, nanoseconds);
@@ -407,35 +421,15 @@ public class World implements Transportable, Iterable<Entity> {
 		        } else if(isOpen(blockX, blockY + 1)) { /* collision on top of block, bottom of entity */
 		        	e.setPositionY(blockY + centroidY);
 		        	e.onCollision(this, block, Entity.Side.BOTTOM, blockX, blockY, nanoseconds);
-		        	onCollisionEntityVertical(e, block.getFriction(), nanoseconds);
+		        	//updateFriction(e, block.getFriction(), 0.0000001f, nanoseconds);
+			        if(e.getVelocityY() < 0) {
+				        e.setVelocityY(0);
+			        }
+			        return block.getFriction();
 		        }
 		    }
 		}
+		return 0;
 	}
 
-	/**
-	 * @param surfaceFriction The friction of the object the entity e is colliding with.
-	 * @param nanoseconds The duration of the collision?
-	 */
-	@SuppressWarnings("unused")
-	private static void onCollisionEntityVertical(Entity e, float surfaceFriction, long nanoseconds) {
-		//friction force = normal force * friction
-		//TODO maybe implement normal forces some time (for when entities are stacked)?
-		//TODO must be independent of number of collisions, rely on Entity state (lastCollision)?
-//		float friction = Utility.average(e.getFriction(), surfaceFriction);
-//		long collisionTime = System.nanoTime();
-//		long duration = Math.max(nanoseconds, collisionTime - e.lastCollision());
-//    	if(e.getVelocityX() > 0) {
-//    		//float left = Math.fma(-friction, duration, e.getVelocityX());
-//    		float left = -friction / duration + e.getVelocityX();
-//    		e.setVelocityX(Math.max(0, left));
-//    	} else if(e.getVelocityX() < 0) {
-//    		//float right = Math.fma(friction, duration, e.getVelocityX());
-//    		float right = friction / duration + e.getVelocityX();
-//    		e.setVelocityX(Math.min(0, right));
-//    	}
-//		e.setLastCollision(collisionTime);
-
-		e.setVelocityY(0);
-	}
 }
