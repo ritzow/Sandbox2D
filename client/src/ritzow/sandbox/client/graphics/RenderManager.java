@@ -55,11 +55,12 @@ public class RenderManager {
 			red = Textures.loadTextureName("redSquare"),
 			sky = Textures.loadTextureName("clouds_online"),
 			blue = Textures.loadTextureName("blueSquare"),
+			night = Textures.loadTextureName("night"),
 			fontTexture = Textures.loadTextureData(StandardClientProperties.ASSETS_PATH.resolve("fonts").resolve("default").resolve("sheet01.png"));
 
 		//TODO implement half-pixel correction to prevent bleeding and the weird artifacting stuff
 		//https://gamedev.stackexchange.com/a/49585
-		TextureAtlas atlas = Textures.buildAtlas(sky, grass, dirt, face, red, blue, fontTexture);
+		TextureAtlas atlas = Textures.buildAtlas(sky, grass, dirt, face, red, blue, fontTexture, night);
 
 		//TODO look into using https://github.com/javagl/JglTF with Blender
 		List<ModelData> models = new ArrayList<>(List.of(
@@ -68,7 +69,8 @@ public class RenderManager {
 			textureToModel(model -> GameModels.MODEL_GREEN_FACE = model, face, atlas, 1),
 			textureToModel(model -> GameModels.MODEL_RED_SQUARE = model, red, atlas, 1),
 			textureToModel(model -> GameModels.MODEL_SKY = model, sky, atlas, 1),
-			textureToModel(model -> GameModels.MODEL_BLUE_SQUARE = model, blue, atlas, 1)
+			textureToModel(model -> GameModels.MODEL_BLUE_SQUARE = model, blue, atlas, 1),
+			textureToModel(model -> GameModels.MODEL_NIGHT_SKY = model, night, atlas, 1)
 			//new ModelData("atlas", 1, 1, TextureAtlas.NORMAL_POS, TextureAtlas.ATLAS_COORDS, indices)
 		));
 
