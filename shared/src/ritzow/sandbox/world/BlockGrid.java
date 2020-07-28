@@ -1,7 +1,6 @@
 package ritzow.sandbox.world;
 
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.Objects;
 import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.data.Serializer;
@@ -69,11 +68,11 @@ public final class BlockGrid implements Transportable {
 	}
 
 	public boolean isValid(int x, int y) {
-		return y >= 0 && x >= 0 && y < getHeight() && x < getWidth();
+		return x >= 0 && x < width && y >= 0 && y < height;
 	}
 
 	public boolean isValid(int layer, int x, int y) {
-		return layer < layers && isValid(x, y);
+		return layer >= 0 && layer < layers && isValid(x, y);
 	}
 
 	/**
@@ -84,20 +83,33 @@ public final class BlockGrid implements Transportable {
 	 * @throws IllegalArgumentException if x or y is not in the block grid
 	 */
 	public Block get(int layer, int x, int y) {
+		checkValid(layer, x, y);
 		try {
-			return blocks[compute(checkLayer(layer), x, y)];
+			return blocks[compute(layer, x, y)];
 		} catch(ArrayIndexOutOfBoundsException e) {
-			throw new IllegalArgumentException("Invalid coordinates layer "
-				+ layer + ", pos ("  + x + ", " + y + ") in world sized "
-				+ getWidth() + " X " + getHeight() + " X " + layers
-				+ " layers, element " + compute(layer, x, y) + "/" + blocks.length);
+			throw illegal(layer, x, y);
 		}
 	}
 
+	private RuntimeException illegal(int layer, int x, int y) {
+		return new IllegalArgumentException("Invalid coordinates layer "
+       + layer + ", pos ("  + x + ", " + y + ") in world sized "
+       + getWidth() + " X " + getHeight() + " X " + layers
+       + " layers, element " + compute(layer, x, y) + "/" + blocks.length);
+	}
+
 	private int checkLayer(int layer) {
-		if(layer >= layers)
+		if(layer >= layers || layer < 0)
 			throw new IllegalArgumentException("invalid layer " + layer + ", maximum is " + (layers - 1));
 		return layer;
+	}
+
+	private static final boolean CHECK_VALID = true;
+
+	private void checkValid(int layer, int x, int y) {
+		if(CHECK_VALID && !isValid(layer, x, y)) {
+			throw illegal(layer, x, y);
+		}
 	}
 
 	public Block get(int layer, float worldX, float worldY) {
@@ -105,14 +117,19 @@ public final class BlockGrid implements Transportable {
 	}
 
 	public Block set(int layer, int x, int y, Block block) {
+		checkValid(layer, x, y);
 		try {
-			int index = compute(checkLayer(layer), x, y);
+			int index = compute(layer, x, y);
 			Block previous = blocks[index];
 			blocks[index] = block;
 			return previous;
 		} catch(ArrayIndexOutOfBoundsException e) {
-			throw new IllegalArgumentException("invalid coordinates " + x + ", " + y);
+			throw illegal(layer, x, y);
 		}
+	}
+
+	private int firstLayerIndex(int x, int y) {
+		return layers * (width * y + x);
 	}
 
 	/** Determines the memory layout of the block grid dimensions **/
@@ -123,10 +140,11 @@ public final class BlockGrid implements Transportable {
 		//get offset into a single row: layers * x + layer
 		//combined: (width * layers * y) + (layers * x + layer)
 		//optimized:
-		return layers * (width * y + x) + layer;
+		return firstLayerIndex(x, y) + layer;
 	}
 
 	/** Fills all layers of a rectangular region with the provided block instance **/
+	@Optimized("compute")
 	public void fill(Block block, int x1, int y1, int width, int height) {
 		int y2 = y1 + height;
 		int columnStart = x1 * layers;
@@ -137,31 +155,31 @@ public final class BlockGrid implements Transportable {
 		}
 	}
 
-	public Iterator<Block> blockIterator(int layerLast, int layerFirst, int x, int y, int width, int height) {
-		return new Iterator<Block>() { //TODO test this to see that it works
-			int current;
-			final int last;
-
-			{
-
-				last = (layerLast - layerFirst) * (width * height) - 1;
-					//compute(layerLast, x + width, y + height);
-			}
-
-			@Override
-			public boolean hasNext() {
-				return current < last;
-			}
-
-			@Override
-			public Block next() {
-				//current = width * y + x + layer;
-				//x = current - layer - width * y
-				throw new UnsupportedOperationException("not implemented");
-				//return null; //blocks[]; //TODO implement blockIterator
-			}
-		};
-	}
+//	public Iterator<Block> blockIterator(int layerLast, int layerFirst, int x, int y, int width, int height) {
+//		return new Iterator<Block>() { //TODO test this to see that it works
+//			int current;
+//			final int last;
+//
+//			{
+//
+//				last = (layerLast - layerFirst) * (width * height) - 1;
+//					//compute(layerLast, x + width, y + height);
+//			}
+//
+//			@Override
+//			public boolean hasNext() {
+//				return current < last;
+//			}
+//
+//			@Override
+//			public Block next() {
+//				//current = width * y + x + layer;
+//				//x = current - layer - width * y
+//				throw new UnsupportedOperationException("not implemented");
+//				//return null; //blocks[]; //TODO implement blockIterator
+//			}
+//		};
+//	}
 
 	public Block destroy(World world, int layer, float x, float y) {
 		return destroy(world, layer, Math.round(x), Math.round(y));
@@ -189,7 +207,8 @@ public final class BlockGrid implements Transportable {
 
 	@Optimized("compute")
 	public boolean isBlock(int x, int y) {
-		int start = layers * (width * y + x);
+		checkValid(0, x, y);
+		int start = firstLayerIndex(x, y);
 		for(int layer = 0; layer < layers; layer++) {
 			if(blocks[start + layer] != null) {
 				return true;
@@ -218,15 +237,28 @@ public final class BlockGrid implements Transportable {
 
 	@Optimized("compute")
 	public boolean isBlockInLayers(int layerStart, int layerEnd, int x, int y) {
-		checkLayer(layerStart);
-		checkLayer(layerEnd);
-		int start = layers * (width * y + x);
-		for(int layer = layerStart; layer <= layerEnd; layer++) {
-			if(blocks[start + layer] != null) {
+		checkValid(layerStart, x, y);
+		int base = firstLayerIndex(x, y);
+		int end = base + checkLayer(layerEnd);
+		for(int index = base + layerStart; index <= end; index++) {
+			if(blocks[index] != null) {
 				return true;
 			}
 		}
 		return false;
+	}
+
+	@Optimized("compute")
+	public int getTopBlockLayer(int x, int y) {
+		checkValid(0, x, y);
+		int start = firstLayerIndex(x, y);
+		int end = start + layers;
+		for(int index = start; index < end; index++) {
+			if(blocks[index] != null) {
+				return index - start;
+			}
+		}
+		return -1;
 	}
 
 	public boolean isSolidBlockAdjacent(int layer, int blockX, int blockY) {
