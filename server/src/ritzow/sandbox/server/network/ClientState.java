@@ -38,7 +38,7 @@ public class ClientState extends ClientNetworkInfo {
 		super(address);
 		status = STATUS_CONNECTED;
 		recordedSend = new ArrayDeque<>();
-		nextUseTime = Instant.MIN;
+		nextUseTime = Instant.EPOCH;
 	}
 
 	public void sendRecorded() {

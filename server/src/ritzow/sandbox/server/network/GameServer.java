@@ -317,11 +317,12 @@ public class GameServer {
 		BlockGrid blocks = world.getBlocks();
 		if(!blocks.isValid(x, y))
 			throw new ClientBadDataException("client sent invalid block coordinates x=" + x + " y=" + y);
-		if(world.getBlocks().isValid(x, y) && Utility.inRange(client.player, x, y) && Instant.now().isAfter(client.nextUseTime)) {
+		Instant now = Instant.now();
+		if(world.getBlocks().isValid(x, y) && Utility.inRange(client.player, x, y) && now.isAfter(client.nextUseTime)) {
 			//TODO sync block break cooldowns (System.currentTimeMillis() + cooldown)
 			int layer = Utility.getBlockBreakLayer(blocks, x, y);
 			if(layer >= 0) {
-				client.nextUseTime = sendUseCooldown(client);
+				sendUseCooldownSuccess(client, now);
 				Block block = world.getBlocks().destroy(world, layer, x, y);
 				broadcastRemoveBlock(x, y);
 				if(block != null) {
@@ -332,17 +333,12 @@ public class GameServer {
 					world.add(drop);
 					broadcastAddEntity(drop);
 				}
+			} else {
+				sendUseCooldownFailure(client);
 			}
+		} else {
+			sendUseCooldownFailure(client);
 		}
-	}
-
-	private static Instant sendUseCooldown(ClientState client) {
-		Instant nextUse = Instant.now().plusNanos(BLOCK_INTERACT_COOLDOWN_NANOSECONDS);
-		byte[] packet = new byte[2 + 8];
-		Bytes.putShort(packet, 0, TYPE_SERVER_CLIENT_SLOT_USE_COOLDOWN);
-		Bytes.putLong(packet, 2, nextUse.toEpochMilli());
-		client.send(packet, true);
-		return nextUse;
 	}
 
 	private void processClientPlaceBlock(ClientState client, ByteBuffer packet) {
@@ -352,24 +348,40 @@ public class GameServer {
 		//TODO sync block place cooldowns (System.currentTimeMillis() + cooldown)
 		if(!world.getBlocks().isValid(x, y))
 			throw new ClientBadDataException("client sent invalid block coordinates x=" + x + " y=" + y);
-		if(world.getBlocks().isValid(x, y) && Utility.inRange(player, x, y) && Instant.now().isAfter(client.nextUseTime)) {
-			Block blockType = switch(player.selected()) {
-				case SLOT_BREAK -> null;
-				case SLOT_PLACE_GRASS -> GrassBlock.INSTANCE;
-				case SLOT_PLACE_DIRT -> DirtBlock.INSTANCE;
-				default -> throw new ClientBadDataException("invalid item slot " + player.selected());
-			};
-
-			if(blockType != null) {
-				//TODO there is redundancy here with Utility.canPlace
-				int layer = Utility.getBlockPlaceLayer(world.getBlocks(), x, y);
-				if(Utility.isPlaceable(world.getBlocks(), layer, x, y)) {
-					client.nextUseTime = sendUseCooldown(client);
-					world.getBlocks().place(world, layer, x, y, blockType);
-					broadcastPlaceBlock(blockType, x, y);
-				}
+		Instant now = Instant.now();
+		if(Utility.inRange(player, x, y) && now.isAfter(client.nextUseTime)) {
+			int layer = Utility.getBlockPlaceLayer(world.getBlocks(), x, y);
+			if(Utility.isPlaceable(world.getBlocks(), layer, x, y)) {
+				Block blockType = switch(player.selected()) {
+					case SLOT_PLACE_GRASS -> GrassBlock.INSTANCE;
+					case SLOT_PLACE_DIRT -> DirtBlock.INSTANCE;
+					default -> throw new ClientBadDataException("invalid item slot " + player.selected());
+				};
+				sendUseCooldownSuccess(client, now);
+				world.getBlocks().place(world, layer, x, y, blockType);
+				broadcastPlaceBlock(blockType, x, y);
+			} else {
+				sendUseCooldownFailure(client);
 			}
+		} else {
+			sendUseCooldownFailure(client);
 		}
+	}
+
+	private static void sendUseCooldownSuccess(ClientState client, Instant now) {
+		Instant nextUse = now.plusNanos(BLOCK_INTERACT_COOLDOWN_NANOSECONDS);
+		byte[] packet = new byte[2 + 8];
+		Bytes.putShort(packet, 0, TYPE_SERVER_CLIENT_SLOT_USE_COOLDOWN);
+		Bytes.putLong(packet, 2, nextUse.toEpochMilli());
+		client.send(packet, true);
+		client.nextUseTime = nextUse;
+	}
+
+	private static void sendUseCooldownFailure(ClientState client) {
+		byte[] packet = new byte[2 + 8];
+		Bytes.putShort(packet, 0, TYPE_SERVER_CLIENT_SLOT_USE_COOLDOWN);
+		Bytes.putLong(packet, 2, client.nextUseTime.toEpochMilli());
+		client.send(packet, true);
 	}
 
 	public void broadcastRemoveBlock(int x, int y) {
