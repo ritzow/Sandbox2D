@@ -7,29 +7,29 @@ import ritzow.sandbox.world.item.Item;
 
 public class ItemEntity<ITEM extends Item> extends Entity {
 	protected final ITEM item;
-	
+
 	public ItemEntity(int entityID, ITEM item) {
 		super(entityID);
 		this.item = item;
 	}
-	
+
 	public ItemEntity(int entityID, ITEM item, float x, float y) {
 		super(entityID);
 		this.item = item;
 		this.positionX = x;
 		this.positionY = y;
 	}
-	
+
 	public ItemEntity(TransportableDataReader input) {
 		super(input);
 		item = input.readObject();
 	}
-	
+
 	@Override
 	public byte[] getBytes(Serializer ser) {
 		return Bytes.concatenate(super.getBytes(ser), ser.serialize(item));
 	}
-	
+
 	public ITEM getItem() {
 		return item;
 	}
@@ -56,7 +56,7 @@ public class ItemEntity<ITEM extends Item> extends Entity {
 
 	@Override
 	public float getFriction() {
-		return 0.02f;
+		return 1f;
 	}
 
 	@Override

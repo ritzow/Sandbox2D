@@ -4,14 +4,14 @@ import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.data.Serializer;
 
 public class DirtBlock implements Block {
-	
+
 	public static final DirtBlock INSTANCE = new DirtBlock();
-	
+
 	protected DirtBlock() {}
 
 	@Override
 	public float getFriction() {
-		return 0.05f;
+		return 0.5f;
 	}
 
 	@Override

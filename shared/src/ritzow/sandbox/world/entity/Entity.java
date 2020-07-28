@@ -20,10 +20,7 @@ public abstract class Entity implements Transportable {
 	 * @param world The world the entity belongs to.
 	 * @param nanoseconds The amount of time to update the entity.
 	 */
-	public void update(World world, long nanoseconds) {
-		positionX = Math.fma(velocityX, nanoseconds, positionX);
-		positionY = Math.fma(velocityY, nanoseconds, positionY);
-	}
+	public void update(World world, long nanoseconds) {}
 
 	public Entity(int entityID) {
 		this.entityID = entityID;
