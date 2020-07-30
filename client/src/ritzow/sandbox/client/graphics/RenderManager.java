@@ -29,6 +29,8 @@ public class RenderManager {
 	public static final int MAIN_DRAW_BUFFER_INDEX = 0;
 	public static GLCapabilities OPENGL_CAPS;
 
+	public static final int[] VERTEX_INDICES_RECT = {0, 1, 2, 0, 2, 3};
+
 	public static Font FONT; //TODO put this somewhere else?
 
 	public static ModelRenderer setup() throws IOException {
@@ -46,11 +48,10 @@ public class RenderManager {
 		//TODO vsync doesnt work in fullscreen
 		glfwSwapInterval(StandardClientOptions.VSYNC ? 1 : 0);
 
-		int[] indices = {0, 1, 2, 0, 2, 3};
-
 		TextureData
 			dirt = Textures.loadTextureName("dirt"),
 			grass = Textures.loadTextureName("grass"),
+			glass = Textures.loadTextureName("glass"),
 			face = Textures.loadTextureName("greenFace"),
 			red = Textures.loadTextureName("redSquare"),
 			sky = Textures.loadTextureName("clouds_online"),
@@ -60,7 +61,7 @@ public class RenderManager {
 
 		//TODO implement half-pixel correction to prevent bleeding and the weird artifacting stuff
 		//https://gamedev.stackexchange.com/a/49585
-		TextureAtlas atlas = Textures.buildAtlas(sky, grass, dirt, face, red, blue, fontTexture, night);
+		TextureAtlas atlas = Textures.buildAtlas(sky, grass, dirt, glass, face, red, blue, fontTexture, night);
 
 		//TODO look into using https://github.com/javagl/JglTF with Blender
 		List<ModelData> models = new ArrayList<>(List.of(
@@ -72,6 +73,7 @@ public class RenderManager {
 			textureToModelFit(model -> GameModels.MODEL_BLUE_SQUARE = model, blue, atlas, 1),
 			textureToModelFit(model -> GameModels.MODEL_NIGHT_SKY = model, night, atlas, 1),
 			textureToModelFit(model -> GameModels.MODEL_GLASS_BLOCK = model, glass, atlas, 1),
+			new ModelData(model -> GameModels.MODEL_ATLAS = model, 1, 1, TextureAtlas.NORMAL_POS, TextureAtlas.ATLAS_COORDS, VERTEX_INDICES_RECT)
 		));
 
 		AtlasRegion region = atlas.getRegion(fontTexture);
