@@ -402,6 +402,11 @@ class InWorldContext implements GameTalker {
 				yield GameState.cursorMallet();
 			}
 
+			case SLOT_PLACE_GLASS -> {
+				blockGUI.set(new Icon(GameModels.MODEL_GLASS_BLOCK));
+				yield GameState.cursorMallet();
+			}
+
 			default -> {
 				blockGUI.set(new Icon(GameModels.MODEL_RED_SQUARE));
 				yield GameState.cursorPick();

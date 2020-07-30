@@ -91,7 +91,7 @@ public final class InteractionController {
 				}
 			}
 
-			case Protocol.SLOT_PLACE_GRASS, Protocol.SLOT_PLACE_DIRT -> {
+			case Protocol.SLOT_PLACE_GRASS, Protocol.SLOT_PLACE_DIRT, Protocol.SLOT_PLACE_GLASS -> {
 				if(blocks.isValid(blockX, blockY)) {
 					boolean isPressed = controls.isPressed(Control.USE_HELD_ITEM);
 					if(!isPressed || layer < 0) {
@@ -105,6 +105,7 @@ public final class InteractionController {
 					renderToolOvelay(renderer, switch(player.selected()) {
 						case Protocol.SLOT_PLACE_DIRT -> GameModels.MODEL_DIRT_BLOCK;
 						case Protocol.SLOT_PLACE_GRASS -> GameModels.MODEL_GRASS_BLOCK;
+						case Protocol.SLOT_PLACE_GLASS -> GameModels.MODEL_GLASS_BLOCK;
 						default -> throw new IllegalArgumentException();
 					}, blockX, blockY, useable);
 
@@ -116,6 +117,7 @@ public final class InteractionController {
 					renderToolOvelay(renderer, switch(player.selected()) {
 						case Protocol.SLOT_PLACE_DIRT -> GameModels.MODEL_DIRT_BLOCK;
 						case Protocol.SLOT_PLACE_GRASS -> GameModels.MODEL_GRASS_BLOCK;
+						case Protocol.SLOT_PLACE_GLASS -> GameModels.MODEL_GLASS_BLOCK;
 						default -> throw new IllegalArgumentException();
 					}, blockX, blockY, false);
 				}

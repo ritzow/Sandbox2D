@@ -11,7 +11,8 @@ public final class Protocol {
 	public static final byte
 		SLOT_BREAK = 0,
 		SLOT_PLACE_GRASS = 1,
-		SLOT_PLACE_DIRT = 2;
+		SLOT_PLACE_DIRT = 2,
+		SLOT_PLACE_GLASS = 3;
 
 	private Protocol() {throw new UnsupportedOperationException("instantiation of Protocol not allowed");}
 
@@ -79,7 +80,8 @@ public final class Protocol {
 		DATA_BLOCK_ITEM = 6,
 		DATA_INVENTORY = 7,
 		DATA_DIRT_BLOCK = 8,
-		DATA_GRASS_BLOCK = 9;
+		DATA_GRASS_BLOCK = 9,
+		DATA_GLASS_BLOCK = 10;
 
 	public static final byte
 		CONNECT_STATUS_REJECTED = 0,

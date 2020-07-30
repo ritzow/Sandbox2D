@@ -64,19 +64,19 @@ public class RenderManager {
 
 		//TODO look into using https://github.com/javagl/JglTF with Blender
 		List<ModelData> models = new ArrayList<>(List.of(
-			textureToModel(model -> GameModels.MODEL_DIRT_BLOCK = model, dirt, atlas, 1),
-			textureToModel(model -> GameModels.MODEL_GRASS_BLOCK = model, grass, atlas, 1),
-			textureToModel(model -> GameModels.MODEL_GREEN_FACE = model, face, atlas, 1),
-			textureToModel(model -> GameModels.MODEL_RED_SQUARE = model, red, atlas, 1),
-			textureToModel(model -> GameModels.MODEL_SKY = model, sky, atlas, 1),
-			textureToModel(model -> GameModels.MODEL_BLUE_SQUARE = model, blue, atlas, 1),
-			textureToModel(model -> GameModels.MODEL_NIGHT_SKY = model, night, atlas, 1)
-			//new ModelData("atlas", 1, 1, TextureAtlas.NORMAL_POS, TextureAtlas.ATLAS_COORDS, indices)
+			textureToModelFit(model -> GameModels.MODEL_DIRT_BLOCK = model, dirt, atlas, 1),
+			textureToModelFit(model -> GameModels.MODEL_GRASS_BLOCK = model, grass, atlas, 1),
+			textureToModelFit(model -> GameModels.MODEL_GREEN_FACE = model, face, atlas, 1),
+			textureToModelFit(model -> GameModels.MODEL_RED_SQUARE = model, red, atlas, 1),
+			textureToModelFit(model -> GameModels.MODEL_SKY = model, sky, atlas, 1),
+			textureToModelFit(model -> GameModels.MODEL_BLUE_SQUARE = model, blue, atlas, 1),
+			textureToModelFit(model -> GameModels.MODEL_NIGHT_SKY = model, night, atlas, 1),
+			textureToModelFit(model -> GameModels.MODEL_GLASS_BLOCK = model, glass, atlas, 1),
 		));
 
 		AtlasRegion region = atlas.getRegion(fontTexture);
-		FONT = Font.load(1.0d / atlas.width(), 25, 9, 9, 1, fontTexture.getWidth(), fontTexture.getHeight(), models,
-			indices, region.leftX(), region.bottomY(), region.rightX(), region.topY());
+		FONT = Font.load(1.0d / atlas.width(), 25, 9, 9, 1, fontTexture.getWidth(), fontTexture.getHeight(), models::add,
+			VERTEX_INDICES_RECT, region.leftX(), region.bottomY(), region.rightX(), region.topY());
 
 		int textureAtlas = atlas.texture();
 		if(StandardClientOptions.USE_OPENGL_4_6) {
@@ -94,10 +94,12 @@ public class RenderManager {
 		}
 	}
 
-	private static final int[] indices = {0, 1, 2, 0, 2, 3};
-
-	private static ModelData textureToModel(ModelDestination dest, TextureData texture, TextureAtlas atlas, float fitDimension) {
+	private static ModelData textureToModelFit(ModelDestination dest, TextureData texture, TextureAtlas atlas, float fitDimension) {
 		float scale = ClientUtility.scaleToFit(fitDimension, fitDimension, texture.getWidth(), texture.getHeight());
+		return textureToModel(dest, texture, atlas, texture.getWidth() * scale, texture.getHeight() * scale);
+	}
+
+	private static ModelData textureToModelScale(ModelDestination dest, TextureData texture, TextureAtlas atlas, float scale) {
 		return textureToModel(dest, texture, atlas, texture.getWidth() * scale, texture.getHeight() * scale);
 	}
 
@@ -114,7 +116,7 @@ public class RenderManager {
 			halfWidth, -halfHeight,
 			halfWidth, halfHeight
 		};
-		return new ModelData(dest, width, height, positions, atlas.getRegion(texture).toTextureCoordinates(), indices);
+		return new ModelData(dest, width, height, positions, atlas.getRegion(texture).toTextureCoordinates(), VERTEX_INDICES_RECT);
 	}
 
 	private static Shader source(String file, ShaderType type) throws IOException {

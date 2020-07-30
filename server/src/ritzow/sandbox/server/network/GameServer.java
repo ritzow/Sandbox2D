@@ -355,6 +355,7 @@ public class GameServer {
 				Block blockType = switch(player.selected()) {
 					case SLOT_PLACE_GRASS -> GrassBlock.INSTANCE;
 					case SLOT_PLACE_DIRT -> DirtBlock.INSTANCE;
+					case SLOT_PLACE_GLASS -> GlassBlock.INSTANCE;
 					default -> throw new ClientBadDataException("invalid item slot " + player.selected());
 				};
 				sendUseCooldownSuccess(client, now);
