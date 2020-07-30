@@ -5,17 +5,18 @@ import java.util.PrimitiveIterator;
 import ritzow.sandbox.client.graphics.GameModels;
 import ritzow.sandbox.client.graphics.Model;
 import ritzow.sandbox.client.ui.*;
+import ritzow.sandbox.client.util.ClientUtility;
 
 public class Text implements GuiElement {
 	private static final float SIZE_SCALE = 0.002f; //0.02f
 
 	private final CharPos[] text;
-	private final float scale;
 	private final Rectangle bounds;
 
-	private static record CharPos(Model model, float x) {}
+	private static record CharPos(Model model, float x, float scale) {}
 
 	private static final Model MISSING_CHAR_MODEL = GameModels.MODEL_RED_SQUARE;
+	private static final float MISSING_CHAR_SCALE = 1;
 
 	/**
 	 *
@@ -26,33 +27,45 @@ public class Text implements GuiElement {
 	 * TODO add left justify/centering to constructor and new lines
 	 */
 	public Text(CharSequence text, Font font, int size, float spacing) {
-		this.scale = size * SIZE_SCALE;
-		PrimitiveIterator.OfInt scan = text.codePoints().iterator();
+		float scale = size * SIZE_SCALE;
 
-		//Compute totals
+		//float maxHeight = (float)text.codePoints().mapToObj(font::getModel).mapToDouble(Model::height).max().orElseThrow();
+
+		//compute max height
+		float maxHeight = 0;
+		{
+			PrimitiveIterator.OfInt scan = text.codePoints().iterator();
+			while(scan.hasNext()) {
+				Model model = font.getModel(scan.nextInt());
+				if(model != null && model.height() > maxHeight) maxHeight = model.height();
+			}
+		}
+		float missingScale = ClientUtility.scaleToHeight(maxHeight, MISSING_CHAR_MODEL);
+
+		//Compute total width
 		int length = 0;
 		float glyphWidths = 0;
-		float maxHeight = 0;
+		PrimitiveIterator.OfInt scan = text.codePoints().iterator();
 		while(scan.hasNext()) {
 			Model model = Objects.requireNonNullElse(font.getModel(scan.nextInt()), MISSING_CHAR_MODEL);
-			glyphWidths += model.width();
-			if(model.height() > maxHeight) maxHeight = model.height();
+			glyphWidths += model.width() * (model == MISSING_CHAR_MODEL ? missingScale : 1);
 			length++;
 		}
 		float totalWidth = glyphWidths * scale + Math.max(length - 1, 0) * spacing;
 		this.bounds = new Rectangle(totalWidth, maxHeight * scale);
-		this.text = new CharPos[(int)length];
+		this.text = new CharPos[length];
 
-		//TODO fix positioning of error model
 		//Compute positions
 		int index = 0;
 		float pos = -totalWidth/2f;
 		PrimitiveIterator.OfInt iterator = text.codePoints().iterator();
 		while(iterator.hasNext()) {
 			Model model = Objects.requireNonNullElse(font.getModel(iterator.nextInt()), MISSING_CHAR_MODEL);
-			pos += model.width()/2f * scale;
-			this.text[index] = new CharPos(model, pos);
-			pos += model.width()/2f * scale + spacing;
+			float charScale = (model == MISSING_CHAR_MODEL ? missingScale * scale : scale);
+			float width = model.width() * charScale;
+			pos += width/2f;
+			this.text[index] = new CharPos(model, pos, charScale);
+			pos += width/2f + spacing;
 			index++;
 		}
 	}
@@ -60,7 +73,7 @@ public class Text implements GuiElement {
 	@Override
 	public void render(GuiRenderer renderer, long nanos) {
 		for(CharPos data : text) {
-			renderer.draw(data.model, 1.0f, data.x, 0, scale, scale, 0);
+			renderer.draw(data.model, 1.0f, data.x, 0, data.scale, data.scale, 0);
 		}
 	}
 
