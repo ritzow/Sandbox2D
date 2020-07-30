@@ -32,13 +32,16 @@ class MainMenuContext {
 	private Client client;
 	private InWorldContext worldContext;
 
+	float uiScale = StandardClientOptions.GUI_SCALE;
+
 	private final ControlsContext controlsContext = new ControlsContext(
 		UI_ACTIVATE,
 		UI_CONTEXT,
 		UI_TERTIARY,
 		QUIT,
 		FULLSCREEN,
-		CONNECT) {
+		CONNECT,
+		SCROLL_MODIFIER) {
 
 		@Override
 		public void windowClose() {
@@ -48,6 +51,13 @@ class MainMenuContext {
 		@Override
 		public void windowRefresh() {
 			refresh(GameLoop.updateDeltaTime());
+		}
+
+		@Override
+		public void mouseScroll(double horizontal, double vertical) {
+			if(controlsContext.isPressed(SCROLL_MODIFIER)) {
+				uiScale += vertical * 20;
+			}
 		}
 	};
 
@@ -69,13 +79,14 @@ class MainMenuContext {
 				new Button("Quit", GameModels.MODEL_SKY, MainMenuContext::onQuit)
 			), Side.LEFT, 0.1f, 0),
 			new Anchor(new VBox(0.1f,
-				new Text("Sandbox2D", RenderManager.FONT, 15, -0.03f),
+				new Text("Sandbox2D", RenderManager.FONT, 15, 0f),
 				new Text("by Solomon Ritzow", RenderManager.FONT, 7, 0)
 			), Side.TOP, 0, 0.05f),
 			new Anchor(new VBox(0.1f,
 				serverLoadProgress = new Holder<>(new Text("Not loading", RenderManager.FONT, 7, 0)),
 				new Text(getServerAddress().toString(), RenderManager.FONT, 7, 0)
-			), Side.BOTTOM, 0, 0.05f)
+			), Side.BOTTOM, 0, 0.05f),
+			new Anchor(new Scaler(new Icon(GameModels.MODEL_ATLAS), 0.75f), Side.BOTTOM_RIGHT, 0.05f, 0.05f)
 		);
 	}
 
@@ -105,7 +116,7 @@ class MainMenuContext {
 			RenderManager.DISPLAY_BUFFER,
 			GameState.display(), controlsContext,
 			deltaTime,
-			StandardClientOptions.GUI_SCALE
+			uiScale
 		);
 		GameState.modelRenderer().flush();
 		RenderManager.postRender();

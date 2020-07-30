@@ -11,7 +11,6 @@ import ritzow.sandbox.world.entity.PlayerEntity;
  * @author Solomon Ritzow
  */
 public class ClientPlayerEntity extends PlayerEntity implements Renderable {
-
 	public ClientPlayerEntity(int entityID) {
 		super(entityID);
 	}
@@ -22,8 +21,6 @@ public class ClientPlayerEntity extends PlayerEntity implements Renderable {
 
 	@Override
 	public void render(ModelRenderer renderer, float exposure) {
-		float positionX = this.positionX;
-		float positionY = this.positionY;
 		renderer.queueRender(
 			GameModels.MODEL_GREEN_FACE,
 			1.0f,
@@ -43,14 +40,8 @@ public class ClientPlayerEntity extends PlayerEntity implements Renderable {
 				positionY - SIZE_SCALE / 2,
 				SIZE_SCALE,
 				SIZE_SCALE,
-				//positionX/SIZE_SCALE
 				0
 			);
 		}
-
-//		if(inventory.isItem(selected)) {
-//			renderer.render(((Graphical) inventory.get(selected)).getGraphics().getModelID(),
-//					1.0f, positionX, positionY, 0.5f * SIZE_SCALE, 0.5f * SIZE_SCALE, 0);
-//		}
 	}
 }

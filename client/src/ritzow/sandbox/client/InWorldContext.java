@@ -31,6 +31,7 @@ import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.data.Transportable;
 import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.World;
+import ritzow.sandbox.world.block.Block;
 import ritzow.sandbox.world.entity.Entity;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
@@ -161,6 +162,7 @@ class InWorldContext implements GameTalker {
 		worldRenderer = new ClientWorldRenderer(GameState.modelRenderer(), cameraGrip.getCamera(), world);
 		interactionControls = new InteractionController();
 
+		//TODO create visual inventory that puts items in a small rectangular region that acts as backpack (drag around or outside to drop item)
 		overlayGUI = new BorderAnchor(
 			new Anchor(
 				new Text(client.getServerAddress().getAddress().toString(), RenderManager.FONT, 8, 0), Side.BOTTOM_RIGHT, 0.05f, 0.05f
@@ -308,12 +310,12 @@ class InWorldContext implements GameTalker {
 
 	private void processServerRemoveBlock(ByteBuffer data) {
 		int x = data.getInt(), y = data.getInt();
-		for(int layer = World.LAYER_MAIN; layer < world.getBlocks().getLayers(); layer++) {
-			if(world.getBlocks().isBlock(layer, x, y)) {
-				ClientBlockProperties prev = (ClientBlockProperties)world.getBlocks().set(layer, x, y, null);
-				if(prev != null) prev.onBreak(world, world.getBlocks(), cameraGrip.getCamera(), x, y);
-				return;
-			}
+		int layer = world.getBlocks().getTopBlockLayer(x, y);
+		if(layer >= 0) {
+			Block block = world.getBlocks().get(layer, x, y);
+			ClientBlockProperties prev = (ClientBlockProperties)world.getBlocks().set(layer, x, y, null);
+			if(prev != null) prev.onBreak(world, world.getBlocks(), cameraGrip.getCamera(), x, y);
+			worldRenderer.updateLighting(x, y);
 		}
 	}
 
@@ -322,6 +324,7 @@ class InWorldContext implements GameTalker {
 		ClientBlockProperties newBlock = deserialize(data);
 		world.getBlocks().set(Utility.getBlockPlaceLayer(world.getBlocks(), x, y), x, y, newBlock);
 		newBlock.onPlace(world, world.getBlocks(), cameraGrip.getCamera(), x, y);
+		worldRenderer.updateLighting(x, y);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -330,7 +333,7 @@ class InWorldContext implements GameTalker {
 	}
 
 	private void processRemoveEntity(ByteBuffer data) {
-		world.remove(data.getInt()); //TODO entity is null when another player disconects
+		world.remove(data.getInt());
 	}
 
 	private static <T extends Transportable> T deserialize(ByteBuffer data) {

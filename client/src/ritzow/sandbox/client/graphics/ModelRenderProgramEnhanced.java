@@ -125,6 +125,7 @@ public final class ModelRenderProgramEnhanced extends ModelRenderProgramBase {
 		glDeleteBuffers(indirectVBO);
 	}
 
+	//TODO need to make sure values are pixel perfect to prevent one-pixel gaps in blocks
 	private static void putRenderInstance(ByteBuffer drawBuffer,
 		float opacity, float exposure, float posX, float posY, float scaleX, float scaleY, float rotation) {
 		double rotX = Math.cos(rotation);

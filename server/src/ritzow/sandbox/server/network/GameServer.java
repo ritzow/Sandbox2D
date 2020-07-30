@@ -18,11 +18,13 @@ import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.block.Block;
 import ritzow.sandbox.world.block.DirtBlock;
+import ritzow.sandbox.world.block.GlassBlock;
 import ritzow.sandbox.world.block.GrassBlock;
 import ritzow.sandbox.world.entity.Entity;
 import ritzow.sandbox.world.entity.ItemEntity;
 import ritzow.sandbox.world.entity.PlayerEntity;
 import ritzow.sandbox.world.item.BlockItem;
+import ritzow.sandbox.world.item.Item;
 
 import static ritzow.sandbox.network.Protocol.*;
 import static ritzow.sandbox.server.network.ClientState.*;
@@ -319,14 +321,14 @@ public class GameServer {
 			throw new ClientBadDataException("client sent invalid block coordinates x=" + x + " y=" + y);
 		Instant now = Instant.now();
 		if(world.getBlocks().isValid(x, y) && Utility.inRange(client.player, x, y) && now.isAfter(client.nextUseTime)) {
-			//TODO sync block break cooldowns (System.currentTimeMillis() + cooldown)
 			int layer = Utility.getBlockBreakLayer(blocks, x, y);
 			if(layer >= 0) {
 				sendUseCooldownSuccess(client, now);
-				Block block = world.getBlocks().destroy(world, layer, x, y);
+				Block block = world.getBlocks().set(layer, x, y, null);
+				block.onBreak(world, x, y);
 				broadcastRemoveBlock(x, y);
 				if(block != null) {
-					var drop = new ItemEntity<>(world.nextEntityID(), new BlockItem(block), x, y);
+					var drop = new ItemEntity<Item>(world.nextEntityID(), new BlockItem(block), x, y);
 					float angle = Utility.random(0, Math.PI);
 					drop.setVelocityX((float)Math.cos(angle) * BLOCK_DROP_VELOCITY);
 					drop.setVelocityY((float)Math.sin(angle) * BLOCK_DROP_VELOCITY);

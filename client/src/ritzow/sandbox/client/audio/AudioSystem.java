@@ -6,6 +6,7 @@ import ritzow.sandbox.client.audio.Sound.StandardSound;
 import static ritzow.sandbox.client.data.StandardClientProperties.AUDIO_PATH;
 import static ritzow.sandbox.client.util.ClientUtility.log;
 
+//TODO audio system should know about camera location and other things
 public interface AudioSystem {
 
 	default void playSound(Sound sound, float x, float y, float velocityX, float velocityY) {

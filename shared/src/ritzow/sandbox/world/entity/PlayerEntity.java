@@ -25,8 +25,7 @@ public abstract class PlayerEntity extends Entity implements Living {
 
 	protected static final float
 			SIZE_SCALE		= 1f,
-			MOVEMENT_SPEED	= Utility.convertPerSecondToPerNano(
-				12.5f /* human running speed meters */ * 0.8f) * SIZE_SCALE,
+			MOVEMENT_SPEED	= Utility.convertPerSecondToPerNano(10) * SIZE_SCALE,
 			JUMP_VELOCITY	= Utility.convertPerSecondToPerNano(11),
 			AIR_ACCELERATION	= Utility.convertAccelerationSecondsNanos(50),
 			GROUND_ACCELERATION = Utility.convertAccelerationSecondsNanos(100),
@@ -34,7 +33,7 @@ public abstract class PlayerEntity extends Entity implements Living {
 
 	public PlayerEntity(int entityID) {
 		super(entityID);
-		this.inventory = new Inventory<>(3);
+		this.inventory = new Inventory<>(4);
 	}
 
 	public PlayerEntity(TransportableDataReader input) {
@@ -56,7 +55,6 @@ public abstract class PlayerEntity extends Entity implements Living {
 		return bytes;
 	}
 
-	@SuppressWarnings("unused")
 	@Override
 	public void update(World world, long ns) {
 		if(isGrounded) {
@@ -174,7 +172,7 @@ public abstract class PlayerEntity extends Entity implements Living {
 
 	@Override
 	public float getFriction() {
-		return 1f; //(down ? 0.01f : 0.04f)/16;
+		return 0.1f;
 	}
 
 	@Override

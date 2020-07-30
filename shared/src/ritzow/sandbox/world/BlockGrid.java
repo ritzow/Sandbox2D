@@ -181,17 +181,6 @@ public final class BlockGrid implements Transportable {
 //		};
 //	}
 
-	public Block destroy(World world, int layer, float x, float y) {
-		return destroy(world, layer, Math.round(x), Math.round(y));
-	}
-
-	public Block destroy(World world, int layer, int x, int y) {
-		Block prev = set(layer, x, y, null);
-		if(prev != null)
-			prev.onBreak(world, this, x, y);
-		return prev;
-	}
-
 	public boolean place(World world, int layer, float x, float y, Block block) {
 		return place(world, layer, Math.round(x), Math.round(y), block);
 	}
@@ -199,7 +188,7 @@ public final class BlockGrid implements Transportable {
 	public boolean place(World world, int layer, int x, int y, Block block) {
 		if(!isBlock(layer, x, y)) {
 			set(layer, x, y, Objects.requireNonNull(block));
-			block.onPlace(world, this, x, y);
+			block.onPlace(world, x, y);
 			return true;
 		}
 		return false;

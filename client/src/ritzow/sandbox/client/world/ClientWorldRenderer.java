@@ -23,12 +23,15 @@ public final class ClientWorldRenderer {
 		GraphicsUtility.checkErrors();
 	}
 
-	private static final float LIGHT_PENETRATION = 0.75f;
-	private static final int SKYLIGHT_RADIUS = 10;
+	private static final float LIGHT_PENETRATION = 0.75f, LIGHT_DISSIPATION = 0.9f;
+	private static final int SUNLIGHT_RADIUS = 10;
 
 	public static final float LAYER_EXPOSURE_FACTOR = 0.5f;
 
 	private void initLighting() {
+		//when a background and foreground block does not exist, light is emitted in a radius around it (depending on opacity potentially).
+		//light level is reduced to near zero over radius, or faster if foreground blocks exist.
+		//when a background block exists but not a foreground block, the light level is half the computed value.
 		int rows = world.getBlocks().getHeight();
 		int columns = world.getBlocks().getWidth();
 
@@ -64,6 +67,28 @@ public final class ClientWorldRenderer {
 		return lighting[world.getBlocks().getWidth() * y + x];
 	}
 
+	public void updateLighting(int x, int y) {
+		int layer = world.getBlocks().getTopBlockLayer(x, y);
+
+		switch(layer) {
+			case World.LAYER_MAIN -> {
+
+			}
+
+			case World.LAYER_BACKGROUND -> {
+
+			}
+
+			case -1 -> {
+				setLighting(x, y, 1.0f);
+			}
+
+			default -> {
+
+			}
+		}
+	}
+
 	public void render(Framebuffer framebuffer, final int width, final int height, float daylight) {
 		//ensure that model program, camera, world are cached on stack
 		ModelRenderer program = this.modelProgram;
@@ -80,11 +105,6 @@ public final class ClientWorldRenderer {
 		float scale = 2f * (width > height ? width / (float)height : height / (float)width);
 		program.queueRender(GameModels.MODEL_SKY, 1.0f/daylight, daylight, 0, 0, scale, scale, 0);
 		program.queueRender(GameModels.MODEL_NIGHT_SKY, 1 - daylight, 1.0f, 0, 0, scale, scale, 0);
-//		if(daylight > 0.25f) {
-//			program.queueRender(GameModels.MODEL_SKY, 1.0f, daylight, 0, 0, scale, scale, 0);
-//		} else {
-//			program.queueRender(GameModels.MODEL_NIGHT_SKY, 1.0f, 1.0f, 0, 0, scale, scale, 0);
-//		}
 		//load the view transformation
 		program.loadViewMatrix(camera, width, height);
 

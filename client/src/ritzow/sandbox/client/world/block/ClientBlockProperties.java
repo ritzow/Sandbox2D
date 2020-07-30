@@ -14,12 +14,12 @@ public interface ClientBlockProperties extends Block {
 	boolean isTransparent();
 
 	@Override
-	default void onBreak(World world, BlockGrid grid, float x, float y) {
+	default void onBreak(World world, float x, float y) {
 		throw new UnsupportedOperationException("client does not support default onBreak");
 	}
 
 	@Override
-	default void onPlace(World world, BlockGrid grid, float x, float y) {
+	default void onPlace(World world, float x, float y) {
 		throw new UnsupportedOperationException("client does not support default onPlace");
 	}
 
