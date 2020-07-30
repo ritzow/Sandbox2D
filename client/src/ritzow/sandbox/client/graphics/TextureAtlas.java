@@ -74,7 +74,8 @@ public class TextureAtlas {
 
 
 		//create the atlas buffer
-		int dimension = Math.max(totalWidth, height);
+		int dimension = nextPowerOfTwo(Math.max(totalWidth, height));
+
 		this.dimension = dimension;
 		ByteBuffer atlas = BufferUtils.createByteBuffer(dimension * dimension * bytesPerPixel);
 
@@ -99,7 +100,6 @@ public class TextureAtlas {
 		//https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glTexImage2D.xhtml
 		int pixelX = 0;
 		for(TextureData tex : textures) {
-			//(int)(Math.random() * (dimension - tex.getHeight()))
 			coords.put(tex, placeTexture(tex, atlas, pixelX, 0, dimension));
 			pixelX += tex.getWidth();
 		}
@@ -109,36 +109,39 @@ public class TextureAtlas {
 		return GraphicsUtility.uploadTextureData(atlas, dimension, dimension);
 	}
 
+	private static int nextPowerOfTwo(int n) {
+		--n;
+		n |= n >> 1;
+		n |= n >> 2;
+		n |= n >> 4;
+		n |= n >> 8;
+		n |= n >> 16;
+		return n + 1;
+	}
+
+	private static AtlasRegion placeTexture(TextureData texture,
+			ByteBuffer dest, int pixelX, int pixelY, int atlasWidthPixels) {
+		//uses byte indices, not pixels
+		//0,0 is upper left
+		int bpp = texture.getBytesPerPixel();
+		int twidth = texture.getWidth() * bpp;
+		int drow = pixelY;
+		drow = dest.capacity()/ (atlasWidthPixels * bpp) - drow - 1; //invert the row so the top is the bottom
+		for(int trow = 0; trow < texture.getHeight(); trow++) { //for each row in the source data (0,0 top left)
+			dest.position((drow - trow) * atlasWidthPixels * bpp + pixelX * bpp); //set destination position
+			dest.put(texture.getData(), trow * twidth, twidth); //put source data
+		}
+		return convertCoordinates(texture, pixelX, pixelY, atlasWidthPixels);
+	}
+
 	//TODO fix having to add small offsets to fix texture bleeding
 	private static AtlasRegion convertCoordinates(TextureData tex, int pixelX, int pixelY, int atlasWidthPixels) {
-		//TODO texel offset did not work, still happens in large worlds
 		double texelWidthHalf = 0.25d/atlasWidthPixels; //for some reason 0.25 (quarter pixel?) works as well or better than 0.5?
 		//OpenGL texture coordinates range from 0 to 1, with the origin in the bottom left
-		//TODO this causes some slightly incorrect pixel sizes, but removes most errors (still some gaps in places), might be possible to improve?
-		//TODO do the same half texel thing with the texture atlas.
 		float leftX = (float)((pixelX + texelWidthHalf)/atlasWidthPixels);
 		float rightX = (float)((pixelX + tex.getWidth() - texelWidthHalf)/atlasWidthPixels);
 		float bottomY = (float)((atlasWidthPixels - pixelY - tex.getHeight() + texelWidthHalf)/atlasWidthPixels);
 		float topY = (float)((atlasWidthPixels - pixelY - texelWidthHalf)/atlasWidthPixels);
 		return new AtlasRegion(leftX, rightX, bottomY, topY);
-	}
-
-	private static AtlasRegion placeTexture(TextureData texture,
-			ByteBuffer dest, int pixelX, int pixelY, int atlasWidthPixels) {
-		int bpp = texture.getBytesPerPixel();
-		place(texture.getData(),texture.getWidth() * bpp,texture.getHeight(),
-				dest,pixelY,pixelX * bpp, atlasWidthPixels * bpp);
-		return convertCoordinates(texture, pixelX, pixelY, atlasWidthPixels);
-	}
-
-	//uses byte indices, not pixels
-	//0,0 is upper left
-	private static void place(byte[] tex,
-		int twidth, int theight, ByteBuffer dest, int drow, int dcol, int dwidth) {
-		drow = dest.capacity()/dwidth - drow - 1; //invert the row so the top is the bottom
-		for(int trow = 0; trow < theight; trow++) { //for each row in the source data (0,0 top left)
-			dest.position((drow - trow) * dwidth + dcol); //set destination position
-			dest.put(tex, trow * twidth, twidth); //put source data
-		}
 	}
 }
