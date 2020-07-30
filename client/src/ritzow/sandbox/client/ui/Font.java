@@ -1,5 +1,6 @@
 package ritzow.sandbox.client.ui;
 
+import java.util.Arrays;
 import java.util.function.Consumer;
 import ritzow.sandbox.client.graphics.Model;
 import ritzow.sandbox.client.graphics.ModelRenderProgramBase.ModelData;
@@ -10,11 +11,11 @@ import ritzow.sandbox.client.graphics.TextureData;
 
 public final class Font {
 
-	private static final char[] CHARACTER_LIST = {
+	private static final int[] CHARACTER_LIST = {
 		'!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
 		':', ';', '<', '=', '>', '?', '@', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R',
 		'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '[', '\\', ']', '^', '_', '`', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k',
-		'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '{', '|', '}', '~', ' ',
+		'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '{', '|', '}', '~', ' ', 'μ'
 	};
 
 	//TODO some font characters are not in correct ascii order, such as the space character
@@ -42,7 +43,7 @@ public final class Font {
 
 	public Font(double texelDimension, int glyphsPerRow, int glyphWidth, int glyphHeight, int paddingSize, int textureWidth, int textureHeight,
 		Consumer<ModelData> out, int[] indices, float leftX, float bottomY, float rightX, float topY) {
-		glyphs = new Model[256];
+		glyphs = new Model[Arrays.stream(CHARACTER_LIST).max().orElseThrow() + 1];
 		this.glyphWidth = glyphWidth;
 		this.glyphHeight = glyphHeight;
 		double texelWidthHalf = texelDimension/textureWidth/2d;
