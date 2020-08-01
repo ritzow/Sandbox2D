@@ -8,15 +8,13 @@ import ritzow.sandbox.client.ui.*;
 import ritzow.sandbox.client.util.ClientUtility;
 
 public class Text implements GuiElement {
-	private static final float SIZE_SCALE = 0.002f; //0.02f
-
+	private static final float SIZE_SCALE = 0.002f;
 	private final CharPos[] text;
 	private final Rectangle bounds;
 
 	private static record CharPos(Model model, float x, float scale) {}
 
 	private static final Model MISSING_CHAR_MODEL = GameModels.MODEL_RED_SQUARE;
-	private static final float MISSING_CHAR_SCALE = 1;
 
 	/**
 	 *
@@ -27,10 +25,6 @@ public class Text implements GuiElement {
 	 * TODO add left justify/centering to constructor and new lines
 	 */
 	public Text(CharSequence text, Font font, int size, float spacing) {
-		float scale = size * SIZE_SCALE;
-
-		//float maxHeight = (float)text.codePoints().mapToObj(font::getModel).mapToDouble(Model::height).max().orElseThrow();
-
 		//compute max height
 		float maxHeight = 0;
 		{
@@ -51,6 +45,7 @@ public class Text implements GuiElement {
 			glyphWidths += model.width() * (model == MISSING_CHAR_MODEL ? missingScale : 1);
 			length++;
 		}
+		float scale = size * SIZE_SCALE;
 		float totalWidth = glyphWidths * scale + Math.max(length - 1, 0) * spacing;
 		this.bounds = new Rectangle(totalWidth, maxHeight * scale);
 		this.text = new CharPos[length];

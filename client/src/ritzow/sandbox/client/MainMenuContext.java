@@ -16,6 +16,7 @@ import ritzow.sandbox.client.ui.StandardGuiRenderer;
 import ritzow.sandbox.client.ui.element.*;
 import ritzow.sandbox.client.ui.element.BorderAnchor.Anchor;
 import ritzow.sandbox.client.ui.element.BorderAnchor.Side;
+import ritzow.sandbox.client.ui.element.VBoxDynamic.Alignment;
 import ritzow.sandbox.network.NetworkUtility;
 import ritzow.sandbox.network.Protocol;
 
@@ -28,6 +29,7 @@ import static ritzow.sandbox.network.Protocol.TYPE_SERVER_CONNECT_ACKNOWLEDGMENT
 class MainMenuContext {
 	private final GuiElement root;
 	private final Holder<Text> serverLoadProgress;
+	private final EditableText text;
 
 	private Client client;
 	private InWorldContext worldContext;
@@ -38,9 +40,10 @@ class MainMenuContext {
 		UI_ACTIVATE,
 		UI_CONTEXT,
 		UI_TERTIARY,
+		UI_BACKSPACE,
+		UI_DELETE,
 		QUIT,
 		FULLSCREEN,
-		CONNECT,
 		SCROLL_MODIFIER) {
 
 		@Override
@@ -59,6 +62,31 @@ class MainMenuContext {
 				uiScale += vertical * 20;
 			}
 		}
+
+		@Override
+		public void onCharacterTyped(int codePoint) {
+			text.append(codePoint);
+		}
+
+		@Override
+		public void onControlPressed(ritzow.sandbox.client.input.Button button) {
+			onControlPressedRepeated(button);
+		}
+
+		@Override
+		public void onControlRepeated(ritzow.sandbox.client.input.Button button) {
+			onControlPressedRepeated(button);
+		}
+
+		private void onControlPressedRepeated(ritzow.sandbox.client.input.Button button) {
+			if(text.hasContent()) {
+				if(button.equals(UI_BACKSPACE)) {
+					text.delete();
+				} else if(button.equals(UI_DELETE)) {
+					text.delete();
+				}
+			}
+		}
 	};
 
 	private final Map<ritzow.sandbox.client.input.Button, Runnable> controls = Map.ofEntries(
@@ -74,17 +102,20 @@ class MainMenuContext {
 		GameState.setGuiRenderer(new StandardGuiRenderer(GameState.modelRenderer()));
 		root = new BorderAnchor(
 			new Anchor(new Scaler(new Icon(GameModels.MODEL_GREEN_FACE), 2.0f), Side.CENTER, 0, 0),
-			new Anchor(new VBox(0.1f,
+			new Anchor(new VBoxDynamic(0.1f, Alignment.LEFT,
 				new Scaler(new Button("Join Server", GameModels.MODEL_GREEN_FACE, this::startJoin),0.5f),
 				new Button("Quit", GameModels.MODEL_SKY, MainMenuContext::onQuit)
 			), Side.LEFT, 0.1f, 0),
 			new Anchor(new VBox(0.1f,
-				new Text("Sandbox2D", RenderManager.FONT, 15, 0f),
+				new Text("Sandbox2D", RenderManager.FONT, 15, 0),
 				new Text("by Solomon Ritzow", RenderManager.FONT, 7, 0)
 			), Side.TOP, 0, 0.05f),
 			new Anchor(new VBox(0.1f,
 				serverLoadProgress = new Holder<>(new Text("Not loading", RenderManager.FONT, 7, 0)),
-				new Text(getServerAddress().toString(), RenderManager.FONT, 7, 0)
+				new HBoxDynamic(0.1f,
+					new Text("Server:", RenderManager.FONT, 10, 0),
+					text = new EditableText(RenderManager.FONT, 10, 0).setContent(NetworkUtility.formatAddress(getServerAddress()))
+				)
 			), Side.BOTTOM, 0, 0.05f),
 			new Anchor(new Scaler(new Icon(GameModels.MODEL_ATLAS), 0.75f), Side.BOTTOM_RIGHT, 0.05f, 0.05f)
 		);
@@ -134,7 +165,7 @@ class MainMenuContext {
 		try {
 			log().info(() -> "Connecting to " + NetworkUtility.formatAddress(getServerAddress())
 				 + " from " + NetworkUtility.formatAddress(getLocalAddress()));
-			client = Client.create(getLocalAddress(), getServerAddress())
+			client = Client.create(getLocalAddress(), NetworkUtility.parseSocket(text.content(), Protocol.DEFAULT_SERVER_PORT))
 				 .setOnTimeout(this::onTimeout)
 				 .setOnException(this::onException)
 				 .beginConnect();
@@ -142,7 +173,7 @@ class MainMenuContext {
 		} catch(BindException e) {
 			log().log(Level.WARNING, "Bind error", e);
 			displayText("Bind error: " + e.getMessage());
-		} catch(IOException e) {
+		} catch(IOException | RuntimeException e) {
 			displayText("Error: " + e.getMessage());
 		}
 	}

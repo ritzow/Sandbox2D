@@ -1,23 +1,34 @@
 package ritzow.sandbox.client.input;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 /** Similar to Android's SparseIntArray **/
-public class ControlsContext implements ControlsQuery { //TODO allow only one control toggle per frame, queue last event that happens within frame for next frame
+public class ControlsContext implements ControlsQuery {
+	//TODO allow only one control toggle per frame, queue last event that happens within frame for next frame
 	public void framebufferSize(int width, int height) {}
 	public void mouseScroll(double horizontal, double vertical) {}
 	public void windowClose() {}
 	public void windowFocus(boolean focused) {}
 	public void windowIconify(boolean iconified) {}
 	public void windowRefresh() {}
+	public void onControlPressed(Button button) {}
+	public void onControlReleased(Button button) {}
+	public void onControlRepeated(Button button) {}
+
+	public void onCharacterTyped(int codePoint) {
+		characters.add(codePoint);
+	}
 
 	private static final byte
 		PREVIOUSLY_RELEASED = 0b00,
 		NEWLY_RELEASED = 0b10,
-		PREVIOUSLY_PRESSED = 0b01, //this and PREVIOUSLY_RELEASED are generated with bitwise operators
+		PREVIOUSLY_PRESSED = 0b01,
 		NEWLY_PRESSED = 0b11;
 
 	private final ButtonState[] store;
+	private final List<Integer> characters;
 
 	private static class ButtonState {
 		private final Button control;
@@ -31,6 +42,7 @@ public class ControlsContext implements ControlsQuery { //TODO allow only one co
 
 	public ControlsContext(Button... controls) {
 		store = new ButtonState[controls.length];
+		characters = new ArrayList<>();
 		Arrays.sort(controls, ControlsContext::compareButtons);
 		for(int i = 0; i < controls.length; i++) {
 			store[i] = new ButtonState(controls[i]); //TODO test functionality when switching ControlsContexts ie going from main menu to in game
@@ -71,6 +83,7 @@ public class ControlsContext implements ControlsQuery { //TODO allow only one co
 		int index = indexOf(type, key);
 		if(index > -1) {
 			store[index].state = NEWLY_PRESSED;
+			onControlPressed(store[index].control);
 		}
 	}
 
@@ -80,6 +93,15 @@ public class ControlsContext implements ControlsQuery { //TODO allow only one co
 		int index = indexOf(type, key);
 		if(index > -1) {
 			store[index].state = NEWLY_RELEASED;
+			onControlReleased(store[index].control);
+		}
+	}
+
+	public void repeat(byte type, int key) {
+		//do nothing if key isn't in control context
+		int index = indexOf(type, key);
+		if(index > -1) {
+			onControlRepeated(store[index].control);
 		}
 	}
 

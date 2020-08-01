@@ -54,8 +54,16 @@ public final class Display implements InputProvider {
 		}
 	}
 
-	public void enableCursor(boolean enabled) {
-		glfwSetInputMode(displayID, GLFW_CURSOR, enabled ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
+	public void hideCursor() {
+		glfwSetInputMode(displayID, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+	}
+
+	public void showCursor() {
+		glfwSetInputMode(displayID, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+	}
+
+	public void disableCursor() {
+		glfwSetInputMode(displayID, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	}
 
 	public void resetCursor() {
@@ -208,6 +216,7 @@ public final class Display implements InputProvider {
 			switch(action) {
 				case GLFW_PRESS -> context.press(Control.BUTTON_TYPE_KEYBOARD, key);
 				case GLFW_RELEASE -> context.release(Control.BUTTON_TYPE_KEYBOARD, key);
+				case GLFW_REPEAT -> context.repeat(Control.BUTTON_TYPE_KEYBOARD, key);
 			}
 		});
 
@@ -219,6 +228,7 @@ public final class Display implements InputProvider {
 		});
 
 		//TODO implement mouse scroll polling, interaction with ControlsContext
+		glfwSetCharCallback(displayID, (windowID, codePoint) -> context.onCharacterTyped(codePoint));
 		glfwSetScrollCallback(displayID, (windowID, xoffset, yoffset) -> context.mouseScroll(xoffset, yoffset));
 		glfwSetFramebufferSizeCallback(displayID, (windowID, width, height) -> context.framebufferSize(width, height));
 		glfwSetWindowRefreshCallback(displayID, windowID -> context.windowRefresh());
