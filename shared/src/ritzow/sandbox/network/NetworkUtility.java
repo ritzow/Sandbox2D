@@ -40,9 +40,9 @@ public class NetworkUtility {
 				}
 			}
 		} catch(UnknownHostException e) {
-			throw new RuntimeException("Couldn't resolve adddress", e);
+			throw new RuntimeException("Couldn't resolve adddress: " + e.getMessage(), e);
 		} catch(NumberFormatException e) {
-			throw new RuntimeException("Unreadable port number", e);
+			throw new RuntimeException("Unreadable port number: " + e.getMessage(), e);
 		} catch(SocketException e) {
 			throw new RuntimeException(e);
 		}
@@ -91,9 +91,8 @@ public class NetworkUtility {
 	/**
 	 * Returns a suitable IP address and port for communicating over the Internet.
 	 * @return An internet-facing socket on on port {@code port}.
-	 * @throws SocketException if there is an error querying the IP address.
 	 **/
-	public static InetSocketAddress getPublicSocket(int port) throws SocketException, UnknownHostException {
+	public static InetSocketAddress getPublicSocket(int port) throws UnknownHostException {
 		return new InetSocketAddress(port);
 		//return new InetSocketAddress(getPrimaryAddress(), port);
 	}
@@ -101,9 +100,8 @@ public class NetworkUtility {
 	/**
 	 * Returns a suitable IP address and port for communicating over the Internet.
 	 * @return An internet-facing socket on any port.
-	 * @throws SocketException if there is an error querying the IP address.
 	 **/
-	public static InetSocketAddress getPublicSocket() throws SocketException, UnknownHostException {
+	public static InetSocketAddress getPublicSocket() {
 		return new InetSocketAddress(ANY_PORT);
 		//return getPublicSocket(ANY_PORT);
 	}
@@ -111,9 +109,8 @@ public class NetworkUtility {
 	/**
 	 * Returns a suitable IP address if available and null if not available
 	 * @return The primary network-facing IP address of this computer.
-	 * @throws SocketException if there is an error querying the IP address.
 	 **/
-	public static InetAddress getPrimaryAddress() throws SocketException, UnknownHostException {
+	public static InetAddress getPrimaryAddress() throws UnknownHostException {
 		return InetAddress.getByAddress(new byte[16]);
 //		return NetworkInterface.networkInterfaces()
 //			.flatMap(i -> i.getInterfaceAddresses().stream())
@@ -160,11 +157,8 @@ public class NetworkUtility {
 			.orElseThrow();
 	}
 
-	public static InetAddress getLanAddress() throws SocketException {
+	public static InetAddress getLanAddress() {
 		throw new UnsupportedOperationException("LAN not implemented");
 	}
 
-	private static int prioritizeLAN(InterfaceAddress a, InterfaceAddress b) {
-		throw new UnsupportedOperationException("LAN not implemented");
-	}
 }
