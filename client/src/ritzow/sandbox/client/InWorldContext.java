@@ -50,7 +50,7 @@ class InWorldContext implements GameTalker {
 	private ClientPlayerEntity player;
 	private GuiElement overlayGUI;
 	private Holder<Icon> blockGUI;
-	private Holder<Text> framerateDisplay;
+	private EditableText framerateDisplay;
 	private World world;
 
 	private ByteBuffer worldDownloadBuffer;
@@ -164,9 +164,6 @@ class InWorldContext implements GameTalker {
 
 		//TODO create visual inventory that puts items in a small rectangular region that acts as backpack (drag around or outside to drop item)
 		overlayGUI = new BorderAnchor(
-			new Anchor(
-				new Text(client.getServerAddress().getAddress().toString(), RenderManager.FONT, 8, 0), Side.BOTTOM_RIGHT, 0.05f, 0.05f
-			),
 			new Anchor(new ritzow.sandbox.client.ui.element.Button(new Text("Quit", RenderManager.FONT, 5, 0), this::leaveServer), Side.TOP_RIGHT, 0.1f, 0.1f),
 			new Anchor(
 				new Scaler(
@@ -175,7 +172,10 @@ class InWorldContext implements GameTalker {
 					), 0.5f
 				), Side.BOTTOM_LEFT, 0.1f, 0.1f
 			),
-			new Anchor(framerateDisplay = new Holder<>(new Text("0", RenderManager.FONT, 7, 0)), Side.TOP_LEFT, 0.1f, 0.1f)
+			new Anchor(new VBox(0.1f,
+				framerateDisplay = new EditableText(RenderManager.FONT, 7, 0),
+				new Text(client.getServerAddress().getAddress().toString(), RenderManager.FONT, 8, 0)
+			), Side.TOP_LEFT, 0.1f, 0.1f)
 		);
 
 		GameState.display().setCursor(GameState.cursorPick());
@@ -236,7 +236,7 @@ class InWorldContext implements GameTalker {
 		RenderManager.preRender(width, height);
 		worldRenderer.render(RenderManager.DISPLAY_BUFFER, width, height, computeDaylight());
 		interactionControls.update(display, controlsContext, GameState.modelRenderer(), cameraGrip.getCamera(), this, world, player);
-		framerateDisplay.set(new Text(Utility.frameTimeToString(GameLoop.getLastUpdateTime()), RenderManager.FONT, 7, 0));
+		framerateDisplay.setContent(Utility.frameTimeToString(GameLoop.getLastUpdateTime()));
 		GameState.guiRenderer().render(overlayGUI, RenderManager.DISPLAY_BUFFER, display, controlsContext, deltaTime, StandardClientOptions.GUI_SCALE);
 		GameState.modelRenderer().flush();
 		RenderManager.postRender();
