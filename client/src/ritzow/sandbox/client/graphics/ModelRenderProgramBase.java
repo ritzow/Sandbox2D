@@ -5,17 +5,15 @@ import java.nio.IntBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import org.lwjgl.BufferUtils;
+import ritzow.sandbox.client.util.ClientUtility;
 
 import static org.lwjgl.opengl.GL11C.*;
 import static org.lwjgl.opengl.GL13C.glActiveTexture;
-import static org.lwjgl.opengl.GL14C.GL_FUNC_ADD;
 import static org.lwjgl.opengl.GL15C.*;
-import static org.lwjgl.opengl.GL20C.*;
+import static org.lwjgl.opengl.GL20C.glEnableVertexAttribArray;
 import static org.lwjgl.opengl.GL20C.glVertexAttribPointer;
 import static org.lwjgl.opengl.GL30C.glBindVertexArray;
 import static org.lwjgl.opengl.GL30C.glGenVertexArrays;
-import static org.lwjgl.opengl.GL40C.glBlendEquationi;
-import static org.lwjgl.opengl.GL40C.glBlendFunci;
 
 public abstract class ModelRenderProgramBase extends ShaderProgram implements ModelRenderer {
 	protected static final int POSITION_SIZE = 2;
@@ -49,13 +47,13 @@ public abstract class ModelRenderProgramBase extends ShaderProgram implements Mo
 	}
 
 	@Override
-	public void setCurrent() {
-		glUseProgram(programID);
+	public void prepare() {
+		setCurrent();
 		glActiveTexture(ATLAS_TEXTURE_UNIT);
 		glBindTexture(GL_TEXTURE_2D, atlasTexture);
+		//TODO maybe move this to client code for more control ie when rendering lights
 		//set the blending mode to allow transparency
-		glBlendFunci(RenderManager.MAIN_DRAW_BUFFER_INDEX, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		glBlendEquationi(RenderManager.MAIN_DRAW_BUFFER_INDEX, GL_FUNC_ADD);
+		RenderManager.setStandardBlending();
 	}
 
 	public Model forName(String name) {
@@ -131,9 +129,11 @@ public abstract class ModelRenderProgramBase extends ShaderProgram implements Mo
 	@Override
 	public void loadViewMatrixScale(float guiScale, int framebufferWidth, int framebufferHeight) {
 		flush();
+		GraphicsUtility.checkErrors();
 		aspectMatrix[0] = guiScale/framebufferWidth;
 		aspectMatrix[5] = guiScale/framebufferHeight;
 		setMatrix(uniform_view, aspectMatrix);
+		GraphicsUtility.checkErrors();
 	}
 
 	@Override
@@ -148,14 +148,7 @@ public abstract class ModelRenderProgramBase extends ShaderProgram implements Mo
 	public void loadViewMatrix(Camera camera, int framebufferWidth, int framebufferHeight) {
 		flush();
 		//TODO add camera rotation
-		double ratio = (double)framebufferHeight/framebufferWidth;
-		float zoom = camera.getZoom();
-		double ratioZoom = ratio * zoom;
-		viewMatrix[0] = (float)ratioZoom;
-		viewMatrix[2] = (float)ratio;
-		viewMatrix[3] = (float)(-ratioZoom * camera.getPositionX());
-		viewMatrix[5] = zoom;
-		viewMatrix[7] = -zoom * camera.getPositionY();
+		ClientUtility.setViewMatrix(viewMatrix, camera, framebufferWidth, framebufferHeight);
 		setMatrix(uniform_view, viewMatrix);
 	}
 

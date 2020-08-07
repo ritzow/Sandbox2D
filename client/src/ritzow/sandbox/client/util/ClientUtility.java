@@ -70,6 +70,24 @@ public class ClientUtility {
 		return worldX;
 	}
 
+	public static void setViewMatrix(float[] viewMatrix, Camera camera, int framebufferWidth, int framebufferHeight) {
+		//TODO add camera rotation
+		double ratio = (double)framebufferHeight/framebufferWidth;
+		float zoom = camera.getZoom();
+		double ratioZoom = ratio * zoom;
+		viewMatrix[0] = (float)ratioZoom; viewMatrix[2] = (float)ratio; viewMatrix[3] = (float)(-ratioZoom * camera.getPositionX());
+		viewMatrix[5] = zoom; viewMatrix[7] = -zoom * camera.getPositionY();
+	}
+
+	public static float worldPosYToDevice(Camera camera, int frameWidth, int frameHeight, float posY) {
+		return posY;
+	}
+
+	public static float worldPosXToDevice(Camera camera, int frameWidth, int frameHeight, float posX) {
+		double ratio = (double)frameHeight/frameWidth;
+		return (float)(posX / camera.getZoom() * ratio);
+	}
+
 	public static float pixelVerticalToWorld(Camera camera, int mouseY, int framebufferHeight) {
 		return (1f - (2f * mouseY) / framebufferHeight) / camera.getZoom() + camera.getPositionY();
 	}

@@ -33,7 +33,12 @@ public class RenderManager {
 
 	public static Font FONT; //TODO put this somewhere else?
 
-	public static ModelRenderer setup() throws IOException {
+	public static ModelRenderer MODEL_RENDERER;
+	public static LightRenderProgram LIGHT_RENDERER;
+	public static FullscreenQuadProgram FULLSCREEN_RENDERER;
+	public static LightingApplyProgram LIGHT_APPLY_RENDERER;
+
+	public static void setup() throws IOException {
 		log().info("Loading OpenGL");
 		GL.create();
 		RenderManager.OPENGL_CAPS = GL.createCapabilities(true);
@@ -82,13 +87,31 @@ public class RenderManager {
 
 		int textureAtlas = atlas.texture();
 		if(StandardClientOptions.USE_OPENGL_4_6) {
-			return new ModelRenderProgramEnhanced(
+			LIGHT_RENDERER = new LightRenderProgram(
+				spirv("light.vert.spv", ShaderType.VERTEX),
+				spirv("light.geom.spv", ShaderType.GEOMETRY),
+				spirv("light.frag.spv", ShaderType.FRAGMENT)
+			);
+
+			FULLSCREEN_RENDERER = new FullscreenQuadProgram(
+				spirv("fullscreen.vert.spv", ShaderType.VERTEX),
+				spirv("fullscreen.geom.spv", ShaderType.GEOMETRY),
+				spirv("fullscreen.frag.spv", ShaderType.FRAGMENT)
+			);
+
+			LIGHT_APPLY_RENDERER = new LightingApplyProgram(
+				spirv("fullscreen.vert.spv", ShaderType.VERTEX),
+				spirv("fullscreen.geom.spv", ShaderType.GEOMETRY),
+				spirv("fullscreen-blend.frag.spv", ShaderType.FRAGMENT)
+			);
+
+			MODEL_RENDERER = new ModelRenderProgramEnhanced(
 				spirv("model.vert.spv", ShaderType.VERTEX),
 				spirv("model.frag.spv", ShaderType.FRAGMENT),
 				textureAtlas, models.toArray(ModelData[]::new)
 			);
 		} else {
-			return new ModelRenderProgramOld(
+			MODEL_RENDERER = new ModelRenderProgramOld(
 				source("model.vert", ShaderType.VERTEX),
 				source("model.frag", ShaderType.FRAGMENT),
 				textureAtlas, models.toArray(ModelData[]::new)
@@ -122,11 +145,11 @@ public class RenderManager {
 	}
 
 	private static Shader source(String file, ShaderType type) throws IOException {
-		return Shader.fromSource(Files.readString(SHADERS_PATH.resolve(file)), type);
+		return Shader.fromSource(Files.readString(SHADERS_PATH.resolve("old").resolve(file)), type);
 	}
 
 	private static Shader spirv(String file, ShaderType type) throws IOException {
-		return Shader.fromSPIRV(Utility.load(SHADERS_PATH.resolve(file), BufferUtils::createByteBuffer), type);
+		return Shader.fromSPIRV(Utility.load(SHADERS_PATH.resolve("new").resolve("out").resolve(file), BufferUtils::createByteBuffer), type);
 	}
 
 	private static void debugCallback(int source, int type, int id, int severity,
@@ -147,6 +170,15 @@ public class RenderManager {
 
 	private static int fbWidth, fbHeight;
 
+	public static void setViewport(int framebufferWidth, int framebufferHeight) {
+		glViewport(0, 0, fbWidth = framebufferWidth, fbHeight = framebufferHeight);
+	}
+
+	public static void setStandardBlending() {
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glBlendEquation(GL_FUNC_ADD);
+	}
+
 	public static void preRender(int framebufferWidth, int framebufferHeight) {
 		if(fbWidth != framebufferWidth || fbHeight != framebufferHeight)
 			glViewport(0, 0, fbWidth = framebufferWidth, fbHeight = framebufferHeight);
@@ -155,6 +187,7 @@ public class RenderManager {
 	public static void postRender() {
 		glFlush();
 		glFinish();
+		GraphicsUtility.checkErrors();
 		//TODO call GameState.display().refresh()?
 	}
 }

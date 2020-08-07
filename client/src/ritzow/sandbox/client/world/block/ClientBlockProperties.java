@@ -3,6 +3,7 @@ package ritzow.sandbox.client.world.block;
 import ritzow.sandbox.client.audio.AudioSystem;
 import ritzow.sandbox.client.audio.Sound.StandardSound;
 import ritzow.sandbox.client.graphics.Camera;
+import ritzow.sandbox.client.graphics.Light;
 import ritzow.sandbox.client.graphics.Model;
 import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.BlockGrid;
@@ -12,6 +13,10 @@ import ritzow.sandbox.world.block.Block;
 public interface ClientBlockProperties extends Block {
 	Model getModel();
 	boolean isTransparent();
+
+	default Light lighting() {
+		return null;
+	}
 
 	@Override
 	default void onBreak(World world, float x, float y) {

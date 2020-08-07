@@ -2,10 +2,12 @@
 
 layout(location = 0) in vec2 position;
 layout(location = 1) in vec2 textureCoord;
-layout(location = 0) out float passOpacity;
-layout(location = 1) out vec2 passTextureCoord;
-layout(location = 2) out float passExposure;
-layout(location = 1) uniform mat4 view;
+
+layout(location = 0) out smooth vec2 outTextureCoord;
+layout(location = 1) out flat float opacity;
+layout(location = 2) out flat float exposure;
+
+layout(location = 0) uniform mat4 view;
 
 struct instance {
 	float opacity;
@@ -23,7 +25,7 @@ layout(binding = 1, std140) uniform instance_data { //TODO store the single view
 void main() {
 	instance i = instances[offsets[gl_DrawID] + gl_InstanceID];
 	gl_Position = view * i.transform * vec4(position, 0.0, 1.0);
-	passTextureCoord = textureCoord;
-	passOpacity = i.opacity;
-	passExposure = i.exposure;
+	outTextureCoord = textureCoord;
+	opacity = i.opacity;
+	exposure = i.exposure;
 }

@@ -1,7 +1,7 @@
 package ritzow.sandbox.client.graphics;
 
 public interface ModelRenderer {
-	void setCurrent();
+	void prepare();
 	void loadViewMatrixIdentity();
 	void loadViewMatrixScale(float scale, int framebufferWidth, int framebufferHeight);
 	void loadViewMatrixStandard(int framebufferWidth, int framebufferHeight);

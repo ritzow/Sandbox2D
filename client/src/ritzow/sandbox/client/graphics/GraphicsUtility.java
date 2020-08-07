@@ -54,6 +54,20 @@ public final class GraphicsUtility {
 		return id;
 	}
 
+	public static int createTexture(int width, int height) {
+		int texture = glGenTextures();
+		glBindTexture(GL_TEXTURE_2D, texture);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, (ByteBuffer)null);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		return texture;
+	}
+
+	public static void resizeTexture(int texture, int width, int height) {
+		glBindTexture(GL_TEXTURE_2D, texture);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 800, 600, 0, GL_RGBA, GL_UNSIGNED_BYTE, (ByteBuffer)null);
+	}
+
 	public static void checkErrors() throws OpenGLException {
 		int error = org.lwjgl.opengl.GL11.glGetError();
 		if(error != 0) {
@@ -91,8 +105,8 @@ public final class GraphicsUtility {
 
 	public static void checkShaderCompilation(Shader shader) {
 		if(glGetShaderi(shader.getShaderID(), GL_COMPILE_STATUS) != 1) {
-			glDeleteShader(shader.getShaderID());
 			String error = glGetShaderInfoLog(shader.getShaderID());
+			glDeleteShader(shader.getShaderID());
 			throw new OpenGLException("Shader Compilation Error" + (error.length() > 0 ? ": " + error : ""));
 		}
 	}

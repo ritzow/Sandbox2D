@@ -1,15 +1,14 @@
 package ritzow.sandbox.client.world.entity;
 
-import ritzow.sandbox.client.graphics.Graphics;
-import ritzow.sandbox.client.graphics.ModelRenderer;
-import ritzow.sandbox.client.graphics.Renderable;
+import java.util.List;
+import ritzow.sandbox.client.graphics.*;
 import ritzow.sandbox.data.TransportableDataReader;
 import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.ItemEntity;
 import ritzow.sandbox.world.item.Item;
 
-public final class ClientItemEntity<I extends Item> extends ItemEntity<I> implements Renderable {
+public final class ClientItemEntity<I extends Item> extends ItemEntity<I> implements Renderable, Lit {
 	private final float rotationVelocity;
 	private float rotation;
 
@@ -54,5 +53,10 @@ public final class ClientItemEntity<I extends Item> extends ItemEntity<I> implem
 	@Override
 	public String toString() {
 		return super.toString() + ", item = (" + item + ")";
+	}
+
+	@Override
+	public Iterable<Light> lights() {
+		return List.of(new StaticLight(0, 0, 1, 0, 0, 4f));
 	}
 }

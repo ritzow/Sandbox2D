@@ -1,8 +1,7 @@
 package ritzow.sandbox.client.world.entity;
 
-import ritzow.sandbox.client.graphics.GameModels;
-import ritzow.sandbox.client.graphics.ModelRenderer;
-import ritzow.sandbox.client.graphics.Renderable;
+import java.util.List;
+import ritzow.sandbox.client.graphics.*;
 import ritzow.sandbox.data.TransportableDataReader;
 import ritzow.sandbox.world.entity.PlayerEntity;
 
@@ -10,7 +9,7 @@ import ritzow.sandbox.world.entity.PlayerEntity;
  * Represents a player
  * @author Solomon Ritzow
  */
-public class ClientPlayerEntity extends PlayerEntity implements Renderable {
+public class ClientPlayerEntity extends PlayerEntity implements Renderable, Lit {
 	public ClientPlayerEntity(int entityID) {
 		super(entityID);
 	}
@@ -33,7 +32,7 @@ public class ClientPlayerEntity extends PlayerEntity implements Renderable {
 		);
 		if(!down) {
 			renderer.queueRender(
-				GameModels.MODEL_RED_SQUARE,
+				GameModels.MODEL_BLUE_SQUARE,
 				1.0f,
 				exposure,
 				positionX,
@@ -43,5 +42,41 @@ public class ClientPlayerEntity extends PlayerEntity implements Renderable {
 				0
 			);
 		}
+	}
+
+	@Override
+	public Iterable<Light> lights() {
+		return List.of(new Light() {
+
+			@Override
+			public float posX() {
+				return 0;
+			}
+
+			@Override
+			public float posY() {
+				return 0;
+			}
+
+			@Override
+			public float red() {
+				return 0.0f;
+			}
+
+			@Override
+			public float green() {
+				return 1.0f;
+			}
+
+			@Override
+			public float blue() {
+				return 0.0f;
+			}
+
+			@Override
+			public float intensity() {
+				return 5f;
+			}
+		});
 	}
 }

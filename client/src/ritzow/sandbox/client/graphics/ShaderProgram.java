@@ -21,7 +21,7 @@ public class ShaderProgram {
 		GraphicsUtility.checkProgramCompilation(this);
 	}
 
-	public void setCurrent() {
+	protected final void setCurrent() {
 		glUseProgram(programID);
 	}
 

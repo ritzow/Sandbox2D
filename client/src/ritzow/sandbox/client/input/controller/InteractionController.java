@@ -58,11 +58,12 @@ public final class InteractionController {
 		);
 	}
 
-	public void update(Display display, ControlsContext controls, ModelRenderer renderer, Camera camera, GameTalker client, World world, PlayerEntity player) {
+	public void updateRender(Display display, ControlsContext controls, ModelRenderer renderer, Camera camera, GameTalker client, World world, PlayerEntity player) {
 		int framebufferHeight = display.height();
 		int blockX = Math.round(ClientUtility.pixelHorizontalToWorld(camera, display.getCursorX(), display.width(), framebufferHeight));
 		int blockY = Math.round(ClientUtility.pixelVerticalToWorld(camera, display.getCursorY(), framebufferHeight));
 		BlockGrid blocks = world.getBlocks();
+		renderer.prepare();
 		switch(player.selected()) {
 			case Protocol.SLOT_BREAK -> {
 				if(blocks.isValid(blockX, blockY)) {
