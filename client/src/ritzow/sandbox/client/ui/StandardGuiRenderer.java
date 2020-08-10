@@ -54,13 +54,11 @@ public class StandardGuiRenderer implements GuiRenderer {
 	//Apply this Offset's transformation to the parameters (ie a left matrix multiply)
 	private static record RenderTransform(float opacity, float x, float y, float scaleX, float scaleY, float rotation) {
 		RenderTransform combine(float opacity, float x, float y, float scaleX, float scaleY, float rotation) {
-			if(x == 0.0f && y == 0.0f && scaleX == 1.0f && scaleY == 1.0f && rotation == 0.0f && opacity == 1.0f) {
-				return this;
-			} else if(this.rotation == 0.0f) {
+			if(this.rotation == 0.0f) {
 				return new RenderTransform(
 					this.opacity * opacity,
-					x * this.scaleX + this.x,
-					y * this.scaleY + this.y,
+					Math.fma(this.scaleX, x, this.x),
+					Math.fma(this.scaleY, y, this.y),
 					this.scaleX * scaleX,
 					this.scaleY * scaleY,
 					rotation
@@ -70,10 +68,11 @@ public class StandardGuiRenderer implements GuiRenderer {
 				//TODO deal with weird negatives required for clockwise/proper rotation
 				float cos = (float)Math.cos(-this.rotation);
 				float sin = (float)Math.sin(-this.rotation);
+				//TODO use Math.fma
 				return new RenderTransform(
 					this.opacity * opacity,
-					(x * cos - y * sin) * this.scaleX + this.x,
-					(x * sin + y * cos) * this.scaleY + this.y,
+					Math.fma(x * cos - y * sin, this.scaleX, this.x),
+					Math.fma(x * sin + y * cos, this.scaleY, this.y),
 					this.scaleX * scaleX,
 					this.scaleY * scaleY,
 					this.rotation + rotation
@@ -198,7 +197,7 @@ public class StandardGuiRenderer implements GuiRenderer {
 	}
 
 	//TODO have this return whether a "UI user action" was consumed so it is known whether to apply it to other UI-like things such as the game world
-	public void render(GuiElement gui, Framebuffer dest, Display display, ControlsQuery controls, long nanos, float guiScale) throws OpenGLException {
+	public void render(GuiElement gui, Display display, ControlsQuery controls, long nanos, float guiScale) throws OpenGLException {
 		if(!animations.isEmpty()) {
 			long currentTime = System.nanoTime();
 			while(!animations.isEmpty() && animations.peek().endTime() < currentTime) {
@@ -212,7 +211,6 @@ public class StandardGuiRenderer implements GuiRenderer {
 			}
 		}
 
-		dest.setDraw();
 		int windowWidth = display.width();
 		int windowHeight = display.height();
 
@@ -223,10 +221,13 @@ public class StandardGuiRenderer implements GuiRenderer {
 		this.nanos = nanos;
 		this.controls = controls;
 		program.loadViewMatrixScale(guiScale, windowWidth, windowHeight);
-		program.setCurrent();
+		GraphicsUtility.checkErrors();
+		program.prepare();
+		GraphicsUtility.checkErrors();
 		//TODO cache the GuiLevels, possibly use dirty flag to determine if transforms need to change
 		this.rt.addFirst(new GuiLevel(new RenderTransform(1, 0, 0, 1, 1, 0), true, new Rectangle(2/scaleX, 2/scaleY)));
 		draw(gui, 1, 0, 0, 1, 1, 0);
+		GraphicsUtility.checkErrors();
 		this.rt.removeFirst();
 	}
 }

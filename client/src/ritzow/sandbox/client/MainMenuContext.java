@@ -116,8 +116,8 @@ class MainMenuContext {
 					new Text("Server:", RenderManager.FONT, 10, 0),
 					text = new EditableText(RenderManager.FONT, 10, 0).setContent(NetworkUtility.formatAddress(getServerAddress()))
 				)
-			), Side.BOTTOM, 0, 0.05f),
-			new Anchor(new Scaler(new Icon(GameModels.MODEL_ATLAS), 0.75f), Side.BOTTOM_RIGHT, 0.05f, 0.05f)
+			), Side.BOTTOM, 0, 0.05f)
+			//,new Anchor(new Scaler(new Icon(GameModels.MODEL_ATLAS), 0.75f), Side.BOTTOM_RIGHT, 0.05f, 0.05f)
 		);
 	}
 
@@ -142,9 +142,9 @@ class MainMenuContext {
 		int height = GameState.display().height();
 		RenderManager.preRender(width, height);
 		RenderManager.DISPLAY_BUFFER.clear(161 / 256f, 252 / 256f, 156 / 256f, 1.0f);
+		RenderManager.DISPLAY_BUFFER.setCurrent();
 		GameState.guiRenderer().render(
 			root,
-			RenderManager.DISPLAY_BUFFER,
 			GameState.display(), controlsContext,
 			deltaTime,
 			uiScale
