@@ -44,39 +44,18 @@ public class ClientPlayerEntity extends PlayerEntity implements Renderable, Lit 
 		}
 	}
 
+	private static final List<Light> LIGHTS_STANDING = List.of(
+		new StaticLight(0, 0.5f, 0, 1, 0, 20),
+		new StaticLight(0, -0.5f, 0, 0, 1, 20)
+	);
+
+	private static final List<Light> LIGHTS_CROUCHED = List.of(
+		new StaticLight(0, 0, 1, 1, 1, 20)
+	);
+
+
 	@Override
 	public Iterable<Light> lights() {
-		return List.of(new Light() {
-
-			@Override
-			public float posX() {
-				return 0;
-			}
-
-			@Override
-			public float posY() {
-				return 0;
-			}
-
-			@Override
-			public float red() {
-				return 0.0f;
-			}
-
-			@Override
-			public float green() {
-				return 1.0f;
-			}
-
-			@Override
-			public float blue() {
-				return 0.0f;
-			}
-
-			@Override
-			public float intensity() {
-				return 5f;
-			}
-		});
+		return down ? LIGHTS_CROUCHED : LIGHTS_STANDING;
 	}
 }

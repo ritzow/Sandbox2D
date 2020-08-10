@@ -21,7 +21,7 @@ public class LightRenderProgram extends ShaderProgram {
 	private static final int OFFSET_POSITION = 0, OFFSET_COLOR = OFFSET_POSITION + 2 * Float.BYTES, OFFSET_INTENSITY = OFFSET_COLOR + 3 * Float.BYTES;
 
 	private final ByteBuffer lightsBuffer;
-	private final int vao, vbo, uniformView;
+	private final int vao, vbo, uniformView, uniformScale;
 	private int count;
 
 	public LightRenderProgram(Shader vertex, Shader geometry, Shader fragment) {
@@ -52,6 +52,7 @@ public class LightRenderProgram extends ShaderProgram {
 		glVertexAttribPointer(intensityAttribute, 1, GL_FLOAT, false, STRIDE_BYTES, OFFSET_INTENSITY);
 
 		this.uniformView = getUniformLocation("view");
+		this.uniformScale = getUniformLocation("scale");
 
 		GraphicsUtility.checkErrors();
 	}
@@ -66,13 +67,19 @@ public class LightRenderProgram extends ShaderProgram {
 		0, 0, 0, 1,
 	};
 
-	public void setup(Camera camera, int frameWidth, int frameHeight) {
+	public void setup(Camera camera, OpenGLTexture diffuse, int frameWidth, int frameHeight) {
 		//this.camera = camera;
 		//this.frameWidth = frameWidth;
 		//this.frameHeight = frameHeight;
 		setCurrent();
+
+		//set solid texture
+		glActiveTexture(GL_TEXTURE0);
+		diffuse.bind();
+
 		ClientUtility.setViewMatrix(viewMatrix, camera, frameWidth, frameHeight);
 		setMatrix(uniformView, viewMatrix);
+		setFloat(uniformScale, camera.getZoom());
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE);
 		glBlendEquation(GL_FUNC_ADD);
 		glBindVertexArray(vao);

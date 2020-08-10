@@ -57,6 +57,6 @@ public final class ClientItemEntity<I extends Item> extends ItemEntity<I> implem
 
 	@Override
 	public Iterable<Light> lights() {
-		return List.of(new StaticLight(0, 0, 1, 0, 0, 4f));
+		return List.of(new StaticLight(0, 0, 0.5f, 0.5f, 0.5f, 10f));
 	}
 }

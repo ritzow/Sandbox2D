@@ -1,5 +1,7 @@
 package ritzow.sandbox.client.graphics;
 
-public interface Lit {
+import ritzow.sandbox.world.component.Positional;
+
+public interface Lit extends Positional {
 	Iterable<Light> lights();
 }

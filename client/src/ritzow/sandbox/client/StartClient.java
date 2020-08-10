@@ -30,7 +30,9 @@ class StartClient {
 		AudioSystem.getDefault(); //load default audio system
 		setupGLFW();
 		GameState.display().setGraphicsContextOnThread();
-		GameState.modelRenderer(RenderManager.setup());
+		RenderManager.setup();
+		GameState.setLightRenderer(RenderManager.LIGHT_RENDERER);
+		GameState.modelRenderer(RenderManager.MODEL_RENDERER);
 		MainMenuContext mainMenu = new MainMenuContext();
 		GameState.setMenuContext(mainMenu);
 		log().info("Game startup took " + Utility.formatTime(Utility.nanosSince(startupStart)));

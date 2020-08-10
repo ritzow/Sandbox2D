@@ -6,8 +6,9 @@ import ritzow.sandbox.data.Serializer;
 import ritzow.sandbox.data.Transportable;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.block.Block;
+import ritzow.sandbox.world.component.Positional;
 
-public abstract class Entity implements Transportable {
+public abstract class Entity implements Transportable, Positional {
 	protected final int entityID;
 
 	protected float
@@ -107,11 +108,13 @@ public abstract class Entity implements Transportable {
 	public abstract float getMass();
 
 	/** @return the horizontal position of the of the entity in the world **/
+	@Override
 	public final float getPositionX() {
 		return positionX;
 	}
 
 	/** @return the vertical position of the of the entity in the world **/
+	@Override
 	public final float getPositionY() {
 		return positionY;
 	}

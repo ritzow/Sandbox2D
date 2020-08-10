@@ -9,9 +9,7 @@ import java.util.function.DoubleConsumer;
 import java.util.logging.Level;
 import ritzow.sandbox.client.audio.AudioSystem;
 import ritzow.sandbox.client.data.StandardClientOptions;
-import ritzow.sandbox.client.graphics.Display;
-import ritzow.sandbox.client.graphics.GameModels;
-import ritzow.sandbox.client.graphics.RenderManager;
+import ritzow.sandbox.client.graphics.*;
 import ritzow.sandbox.client.input.Button;
 import ritzow.sandbox.client.input.ControlsContext;
 import ritzow.sandbox.client.input.controller.InteractionController;
@@ -23,12 +21,14 @@ import ritzow.sandbox.client.ui.GuiElement;
 import ritzow.sandbox.client.ui.element.*;
 import ritzow.sandbox.client.ui.element.BorderAnchor.Anchor;
 import ritzow.sandbox.client.ui.element.BorderAnchor.Side;
+import ritzow.sandbox.client.ui.element.VBoxDynamic.Alignment;
 import ritzow.sandbox.client.util.SerializationProvider;
 import ritzow.sandbox.client.world.ClientWorldRenderer;
 import ritzow.sandbox.client.world.block.ClientBlockProperties;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
 import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.data.Transportable;
+import ritzow.sandbox.network.NetworkUtility;
 import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.block.Block;
@@ -73,6 +73,12 @@ class InWorldContext implements GameTalker {
 		SLOT_SELECT_1,
 		SLOT_SELECT_2,
 		SLOT_SELECT_3) {
+
+		@Override
+		public void framebufferSize(int width, int height) {
+			worldRenderer.updateFramebuffers(width, height);
+		}
+
 		@Override
 		public void windowFocus(boolean focused) {
 			AudioSystem.getDefault().setVolume(focused ? 1.0f : 0.0f);
@@ -159,7 +165,8 @@ class InWorldContext implements GameTalker {
 		worldBuildTask = null;
 		player = getEntity(playerID);
 		cameraGrip = new TrackingCameraController(2.5f, player.getWidth() / 20f, player.getWidth() / 2f);
-		worldRenderer = new ClientWorldRenderer(GameState.modelRenderer(), cameraGrip.getCamera(), world);
+		worldRenderer = new ClientWorldRenderer(GameState.display().width(), GameState.display().height(),
+			GameState.modelRenderer(), GameState.lightRenderer(), cameraGrip.getCamera(), world);
 		interactionControls = new InteractionController();
 
 		//TODO create visual inventory that puts items in a small rectangular region that acts as backpack (drag around or outside to drop item)
@@ -172,10 +179,10 @@ class InWorldContext implements GameTalker {
 					), 0.5f
 				), Side.BOTTOM_LEFT, 0.1f, 0.1f
 			),
-			new Anchor(new VBox(0.1f,
-				framerateDisplay = new EditableText(RenderManager.FONT, 7, 0),
-				new Text(client.getServerAddress().getAddress().toString(), RenderManager.FONT, 8, 0)
-			), Side.TOP_LEFT, 0.1f, 0.1f)
+			new Anchor(new VBoxDynamic(0.05f, Alignment.LEFT,
+				framerateDisplay = new EditableText(RenderManager.FONT, 6, 0),
+				new Text(NetworkUtility.formatAddress(client.getServerAddress()), RenderManager.FONT, 6, 0)
+			), Side.TOP_LEFT, 0.05f, 0.05f)
 		);
 
 		GameState.display().setCursor(GameState.cursorPick());
@@ -229,22 +236,24 @@ class InWorldContext implements GameTalker {
 
 	private void updateRender(Display display, long deltaTime) {
 		if(!StandardClientOptions.DISABLE_CLIENT_UPDATE) {
-			world.update(deltaTime);
+			world.update(deltaTime); //TODO should still have a max update step
 		}
 		cameraGrip.update(controlsContext, player, AudioSystem.getDefault(), deltaTime);
 		int width = display.width(), height = display.height();
 		RenderManager.preRender(width, height);
 		worldRenderer.render(RenderManager.DISPLAY_BUFFER, width, height, computeDaylight());
-		interactionControls.update(display, controlsContext, GameState.modelRenderer(), cameraGrip.getCamera(), this, world, player);
+		interactionControls.updateRender(display, controlsContext, GameState.modelRenderer(), cameraGrip.getCamera(), this, world, player);
+		GraphicsUtility.checkErrors();
 		framerateDisplay.setContent(Utility.frameTimeToString(GameLoop.getLastUpdateTime()));
-		GameState.guiRenderer().render(overlayGUI, RenderManager.DISPLAY_BUFFER, display, controlsContext, deltaTime, StandardClientOptions.GUI_SCALE);
+		GameState.guiRenderer().render(overlayGUI, display, controlsContext, deltaTime, StandardClientOptions.GUI_SCALE);
+		GraphicsUtility.checkErrors();
 		GameState.modelRenderer().flush();
 		RenderManager.postRender();
 		display.refresh();
 	}
 
 	private static float computeDaylight() {
-		return Utility.oscillate(System.currentTimeMillis(), Utility.degreesPerSecToRadiansPerMillis(5), 0, 0.1f, 1.0f);
+		return Utility.oscillate(System.currentTimeMillis(), Utility.degreesPerSecToRadiansPerMillis(5), 0, 0.0f, 1.0f);
 	}
 
 	private boolean process(ByteBuffer data) {
@@ -301,6 +310,10 @@ class InWorldContext implements GameTalker {
 		}
 	}
 
+	private static <T extends Transportable> T deserialize(ByteBuffer data) {
+		return SerializationProvider.getProvider().deserialize(data);
+	}
+
 	private void processPlayerState(ByteBuffer data) {
 		int id = data.getInt();
 		if(id != player.getID()) {
@@ -333,17 +346,19 @@ class InWorldContext implements GameTalker {
 	}
 
 	private void processRemoveEntity(ByteBuffer data) {
-		world.remove(data.getInt());
-	}
-
-	private static <T extends Transportable> T deserialize(ByteBuffer data) {
-		return SerializationProvider.getProvider().deserialize(data);
+		Entity entity = world.remove(data.getInt());
+		if(entity instanceof Lit e) {
+			worldRenderer.removeLight(e);
+		}
 	}
 
 	private void processAddEntity(ByteBuffer data) {
 		Entity entity = deserialize(data.get() == 1 ? Bytes.decompress(data) : data);
 		if(entity instanceof PlayerEntity) log().info("Another player connected to the server");
 		world.add(entity);
+		if(entity instanceof Lit e) {
+			worldRenderer.addLight(e);
+		}
 	}
 
 	private void processUpdateEntity(ByteBuffer data) {
