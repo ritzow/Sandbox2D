@@ -87,12 +87,12 @@ public class LightRenderProgram extends ShaderProgram {
 	}
 
 	public void queueLight(Light light, float offsetX, float offsetY) {
-		//TODO transform posX, posY, and intensity
-		//System.out.println("queue light at " + (light.posX() + offsetX) + ", " + (light.posY() + offsetY));
 		lightsBuffer
 			.putFloat(light.posX() + offsetX)
 			.putFloat(light.posY() + offsetY)
-			.putFloat(light.red()).putFloat(light.green()).putFloat(light.blue())
+			.putFloat(light.red())
+			.putFloat(light.green())
+			.putFloat(light.blue())
 			.putFloat(light.intensity());
 		count++;
 		if(count == MAX_LIGHTS) {

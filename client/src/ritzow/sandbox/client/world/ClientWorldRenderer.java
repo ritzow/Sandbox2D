@@ -124,23 +124,19 @@ public final class ClientWorldRenderer {
 
 	public void render(Framebuffer target, final int width, final int height, float daylight) {
 		//ensure that model program, camera, world are cached on stack
-		ModelRenderer program = this.modelProgram;
-		Camera camera = this.camera;
-		World world = this.world;
-
 		target.setCurrent();
 
 		//set the current shader program
-		program.prepare();
-		program.loadViewMatrixStandard(width, height);
+		modelProgram.prepare();
+		modelProgram.loadViewMatrixStandard(width, height);
 
 		//render before loading view matrix
 		float scale = 2f * (width > height ? width / (float)height : height / (float)width);
-		program.queueRender(GameModels.MODEL_SKY, 1.0f/daylight, daylight, 0, 0, scale, scale, 0);
-		program.queueRender(GameModels.MODEL_NIGHT_SKY, 1 - daylight, 1.0f, 0, 0, scale, scale, 0);
+		modelProgram.queueRender(GameModels.MODEL_SKY, 1.0f/daylight, daylight, 0, 0, scale, scale, 0);
+		modelProgram.queueRender(GameModels.MODEL_NIGHT_SKY, 1 - daylight, 1.0f, 0, 0, scale, scale, 0);
 
 		//load the view transformation
-		program.loadViewMatrix(camera, width, height);
+		modelProgram.loadViewMatrix(camera, width, height);
 
 		framebuffer.setCurrent();
 		framebuffer.attachTexture(diffuseTexture, 0);
@@ -177,12 +173,12 @@ public final class ClientWorldRenderer {
 				}
 
 				if(front != null) {
-					program.queueRender(front.getModel(), 1.0f, exposure, column, row, 1.0f, 1.0f, 0.0f);
+					modelProgram.queueRender(front.getModel(), 1.0f, exposure, column, row, 1.0f, 1.0f, 0.0f);
 				}
 			}
 		}
 
-		program.flush();
+		modelProgram.flush();
 
 		//draw lighting to lighting framebuffer
 		framebuffer.attachTexture(lightingTexture, 0);
@@ -206,11 +202,11 @@ public final class ClientWorldRenderer {
 //		float sunPosY = (float)(Math.sin(angle) * radius);
 //		lightProgram.queueLight(new StaticLight(sunPosX, sunPosY, 1, 1, 1, 500), 0, 0);
 
-		lightProgram.queueLight(new StaticLight(world.getBlocks().getWidth()/2f, world.getBlocks().getHeight(), 1, 1, 1, daylight * 500), 0, 0);
+		//lightProgram.queueLight(new StaticLight(world.getBlocks().getWidth()/2f, world.getBlocks().getHeight(), 1, 1, 1, daylight * 500), 0, 0);
 
 		lightProgram.flush();
 
-		modelProgram.prepare();
+		this.modelProgram.prepare();
 		framebuffer.attachTexture(diffuseTexture, 0);
 
 		//render back blocks
@@ -220,7 +216,7 @@ public final class ClientWorldRenderer {
 				var front = (ClientBlockProperties)blocks.get(World.LAYER_MAIN, column, row);
 				float exposure = getLighting(column, row);
 				if(back != null && (front == null || front.isTransparent())) {
-					program.queueRender(back.getModel(), 1.0f, exposure * LAYER_EXPOSURE_FACTOR, column, row, 1.0f, 1.0f, 0.0f);
+					modelProgram.queueRender(back.getModel(), 1.0f, exposure * LAYER_EXPOSURE_FACTOR, column, row, 1.0f, 1.0f, 0.0f);
 				}
 			}
 		}
@@ -235,11 +231,11 @@ public final class ClientWorldRenderer {
 
 			//check if the entity is visible inside the viewport and render it
 			if(posX < worldRight + halfWidth && posX > worldLeft - halfWidth && posY < worldTop + halfHeight && posY > worldBottom - halfHeight) {
-				((Renderable)e).render(program, computeExposure(posX, posY, topIndex, rightIndex));
+				((Renderable)e).render(modelProgram, computeExposure(posX, posY, topIndex, rightIndex));
 			}
 		}
 
-		program.flush();
+		modelProgram.flush();
 
 		target.setCurrent();
 		//RenderManager.FULLSCREEN_RENDERER.render(lightingTexture.id, target);
