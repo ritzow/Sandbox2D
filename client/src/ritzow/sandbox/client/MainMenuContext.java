@@ -42,6 +42,7 @@ class MainMenuContext {
 		UI_TERTIARY,
 		UI_BACKSPACE,
 		UI_DELETE,
+		UI_CONFIRM,
 		QUIT,
 		FULLSCREEN,
 		SCROLL_MODIFIER) {
@@ -91,7 +92,8 @@ class MainMenuContext {
 
 	private final Map<ritzow.sandbox.client.input.Button, Runnable> controls = Map.ofEntries(
 		Map.entry(FULLSCREEN, GameState.display()::toggleFullscreen),
-		Map.entry(QUIT, MainMenuContext::onQuit)
+		Map.entry(QUIT, MainMenuContext::onQuit),
+		Map.entry(UI_CONFIRM, this::startJoin)
 	);
 
 	private static void onQuit() {
@@ -117,7 +119,6 @@ class MainMenuContext {
 					text = new EditableText(RenderManager.FONT, 10, 0).setContent(NetworkUtility.formatAddress(getServerAddress()))
 				)
 			), Side.BOTTOM, 0, 0.05f)
-			//,new Anchor(new Scaler(new Icon(GameModels.MODEL_ATLAS), 0.75f), Side.BOTTOM_RIGHT, 0.05f, 0.05f)
 		);
 	}
 
