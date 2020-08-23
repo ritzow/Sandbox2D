@@ -1,8 +1,9 @@
 #version 460 core
 
 layout(location = 0) in smooth vec2 inPosition;
-layout(location = 1) in flat vec3 inColor;
 layout(location = 2) in smooth vec2 solidTextureCoord;
+
+layout(location = 1) in flat vec3 inColor;
 layout(location = 3) in flat vec2 textureCenter;
 layout(location = 4) in flat float sampleScale;
 
@@ -19,6 +20,10 @@ void main() {
     vec2 increment = normalize(solidTextureCoord - textureCenter) * SAMPLE_DISTANCE; //texture coord distance to increment
     int samples = int(distance(solidTextureCoord, textureCenter)/length(increment));
     float alpha = 1 - length(inPosition); //standard alpha without occlusion
+
+    if(alpha <= 0)
+        discard;
+
     for(vec2 texCoord = textureCenter; alpha > 0 && samples > 0; texCoord += increment, samples--) {
         alpha -= texture(solidTexture, texCoord).a * DISSIPATION_FACTOR / sampleScale;
     }

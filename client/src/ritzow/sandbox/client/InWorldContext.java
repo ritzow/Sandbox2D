@@ -23,7 +23,7 @@ import ritzow.sandbox.client.ui.element.BorderAnchor.Anchor;
 import ritzow.sandbox.client.ui.element.BorderAnchor.Side;
 import ritzow.sandbox.client.ui.element.VBoxDynamic.Alignment;
 import ritzow.sandbox.client.util.SerializationProvider;
-import ritzow.sandbox.client.world.ClientWorldRenderer;
+import ritzow.sandbox.client.world.ClientWorldRendererLightmap;
 import ritzow.sandbox.client.world.block.ClientBlockProperties;
 import ritzow.sandbox.client.world.entity.ClientPlayerEntity;
 import ritzow.sandbox.data.Bytes;
@@ -45,7 +45,7 @@ class InWorldContext implements GameTalker {
 	private final Client client;
 	private final int playerID;
 	private InteractionController interactionControls;
-	private ClientWorldRenderer worldRenderer;
+	private ClientWorldRendererLightmap worldRenderer;
 	private TrackingCameraController cameraGrip;
 	private ClientPlayerEntity player;
 	private GuiElement overlayGUI;
@@ -165,8 +165,7 @@ class InWorldContext implements GameTalker {
 		worldBuildTask = null;
 		player = getEntity(playerID);
 		cameraGrip = new TrackingCameraController(2.5f, player.getWidth() / 20f, player.getWidth() / 2f);
-		worldRenderer = new ClientWorldRenderer(GameState.display().width(), GameState.display().height(),
-			GameState.modelRenderer(), GameState.lightRenderer(), cameraGrip.getCamera(), world);
+		worldRenderer = new ClientWorldRendererLightmap(GameState.display(), cameraGrip.getCamera(), world);
 		interactionControls = new InteractionController();
 
 		//TODO create visual inventory that puts items in a small rectangular region that acts as backpack (drag around or outside to drop item)
@@ -241,8 +240,8 @@ class InWorldContext implements GameTalker {
 		cameraGrip.update(controlsContext, player, AudioSystem.getDefault(), deltaTime);
 		int width = display.width(), height = display.height();
 		RenderManager.preRender(width, height);
-		worldRenderer.render(RenderManager.DISPLAY_BUFFER, width, height, computeDaylight());
-		interactionControls.updateRender(display, controlsContext, GameState.modelRenderer(), cameraGrip.getCamera(), this, world, player);
+		worldRenderer.render(RenderManager.DISPLAY_BUFFER, width, height, 1/*computeDaylight()*/);
+		interactionControls.updateRender(display, RenderManager.DISPLAY_BUFFER, controlsContext, GameState.modelRenderer(), cameraGrip.getCamera(), this, world, player);
 		GraphicsUtility.checkErrors();
 		framerateDisplay.setContent(Utility.frameTimeToString(GameLoop.getLastUpdateTime()));
 		GameState.guiRenderer().render(overlayGUI, display, controlsContext, deltaTime, StandardClientOptions.GUI_SCALE);

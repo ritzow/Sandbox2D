@@ -34,6 +34,9 @@ public class RenderManager {
 	public static Font FONT; //TODO put this somewhere else?
 
 	public static ModelRenderer MODEL_RENDERER;
+	public static ShadingComputeProgram SHADING_PROGRAM;
+	public static ShadingApplyProgram SHADING_APPLY_PROGRAM;
+
 	public static LightRenderProgram LIGHT_RENDERER;
 	public static FullscreenQuadProgram FULLSCREEN_RENDERER;
 	public static LightingApplyProgram LIGHT_APPLY_RENDERER;
@@ -62,11 +65,13 @@ public class RenderManager {
 			sky = Textures.loadTextureName("clouds_online"),
 			blue = Textures.loadTextureName("blueSquare"),
 			night = Textures.loadTextureName("night"),
+			stickman_stand = Textures.loadTextureName("stickman"),
+			stickman_crouch = Textures.loadTextureName("stickman_crouch"),
 			fontTexture = Textures.loadTextureData(StandardClientProperties.ASSETS_PATH.resolve("fonts").resolve("default").resolve("sheet01.png"));
 
 		//TODO implement half-pixel correction to prevent bleeding and the weird artifacting stuff
 		//https://gamedev.stackexchange.com/a/49585
-		TextureAtlas atlas = Textures.buildAtlas(sky, grass, dirt, glass, face, red, blue, fontTexture, night);
+		TextureAtlas atlas = Textures.buildAtlas(sky, grass, dirt, glass, face, red, blue, fontTexture, stickman_stand, stickman_crouch, night);
 
 		//TODO look into using https://github.com/javagl/JglTF with Blender
 		List<ModelData> models = new ArrayList<>(List.of(
@@ -78,6 +83,8 @@ public class RenderManager {
 			textureToModelFit(model -> GameModels.MODEL_BLUE_SQUARE = model, blue, atlas, 1),
 			textureToModelFit(model -> GameModels.MODEL_NIGHT_SKY = model, night, atlas, 1),
 			textureToModelFit(model -> GameModels.MODEL_GLASS_BLOCK = model, glass, atlas, 1),
+			textureToModelFit(model ->  GameModels.STICKMAN_STAND = model, stickman_stand, atlas, 2),
+			textureToModelFit(model ->  GameModels.STICKMAN_CROUCH = model, stickman_crouch, atlas, 1),
 			new ModelData(model -> GameModels.MODEL_ATLAS = model, 1, 1, TextureAtlas.NORMAL_POS, TextureAtlas.ATLAS_COORDS, VERTEX_INDICES_RECT)
 		));
 
@@ -87,22 +94,30 @@ public class RenderManager {
 
 		int textureAtlas = atlas.texture();
 		if(StandardClientOptions.USE_OPENGL_4_6) {
-			LIGHT_RENDERER = new LightRenderProgram(
-				spirv("light.vert.spv", ShaderType.VERTEX),
-				spirv("light.geom.spv", ShaderType.GEOMETRY),
-				spirv("light.frag.spv", ShaderType.FRAGMENT)
+//			LIGHT_RENDERER = new LightRenderProgram(
+//				spirv("light.vert.spv", ShaderType.VERTEX),
+//				spirv("light.geom.spv", ShaderType.GEOMETRY),
+//				spirv("light.frag.spv", ShaderType.FRAGMENT)
+//			);
+
+//			FULLSCREEN_RENDERER = new FullscreenQuadProgram(
+//				spirv("fullscreen.vert.spv", ShaderType.VERTEX),
+//				spirv("fullscreen.geom.spv", ShaderType.GEOMETRY),
+//				spirv("fullscreen.frag.spv", ShaderType.FRAGMENT)
+//			);
+
+			Shader emptyVertexShader = spirv("fullscreen.vert.spv", ShaderType.VERTEX);
+
+			SHADING_PROGRAM = new ShadingComputeProgram(
+				emptyVertexShader,
+				spirv("shading.geom.spv", ShaderType.GEOMETRY),
+				spirv("shading.frag.spv", ShaderType.FRAGMENT)
 			);
 
-			FULLSCREEN_RENDERER = new FullscreenQuadProgram(
-				spirv("fullscreen.vert.spv", ShaderType.VERTEX),
-				spirv("fullscreen.geom.spv", ShaderType.GEOMETRY),
-				spirv("fullscreen.frag.spv", ShaderType.FRAGMENT)
-			);
-
-			LIGHT_APPLY_RENDERER = new LightingApplyProgram(
-				spirv("fullscreen.vert.spv", ShaderType.VERTEX),
-				spirv("fullscreen.geom.spv", ShaderType.GEOMETRY),
-				spirv("fullscreen-blend.frag.spv", ShaderType.FRAGMENT)
+			SHADING_APPLY_PROGRAM = new ShadingApplyProgram(
+				emptyVertexShader,
+				spirv("shading_apply.geom.spv", ShaderType.GEOMETRY),
+				spirv("shading_apply.frag.spv", ShaderType.FRAGMENT)
 			);
 
 			MODEL_RENDERER = new ModelRenderProgramEnhanced(
@@ -117,6 +132,8 @@ public class RenderManager {
 				textureAtlas, models.toArray(ModelData[]::new)
 			);
 		}
+
+		GraphicsUtility.checkErrors();
 	}
 
 	private static ModelData textureToModelFit(ModelDestination dest, TextureData texture, TextureAtlas atlas, float fitDimension) {

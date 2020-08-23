@@ -1,7 +1,6 @@
 package ritzow.sandbox.client.world;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import ritzow.sandbox.client.graphics.*;
 import ritzow.sandbox.client.util.ClientUtility;
@@ -12,66 +11,50 @@ import ritzow.sandbox.world.block.Block;
 import ritzow.sandbox.world.entity.Entity;
 
 //TODO look into terrraria lighting
-public final class ClientWorldRenderer {
+public final class ClientWorldRendererModelOnly {
 	private final ModelRenderer modelProgram;
-	private final LightRenderProgram lightProgram;
-	private final Framebuffer framebuffer;
-	private final OpenGLTexture diffuseTexture, lightingTexture;
 	private final World world;
 	private final float[] lighting;
 	private final Camera camera;
-
 	private final List<Lit> lights;
 
-	public ClientWorldRenderer(int frameWidth, int frameHeight, ModelRenderer modelProgram, LightRenderProgram lightProgram, Camera camera, World world) {
+	public ClientWorldRendererModelOnly(ModelRenderer modelProgram, Camera camera, World world) {
 		this.modelProgram = modelProgram;
 		this.camera = camera;
 		this.world = world;
-		this.lighting = new float[world.getBlocks().getWidth() * world.getBlocks().getHeight()];
-		this.lightProgram = lightProgram;
-		this.framebuffer = new Framebuffer();
-		this.diffuseTexture = new OpenGLTexture(frameWidth, frameHeight);
-		this.lightingTexture = new OpenGLTexture(frameWidth, frameHeight);
 		this.lights = new ArrayList<>();
+		this.lighting = new float[world.getBlocks().getWidth() * world.getBlocks().getHeight()];
 		initLighting();
-		Arrays.fill(lighting, 1.0f);
 		GraphicsUtility.checkErrors();
 	}
 
-	public void updateFramebuffers(int frameWidth, int frameHeight) {
-		diffuseTexture.setSize(frameWidth, frameHeight);
-		lightingTexture.setSize(frameWidth, frameHeight);
-	}
-
-	private static final float LIGHT_PENETRATION = 0.75f, LIGHT_DISSIPATION = 0.9f;
-	private static final int SUNLIGHT_RADIUS = 10;
-
-	public static final float LAYER_EXPOSURE_FACTOR = 0.5f;
+	private static final float LIGHT_PENETRATION = 0.75f;
+	public static final float BACKGROUND_EXPOSURE_RATIO = 0.5f;
 
 	private void initLighting() {
+		//TODO there will probably need to be a block-based flood lighting system
 		//when a background and foreground block does not exist, light is emitted in a radius around it (depending on opacity potentially).
 		//light level is reduced to near zero over radius, or faster if foreground blocks exist.
 		//when a background block exists but not a foreground block, the light level is half the computed value.
-//		int rows = world.getBlocks().getHeight();
-//		int columns = world.getBlocks().getWidth();
-//
-//		for(int column = 0; column < columns; column++) {
-//			setLighting(column, rows - 1, getSolid(column, rows - 1) ? LIGHT_PENETRATION : 1.0f);
-//		}
-//
-//		for(int row = rows - 2; row >= 0; row--) {
-//			for(int column = 1; column < columns - 1; column++) {
-//				Block block = world.getBlocks().get(World.LAYER_MAIN, column, row);
-//				if(block != null && block.isSolid()) {
-//					setLighting(column, row, getLighting(column, row + 1) * LIGHT_PENETRATION);
-//				} else {
-//					float above = getLighting(column, row + 1);
-//					float aboveLeft = getLighting(column - 1, row + 1);
-//					float aboveRight = getLighting(column + 1, row + 1);
-//					setLighting(column, row, (above + aboveLeft + aboveRight)/3f);
-//				}
-//			}
-//		}
+		int rows = world.getBlocks().getHeight();
+		int columns = world.getBlocks().getWidth();
+
+		for(int column = 0; column < columns; column++) {
+			setLighting(column, rows - 1, getSolid(column, rows - 1) ? LIGHT_PENETRATION : 1.0f);
+		}
+
+		for(int row = rows - 2; row >= 0; row--) {
+			for(int column = 1; column < columns - 1; column++) {
+				if(getSolid(column, row)) {
+					setLighting(column, row, getLighting(column, row + 1) * LIGHT_PENETRATION);
+				} else {
+					float above = getLighting(column, row + 1);
+					float aboveLeft = getLighting(column - 1, row + 1);
+					float aboveRight = getLighting(column + 1, row + 1);
+					setLighting(column, row, (above + aboveLeft + aboveRight)/3f);
+				}
+			}
+		}
 
 		for(Entity e : world) {
 			if(e instanceof Lit lit) {
@@ -101,6 +84,7 @@ public final class ClientWorldRenderer {
 		return x >= 0 && x < world.getBlocks().getWidth() && y >= 0 && y < world.getBlocks().getHeight() ? lighting[world.getBlocks().getWidth() * y + x] : 1;
 	}
 
+	//TODO needs to know more information
 	public void updateLighting(int x, int y) {
 //		int layer = world.getBlocks().getTopBlockLayer(x, y);
 //		switch(layer) {
@@ -123,11 +107,10 @@ public final class ClientWorldRenderer {
 	}
 
 	public void render(Framebuffer target, final int width, final int height, float daylight) {
-		//ensure that model program, camera, world are cached on stack
-		target.setCurrent();
-
 		//set the current shader program
 		modelProgram.prepare();
+		target.setCurrent();
+
 		modelProgram.loadViewMatrixStandard(width, height);
 
 		//render before loading view matrix
@@ -137,10 +120,6 @@ public final class ClientWorldRenderer {
 
 		//load the view transformation
 		modelProgram.loadViewMatrix(camera, width, height);
-
-		framebuffer.setCurrent();
-		framebuffer.attachTexture(diffuseTexture, 0);
-		framebuffer.clear(0, 0, 0, 0);
 
 		//get visible world coordinates
 		float worldLeft = ClientUtility.getViewLeftBound(camera, width, height);
@@ -166,57 +145,14 @@ public final class ClientWorldRenderer {
 			for(int column = leftBound; column <= rightBound; column++) {
 				var back = (ClientBlockProperties)blocks.get(World.LAYER_BACKGROUND, column, row);
 				var front = (ClientBlockProperties)blocks.get(World.LAYER_MAIN, column, row);
-				float exposure = getLighting(column, row);
+				float exposure = getLighting(column, row) * daylight;
 
 				if(back != null && (front == null || front.isTransparent())) {
-					//program.queueRender(back.getModel(), 1.0f, exposure * LAYER_EXPOSURE_FACTOR, column, row, 1.0f, 1.0f, 0.0f);
+					modelProgram.queueRender(back.getModel(), 1.0f, exposure * BACKGROUND_EXPOSURE_RATIO, column, row, 1.0f, 1.0f, 0.0f);
 				}
 
 				if(front != null) {
 					modelProgram.queueRender(front.getModel(), 1.0f, exposure, column, row, 1.0f, 1.0f, 0.0f);
-				}
-			}
-		}
-
-		modelProgram.flush();
-
-		//draw lighting to lighting framebuffer
-		framebuffer.attachTexture(lightingTexture, 0);
-		framebuffer.clear(0, 0, 0, 1);
-		lightProgram.setup(camera, diffuseTexture, width, height);
-		for(Lit e : lights) {
-			float posX = e.getPositionX();
-			float posY = e.getPositionY();
-			for(Light light : e.lights()) {
-				float half = light.intensity()/2f;
-				if(posX < worldRight + half && posX > worldLeft - half && posY < worldTop + half && posY > worldBottom - half) {
-					lightProgram.queueLight(light, e.getPositionX(), e.getPositionY());
-				}
-			}
-		}
-
-//		//hue shift towards orange
-//		double radius = Utility.distance(0, 0, world.getBlocks().getWidth()/2d, world.getBlocks().getHeight()/2d) * 1.5f;
-//		double angle = Utility.convertRange(0, 1, (float)(-Math.PI / 2d), (float)(Math.PI / 2d), daylight);
-//		float sunPosX = (float)(Math.cos(angle) * radius);
-//		float sunPosY = (float)(Math.sin(angle) * radius);
-//		lightProgram.queueLight(new StaticLight(sunPosX, sunPosY, 1, 1, 1, 500), 0, 0);
-
-		//lightProgram.queueLight(new StaticLight(world.getBlocks().getWidth()/2f, world.getBlocks().getHeight(), 1, 1, 1, daylight * 500), 0, 0);
-
-		lightProgram.flush();
-
-		this.modelProgram.prepare();
-		framebuffer.attachTexture(diffuseTexture, 0);
-
-		//render back blocks
-		for(int row = bottomBound; row <= topBound; row++) {
-			for(int column = leftBound; column <= rightBound; column++) {
-				var back = (ClientBlockProperties)blocks.get(World.LAYER_BACKGROUND, column, row);
-				var front = (ClientBlockProperties)blocks.get(World.LAYER_MAIN, column, row);
-				float exposure = getLighting(column, row);
-				if(back != null && (front == null || front.isTransparent())) {
-					modelProgram.queueRender(back.getModel(), 1.0f, exposure * LAYER_EXPOSURE_FACTOR, column, row, 1.0f, 1.0f, 0.0f);
 				}
 			}
 		}
@@ -231,16 +167,9 @@ public final class ClientWorldRenderer {
 
 			//check if the entity is visible inside the viewport and render it
 			if(posX < worldRight + halfWidth && posX > worldLeft - halfWidth && posY < worldTop + halfHeight && posY > worldBottom - halfHeight) {
-				((Renderable)e).render(modelProgram, computeExposure(posX, posY, topIndex, rightIndex));
+				((Renderable)e).render(modelProgram, computeExposure(posX, posY, topIndex, rightIndex) * daylight);
 			}
 		}
-
-		modelProgram.flush();
-
-		target.setCurrent();
-		//RenderManager.FULLSCREEN_RENDERER.render(lightingTexture.id, target);
-		RenderManager.setStandardBlending();
-		RenderManager.LIGHT_APPLY_RENDERER.render(diffuseTexture, lightingTexture);
 	}
 
 	private float computeExposure(float posX, float posY, int topIndex, int rightIndex) {
@@ -272,6 +201,6 @@ public final class ClientWorldRenderer {
 	}
 
 	private static float lerp(float a, float b, float f) {
-		return Math.fma(f, (b - a), a);
+		return Math.fma(f, b - a, a);
 	}
 }

@@ -25,30 +25,6 @@ public final class InteractionController {
 		this.nextUseTime = time;
 	}
 
-//	public void render(Display display, ModelRenderer renderer, ControlsQuery controls,
-//				Camera camera, World world, ClientPlayerEntity player) {
-//		int width = display.width(), height = display.height();
-//		int blockX = Math.round(ClientUtility.pixelHorizontalToWorld(
-//				camera, display.getCursorX(), width, height));
-//		int blockY = Math.round(ClientUtility.pixelVerticalToWorld(
-//				camera, display.getCursorY(), height));
-//		renderer.loadViewMatrix(camera, width, height);
-//		switch(player.selected()) {
-//			case Protocol.SLOT_PLACE_GRASS -> renderToolOvelay(world, renderer, player, GameModels.MODEL_GRASS_BLOCK, blockX, blockY);
-//			case Protocol.SLOT_PLACE_DIRT -> renderToolOvelay(world, renderer, player, GameModels.MODEL_DIRT_BLOCK, blockX, blockY);
-//			case Protocol.SLOT_BREAK -> renderer.queueRender(
-//				GameModels.MODEL_RED_SQUARE,
-//				1.0f,
-//				//computeOpacity(Utility.canBreak(player, world, blockX, blockY) && Utility.isBreakable(world.getBlocks(), layer, blockX, blockY)),
-//				layer * ClientWorldRenderer.LAYER_EXPOSURE_FACTOR,
-//				blockX, blockY, 1.0f, 1.0f, 0.0f
-//			);
-//		}
-//	}
-
-	//!world.getBlocks().isValid(World.LAYER_MAIN, blockX, blockY) || !world.getBlocks().isBlock(World.LAYER_MAIN, blockX, blockY)
-
-	//refactor this a bit, very confusing
 	private static void renderToolOvelay(ModelRenderer renderer, Model model, int blockX, int blockY, boolean useable) {
 		renderer.queueRender(
 			model,
@@ -58,12 +34,16 @@ public final class InteractionController {
 		);
 	}
 
-	public void updateRender(Display display, ControlsContext controls, ModelRenderer renderer, Camera camera, GameTalker client, World world, PlayerEntity player) {
+	public void updateRender(Display display, Framebuffer dest, ControlsContext controls, ModelRenderer renderer,
+	        Camera camera, GameTalker client, World world, PlayerEntity player) {
+		int framebufferWidth = display.width();
 		int framebufferHeight = display.height();
-		int blockX = Math.round(ClientUtility.pixelHorizontalToWorld(camera, display.getCursorX(), display.width(), framebufferHeight));
+		int blockX = Math.round(ClientUtility.pixelHorizontalToWorld(camera, display.getCursorX(), framebufferWidth, framebufferHeight));
 		int blockY = Math.round(ClientUtility.pixelVerticalToWorld(camera, display.getCursorY(), framebufferHeight));
 		BlockGrid blocks = world.getBlocks();
+		dest.setCurrent();
 		renderer.prepare();
+		renderer.loadViewMatrix(camera, framebufferWidth, framebufferHeight);
 		switch(player.selected()) {
 			case Protocol.SLOT_BREAK -> {
 				if(blocks.isValid(blockX, blockY)) {
@@ -124,5 +104,7 @@ public final class InteractionController {
 				}
 			}
 		}
+
+		renderer.flush();
 	}
 }
