@@ -17,11 +17,12 @@ public class ShadingApplyProgram extends ShaderProgram {
 
 	public void render(OpenGLTexture lighting, Camera camera, int width, int height) {
 		setCurrent();
+		//TODO Could also do this more efficiently using a second color attachment when doing block model rendering so only fragments over blocks have light computed
 		setVector(uniformView,
-			ClientUtility.getViewLeftBound(camera, width, height) + 0.5f,
-			ClientUtility.getViewBottomBound(camera, width, height) + 0.5f,
-			ClientUtility.getViewRightBound(camera, width, height) + 0.5f,
-			ClientUtility.getViewTopBound(camera, width, height) + 0.5f
+			ClientUtility.getViewLeftBound(camera, width, height),
+			ClientUtility.getViewBottomBound(camera, width, height),
+			ClientUtility.getViewRightBound(camera, width, height),
+			ClientUtility.getViewTopBound(camera, width, height)
 		);
 		glActiveTexture(BLOCK_LIGHTING_TEXTURE_UNIT);
 		glBindTexture(GL_TEXTURE_2D, lighting.id);
