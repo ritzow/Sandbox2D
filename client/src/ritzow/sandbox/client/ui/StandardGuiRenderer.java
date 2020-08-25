@@ -223,6 +223,7 @@ public class StandardGuiRenderer implements GuiRenderer {
 		program.loadViewMatrixScale(guiScale, windowWidth, windowHeight);
 		GraphicsUtility.checkErrors();
 		program.prepare();
+		RenderManager.setViewport(windowWidth, windowHeight);
 		GraphicsUtility.checkErrors();
 		//TODO cache the GuiLevels, possibly use dirty flag to determine if transforms need to change
 		this.rt.addFirst(new GuiLevel(new RenderTransform(1, 0, 0, 1, 1, 0), true, new Rectangle(2/scaleX, 2/scaleY)));

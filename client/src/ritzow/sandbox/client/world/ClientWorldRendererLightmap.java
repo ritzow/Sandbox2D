@@ -22,7 +22,7 @@ public final class ClientWorldRendererLightmap {
 	private final List<Lit> lights;
 	private final OpenGLByteTexture solidMap, shadingMap;
 	private final OpenGLTexture lightOverlay;
-	private final Framebuffer framebuffer;
+	private final Framebuffer shadingFramebuffer;
 
 	public ClientWorldRendererLightmap(Display display, Camera camera, World world) {
 		this.camera = camera;
@@ -31,8 +31,8 @@ public final class ClientWorldRendererLightmap {
 		this.solidMap = new OpenGLByteTexture(buildSolidMap(world.getBlocks()), world.getBlocks().getWidth(), world.getBlocks().getHeight());
 		this.shadingMap = new OpenGLByteTexture(world.getBlocks().getWidth(), world.getBlocks().getHeight());
 		this.lightOverlay = new OpenGLTexture(display.width(), display.height());
-		this.framebuffer = new Framebuffer();
-		framebuffer.attachTexture(shadingMap, 0);
+		this.shadingFramebuffer = new Framebuffer();
+		shadingFramebuffer.attachTexture(shadingMap, 0);
 		GraphicsUtility.checkErrors();
 	}
 
@@ -75,20 +75,6 @@ public final class ClientWorldRendererLightmap {
 	}
 
 	public void render(Framebuffer target, final int width, final int height, float daylight) {
-		//set the current shader program
-		RenderManager.MODEL_RENDERER.prepare();
-		target.setCurrent();
-
-		RenderManager.MODEL_RENDERER.loadViewMatrixStandard(width, height);
-
-		//render before loading view matrix
-		float scale = 2f * (width > height ? width / (float)height : height / (float)width);
-		RenderManager.MODEL_RENDERER.queueRender(GameModels.MODEL_SKY, 1.0f/daylight, daylight, 0, 0, scale, scale, 0);
-		RenderManager.MODEL_RENDERER.queueRender(GameModels.MODEL_NIGHT_SKY, 1 - daylight, 1.0f, 0, 0, scale, scale, 0);
-
-		//load the view transformation
-		RenderManager.MODEL_RENDERER.loadViewMatrix(camera, width, height);
-
 		//get visible world coordinates
 		float worldLeft = ClientUtility.getViewLeftBound(camera, width, height);
 		float worldRight = ClientUtility.getViewRightBound(camera, width, height);
@@ -105,9 +91,32 @@ public final class ClientWorldRendererLightmap {
 		//get visible block grid bounds
 		int leftBound = Math.max(0, (int)worldLeft);
 		int bottomBound = Math.max(0, (int)worldBottom);
-		int topBound = Math.min(Math.round(worldTop), topIndex);
 		int rightBound = Math.min(Math.round(worldRight), rightIndex);
+		int topBound = Math.min(Math.round(worldTop), topIndex);
 
+		//shadingFramebuffer.setCurrent();
+		RenderManager.SHADING_PROGRAM.render(solidMap, shadingMap, leftBound, bottomBound, rightBound, topBound);
+
+		//set the current shader program
+		RenderManager.setViewport(width, height);
+		RenderManager.MODEL_RENDERER.prepare();
+		target.setCurrent();
+
+		RenderManager.MODEL_RENDERER.loadViewMatrixStandard(width, height);
+
+		//render before loading view matrix
+		float scale = 2f * (width > height ? width / (float)height : height / (float)width);
+		RenderManager.MODEL_RENDERER.queueRender(GameModels.MODEL_SKY, 1.0f/daylight, daylight, 0, 0, scale, scale, 0);
+		RenderManager.MODEL_RENDERER.queueRender(GameModels.MODEL_NIGHT_SKY, 1 - daylight, 1.0f, 0, 0, scale, scale, 0);
+
+		//load the view transformation
+		RenderManager.MODEL_RENDERER.loadViewMatrix(camera, width, height);
+
+		//TODO to render blocks without glitches and with more speed, create new shader program
+		//New block shader program will be similar to model render program but will only use one transformation matrix
+		//and individual model (block) transformation matrices will be replaced with exposure (maybe) and unsigned int x,y position.
+		//or simply use the "offset" value like in the model.vert shader to determine the x and y position of the block.
+		//basically use a run-length encoding to communicate where to draw series of blocks
 		//render the blocks visible in the viewport
 		for(int row = bottomBound; row <= topBound; row++) {
 			for(int column = leftBound; column <= rightBound; column++) {
@@ -140,11 +149,7 @@ public final class ClientWorldRendererLightmap {
 
 		RenderManager.MODEL_RENDERER.flush();
 
-		framebuffer.setCurrent();
-		RenderManager.SHADING_PROGRAM.render(solidMap);
-
 		//for now render to final output
-		target.setCurrent();
 		RenderManager.SHADING_APPLY_PROGRAM.render(shadingMap, camera, width, height);
 
 		//TODO first: block lighting calculation
@@ -157,5 +162,8 @@ public final class ClientWorldRendererLightmap {
 		//the process will be repeated potentially using some of the same textures but with foreground (light-blocking) blocks only.
 		//then point lights will be applied to this fullscreen blurred block lighting texture that has proper dissipation within blocks (created by the blur function)
 		//the sunlight and point light fullscreen textures and fully-lit diffuse texture will be combined in a fragment shader to produce the properly lit scene
+
+		//Alternative for point lights: integrate them within the same block lighting system as 'flood' lights instead, would need to be computed on CPU
+		//since is a scattering operation intead of a gathering one.
 	}
 }

@@ -44,6 +44,7 @@ public final class InteractionController {
 		dest.setCurrent();
 		renderer.prepare();
 		renderer.loadViewMatrix(camera, framebufferWidth, framebufferHeight);
+		RenderManager.setViewport(framebufferWidth, framebufferHeight);
 		switch(player.selected()) {
 			case Protocol.SLOT_BREAK -> {
 				if(blocks.isValid(blockX, blockY)) {

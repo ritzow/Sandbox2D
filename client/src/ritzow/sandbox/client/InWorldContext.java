@@ -239,7 +239,6 @@ class InWorldContext implements GameTalker {
 		}
 		cameraGrip.update(controlsContext, player, AudioSystem.getDefault(), deltaTime);
 		int width = display.width(), height = display.height();
-		RenderManager.preRender(width, height);
 		worldRenderer.render(RenderManager.DISPLAY_BUFFER, width, height, 1/*computeDaylight()*/);
 		interactionControls.updateRender(display, RenderManager.DISPLAY_BUFFER, controlsContext, GameState.modelRenderer(), cameraGrip.getCamera(), this, world, player);
 		GraphicsUtility.checkErrors();

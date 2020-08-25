@@ -36,6 +36,7 @@ public class RenderManager {
 	public static ModelRenderer MODEL_RENDERER;
 	public static ShadingComputeProgram SHADING_PROGRAM;
 	public static ShadingApplyProgram SHADING_APPLY_PROGRAM;
+	public static BlockRenderProgram BLOCK_RENDERER;
 
 	public static LightRenderProgram LIGHT_RENDERER;
 	public static FullscreenQuadProgram FULLSCREEN_RENDERER;
@@ -109,9 +110,7 @@ public class RenderManager {
 			Shader emptyVertexShader = spirv("fullscreen.vert.spv", ShaderType.VERTEX);
 
 			SHADING_PROGRAM = new ShadingComputeProgram(
-				emptyVertexShader,
-				spirv("shading.geom.spv", ShaderType.GEOMETRY),
-				spirv("shading.frag.spv", ShaderType.FRAGMENT)
+				spirv("shading.comp.spv", ShaderType.COMPUTE)
 			);
 
 			SHADING_APPLY_PROGRAM = new ShadingApplyProgram(
@@ -124,6 +123,11 @@ public class RenderManager {
 				spirv("model.vert.spv", ShaderType.VERTEX),
 				spirv("model.frag.spv", ShaderType.FRAGMENT),
 				textureAtlas, models.toArray(ModelData[]::new)
+			);
+
+			BLOCK_RENDERER = new BlockRenderProgram(
+				spirv("blocks.vert.spv", ShaderType.VERTEX),
+				spirv("blocks.frag.spv", ShaderType.FRAGMENT)
 			);
 		} else {
 			MODEL_RENDERER = new ModelRenderProgramOld(
@@ -185,20 +189,13 @@ public class RenderManager {
 		GL.destroy();
 	}
 
-	private static int fbWidth, fbHeight;
-
-	public static void setViewport(int framebufferWidth, int framebufferHeight) {
-		glViewport(0, 0, fbWidth = framebufferWidth, fbHeight = framebufferHeight);
-	}
-
 	public static void setStandardBlending() {
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glBlendEquation(GL_FUNC_ADD);
 	}
 
-	public static void preRender(int framebufferWidth, int framebufferHeight) {
-		if(fbWidth != framebufferWidth || fbHeight != framebufferHeight)
-			glViewport(0, 0, fbWidth = framebufferWidth, fbHeight = framebufferHeight);
+	public static void setViewport(int width, int height) {
+		glViewport(0, 0, width, height);
 	}
 
 	public static void postRender() {

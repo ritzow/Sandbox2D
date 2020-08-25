@@ -19,12 +19,14 @@ public abstract class ModelRenderProgramBase extends ShaderProgram implements Mo
 	protected static final int POSITION_SIZE = 2;
 	protected static final int TEXTURE_COORD_SIZE = 2;
 	protected static final int ATLAS_TEXTURE_UNIT = GL_TEXTURE0;
+
 	protected final float[] aspectMatrix = {
 		1, 0, 0, 0,
 		0, 1, 0, 0,
 		0, 0, 0, 0,
 		0, 0, 0, 1,
 	};
+
 	protected final float[] viewMatrix = {
 		0, 0, 0, 0,
 		0, 0, 0, 0,

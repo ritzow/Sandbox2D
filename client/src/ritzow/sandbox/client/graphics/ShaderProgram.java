@@ -55,6 +55,10 @@ public class ShaderProgram {
 		glProgramUniform1f(programID, uniformID, value);
 	}
 
+	public final void setVectorUnsigned(int uniformID, int x, int y) {
+		glProgramUniform2ui(programID, uniformID, x, y);
+	}
+
 	public final void setVector(int uniformID, float x, float y, float z) {
 		glProgramUniform3f(programID, uniformID, x, y, z);
 	}
