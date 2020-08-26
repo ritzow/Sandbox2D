@@ -103,10 +103,7 @@ public class TextureAtlas {
 			coords.put(tex, placeTexture(tex, atlas, pixelX, 0, dimension));
 			pixelX += tex.getWidth();
 		}
-
-		//ready the atlas data for reading and upload to gpu
-		atlas.flip();
-		return GraphicsUtility.uploadTextureData(atlas, dimension, dimension);
+		return GraphicsUtility.uploadTextureData(atlas.flip(), dimension, dimension);
 	}
 
 	private static int nextPowerOfTwo(int n) {

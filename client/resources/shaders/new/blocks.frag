@@ -7,7 +7,7 @@ layout(location = 0) in smooth vec2 textureCoord;
 
 layout(location = 0) out vec4 color; //color attachment 0
 
-layout(location = 2) uniform sampler2D atlasTexture;
+layout(location = 2, binding = 0) uniform sampler2D atlasTexture;
 layout(location = 3) uniform float exposure;
 
 void main() {

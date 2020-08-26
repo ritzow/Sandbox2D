@@ -9,7 +9,7 @@ layout(location = 2) in flat float exposure;
 
 layout(location = 0) out vec4 color; //color attachment 0
 
-layout(location = 1) uniform sampler2D atlasTexture;
+layout(location = 1, binding = 0) uniform sampler2D atlasTexture;
 
 void main() {
 	vec4 texel = texture(atlasTexture, textureCoord);

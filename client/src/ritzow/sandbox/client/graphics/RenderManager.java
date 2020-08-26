@@ -1,6 +1,7 @@
 package ritzow.sandbox.client.graphics;
 
 import java.io.IOException;
+import java.lang.ref.Cleaner;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
@@ -10,7 +11,8 @@ import org.lwjgl.opengl.GLCapabilities;
 import org.lwjgl.system.MemoryUtil;
 import ritzow.sandbox.client.data.StandardClientOptions;
 import ritzow.sandbox.client.data.StandardClientProperties;
-import ritzow.sandbox.client.graphics.ModelRenderProgramBase.ModelData;
+import ritzow.sandbox.client.graphics.ModelStorage.ModelBuffers;
+import ritzow.sandbox.client.graphics.ModelStorage.ModelData;
 import ritzow.sandbox.client.graphics.Shader.ShaderType;
 import ritzow.sandbox.client.graphics.TextureAtlas.AtlasRegion;
 import ritzow.sandbox.client.ui.Font;
@@ -29,6 +31,8 @@ public class RenderManager {
 	public static final int MAIN_DRAW_BUFFER_INDEX = 0;
 	public static GLCapabilities OPENGL_CAPS;
 
+	public static final Cleaner CLEANER = Cleaner.create();
+
 	public static final int[] VERTEX_INDICES_RECT = {0, 1, 2, 0, 2, 3};
 
 	public static Font FONT; //TODO put this somewhere else?
@@ -44,18 +48,16 @@ public class RenderManager {
 
 	public static void setup() throws IOException {
 		log().info("Loading OpenGL");
-		GL.create();
-		RenderManager.OPENGL_CAPS = GL.createCapabilities(true);
-		if(RenderManager.OPENGL_CAPS.GL_ARB_debug_output && StandardClientOptions.USE_OPENGL_4_6 && StandardClientOptions.DEBUG) {
+		if(RenderManager.OPENGL_CAPS.GL_ARB_debug_output && StandardClientOptions.USE_OPENGL_4_6 && StandardClientOptions.DEBUG_OPENGL) {
 			glEnable(GL_DEBUG_OUTPUT);
 			glDebugMessageCallback(RenderManager::debugCallback, 0);
 		}
-		//glDisable(GL_DEPTH_TEST);
+
+		glDisable(GL_DEPTH_TEST);
 		glDepthMask(false);
 		glDisable(GL_MULTISAMPLE);
 		glEnablei(GL_BLEND, RenderManager.MAIN_DRAW_BUFFER_INDEX);
 		//TODO vsync doesnt work in fullscreen
-		glfwSwapInterval(StandardClientOptions.VSYNC ? 1 : 0);
 
 		TextureData
 			dirt = Textures.loadTextureName("dirt"),
@@ -94,27 +96,16 @@ public class RenderManager {
 			VERTEX_INDICES_RECT, region.leftX(), region.bottomY(), region.rightX(), region.topY());
 
 		int textureAtlas = atlas.texture();
+
+		ModelBuffers modelStorage = ModelStorage.uploadModels(models);
+
 		if(StandardClientOptions.USE_OPENGL_4_6) {
-//			LIGHT_RENDERER = new LightRenderProgram(
-//				spirv("light.vert.spv", ShaderType.VERTEX),
-//				spirv("light.geom.spv", ShaderType.GEOMETRY),
-//				spirv("light.frag.spv", ShaderType.FRAGMENT)
-//			);
-
-//			FULLSCREEN_RENDERER = new FullscreenQuadProgram(
-//				spirv("fullscreen.vert.spv", ShaderType.VERTEX),
-//				spirv("fullscreen.geom.spv", ShaderType.GEOMETRY),
-//				spirv("fullscreen.frag.spv", ShaderType.FRAGMENT)
-//			);
-
-			Shader emptyVertexShader = spirv("fullscreen.vert.spv", ShaderType.VERTEX);
-
 			SHADING_PROGRAM = new ShadingComputeProgram(
 				spirv("shading.comp.spv", ShaderType.COMPUTE)
 			);
 
 			SHADING_APPLY_PROGRAM = new ShadingApplyProgram(
-				emptyVertexShader,
+				spirv("fullscreen.vert.spv", ShaderType.VERTEX),
 				spirv("shading_apply.geom.spv", ShaderType.GEOMETRY),
 				spirv("shading_apply.frag.spv", ShaderType.FRAGMENT)
 			);
@@ -122,18 +113,22 @@ public class RenderManager {
 			MODEL_RENDERER = new ModelRenderProgramEnhanced(
 				spirv("model.vert.spv", ShaderType.VERTEX),
 				spirv("model.frag.spv", ShaderType.FRAGMENT),
-				textureAtlas, models.toArray(ModelData[]::new)
+				textureAtlas,
+				modelStorage
 			);
 
 			BLOCK_RENDERER = new BlockRenderProgram(
 				spirv("blocks.vert.spv", ShaderType.VERTEX),
-				spirv("blocks.frag.spv", ShaderType.FRAGMENT)
+				spirv("blocks.frag.spv", ShaderType.FRAGMENT),
+				modelStorage,
+				textureAtlas
 			);
 		} else {
 			MODEL_RENDERER = new ModelRenderProgramOld(
 				source("model.vert", ShaderType.VERTEX),
 				source("model.frag", ShaderType.FRAGMENT),
-				textureAtlas, models.toArray(ModelData[]::new)
+				textureAtlas,
+				modelStorage
 			);
 		}
 
@@ -198,10 +193,11 @@ public class RenderManager {
 		glViewport(0, 0, width, height);
 	}
 
-	public static void postRender() {
+	public static void postRender(Display display) {
 		glFlush();
 		glFinish();
 		GraphicsUtility.checkErrors();
+		display.refresh();
 		//TODO call GameState.display().refresh()?
 	}
 }

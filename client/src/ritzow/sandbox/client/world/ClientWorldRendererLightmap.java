@@ -99,6 +99,7 @@ public final class ClientWorldRendererLightmap {
 
 		//set the current shader program
 		RenderManager.setViewport(width, height);
+		RenderManager.setStandardBlending();
 		RenderManager.MODEL_RENDERER.prepare();
 		target.setCurrent();
 
@@ -108,30 +109,73 @@ public final class ClientWorldRendererLightmap {
 		float scale = 2f * (width > height ? width / (float)height : height / (float)width);
 		RenderManager.MODEL_RENDERER.queueRender(GameModels.MODEL_SKY, 1.0f/daylight, daylight, 0, 0, scale, scale, 0);
 		RenderManager.MODEL_RENDERER.queueRender(GameModels.MODEL_NIGHT_SKY, 1 - daylight, 1.0f, 0, 0, scale, scale, 0);
+		RenderManager.MODEL_RENDERER.flush();
 
-		//load the view transformation
-		RenderManager.MODEL_RENDERER.loadViewMatrix(camera, width, height);
+//		RenderManager.MODEL_RENDERER.loadViewMatrix(camera, width, height);
+//
+//		//TODO to render blocks without glitches and with more speed, create new shader program
+//		//New block shader program will be similar to model render program but will only use one transformation matrix
+//		//and individual model (block) transformation matrices will be replaced with exposure (maybe) and unsigned int x,y position.
+//		//or simply use the "offset" value like in the model.vert shader to determine the x and y position of the block.
+//		//basically use a run-length encoding to communicate where to draw series of blocks
+//		//render the blocks visible in the viewport
+//		for(int row = bottomBound; row <= topBound; row++) {
+//			for(int column = leftBound; column <= rightBound; column++) {
+//				var back = (ClientBlockProperties)blocks.get(World.LAYER_BACKGROUND, column, row);
+//				var front = (ClientBlockProperties)blocks.get(World.LAYER_MAIN, column, row);
+//
+//				if(back != null && (front == null || front.isTransparent())) {
+//					//RenderManager.MODEL_RENDERER.queueRender(back.getModel(), 1.0f, daylight * BACKGROUND_EXPOSURE_RATIO, column, row, 1.0f, 1.0f, 0.0f);
+//				}
+//
+//				if(front != null) {
+//					RenderManager.MODEL_RENDERER.queueRender(front.getModel(), 1.0f, daylight / 2f, column, row, 1.0f, 1.0f, 0.0f);
+//				}
+//			}
+//		}
+//
+//		RenderManager.MODEL_RENDERER.flush();
 
-		//TODO to render blocks without glitches and with more speed, create new shader program
-		//New block shader program will be similar to model render program but will only use one transformation matrix
-		//and individual model (block) transformation matrices will be replaced with exposure (maybe) and unsigned int x,y position.
-		//or simply use the "offset" value like in the model.vert shader to determine the x and y position of the block.
-		//basically use a run-length encoding to communicate where to draw series of blocks
-		//render the blocks visible in the viewport
+		RenderManager.BLOCK_RENDERER.prepare();
+		RenderManager.BLOCK_RENDERER.setView(camera, width, height);
+		RenderManager.BLOCK_RENDERER.setBounds(leftBound, bottomBound, rightBound - leftBound + 1);
+		RenderManager.BLOCK_RENDERER.setExposure(daylight * BACKGROUND_EXPOSURE_RATIO);
+
 		for(int row = bottomBound; row <= topBound; row++) {
 			for(int column = leftBound; column <= rightBound; column++) {
 				var back = (ClientBlockProperties)blocks.get(World.LAYER_BACKGROUND, column, row);
 				var front = (ClientBlockProperties)blocks.get(World.LAYER_MAIN, column, row);
 
 				if(back != null && (front == null || front.isTransparent())) {
-					RenderManager.MODEL_RENDERER.queueRender(back.getModel(), 1.0f, daylight * BACKGROUND_EXPOSURE_RATIO, column, row, 1.0f, 1.0f, 0.0f);
-				}
-
-				if(front != null) {
-					RenderManager.MODEL_RENDERER.queueRender(front.getModel(), 1.0f, daylight, column, row, 1.0f, 1.0f, 0.0f);
+					RenderManager.BLOCK_RENDERER.queue(back);
+				} else {
+					RenderManager.BLOCK_RENDERER.skip(1);
 				}
 			}
 		}
+
+		RenderManager.BLOCK_RENDERER.finish();
+
+		RenderManager.BLOCK_RENDERER.setExposure(daylight);
+
+		for(int row = bottomBound; row <= topBound; row++) {
+			for(int column = leftBound; column <= rightBound; column++) {
+				var front = (ClientBlockProperties)blocks.get(World.LAYER_MAIN, column, row);
+
+				if(front != null) {
+					RenderManager.BLOCK_RENDERER.queue(front);
+				} else {
+					RenderManager.BLOCK_RENDERER.skip(1);
+				}
+			}
+		}
+
+		RenderManager.BLOCK_RENDERER.finish();
+
+		RenderManager.MODEL_RENDERER.prepare();
+
+		//load the view transformation
+		RenderManager.MODEL_RENDERER.loadViewMatrix(camera, width, height);
 
 		//render the entities
 		for(Entity e : world) {

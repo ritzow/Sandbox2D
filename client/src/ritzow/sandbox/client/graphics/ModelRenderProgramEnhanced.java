@@ -4,6 +4,8 @@ import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.Objects;
 import org.lwjgl.BufferUtils;
+import ritzow.sandbox.client.graphics.ModelStorage.ModelBuffers;
+import ritzow.sandbox.client.graphics.ModelStorage.ModelAttributes;
 
 import static org.lwjgl.opengl.GL46C.*;
 
@@ -14,22 +16,25 @@ public final class ModelRenderProgramEnhanced extends ModelRenderProgramBase {
 	private static final int MAX_RENDER_COUNT = 600;
 
 	/** Used to store all per-frame rendering data for a fixed maximum number of model renders **/
-	private final int indirectVBO, drawDataVBO;
+	private final int indirectVBO, drawDataVBO, instanceDataBinding;
 	private final int offsetsSize;
 	private final ByteBuffer drawBuffer;
 	private final ByteBuffer indirectBuffer;
 	private Model model;
-	private int renderIndex, commandIndex, instanceCount;
+	private int
+		renderIndex,    //total number of model instances queued so far for the next glMultiDrawElementsInstanced call
+		commandIndex,   //current instanced draw command, single draw ID
+		instanceCount;  //instance count for the current model for the current draw ID
 
-	public ModelRenderProgramEnhanced(Shader vertexShader, Shader fragmentShader, int textureAtlas, ModelData... models) {
+	public ModelRenderProgramEnhanced(Shader vertexShader, Shader fragmentShader, int textureAtlas, ModelBuffers models) {
 		super(vertexShader, fragmentShader, textureAtlas, models);
 		//https://learnopengl.com/Advanced-OpenGL/Advanced-GLSL
 		IntBuffer params = BufferUtils.createIntBuffer(2);
 		IntBuffer props = BufferUtils.createIntBuffer(2)
-		  .put(GL_BUFFER_BINDING).put(GL_BUFFER_DATA_SIZE).flip();
+			.put(GL_BUFFER_BINDING).put(GL_BUFFER_DATA_SIZE).flip();
 		int instanceDataIndex = glGetProgramResourceIndex(programID, GL_UNIFORM_BLOCK, "instance_data");
 		glGetProgramResourceiv(programID, GL_UNIFORM_BLOCK, instanceDataIndex, props, null, params);
-		int instanceDataBinding = params.get(0);
+		instanceDataBinding = params.get(0);
 		int bufferSize = params.get(1);
 		indirectVBO = glGenBuffers();
 		glBindBuffer(GL_DRAW_INDIRECT_BUFFER, indirectVBO);
@@ -39,9 +44,8 @@ public final class ModelRenderProgramEnhanced extends ModelRenderProgramBase {
 		glBindBuffer(GL_UNIFORM_BUFFER, drawDataVBO);
 		glBufferStorage(GL_UNIFORM_BUFFER, bufferSize, GL_DYNAMIC_STORAGE_BIT);
 		//connect the UBO to the shader instance_data block by binding it to binding point specified in the shader
-		glBindBufferBase(GL_UNIFORM_BUFFER, instanceDataBinding, drawDataVBO);
-		this.drawBuffer = BufferUtils.createByteBuffer(bufferSize);
 		this.offsetsSize = MAX_RENDER_COUNT * OFFSET_SIZE;
+		this.drawBuffer = BufferUtils.createByteBuffer(bufferSize).position(offsetsSize);
 		GraphicsUtility.checkErrors();
 	}
 
@@ -53,8 +57,7 @@ public final class ModelRenderProgramEnhanced extends ModelRenderProgramBase {
 	@Override
 	public void queueRender(Model model, float opacity, float exposure, float posX, float posY, float scaleX, float scaleY, float rotation) {
 		Objects.requireNonNull(model);
-		putRenderInstance(drawBuffer.position(offsetsSize + (renderIndex + instanceCount) * INSTANCE_STRUCT_SIZE),
-			opacity, exposure, posX, posY, scaleX, scaleY, rotation);
+		putRenderInstance(drawBuffer, opacity, exposure, posX, posY, scaleX, scaleY, rotation);
 		if(instanceCount == 0) { //aka this.model == null
 			this.model = model;
 			instanceCount++;
@@ -75,7 +78,7 @@ public final class ModelRenderProgramEnhanced extends ModelRenderProgramBase {
 	}
 
 	private void nextCommand(Model model) {
-		drawBuffer.position(commandIndex * OFFSET_SIZE).putInt(renderIndex);
+		drawBuffer.putInt(commandIndex * OFFSET_SIZE, renderIndex);
 		ModelAttributes properties = (ModelAttributes)model;
 		indirectBuffer
 			.putInt(properties.indexCount())
@@ -87,21 +90,26 @@ public final class ModelRenderProgramEnhanced extends ModelRenderProgramBase {
 		renderIndex += instanceCount;
 	}
 
+	@Override
+	public void prepare() {
+		super.prepare();
+		glBindVertexArray(vaoID);
+	}
+
 	private void render() {
 		//upload all the data to the GPU
-		glBindVertexArray(vaoID);
 		glBindBuffer(GL_UNIFORM_BUFFER, drawDataVBO);
+		glBindBufferBase(GL_UNIFORM_BUFFER, instanceDataBinding, drawDataVBO);
 		if(renderIndex == MAX_RENDER_COUNT) {
 			glBufferSubData(GL_UNIFORM_BUFFER, 0, drawBuffer.limit(offsetsSize + renderIndex * INSTANCE_STRUCT_SIZE).position(0));
 		} else {
-			//this might not actually provide any performance improvement
 			glBufferSubData(GL_UNIFORM_BUFFER, 0, drawBuffer.limit(commandIndex * OFFSET_SIZE).position(0));
 			glBufferSubData(GL_UNIFORM_BUFFER, offsetsSize, drawBuffer.limit(offsetsSize + renderIndex * INSTANCE_STRUCT_SIZE).position(offsetsSize));
 		}
 		glBindBuffer(GL_DRAW_INDIRECT_BUFFER, indirectVBO);
 		glBufferSubData(GL_DRAW_INDIRECT_BUFFER, 0, indirectBuffer.flip());
 		glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, 0, commandIndex, 0);
-		drawBuffer.clear();
+		drawBuffer.clear().position(offsetsSize);
 		indirectBuffer.clear();
 		renderIndex = 0;
 		commandIndex = 0;

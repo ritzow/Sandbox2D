@@ -2,6 +2,8 @@ package ritzow.sandbox.client.graphics;
 
 import java.nio.FloatBuffer;
 import org.lwjgl.BufferUtils;
+import ritzow.sandbox.client.graphics.ModelStorage.ModelBuffers;
+import ritzow.sandbox.client.graphics.ModelStorage.ModelAttributes;
 
 import static org.lwjgl.opengl.GL46C.*;
 
@@ -10,8 +12,7 @@ public class ModelRenderProgramOld extends ModelRenderProgramBase {
 	private float lastOpacity = 0, lastExposure = 0;
 	private final FloatBuffer transform;
 
-	ModelRenderProgramOld(Shader vertexShader, Shader fragmentShader,
-						  int textureAtlas, ModelData... models) {
+	ModelRenderProgramOld(Shader vertexShader, Shader fragmentShader,  int textureAtlas, ModelBuffers models) {
 		super(vertexShader, fragmentShader, textureAtlas, models);
 		this.uniform_opacity = getUniformLocation("opacity");
 		this.uniform_transform = getUniformLocation("transform");

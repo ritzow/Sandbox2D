@@ -17,30 +17,7 @@ public final class GraphicsUtility {
 		Map.entry(0x507, "OpenGL context lost")
 	);
 
-	public static int uploadIndexData(int... data) {
-		int id = glGenBuffers();
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, id);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, data, GL_STATIC_DRAW);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-		return id;
-	}
-
-	public static int uploadVertexData(int... data) {
-		int id = glGenBuffers();
-		glBindBuffer(GL_ARRAY_BUFFER, id);
-		glBufferData(GL_ARRAY_BUFFER, data, GL_STATIC_DRAW);
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-		return id;
-	}
-
-	public static int uploadVertexData(float... data) {
-		int id = glGenBuffers();
-		glBindBuffer(GL_ARRAY_BUFFER, id);
-		glBufferData(GL_ARRAY_BUFFER, data, GL_STATIC_DRAW);
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-		return id;
-	}
-
+	/** Creates an fixed-size texture with the provided data **/
 	public static int uploadTextureData(ByteBuffer pixels, int width, int height) {
 		int id = glGenTextures();
 		glBindTexture(GL_TEXTURE_2D, id);
@@ -48,24 +25,11 @@ public final class GraphicsUtility {
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+		glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, width, height);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 		glBindTexture(GL_TEXTURE_2D, 0);
 		GraphicsUtility.checkErrors();
 		return id;
-	}
-
-	public static int createTexture(int width, int height) {
-		int texture = glGenTextures();
-		glBindTexture(GL_TEXTURE_2D, texture);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, (ByteBuffer)null);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		return texture;
-	}
-
-	public static void resizeTexture(int texture, int width, int height) {
-		glBindTexture(GL_TEXTURE_2D, texture);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 800, 600, 0, GL_RGBA, GL_UNSIGNED_BYTE, (ByteBuffer)null);
 	}
 
 	public static void checkErrors() throws OpenGLException {
@@ -81,12 +45,6 @@ public final class GraphicsUtility {
 	    if (status != GL_FRAMEBUFFER_COMPLETE) {
 	      	throw new OpenGLException("OpenGL Framebuffer Error: " + status);
 	    }
-	}
-
-	public static void checkFramebufferCompleteness(Framebuffer... framebuffers) {
-		for(Framebuffer f : framebuffers) {
-			checkFramebufferCompleteness(f);
-		}
 	}
 
 	public static void checkFramebufferCompleteness(Framebuffer framebuffer) {
@@ -108,12 +66,6 @@ public final class GraphicsUtility {
 			String error = glGetShaderInfoLog(shader.getShaderID());
 			glDeleteShader(shader.getShaderID());
 			throw new OpenGLException("Shader Compilation Error" + (error.length() > 0 ? ": " + error : ""));
-		}
-	}
-
-	public static void checkProgramCompilation(ShaderProgram... programs) {
-		for(ShaderProgram p : programs) {
-			checkProgramCompilation(p);
 		}
 	}
 

@@ -3,7 +3,7 @@ package ritzow.sandbox.client.ui;
 import java.util.Arrays;
 import java.util.function.Consumer;
 import ritzow.sandbox.client.graphics.Model;
-import ritzow.sandbox.client.graphics.ModelRenderProgramBase.ModelData;
+import ritzow.sandbox.client.graphics.ModelStorage.ModelData;
 import ritzow.sandbox.client.graphics.RenderManager;
 import ritzow.sandbox.client.graphics.TextureAtlas;
 import ritzow.sandbox.client.graphics.TextureAtlas.AtlasRegion;
