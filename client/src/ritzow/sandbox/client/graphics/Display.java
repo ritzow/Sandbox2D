@@ -4,7 +4,10 @@ import java.nio.DoubleBuffer;
 import java.nio.IntBuffer;
 import org.lwjgl.glfw.GLFWImage;
 import org.lwjgl.glfw.GLFWVidMode;
+import org.lwjgl.opengl.GL;
+import org.lwjgl.opengl.GLCapabilities;
 import org.lwjgl.system.MemoryStack;
+import ritzow.sandbox.client.data.StandardClientOptions;
 import ritzow.sandbox.client.input.*;
 
 import static org.lwjgl.glfw.GLFW.*;
@@ -54,6 +57,10 @@ public final class Display implements InputProvider {
 		}
 	}
 
+	private static void updateVsync() {
+		glfwSwapInterval(StandardClientOptions.VSYNC ? 1 : 0);
+	}
+
 	public void hideCursor() {
 		glfwSetInputMode(displayID, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 	}
@@ -75,8 +82,10 @@ public final class Display implements InputProvider {
 	}
 
 	/** Call from OpenGL thread **/
-	public void setGraphicsContextOnThread() {
+	public GLCapabilities setGraphicsContextOnThread() {
 		glfwMakeContextCurrent(displayID);
+		GL.create();
+		return GL.createCapabilities();
 	}
 
 	public boolean wasClosed() {
@@ -137,6 +146,7 @@ public final class Display implements InputProvider {
 	}
 
 	public void show() {
+		updateVsync();
 		glfwShowWindow(displayID);
 	}
 
@@ -196,8 +206,10 @@ public final class Display implements InputProvider {
 			int height = glfwGetVideoMode(monitor).height();
 			int refreshRate = glfwGetVideoMode(monitor).refreshRate();
 			glfwSetWindowMonitor(displayID, monitor, 0, 0, width, height, refreshRate);
+			updateVsync();
 		} else {
 			glfwSetWindowMonitor(displayID, 0, windowedX, windowedY, windowedWidth, windowedHeight, GLFW_DONT_CARE);
+			updateVsync();
 		}
 		focus();
 	}

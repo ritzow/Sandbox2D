@@ -2,6 +2,7 @@ package ritzow.sandbox.client;
 
 import java.io.IOException;
 import org.lwjgl.glfw.GLFWErrorCallback;
+import org.lwjgl.opengl.GL;
 import ritzow.sandbox.client.audio.AudioSystem;
 import ritzow.sandbox.client.data.StandardClientOptions;
 import ritzow.sandbox.client.graphics.Display;
@@ -29,7 +30,6 @@ class StartClient {
 		long startupStart = System.nanoTime();
 		AudioSystem.getDefault(); //load default audio system
 		setupGLFW();
-		GameState.display().setGraphicsContextOnThread();
 		RenderManager.setup();
 		GameState.setLightRenderer(RenderManager.LIGHT_RENDERER);
 		GameState.modelRenderer(RenderManager.MODEL_RENDERER);
@@ -62,6 +62,7 @@ class StartClient {
 		var cursorMallet = ClientUtility.loadGLFWImage(CURSORS_PATH.resolve("mallet32.png"));
 		GameState.setCursorPick(ClientUtility.loadGLFWCursor(cursorPickaxe, 0, 0.66f));
 		GameState.setCursorMallet(ClientUtility.loadGLFWCursor(cursorMallet, 0, 0.66f));
-		GameState.setDisplay(new Display(4, StandardClientOptions.USE_OPENGL_4_6 ? 6 : 1, "Sandbox2D", appIcon));
+		GameState.setDisplay(new Display(4, StandardClientOptions.USE_OPENGL_4_6 ? 6 : 3, "Sandbox2D", appIcon));
+		RenderManager.OPENGL_CAPS = GameState.display().setGraphicsContextOnThread();
 	}
 }
