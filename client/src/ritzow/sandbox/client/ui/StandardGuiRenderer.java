@@ -220,15 +220,12 @@ public class StandardGuiRenderer implements GuiRenderer {
 		this.mouseY = -Utility.convertRange(0, windowHeight, -1/ scaleY, 1/ scaleY, display.getCursorY());
 		this.nanos = nanos;
 		this.controls = controls;
-		program.loadViewMatrixScale(guiScale, windowWidth, windowHeight);
-		GraphicsUtility.checkErrors();
 		program.prepare();
+		program.loadViewMatrixScale(guiScale, windowWidth, windowHeight);
 		RenderManager.setViewport(windowWidth, windowHeight);
-		GraphicsUtility.checkErrors();
 		//TODO cache the GuiLevels, possibly use dirty flag to determine if transforms need to change
-		this.rt.addFirst(new GuiLevel(new RenderTransform(1, 0, 0, 1, 1, 0), true, new Rectangle(2/scaleX, 2/scaleY)));
-		draw(gui, 1, 0, 0, 1, 1, 0);
-		GraphicsUtility.checkErrors();
-		this.rt.removeFirst();
+		rt.addFirst(new GuiLevel(new RenderTransform(1, 0, 0, 1, 1, 0), true, new Rectangle(2/scaleX, 2/scaleY)));
+		draw(gui);
+		rt.removeFirst();
 	}
 }
