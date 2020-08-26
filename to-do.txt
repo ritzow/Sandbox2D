@@ -1,18 +1,17 @@
-User interface implementation
 Re-implement ping
 Implement dead reckoning
 synchronize random seed value (send from server to client on connect) for things like item entity bouncing so they can be performed client-side as well to look more in sync
-implement friction on entities
-Implement lighting, server side will simply not send positions if entity is not in radius of light and has block somewhere above it.
+Implement lighting
 openal device selection re-connection
 Add chunk loading and generation to BlockGrid and Client/Server
 Client world mesh generation for GPU for faster graphics
 Optimize texture atlas space usage (instead of curret dumb "solution")
+Switch OpenGL code to use direct-state-access functions that require OpenGL 4.3
 Implement Vulkan renderer
 Add binary glTF support
 Create a positioning system for in-game complex models that GUI elements have (ie can assume standard scaling and centered at origin rendering)
 Possibly implement GUI control "consumption" ie a gui element can prevent other gui elements from knowing about mouse hovers, button presses, etc.
-Edge of rotation animations are really choppy, investigate
-For lighting system, I can use "exposure" system to create someone realistic darkness in underground areas and normal or brighter exposure above ground during day,
-then use dynamic lighting system to light up areas with light sources (which could also be used in tandem with exposure system, but not necessary).
-Add parallel deserialization/serialization, perhaps with a new readObject like method. Maybe also add a parallel top-level deserialization that allows doing something while waiting.
+use dynamic lighting system to light up areas with light sources.
+Add parallel deserialization/serialization, perhaps with a new readObject like method.
+	Maybe also add a parallel top-level deserialization that allows doing something while waiting.
+Implemented Java Cleaner actions for native OpenGL and other resources
