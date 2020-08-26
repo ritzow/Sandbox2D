@@ -16,13 +16,14 @@ public class StandardClientOptions {
 	public static final boolean USE_OPENGL_4_6 = get("use_new_opengl", false, Boolean::parseBoolean);
 	public static final boolean PRINT_FPS = get("fps_print", false, Boolean::parseBoolean);
 	public static final long FRAME_TIME_LIMIT =
-		get("fps_limit", 0, StandardClientOptions::frameTimeLimit).longValue();
+		get("fps_limit", 0L, StandardClientOptions::frameTimeLimit); //TODO doesn't work for very large framerates because there is not enough granularity
 	public static final boolean LIMIT_FPS = FRAME_TIME_LIMIT > 0;
 	public static final boolean VSYNC = get("vsync", false, Boolean::parseBoolean); //TODO make LIMIT_FPS a combo with this as a string enum
 	public static final boolean USE_INTERNET = get("use_internet", true, Boolean::parseBoolean);
 	public static final float GUI_SCALE = get("gui_scale", 500f, Float::parseFloat);
 
 	public static final boolean DEBUG = get("debug", false, Boolean::parseBoolean);
+	public static final boolean DEBUG_OPENGL = get("debug_opengl", false, Boolean::parseBoolean);
 	public static final boolean DISABLE_CLIENT_UPDATE = get("disable_client_update", false, Boolean::parseBoolean);
 	public static final boolean LEFTY = get("lefty", false, Boolean::parseBoolean);
 
