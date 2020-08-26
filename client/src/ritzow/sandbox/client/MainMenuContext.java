@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.logging.Level;
 import ritzow.sandbox.client.data.StandardClientOptions;
 import ritzow.sandbox.client.graphics.GameModels;
+import ritzow.sandbox.client.graphics.GraphicsUtility;
 import ritzow.sandbox.client.graphics.RenderManager;
 import ritzow.sandbox.client.input.ControlsContext;
 import ritzow.sandbox.client.network.Client;
@@ -141,6 +142,7 @@ class MainMenuContext {
 	private void refresh(long deltaTime) {
 		RenderManager.DISPLAY_BUFFER.clear(161 / 256f, 252 / 256f, 156 / 256f, 1.0f);
 		RenderManager.DISPLAY_BUFFER.setCurrent();
+		RenderManager.setStandardBlending();
 		GameState.guiRenderer().render(
 			root,
 			GameState.display(), controlsContext,
@@ -148,8 +150,8 @@ class MainMenuContext {
 			uiScale
 		);
 		GameState.modelRenderer().flush();
-		RenderManager.postRender();
-		GameState.display().refresh();
+		RenderManager.postRender(GameState.display());
+		GraphicsUtility.checkErrors();
 		if(client != null) {
 			if(worldContext == null) {
 				client.update(this::process);

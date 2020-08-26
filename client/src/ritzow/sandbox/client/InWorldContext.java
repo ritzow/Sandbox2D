@@ -18,6 +18,7 @@ import ritzow.sandbox.client.network.Client;
 import ritzow.sandbox.client.network.GameTalker;
 import ritzow.sandbox.client.network.ServerBadDataException;
 import ritzow.sandbox.client.ui.GuiElement;
+import ritzow.sandbox.client.ui.Position;
 import ritzow.sandbox.client.ui.element.*;
 import ritzow.sandbox.client.ui.element.BorderAnchor.Anchor;
 import ritzow.sandbox.client.ui.element.BorderAnchor.Side;
@@ -168,6 +169,8 @@ class InWorldContext implements GameTalker {
 		worldRenderer = new ClientWorldRendererLightmap(GameState.display(), cameraGrip.getCamera(), world);
 		interactionControls = new InteractionController();
 
+		GuiElement fpsBg = new Scaler(new Icon(GameModels.MODEL_SKY), 0.25f);
+
 		//TODO create visual inventory that puts items in a small rectangular region that acts as backpack (drag around or outside to drop item)
 		overlayGUI = new BorderAnchor(
 			new Anchor(new ritzow.sandbox.client.ui.element.Button(new Text("Quit", RenderManager.FONT, 5, 0), this::leaveServer), Side.TOP_RIGHT, 0.1f, 0.1f),
@@ -179,7 +182,10 @@ class InWorldContext implements GameTalker {
 				), Side.BOTTOM_LEFT, 0.1f, 0.1f
 			),
 			new Anchor(new VBoxDynamic(0.05f, Alignment.LEFT,
-				framerateDisplay = new EditableText(RenderManager.FONT, 6, 0),
+				new AbsoluteGuiPositioner(
+					Map.entry(new HBox(0, fpsBg, fpsBg, fpsBg, fpsBg, fpsBg, fpsBg, fpsBg, fpsBg), Position.of(0, 0)),
+					Map.entry(framerateDisplay = new EditableText(RenderManager.FONT, 6, 0), Position.of(0, 0))
+				),
 				new Text(NetworkUtility.formatAddress(client.getServerAddress()), RenderManager.FONT, 6, 0)
 			), Side.TOP_LEFT, 0.05f, 0.05f)
 		);
@@ -246,8 +252,7 @@ class InWorldContext implements GameTalker {
 		GameState.guiRenderer().render(overlayGUI, display, controlsContext, deltaTime, StandardClientOptions.GUI_SCALE);
 		GraphicsUtility.checkErrors();
 		GameState.modelRenderer().flush();
-		RenderManager.postRender();
-		display.refresh();
+		RenderManager.postRender(GameState.display());
 	}
 
 	private static float computeDaylight() {
