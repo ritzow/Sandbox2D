@@ -68,6 +68,11 @@ public final class Utility {
 		return Math.max(min, first);
 	}
 
+	public static int clamp(int min, int value, int max) {
+		int first = Math.min(value, max);
+		return Math.max(min, first);
+	}
+
 	public static ByteBuffer loadCompressedFile(Path file) throws IOException {
 		return Bytes.decompress(load(file, ByteBuffer::allocate));
 	}

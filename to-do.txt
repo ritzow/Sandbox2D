@@ -14,4 +14,8 @@ Possibly implement GUI control "consumption" ie a gui element can prevent other 
 use dynamic lighting system to light up areas with light sources.
 Add parallel deserialization/serialization, perhaps with a new readObject like method.
 	Maybe also add a parallel top-level deserialization that allows doing something while waiting.
-Implemented Java Cleaner actions for native OpenGL and other resources
+Implement Java Cleaner actions for native OpenGL and other resources
+Use CommandLineToArgvW to parse command line args in native launcher.
+https://stackoverflow.com/questions/298830/split-string-containing-command-line-parameters-into-string-in-c-sharp
+Rename GameLoop.run to GameLoop.runNext
+Stop using GameLoop where possible, use static methods that contain a game loop which call another game loop directly, or use GameLoop in conjunction with passing in a "back" reference to tell the loop what the action "back" or "exit" should do (ie return to main menu or return to server browser).

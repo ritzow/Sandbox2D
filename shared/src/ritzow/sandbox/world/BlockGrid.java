@@ -13,6 +13,8 @@ public final class BlockGrid implements Transportable {
 	private final Block[] blocks;
 	private final int width, height, layers;
 
+	public static final int INVALID_LAYER = -1;
+
 	public BlockGrid(int layers, int width, int height) {
 		blocks = new Block[layers * width * height];
 		this.width = width;
@@ -247,7 +249,7 @@ public final class BlockGrid implements Transportable {
 				return index - start;
 			}
 		}
-		return -1;
+		return INVALID_LAYER;
 	}
 
 	public boolean isSolidBlockAdjacent(int layer, int blockX, int blockY) {

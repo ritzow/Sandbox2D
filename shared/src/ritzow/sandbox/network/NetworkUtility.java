@@ -28,6 +28,7 @@ public class NetworkUtility {
 				int colonIndex = address.indexOf(':');
 				if(address.lastIndexOf(':') == colonIndex) { //IPv4 address with or without port
 					if(colonIndex > -1) {
+
 						return new InetSocketAddress(
 							InetAddress.getByName(address.substring(0, colonIndex)),
 							Integer.parseUnsignedInt(address.substring(colonIndex + 1))

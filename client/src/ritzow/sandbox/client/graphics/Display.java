@@ -24,6 +24,7 @@ public final class Display implements InputProvider {
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, GLVersionMajor);
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, GLVersionMinor);
+		glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_FALSE);
 		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 		glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
 		glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);

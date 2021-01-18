@@ -7,6 +7,7 @@ import org.lwjgl.BufferUtils;
 import ritzow.sandbox.client.graphics.*;
 import ritzow.sandbox.client.util.ClientUtility;
 import ritzow.sandbox.client.world.block.ClientBlockProperties;
+import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.block.Block;
@@ -40,7 +41,7 @@ public final class ClientWorldRendererLightmap {
 		ByteBuffer buffer = BufferUtils.createByteBuffer(blocks.getWidth() * blocks.getHeight());
 		for(int row = 0; row < blocks.getHeight(); row++) {
 			for(int column =  0; column < blocks.getWidth(); column++) {
-				buffer.put((byte)(getSolid(column, row) ? 0 : 1));
+				buffer.put(light(column, row));
 			}
 		}
 
@@ -59,19 +60,17 @@ public final class ClientWorldRendererLightmap {
 		lights.remove(entity);
 	}
 
-	private boolean getSolid(int x, int y) {
-		Block block = world.getBlocks().get(World.LAYER_MAIN, x, y);
-		return block != null && block.isSolid(); //TODO check opacity somehow
-	}
-
 	//TODO needs to know more information
 	public void updateLighting(int x, int y) {
+		solidMap.setPixel(x, y, light(x, y));
+	}
+
+	private byte light(int x, int y) {
 		int layer = world.getBlocks().getTopBlockLayer(x, y);
-		switch(layer) {
-			case World.LAYER_MAIN -> solidMap.setPixel(x, y, (byte)0);
-			case -1, World.LAYER_BACKGROUND -> solidMap.setPixel(x, y, (byte)1);
-			default -> {}
-		}
+		return switch(layer) {
+			case BlockGrid.INVALID_LAYER, World.LAYER_BACKGROUND -> (byte)255;
+			default -> (byte)0;
+		};
 	}
 
 	public void render(Framebuffer target, final int width, final int height, float daylight) {
@@ -81,61 +80,76 @@ public final class ClientWorldRendererLightmap {
 		float worldTop = ClientUtility.getViewTopBound(camera, width, height);
 		float worldBottom = ClientUtility.getViewBottomBound(camera, width, height);
 
-		//cache foreground and background of world
-		BlockGrid blocks = world.getBlocks();
-
-		int topIndex = blocks.getHeight() - 1;
-		int rightIndex = blocks.getWidth() - 1;
-
-		//TODO these could cause errors if the camera is far enough past the edge of the world
-		//get visible block grid bounds
-		int leftBound = Math.max(0, (int)worldLeft);
-		int bottomBound = Math.max(0, (int)worldBottom);
-		int rightBound = Math.min(Math.round(worldRight), rightIndex);
-		int topBound = Math.min(Math.round(worldTop), topIndex);
-
-		//shadingFramebuffer.setCurrent();
-		RenderManager.SHADING_PROGRAM.render(solidMap, shadingMap, leftBound, bottomBound, rightBound, topBound);
-
 		//set the current shader program
 		RenderManager.setViewport(width, height);
 		RenderManager.setStandardBlending();
 		RenderManager.MODEL_RENDERER.prepare();
-		target.setCurrent();
 
 		RenderManager.MODEL_RENDERER.loadViewMatrixStandard(width, height);
 
-		//render before loading view matrix
+		target.setCurrent();
 		float scale = 2f * (width > height ? width / (float)height : height / (float)width);
 		RenderManager.MODEL_RENDERER.queueRender(GameModels.MODEL_SKY, 1.0f/daylight, daylight, 0, 0, scale, scale, 0);
 		RenderManager.MODEL_RENDERER.queueRender(GameModels.MODEL_NIGHT_SKY, 1 - daylight, 1.0f, 0, 0, scale, scale, 0);
 		RenderManager.MODEL_RENDERER.flush();
 
-//		RenderManager.MODEL_RENDERER.loadViewMatrix(camera, width, height);
-//
-//		//TODO to render blocks without glitches and with more speed, create new shader program
-//		//New block shader program will be similar to model render program but will only use one transformation matrix
-//		//and individual model (block) transformation matrices will be replaced with exposure (maybe) and unsigned int x,y position.
-//		//or simply use the "offset" value like in the model.vert shader to determine the x and y position of the block.
-//		//basically use a run-length encoding to communicate where to draw series of blocks
-//		//render the blocks visible in the viewport
-//		for(int row = bottomBound; row <= topBound; row++) {
-//			for(int column = leftBound; column <= rightBound; column++) {
-//				var back = (ClientBlockProperties)blocks.get(World.LAYER_BACKGROUND, column, row);
-//				var front = (ClientBlockProperties)blocks.get(World.LAYER_MAIN, column, row);
-//
-//				if(back != null && (front == null || front.isTransparent())) {
-//					//RenderManager.MODEL_RENDERER.queueRender(back.getModel(), 1.0f, daylight * BACKGROUND_EXPOSURE_RATIO, column, row, 1.0f, 1.0f, 0.0f);
-//				}
-//
-//				if(front != null) {
-//					RenderManager.MODEL_RENDERER.queueRender(front.getModel(), 1.0f, daylight / 2f, column, row, 1.0f, 1.0f, 0.0f);
-//				}
-//			}
-//		}
-//
-//		RenderManager.MODEL_RENDERER.flush();
+		if(worldLeft < ClientUtility.getBlocksRight(world.getBlocks()) &&
+			worldRight > ClientUtility.getBlocksLeft() &&
+			worldBottom < ClientUtility.getBlocksTop(world.getBlocks()) && worldTop > ClientUtility.getBlocksBottom()) {
+			//cache foreground and background of world
+			BlockGrid blocks = world.getBlocks();
 
+			//TODO these could cause errors if the camera is far enough past the edge of the world
+			//TODO could possibly just put bounds check using above values in if statement and not render blocks at all in that case
+			//get visible block grid bounds
+			int leftBound = Utility.clamp(0, (int)worldLeft, blocks.getWidth() - 1); //Math.max(0, (int)worldLeft);
+			int bottomBound = Utility.clamp(0, (int)worldBottom, blocks.getHeight() - 1);//Math.max(0, (int)worldBottom);
+			int rightBound = Utility.clamp(0, Math.round(worldRight), blocks.getWidth() - 1); //Math.min(Math.round(worldRight), blocks.getWidth() - 1);
+			int topBound = Utility.clamp(0, Math.round(worldTop), blocks.getHeight() - 1);
+
+			RenderManager.SHADING_PROGRAM.render(solidMap, shadingMap, leftBound, bottomBound, rightBound, topBound);
+
+			renderBlocks(
+				blocks,
+				leftBound,
+				bottomBound,
+				rightBound,
+				topBound,
+				width,
+				height,
+				daylight
+			);
+		}
+
+		renderEntities(
+			worldLeft,
+			worldBottom,
+			worldRight,
+			worldTop,
+			width,
+			height,
+			daylight
+		);
+
+		//for now render to final output
+		RenderManager.SHADING_APPLY_PROGRAM.render(shadingMap, camera, width, height);
+
+		//TODO first: block lighting calculation
+		//pre-render: make sure world-sized (one block per pixel) texture is up-to-date with all proper light values at each block.
+		//step series 1: calculating sunlight
+		//block final lighting will be calculated by taking an average of a block's surrounding light levels in a certain radius (fixed radius for sunlight penetration)
+		//this can be done on GPU per frame if light levels can be stored in texture then lighting computed in fragment shader for viewport region (using proper coordinates)
+		//world-sized texture with proper per-block (per-pixel) light levels will then be sampled in a fullscreen fragment shader and blurred
+		//step series 2:
+		//the process will be repeated potentially using some of the same textures but with foreground (light-blocking) blocks only.
+		//then point lights will be applied to this fullscreen blurred block lighting texture that has proper dissipation within blocks (created by the blur function)
+		//the sunlight and point light fullscreen textures and fully-lit diffuse texture will be combined in a fragment shader to produce the properly lit scene
+
+		//Alternative for point lights: integrate them within the same block lighting system as 'flood' lights instead, would need to be computed on CPU
+		//since is a scattering operation intead of a gathering one.
+	}
+
+	private void renderBlocks(BlockGrid blocks, int leftBound, int bottomBound, int rightBound, int topBound, int width, int height, float daylight) {
 		RenderManager.BLOCK_RENDERER.prepare();
 		RenderManager.BLOCK_RENDERER.setView(camera, width, height);
 		RenderManager.BLOCK_RENDERER.setBounds(leftBound, bottomBound, rightBound - leftBound + 1);
@@ -171,7 +185,9 @@ public final class ClientWorldRendererLightmap {
 		}
 
 		RenderManager.BLOCK_RENDERER.finish();
+	}
 
+	private void renderEntities(float worldLeft, float worldBottom, float worldRight, float worldTop, int width, int height, float daylight) {
 		RenderManager.MODEL_RENDERER.prepare();
 
 		//load the view transformation
@@ -192,22 +208,5 @@ public final class ClientWorldRendererLightmap {
 		}
 
 		RenderManager.MODEL_RENDERER.flush();
-
-		//for now render to final output
-		RenderManager.SHADING_APPLY_PROGRAM.render(shadingMap, camera, width, height);
-
-		//TODO first: block lighting calculation
-		//pre-render: make sure world-sized (one block per pixel) texture is up-to-date with all proper light values at each block.
-		//step series 1: calculating sunlight
-		//block final lighting will be calculated by taking an average of a block's surrounding light levels in a certain radius (fixed radius for sunlight penetration)
-		//this can be done on GPU per frame if light levels can be stored in texture then lighting computed in fragment shader for viewport region (using proper coordinates)
-		//world-sized texture with proper per-block (per-pixel) light levels will then be sampled in a fullscreen fragment shader and blurred
-		//step series 2:
-		//the process will be repeated potentially using some of the same textures but with foreground (light-blocking) blocks only.
-		//then point lights will be applied to this fullscreen blurred block lighting texture that has proper dissipation within blocks (created by the blur function)
-		//the sunlight and point light fullscreen textures and fully-lit diffuse texture will be combined in a fragment shader to produce the properly lit scene
-
-		//Alternative for point lights: integrate them within the same block lighting system as 'flood' lights instead, would need to be computed on CPU
-		//since is a scattering operation intead of a gathering one.
 	}
 }

@@ -44,7 +44,7 @@ public class Client implements AutoCloseable {
 	private final PriorityQueue<ReceivePacket> received;
 	private final Map<Integer, Runnable> messageSentActions;
 	private int sendMessageID = 0, lastSendReliableID = -1, headProcessedID = -1;
-	private long lastMessageReceive;
+	private long lastMessageProcessed;
 	private boolean isUp;
 	private long ping; //rount trip time in nanoseconds
 
@@ -85,7 +85,7 @@ public class Client implements AutoCloseable {
 	}
 
 	public Client beginConnect() {
-		lastMessageReceive = System.nanoTime();
+		lastMessageProcessed = System.nanoTime();
 		sendReliable(Bytes.of(Protocol.TYPE_CLIENT_CONNECT_REQUEST));
 		return this;
 	}
@@ -178,14 +178,13 @@ public class Client implements AutoCloseable {
 		try {
 			//already connected to server so no need to check SocketAddress
 			boolean cont = true;
-			while(isUp && cont && channel.receive(receiveBuffer) != null) {
-				lastMessageReceive = System.nanoTime();
+			while(isUp && cont && channel.read(receiveBuffer) > 0 /*channel.receive(receiveBuffer) != null*/) {
 				receiveBuffer.flip(); //flip to set limit and prepare to read packet data
 				cont = processReceived(processor); //process messages from the server
 				receiveBuffer.clear(); //clear to prepare for next receive
 			}
 
-			if(Utility.nanosSince(lastMessageReceive) > Protocol.TIMEOUT_DISCONNECT) {
+			if(Utility.nanosSince(lastMessageProcessed) > Protocol.TIMEOUT_DISCONNECT) {
 				onTimeout.run();
 			} else if(isUp) {
 				sendQueued();
@@ -290,8 +289,10 @@ public class Client implements AutoCloseable {
 	}
 
 	private boolean process(MessageProcessor processor, int messageID, ByteBuffer receiveBuffer) {
+		lastMessageProcessed = System.nanoTime();
 		boolean cont = processor.process(receiveBuffer);
 		headProcessedID = messageID;
+		//TODO dont do this part if unreliable message?
 		ReceivePacket packet = received.peek();
 		while(cont && packet != null && packet.predecessorReliableID() <= headProcessedID) {
 			received.poll();

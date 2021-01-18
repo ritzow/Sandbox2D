@@ -13,7 +13,7 @@ public final class ModelRenderProgramEnhanced extends ModelRenderProgramBase {
 	private static final int INDIRECT_STRUCT_SIZE = 5 * Integer.BYTES;
 	private static final int INSTANCE_STRUCT_SIZE = (16 + 1 + 3) * Float.BYTES /* padding for opacity */;
 	private static final int OFFSET_SIZE = Integer.BYTES * 4;
-	private static final int MAX_RENDER_COUNT = 600;
+	private static final int MAX_RENDER_COUNT = 100;
 
 	/** Used to store all per-frame rendering data for a fixed maximum number of model renders **/
 	private final int indirectVBO, drawDataVBO, instanceDataBinding;

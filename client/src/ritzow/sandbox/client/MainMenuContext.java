@@ -6,6 +6,9 @@ import java.net.PortUnreachableException;
 import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.logging.Level;
+import net.straylightlabs.hola.dns.Domain;
+import net.straylightlabs.hola.sd.Query;
+import net.straylightlabs.hola.sd.Service;
 import ritzow.sandbox.client.data.StandardClientOptions;
 import ritzow.sandbox.client.graphics.GameModels;
 import ritzow.sandbox.client.graphics.GraphicsUtility;
@@ -44,7 +47,6 @@ class MainMenuContext {
 		UI_BACKSPACE,
 		UI_DELETE,
 		UI_CONFIRM,
-		QUIT,
 		FULLSCREEN,
 		SCROLL_MODIFIER) {
 
@@ -93,7 +95,6 @@ class MainMenuContext {
 
 	private final Map<ritzow.sandbox.client.input.Button, Runnable> controls = Map.ofEntries(
 		Map.entry(FULLSCREEN, GameState.display()::toggleFullscreen),
-		Map.entry(QUIT, MainMenuContext::onQuit),
 		Map.entry(UI_CONFIRM, this::startJoin)
 	);
 
@@ -121,6 +122,8 @@ class MainMenuContext {
 				)
 			), Side.BOTTOM, 0, 0.05f)
 		);
+
+		//Query query = Query.createFor(Service.fromName("_sandbox2D._udp"), Domain.LOCAL);
 	}
 
 	public void onLeaveWorld() {
@@ -163,8 +166,8 @@ class MainMenuContext {
 
 	private void startJoin() {
 		try {
-			log().info(() -> "Connecting to " + NetworkUtility.formatAddress(getServerAddress())
-				 + " from " + NetworkUtility.formatAddress(getLocalAddress()));
+			//TODO performe asynchronous host name resolution
+			log().info(() -> "Connecting to " + text.content() + " from " + NetworkUtility.formatAddress(getLocalAddress()));
 			client = Client.create(getLocalAddress(), NetworkUtility.parseSocket(text.content(), Protocol.DEFAULT_SERVER_PORT))
 				 .setOnTimeout(this::onTimeout)
 				 .setOnException(this::onException)

@@ -14,6 +14,10 @@ public interface ClientBlockProperties extends Block {
 	Model getModel();
 	boolean isTransparent();
 
+	default short transparency() { //TODO something like this?
+		return 255;
+	}
+
 	default Light lighting() {
 		return null;
 	}

@@ -32,10 +32,16 @@ public class Build {
 	private static final boolean NATIVE_DEVELOPMENT = false;
 
 	private static final String
+		CONFIGURATION_DEVELOPMENT = "Development",
+		CONFIGURATION_RELEASE = "Release",
+		CONFIGURATION_STATIC_RELEASE = "StaticRelease";
+
+	private static final String
 		OS = "windows",
 		ARCH = "x64",
 		RELEASE_VERSION = Integer.toString(Runtime.version().feature()),
-		AUTHOR = "Solomon Ritzow";
+		AUTHOR = "Solomon Ritzow",
+		CONFIGURATION = CONFIGURATION_RELEASE;
 
 	private static final Path
 		LAUNCHER_DIR =  Path.of(System.getProperty("user.dir")),
@@ -48,7 +54,7 @@ public class Build {
 		LWJGL_DIR = 	CLIENT_LIBS.resolve("lwjgl"),
 		JSON_DIR =		CLIENT_LIBS.resolve("json"),
 		WINDOWS_DIR = 	LAUNCHER_DIR.resolve("Windows"),
-		RELEASE_DIR = 	WINDOWS_DIR.resolve(ARCH).resolve("Release"),
+		RELEASE_DIR = 	WINDOWS_DIR.resolve(ARCH).resolve(CONFIGURATION),
 		BUILD_DIR = 	RELEASE_DIR.resolve("Build"),
 		CLIENT_LIB = 	BUILD_DIR.resolve("client.jar"),
 		SHARED_LIB = 	BUILD_DIR.resolve("shared.jar"),
@@ -198,7 +204,8 @@ public class Build {
 			"msbuild",
 			"/nologo",
 			"/verbosity:minimal",
-			"/p:Configuration=" + (NATIVE_DEVELOPMENT ? "Development" : "Release") + ";Platform=" + ARCH,
+			"/p:Configuration=" + (CONFIGURATION) + ";Platform=" + ARCH,
+			//"/p:Configuration=" + (NATIVE_DEVELOPMENT ? "Development" : "Release") + ";Platform=" + ARCH,
 			MSBUILD_FILE.toString()
 		)).inheritIO().start().waitFor();
 	}

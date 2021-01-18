@@ -8,7 +8,7 @@ layout(location = 0) out smooth vec2 outTextureCoord;
 layout(location = 0) uniform mat4 view;
 layout(location = 1) uniform uvec3 blockGrid; //left block X, bottom blockY, blocks width
 
-const int MAX_RENDER_COUNT = 600;
+const int MAX_RENDER_COUNT = 100;
 
 layout(binding = 1, std140) uniform instance_data {
     int offsets[MAX_RENDER_COUNT];

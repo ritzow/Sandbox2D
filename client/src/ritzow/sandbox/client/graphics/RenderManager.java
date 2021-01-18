@@ -170,10 +170,10 @@ public class RenderManager {
 
 	private static void debugCallback(int source, int type, int id, int severity,
 									  int length, long message, long userParam) {
-		if(severity == GL_DEBUG_SEVERITY_NOTIFICATION) {
-			log().info(MemoryUtil.memASCII(message, length));
-		} else {
+		if(severity == GL_DEBUG_SEVERITY_HIGH) {
 			throw new OpenGLException(MemoryUtil.memASCII(message, length));
+		} else {
+			log().info(MemoryUtil.memASCII(message, length));
 		}
 	}
 
@@ -195,9 +195,8 @@ public class RenderManager {
 
 	public static void postRender(Display display) {
 		glFlush();
-		glFinish();
+		//glFinish();
 		GraphicsUtility.checkErrors();
-		display.refresh();
-		//TODO call GameState.display().refresh()?
+		//display.refresh();
 	}
 }

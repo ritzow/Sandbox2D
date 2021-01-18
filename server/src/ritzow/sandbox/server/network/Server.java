@@ -66,7 +66,6 @@ public class Server<T extends ClientNetworkInfo> {
 	private void processPacket(InetSocketAddress sender, Function<InetSocketAddress, T> init, BiConsumer<T, ByteBuffer> messageProcessor) throws IOException {
 		if(receiveBuffer.flip().limit() >= MIN_PACKET_SIZE) { //check that packet is large enough
 			T client = clients.computeIfAbsent(sender, init);
-			client.lastMessageReceiveTime = System.nanoTime();
 			byte type = receiveBuffer.get(); //type of message (RESPONSE, RELIABLE, UNRELIABLE)
 			int messageID = receiveBuffer.getInt();
 			switch(type) {
@@ -127,6 +126,7 @@ public class Server<T extends ClientNetworkInfo> {
 
 	private void process(T client, int messageID, ByteBuffer receiveBuffer, BiConsumer<T, ByteBuffer> messageProcessor) {
 		messageProcessor.accept(client, receiveBuffer);
+		client.lastMessageProcessTime = System.nanoTime();
 		client.headProcessedID = messageID;
 		ReceivePacket packet = client.receiveQueue.peek();
 		while(packet != null && packet.predecessorReliableID() <= client.headProcessedID) {

@@ -13,4 +13,6 @@ module ritzow.sandbox.shared {
 	exports ritzow.sandbox.world.block;
 	exports ritzow.sandbox.world.generator;
 	exports ritzow.sandbox.data;
+
+	requires hola;
 }

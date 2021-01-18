@@ -35,7 +35,7 @@ public class CompileShaders {
 			"-G460",
 			"-Od",
 			"-t",
-			"-H", //print opcodes
+			//"-H", //print opcodes
 			"-g", //print debug info
 			"-e", "main",
 			"-o", dest.toString(),

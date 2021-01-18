@@ -245,7 +245,7 @@ class InWorldContext implements GameTalker {
 		}
 		cameraGrip.update(controlsContext, player, AudioSystem.getDefault(), deltaTime);
 		int width = display.width(), height = display.height();
-		worldRenderer.render(RenderManager.DISPLAY_BUFFER, width, height, 1/*computeDaylight()*/);
+		worldRenderer.render(RenderManager.DISPLAY_BUFFER, width, height, computeDaylight());
 		interactionControls.updateRender(display, RenderManager.DISPLAY_BUFFER, controlsContext, GameState.modelRenderer(), cameraGrip.getCamera(), this, world, player);
 		GraphicsUtility.checkErrors();
 		framerateDisplay.setContent(Utility.frameTimeToString(GameLoop.getLastUpdateTime()));
@@ -256,7 +256,7 @@ class InWorldContext implements GameTalker {
 	}
 
 	private static float computeDaylight() {
-		return Utility.oscillate(System.currentTimeMillis(), Utility.degreesPerSecToRadiansPerMillis(5), 0, 0.0f, 1.0f);
+		return 1.0f; //Utility.oscillate(System.currentTimeMillis(), Utility.degreesPerSecToRadiansPerMillis(5), 0, 0.0f, 1.0f);
 	}
 
 	private boolean process(ByteBuffer data) {

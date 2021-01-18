@@ -39,30 +39,22 @@ void SetupConsole(LPWSTR args) {
 		std::wcout << "Program Arguments: \"" << args << '"' << std::endl;
 }
 
-
-
 INT WINAPI wWinMain(_In_ HMODULE mod, _In_opt_ HINSTANCE, _In_ LPWSTR lpCmdLine, _In_ INT) {
 	if constexpr (SHOW_CONSOLE) SetupConsole(lpCmdLine);
 	SetWorkingDirectory(mod);
-	HMODULE dll = LoadLibraryW(LR"(jvm\bin\server\jvm.dll)");
-	if (dll != nullptr) {
-		//TODO create another file with wWinMain that uses static linking by simply calling JNI_CreateJavaVM() without dll usage
-		JavaVM* vm; JNIEnv* env; JavaVMInitArgs vmargs = GetJavaInitArgs();
-		jint result = ((StartJVM)GetProcAddress(dll, "JNI_CreateJavaVM"))(&vm, &env, &vmargs);
-		if (result == JNI_OK) {
-			RunGame(env, __argc - 1, __wargv + 1);
-			vm->DestroyJavaVM();
-			FreeLibrary(dll);
-			return EXIT_SUCCESS;
-		} else {
-			std::wstring message = L"Could not create JVM: ";
-			message += GetErrorString(result);
-			DisplayError(L"Java Virtual Machine Creation Failed", message.c_str());
-			FreeLibrary(dll);
-			return EXIT_FAILURE;
-		}
-	} else {
-		DisplayError(L"Java Libray Load Failed", L"Failed to load jvm.dll");
+	JavaVM* vm;
+	JNIEnv* env;
+	JavaVMInitArgs vmargs = GetJavaInitArgs();
+	jint result = JNI_CreateJavaVM(&vm, (void**) &env, &vmargs);
+	if (result == JNI_OK) {
+		RunGame(env, __argc - 1, __wargv + 1);
+		vm->DestroyJavaVM();
+		return EXIT_SUCCESS;
+	}
+	else {
+		std::wstring message = L"Could not create JVM: ";
+		message += GetErrorString(result);
+		DisplayError(L"Java Virtual Machine Creation Failed", message.c_str());
 		return EXIT_FAILURE;
 	}
 }

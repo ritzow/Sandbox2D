@@ -1,126 +1,169 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-	<ItemGroup Label="ProjectConfigurations">
-		<ProjectConfiguration Include="Development|x64">
-			<Configuration>Development</Configuration>
-			<Platform>x64</Platform>
-		</ProjectConfiguration>
-		<ProjectConfiguration Include="Release|x64">
-			<Configuration>Release</Configuration>
-			<Platform>x64</Platform>
-		</ProjectConfiguration>
-	</ItemGroup>
-	<ItemGroup>
-		<ClCompile Include="launch.cpp"/>
-	</ItemGroup>
-	<ItemGroup>
-		<Image Include="resources\greenFace.ico" />
-	</ItemGroup>
-	<ItemGroup>
-		<ClInclude Include="resources\resource.h" />
-		<ClInclude Include="..\Shared\shared.cpp"/>
-	</ItemGroup>
-	<ItemGroup>
-		<ResourceCompile Include="resources\resource.rc" />
-	</ItemGroup>
-	<PropertyGroup Label="Globals">
-		<VCProjectVersion>16.0</VCProjectVersion>
-		<ProjectGuid>{B3B9DC8E-8FD5-456F-B43F-CA4C58C6E150}</ProjectGuid>
-		<RootNamespace>Sandbox2DClientLauncher</RootNamespace>
-		<WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-		<ProjectName>Sandbox2DLauncherWindows</ProjectName>
-	</PropertyGroup>
-	<PropertyGroup>
-		<TargetName>Sandbox2D</TargetName>
-		<OutDir>$(Platform)\$(Configuration)\Output\</OutDir>
-		<IntDir>$(Platform)\$(Configuration)\Build\</IntDir>
-		<LinkIncremental>false</LinkIncremental>
-	</PropertyGroup>
-	<Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-		<ConfigurationType>Application</ConfigurationType>
-		<UseDebugLibraries>false</UseDebugLibraries>
-		<PlatformToolset>v142</PlatformToolset>
-		<WholeProgramOptimization>true</WholeProgramOptimization>
-		<CharacterSet>Unicode</CharacterSet>
-	</PropertyGroup>
-	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Development|x64'" Label="Configuration">
-		<ConfigurationType>Application</ConfigurationType>
-		<UseDebugLibraries>true</UseDebugLibraries>
-		<WholeProgramOptimization>true</WholeProgramOptimization>
-		<CharacterSet>Unicode</CharacterSet>
-		<PlatformToolset>v142</PlatformToolset>
-	</PropertyGroup>
-	<Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-	<ImportGroup Label="ExtensionSettings"/>
-	<ImportGroup Label="Shared"/>
-	<ImportGroup Label="PropertySheets">
-		<Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-	</ImportGroup>
-	<ItemDefinitionGroup>
-		<Manifest>
-			<EnableDpiAwareness>true</EnableDpiAwareness>
-			<AssemblyIdentity/>
-		</Manifest>
-	</ItemDefinitionGroup>
-	<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-		<ClCompile>
-			<WarningLevel>Level4</WarningLevel>
-			<Optimization>MaxSpeed</Optimization>
-			<FunctionLevelLinking>true</FunctionLevelLinking>
-			<IntrinsicFunctions>true</IntrinsicFunctions>
-			<SDLCheck>true</SDLCheck>
-			<ConformanceMode>true</ConformanceMode>
-			<CompileAs>Default</CompileAs>
-			<InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
-			<LanguageStandard>stdcpplatest</LanguageStandard>
-			<FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-			<DebugInformationFormat>None</DebugInformationFormat>
-			<StringPooling>true</StringPooling>
-			<AdditionalIncludeDirectories>..\Shared;$(ProjectDir)include;%(AdditionalLibraryDirectories)</AdditionalIncludeDirectories>
-			<UseFullPaths>false</UseFullPaths>
-		</ClCompile>
-		<Link>
-			<SubSystem>Windows</SubSystem>
-			<EnableCOMDATFolding>true</EnableCOMDATFolding>
-			<OptimizeReferences>true</OptimizeReferences>
-			<LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
-			<GenerateDebugInformation>false</GenerateDebugInformation>
-			<AdditionalDependencies>$(WindowsSDK_LibraryPath)\$(Platform)\Pathcch.lib;%(AdditionalDependencies)</AdditionalDependencies>
-		</Link>
-	</ItemDefinitionGroup>
-	<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Development|x64'">
-		<ClCompile>
-			<WarningLevel>Level4</WarningLevel>
-			<Optimization>Disabled</Optimization>
-			<FunctionLevelLinking>true</FunctionLevelLinking>
-			<IntrinsicFunctions>true</IntrinsicFunctions>
-			<SDLCheck>true</SDLCheck>
-			<ConformanceMode>true</ConformanceMode>
-			<CompileAs>Default</CompileAs>
-			<InlineFunctionExpansion>Default</InlineFunctionExpansion>
-			<LanguageStandard>stdcpplatest</LanguageStandard>
-			<FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-			<StringPooling>true</StringPooling>
-			<WholeProgramOptimization>false</WholeProgramOptimization>
-			<DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-			<AdditionalIncludeDirectories>..\Shared;$(ProjectDir)include;%(AdditionalLibraryDirectories)</AdditionalIncludeDirectories>
-			<UseFullPaths>false</UseFullPaths>
-		</ClCompile>
-		<Link>
-			<SubSystem>Windows</SubSystem>
-			<EnableCOMDATFolding/>
-			<OptimizeReferences/>
-			<GenerateDebugInformation>DebugFastLink</GenerateDebugInformation>
-			<Profile>true</Profile>
-			<AssemblyDebug>true</AssemblyDebug>
-			<LinkTimeCodeGeneration>UseFastLinkTimeCodeGeneration</LinkTimeCodeGeneration>
-			<GenerateMapFile>false</GenerateMapFile>
-			<AdditionalLibraryDirectories/>
-			<AdditionalDependencies>$(WindowsSDK_LibraryPath)\$(Platform)\Pathcch.lib;%(AdditionalDependencies)</AdditionalDependencies>
-		</Link>
-	</ItemDefinitionGroup>
-	<Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-	<ImportGroup Label="ExtensionTargets">
-	</ImportGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Development|x64">
+      <Configuration>Development</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="StaticRelease|x64">
+      <Configuration>StaticRelease</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="launch.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='StaticRelease|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="launch_static.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='StaticRelease|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="resources\greenFace.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="resources\resource.h" />
+    <ClInclude Include="..\Shared\shared.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="resources\resource.rc" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>16.0</VCProjectVersion>
+    <ProjectGuid>{B3B9DC8E-8FD5-456F-B43F-CA4C58C6E150}</ProjectGuid>
+    <RootNamespace>Sandbox2DClientLauncher</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>Sandbox2DLauncherWindows</ProjectName>
+  </PropertyGroup>
+  <PropertyGroup>
+    <TargetName>Sandbox2D</TargetName>
+    <OutDir>$(Platform)\$(Configuration)\Output\</OutDir>
+    <IntDir>$(Platform)\$(Configuration)\Build\</IntDir>
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='StaticRelease|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Development|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="Shared" />
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ItemDefinitionGroup>
+    <Manifest>
+      <EnableDpiAwareness>true</EnableDpiAwareness>
+      <AssemblyIdentity />
+    </Manifest>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <ConformanceMode>true</ConformanceMode>
+      <CompileAs>Default</CompileAs>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <DebugInformationFormat>None</DebugInformationFormat>
+      <StringPooling>true</StringPooling>
+      <AdditionalIncludeDirectories>..\Shared;$(ProjectDir)include;%(AdditionalLibraryDirectories)</AdditionalIncludeDirectories>
+      <UseFullPaths>false</UseFullPaths>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <AdditionalDependencies>$(WindowsSDK_LibraryPath)\$(Platform)\Pathcch.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='StaticRelease|x64'">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <ConformanceMode>true</ConformanceMode>
+      <CompileAs>Default</CompileAs>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <DebugInformationFormat>None</DebugInformationFormat>
+      <StringPooling>true</StringPooling>
+      <AdditionalIncludeDirectories>..\Shared;$(ProjectDir)include;%(AdditionalLibraryDirectories)</AdditionalIncludeDirectories>
+      <UseFullPaths>false</UseFullPaths>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <AdditionalDependencies>C:\Program Files\Java\jdk-15\lib\jvm.lib;$(WindowsSDK_LibraryPath)\$(Platform)\Pathcch.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Development|x64'">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <ConformanceMode>true</ConformanceMode>
+      <CompileAs>Default</CompileAs>
+      <InlineFunctionExpansion>Default</InlineFunctionExpansion>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <StringPooling>true</StringPooling>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <AdditionalIncludeDirectories>..\Shared;$(ProjectDir)include;%(AdditionalLibraryDirectories)</AdditionalIncludeDirectories>
+      <UseFullPaths>false</UseFullPaths>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding />
+      <OptimizeReferences />
+      <GenerateDebugInformation>DebugFastLink</GenerateDebugInformation>
+      <Profile>true</Profile>
+      <AssemblyDebug>true</AssemblyDebug>
+      <LinkTimeCodeGeneration>UseFastLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <GenerateMapFile>false</GenerateMapFile>
+      <AdditionalLibraryDirectories />
+      <AdditionalDependencies>$(WindowsSDK_LibraryPath)\$(Platform)\Pathcch.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
 </Project>

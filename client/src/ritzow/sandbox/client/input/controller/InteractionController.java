@@ -25,6 +25,7 @@ public final class InteractionController {
 		this.nextUseTime = time;
 	}
 
+	//TODO use block renderer for block overlays (maybe not tool overlays)
 	private static void renderToolOvelay(ModelRenderer renderer, Model model, int blockX, int blockY, boolean useable) {
 		renderer.queueRender(
 			model,

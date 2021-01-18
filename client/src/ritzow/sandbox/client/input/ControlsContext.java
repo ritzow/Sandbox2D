@@ -34,9 +34,9 @@ public class ControlsContext implements ControlsQuery {
 		private final Button control;
 		private byte state;
 
-		private ButtonState(Button control) {
+		private ButtonState(Button control, byte state) {
 			this.control = control;
-			this.state = PREVIOUSLY_RELEASED;
+			this.state = state;
 		}
 	}
 
@@ -45,7 +45,7 @@ public class ControlsContext implements ControlsQuery {
 		characters = new ArrayList<>();
 		Arrays.sort(controls, ControlsContext::compareButtons);
 		for(int i = 0; i < controls.length; i++) {
-			store[i] = new ButtonState(controls[i]); //TODO test functionality when switching ControlsContexts ie going from main menu to in game
+			store[i] = new ButtonState(controls[i], PREVIOUSLY_RELEASED); //TODO test functionality when switching ControlsContexts ie going from main menu to in game
 		}
 	}
 
@@ -81,7 +81,7 @@ public class ControlsContext implements ControlsQuery {
 	public void press(byte type, int key) {
 		//do nothing if key isn't in control context
 		int index = indexOf(type, key);
-		if(index > -1) {
+		if(index >= 0 && store[index].control.equals(type, key)) {
 			store[index].state = NEWLY_PRESSED;
 			onControlPressed(store[index].control);
 		}
@@ -91,7 +91,7 @@ public class ControlsContext implements ControlsQuery {
 	public void release(byte type, int key) {
 		//do nothing if key isn't in control context
 		int index = indexOf(type, key);
-		if(index > -1) {
+		if(index >= 0 && store[index].control.equals(type, key)) {
 			store[index].state = NEWLY_RELEASED;
 			onControlReleased(store[index].control);
 		}
@@ -100,7 +100,7 @@ public class ControlsContext implements ControlsQuery {
 	public void repeat(byte type, int key) {
 		//do nothing if key isn't in control context
 		int index = indexOf(type, key);
-		if(index > -1) {
+		if(index >= 0 && store[index].control.equals(type, key)) {
 			onControlRepeated(store[index].control);
 		}
 	}

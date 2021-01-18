@@ -204,7 +204,7 @@ public class GameServer {
 	}
 
 	private static boolean checkTimeout(ClientState client) {
-		long delta = Utility.nanosSince(client.lastMessageReceiveTime);
+		long delta = Utility.nanosSince(client.lastMessageProcessTime);
 		if(delta > TIMEOUT_DISCONNECT) {
 			client.status = STATUS_TIMED_OUT;
 			client.disconnectReason = "server didn't receive message in " + Utility.formatTime(delta);
@@ -424,12 +424,12 @@ public class GameServer {
 			//send entity to already connected players
 			broadcastUnsafe(buildAddEntity(player), true, ClientState::inGame);
 
-			log("Serializing world to send to " + client.formattedName());
+			//log("Serializing world to send to " + client.formattedName());
 			//TODO don't send world size in ack, takes too long to serialize entire world
 			for(byte[] packet : buildAcknowledgementPackets(world, player.getID())) {
 				client.send(packet, true);
 			}
-			log("World serialized and sent to " + client.formattedName());
+			//log("World serialized and sent to " + client.formattedName());
 		} else {
 			byte[] response = new byte[3];
 			Bytes.putShort(response, 0, TYPE_SERVER_CONNECT_ACKNOWLEDGMENT);

@@ -15,6 +15,7 @@ import org.lwjgl.glfw.GLFWImage;
 import ritzow.sandbox.client.graphics.Camera;
 import ritzow.sandbox.client.graphics.Model;
 import ritzow.sandbox.util.Utility;
+import ritzow.sandbox.world.BlockGrid;
 
 import static org.lwjgl.glfw.GLFW.glfwCreateCursor;
 
@@ -100,6 +101,22 @@ public class ClientUtility {
 	public static float getViewLeftBound(Camera camera, int framebufferWidth, int framebufferHeight) {
 		//far left of screen after accounting for aspect ratio, in world coordinates
 		return getViewRightBound(camera, -framebufferWidth, framebufferHeight);
+	}
+
+	public static float getBlocksLeft() {
+		return -0.5f;
+	}
+
+	public static float getBlocksBottom() {
+		return -0.5f;
+	}
+
+	public static float getBlocksRight(BlockGrid blocks) {
+		return blocks.getWidth() + 0.5f;
+	}
+
+	public static float getBlocksTop(BlockGrid blocks) {
+		return blocks.getHeight() + 0.5f;
 	}
 
 	//width and height for any future need

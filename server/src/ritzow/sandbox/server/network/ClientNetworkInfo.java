@@ -12,7 +12,7 @@ public class ClientNetworkInfo {
 	final Queue<SendPacket> sendQueue;
 	final Queue<ReceivePacket> receiveQueue;
 	int sendMessageID = 0, lastSendReliableID = -1, headProcessedID = -1;
-	long lastMessageReceiveTime;
+	long lastMessageProcessTime;
 
 	/** Client reliable message round trip time in nanoseconds */
 	long ping;
@@ -48,7 +48,7 @@ public class ClientNetworkInfo {
 		   ", sendMessageID=" + sendMessageID +
 		   ", lastSendReliableID=" + lastSendReliableID +
 		   ", headProcessedID=" + headProcessedID +
-		   ", lastMessageReceiveTime=" + lastMessageReceiveTime +
+		   ", lastMessageReceiveTime=" + lastMessageProcessTime +
 		   ", ping=" + ping +
 		   '}';
 	}

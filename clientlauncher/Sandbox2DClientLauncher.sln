@@ -17,6 +17,10 @@ Global
 		Release|ARM64 = Release|ARM64
 		Release|x64 = Release|x64
 		Release|x86 = Release|x86
+		StaticRelease|ARM = StaticRelease|ARM
+		StaticRelease|ARM64 = StaticRelease|ARM64
+		StaticRelease|x64 = StaticRelease|x64
+		StaticRelease|x86 = StaticRelease|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{5F10A7A1-93A7-4374-A8F2-CF97113A6AA9}.Development|ARM.ActiveCfg = Debug|ARM
@@ -43,6 +47,14 @@ Global
 		{5F10A7A1-93A7-4374-A8F2-CF97113A6AA9}.Release|x86.ActiveCfg = Release|x86
 		{5F10A7A1-93A7-4374-A8F2-CF97113A6AA9}.Release|x86.Build.0 = Release|x86
 		{5F10A7A1-93A7-4374-A8F2-CF97113A6AA9}.Release|x86.Deploy.0 = Release|x86
+		{5F10A7A1-93A7-4374-A8F2-CF97113A6AA9}.StaticRelease|ARM.ActiveCfg = Release|ARM
+		{5F10A7A1-93A7-4374-A8F2-CF97113A6AA9}.StaticRelease|ARM.Build.0 = Release|ARM
+		{5F10A7A1-93A7-4374-A8F2-CF97113A6AA9}.StaticRelease|ARM64.ActiveCfg = Release|ARM64
+		{5F10A7A1-93A7-4374-A8F2-CF97113A6AA9}.StaticRelease|ARM64.Build.0 = Release|ARM64
+		{5F10A7A1-93A7-4374-A8F2-CF97113A6AA9}.StaticRelease|x64.ActiveCfg = Release|x64
+		{5F10A7A1-93A7-4374-A8F2-CF97113A6AA9}.StaticRelease|x64.Build.0 = Release|x64
+		{5F10A7A1-93A7-4374-A8F2-CF97113A6AA9}.StaticRelease|x86.ActiveCfg = Release|x86
+		{5F10A7A1-93A7-4374-A8F2-CF97113A6AA9}.StaticRelease|x86.Build.0 = Release|x86
 		{B3B9DC8E-8FD5-456F-B43F-CA4C58C6E150}.Development|ARM.ActiveCfg = Development|x64
 		{B3B9DC8E-8FD5-456F-B43F-CA4C58C6E150}.Development|ARM64.ActiveCfg = Development|x64
 		{B3B9DC8E-8FD5-456F-B43F-CA4C58C6E150}.Development|x64.ActiveCfg = Development|x64
@@ -53,6 +65,11 @@ Global
 		{B3B9DC8E-8FD5-456F-B43F-CA4C58C6E150}.Release|x64.ActiveCfg = Release|x64
 		{B3B9DC8E-8FD5-456F-B43F-CA4C58C6E150}.Release|x64.Build.0 = Release|x64
 		{B3B9DC8E-8FD5-456F-B43F-CA4C58C6E150}.Release|x86.ActiveCfg = Release|x64
+		{B3B9DC8E-8FD5-456F-B43F-CA4C58C6E150}.StaticRelease|ARM.ActiveCfg = StaticRelease|x64
+		{B3B9DC8E-8FD5-456F-B43F-CA4C58C6E150}.StaticRelease|ARM64.ActiveCfg = StaticRelease|x64
+		{B3B9DC8E-8FD5-456F-B43F-CA4C58C6E150}.StaticRelease|x64.ActiveCfg = StaticRelease|x64
+		{B3B9DC8E-8FD5-456F-B43F-CA4C58C6E150}.StaticRelease|x64.Build.0 = StaticRelease|x64
+		{B3B9DC8E-8FD5-456F-B43F-CA4C58C6E150}.StaticRelease|x86.ActiveCfg = StaticRelease|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,8 +1,12 @@
 package ritzow.sandbox.client;
 
 import java.io.IOException;
+import java.util.Set;
+import net.straylightlabs.hola.dns.Domain;
+import net.straylightlabs.hola.sd.Instance;
+import net.straylightlabs.hola.sd.Query;
+import net.straylightlabs.hola.sd.Service;
 import org.lwjgl.glfw.GLFWErrorCallback;
-import org.lwjgl.opengl.GL;
 import ritzow.sandbox.client.audio.AudioSystem;
 import ritzow.sandbox.client.data.StandardClientOptions;
 import ritzow.sandbox.client.graphics.Display;
@@ -26,6 +30,21 @@ class StartClient {
 	 * @throws IOException if the program encounters an error.
 	 **/
 	public static void main(String[] args) throws IOException {
+
+		System.out.println(Service.fromName("_0hello._hithere._udp"));
+
+		Query query = Query.createFor(Service.fromName("_services._dns-sd._udp"), Domain.LOCAL);
+
+
+
+		Set<Instance> results = query.runOnce();
+
+
+
+		System.out.println(results);
+
+		System.exit(0);
+
 		log().info("Starting game");
 		long startupStart = System.nanoTime();
 		AudioSystem.getDefault(); //load default audio system

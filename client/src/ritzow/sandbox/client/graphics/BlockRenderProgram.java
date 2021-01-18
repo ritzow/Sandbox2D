@@ -24,7 +24,7 @@ public class BlockRenderProgram extends ShaderProgram {
 		instanceCount; //instance count for the current model aka for the current draw ID
 
 	private static final int ATLAS_TEXTURE_UNIT = GL_TEXTURE0;
-	private static final int MAX_RENDER_COUNT = 600;
+	private static final int MAX_RENDER_COUNT = 100;
 	private static final int INDIRECT_STRUCT_SIZE = 5 * Integer.BYTES;
 	private static final int INDIRECT_BUFFER_SIZE = MAX_RENDER_COUNT * INDIRECT_STRUCT_SIZE;
 	//private static final int OFFSET_SIZE = Integer.BYTES * 4;
