@@ -57,6 +57,7 @@ public class RenderManager {
 		glDepthMask(false);
 		glDisable(GL_MULTISAMPLE);
 		glEnablei(GL_BLEND, RenderManager.MAIN_DRAW_BUFFER_INDEX);
+		beginColorCorrectOutput();
 		//TODO vsync doesnt work in fullscreen
 
 		TextureData
@@ -187,6 +188,14 @@ public class RenderManager {
 	public static void setStandardBlending() {
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glBlendEquation(GL_FUNC_ADD);
+	}
+
+	public static void beginColorCorrectOutput() {
+		glEnable(GL_FRAMEBUFFER_SRGB);
+	}
+
+	public static void endColorCorrectOutput() {
+		glDisable(GL_FRAMEBUFFER_SRGB);
 	}
 
 	public static void setViewport(int width, int height) {
