@@ -44,7 +44,7 @@ Used for loading textures. Does not seem to be available directly anymore as the
 
 ### [JSON-java](https://github.com/stleary/JSON-java)
 
-A simple JSON parser reference implementation used for loading GLTF files in the client (not actually implemented). The source code is included in the ritzow.sandbox.client module.
+A simple JSON parser reference implementation used for loading GLTF files in the client (not actually implemented).
 
 ### [JavaFX](https://openjfx.io/)
 
