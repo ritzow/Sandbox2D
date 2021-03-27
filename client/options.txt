@@ -1,7 +1,7 @@
 #Options file
 
 use_new_opengl	= true
-vsync			=
+vsync			= false
 fps_print		=
 fps_limit		= 120
 use_internet	= false
