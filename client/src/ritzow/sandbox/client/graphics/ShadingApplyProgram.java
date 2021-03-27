@@ -27,7 +27,9 @@ public class ShadingApplyProgram extends ShaderProgram {
 		glActiveTexture(BLOCK_LIGHTING_TEXTURE_UNIT);
 		glBindTexture(GL_TEXTURE_2D, lighting.id);
 		glBindVertexArray(vao);
+		RenderManager.endColorCorrectOutput();
 		glDrawArrays(GL_POINTS, 0, 1);
+		RenderManager.beginColorCorrectOutput();
 	}
 
 	@Override
