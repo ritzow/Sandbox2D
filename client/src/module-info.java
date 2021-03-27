@@ -14,6 +14,6 @@ module ritzow.sandbox.client {
 	requires org.lwjgl.openal;
 	requires org.lwjgl.opengl;
 	requires slf4j.api;
-	requires hola;
+	///requires hola;
 	//requires org.dnsjava;
 }

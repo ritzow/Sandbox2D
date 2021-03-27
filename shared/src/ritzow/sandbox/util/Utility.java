@@ -33,12 +33,16 @@ public final class Utility {
 	}
 
 	public static void limitFramerate(long frameStart, long frameTimeLimit) {
-		//frameTimeLimit - (System.nanoTime() - frameStart)
 		long nanos = frameTimeLimit + frameStart - System.nanoTime();
 		if(USE_LOCK_SUPPORT) {
 			//TODO causing problems again, works when I run VisualVM (maybe has to do with high resolution timer configuration setting?)
 			LockSupport.parkNanos(nanos);
 		} else if(nanos > 0) {
+//			long deadline = frameStart + frameTimeLimit;
+//			while(deadline >= System.nanoTime()) {
+//				//Thread.onSpinWait();
+//			}
+
 			try {
 				Thread.sleep(nanosToMillis(nanos));
 			} catch(InterruptedException e) {
