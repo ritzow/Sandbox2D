@@ -32,7 +32,8 @@ public class AbsoluteGuiPositioner implements GuiElement {
 	}
 
 	public static Entry<GuiElement, Position> alignLeft(GuiElement element, float x, float y) {
-		if(element.shape().toRectangle() instanceof Rectangle r) {
+		Rectangle r = element.shape().toRectangle();
+		if(r != null) {
 			return Map.entry(element, Position.of(x + r.width()/2, 0));
 		} else return Map.entry(element, Position.of(x, y));
 	}

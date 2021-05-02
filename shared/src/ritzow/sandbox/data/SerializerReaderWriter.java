@@ -2,9 +2,8 @@ package ritzow.sandbox.data;
 
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
+import java.util.concurrent.*;
 
 public class SerializerReaderWriter implements Serializer, Deserializer {
 	private final Map<Short, ObjectBuilder> deserializeLookup;
@@ -65,152 +64,72 @@ public class SerializerReaderWriter implements Serializer, Deserializer {
 
 	@SuppressWarnings("unchecked")
 	public <T> T deserialize(ByteBuffer buffer) throws TypeNotRegisteredException {
-		return getReader(buffer).readObject();
+		return of(buffer).readObject();
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
 	public <T> T deserialize(byte[] object) throws TypeNotRegisteredException {
-		return getReader(object).readObject();
+		return of(object).readObject();
 	}
 
-	private TransportableDataReader getReader(final ByteBuffer bytes) {
-		return new AbstractDataReader() {
-			@Override
-			public int remaining() {
-				return bytes.remaining();
-			}
-
-			@Override
-			public void skip(int countBytes) {
-				bytes.position(bytes.position() + countBytes);
-			}
-
-			@Override
-			public byte readByte() {
-				return bytes.get();
-			}
-
-			@Override
-			public double readDouble() {
-				return bytes.getDouble();
-			}
-
-			@Override
-			public float readFloat() {
-				return bytes.getFloat();
-			}
-
-			@Override
-			public long readLong() {
-				return bytes.getLong();
-			}
-
-			@Override
-			public int readInteger() {
-				return bytes.getInt();
-			}
-
-			@Override
-			public short readShort() {
-				return bytes.getShort();
-			}
-
-			@Override
-			public byte[] readBytes(int count) {
-				if(count > bytes.remaining())
-					throw new IllegalArgumentException("Not enough bytes remaining.");
-				byte[] dst = new byte[count];
-				bytes.get(dst);
-				return dst;
-			}
-
-			@Override
-			public void readBytes(byte[] dest, int offset) {
-				bytes.get(dest, offset, dest.length);
-			}
-		};
+	private TransportableDataReader of(final ByteBuffer bytes) {
+		return new ByteBufferDataReader(bytes);
 	}
 
-	private TransportableDataReader getReader(final byte[] bytes) {
-		return new AbstractDataReader() {
-			private int index = 0; //skip past object size and type
-
-			@Override
-			public int remaining() {
-				return bytes.length - index; //TODO is this implemented correctly?
-			}
-
-			@Override
-			public void skip(int bytes) {
-				checkIndex(index += bytes);
-			}
-
-			private void checkIndex(int index) {
-				if(index >= bytes.length)
-					throw new IndexOutOfBoundsException("not enough data remaining");
-			}
-
-			@Override
-			public byte readByte() {
-				return bytes[index++];
-			}
-
-			@Override
-			public byte[] readBytes(int count) {
-				if(bytes.length < index + count || count < 0)
-					throw new IndexOutOfBoundsException("not enough data remaining");
-				byte[] data = new byte[count];
-				System.arraycopy(bytes, index, data, 0, data.length);
-				index += count;
-				return data;
-			}
-
-			@Override
-			public void readBytes(byte[] dest, int offset) {
-				if(dest.length < bytes.length - index) {
-					System.arraycopy(bytes, index, dest, offset, dest.length - offset);
-				} else {
-					throw new IndexOutOfBoundsException("not enough data remaining");
-				}
-			}
-		};
+	private TransportableDataReader of(final byte[] bytes) {
+		return new ArrayDataReader(bytes);
 	}
 
 	private abstract class AbstractDataReader implements TransportableDataReader {
 		@Override
-		@SuppressWarnings("unchecked")
 		public <T extends Transportable> T readObject() {
 			try {
 				short type = readShort();
 				return switch(type) {
+					case NULL_TYPE -> null;
 					default -> {
 						int length = readInteger();
-						int totalRemaining = remaining();
-						ObjectBuilder func = deserializeLookup.get(type); //get associated function
-						if(func == null) throw new TypeNotRegisteredException(
-							"Cannot deserialize unregistered type " + type);
-						T obj = (T)func.apply(this);
-						int bytesRead = totalRemaining - remaining();
-						if(bytesRead > length) {
-							throw new SerializationException("Read " +
-							 (bytesRead - length) + " bytes too many while deserializing type "
-								+ type + " of length " + length + ".");
-						} else if(bytesRead < length) {
-							throw new SerializationException("Read " +
-								(length - bytesRead) + " bytes too few while deserializing type "
-								+ type + " of length " + length + ".");
-						}
-						yield obj;
-					}
-
-					case NULL_TYPE -> {
-						yield null;
+						yield readObject(type, length);
 					}
 				};
 			} catch(IndexOutOfBoundsException | BufferUnderflowException e) {
 				throw new SerializationException("object read too many bytes and reached the end of the data");
 			}
+		}
+
+		@Override
+		public <T extends Transportable> Iterable<T> readObjects(int count) {
+			List<Callable<T>> tasks = new ArrayList<>(count);
+			for(int i = 0; i < count; i++) {
+				short type = readShort();
+				int length = readInteger();
+				//TODO needs to get remaining etc first
+				//tasks.add(() -> readObject(type, length));
+				throw new RuntimeException("not implemented");
+			}
+			return null;
+			//return CompletableFuture.allOf((Future<T>[])ForkJoinPool.commonPool().invokeAll(tasks).toArray(Future<T>[]::new)).get();
+		}
+
+		@SuppressWarnings("unchecked")
+		public <T extends Transportable> T readObject(short type, int length) throws IndexOutOfBoundsException, BufferUnderflowException {
+			int totalRemaining = remaining();
+			ObjectBuilder func = deserializeLookup.get(type); //get associated function
+			if(func == null) throw new TypeNotRegisteredException(
+				"Cannot deserialize unregistered type " + type);
+			T obj = (T)func.apply(this);
+			int bytesRead = totalRemaining - remaining();
+			if(bytesRead > length) {
+				throw new SerializationException("Read " +
+					(bytesRead - length) + " bytes too many while deserializing type "
+					+ type + " of length " + length + ".");
+			} else if(bytesRead < length) {
+				throw new SerializationException("Read " +
+					(length - bytesRead) + " bytes too few while deserializing type "
+					+ type + " of length " + length + ".");
+			}
+			return obj;
 		}
 
 		@Override
@@ -262,7 +181,7 @@ public class SerializerReaderWriter implements Serializer, Deserializer {
 			return booleans;
 		}
 
-		private <T> T checkSize(int expectedLength, int lengthRead, T object) {
+		/*private static <T> T checkSize(int expectedLength, int lengthRead, T object) {
 			if(lengthRead != expectedLength) {
 				StringBuilder sb = new StringBuilder("object of type ")
 						.append(object.getClass().getName())
@@ -273,6 +192,116 @@ public class SerializerReaderWriter implements Serializer, Deserializer {
 				throw new SerializationException(sb.toString());
 			}
 			return object;
+		}*/
+	}
+
+	private class ByteBufferDataReader extends AbstractDataReader {
+		private final ByteBuffer bytes;
+
+		ByteBufferDataReader(ByteBuffer bytes) {
+			this.bytes = bytes;
+		}
+
+		@Override
+		public int remaining() {
+			return bytes.remaining();
+		}
+
+		@Override
+		public void skip(int countBytes) {
+			bytes.position(bytes.position() + countBytes);
+		}
+
+		@Override
+		public byte readByte() {
+			return bytes.get();
+		}
+
+		@Override
+		public double readDouble() {
+			return bytes.getDouble();
+		}
+
+		@Override
+		public float readFloat() {
+			return bytes.getFloat();
+		}
+
+		@Override
+		public long readLong() {
+			return bytes.getLong();
+		}
+
+		@Override
+		public int readInteger() {
+			return bytes.getInt();
+		}
+
+		@Override
+		public short readShort() {
+			return bytes.getShort();
+		}
+
+		@Override
+		public byte[] readBytes(int count) {
+			if(count > bytes.remaining())
+				throw new IllegalArgumentException("Not enough bytes remaining.");
+			byte[] dst = new byte[count];
+			bytes.get(dst);
+			return dst;
+		}
+
+		@Override
+		public void readBytes(byte[] dest, int offset) {
+			bytes.get(dest, offset, dest.length);
+		}
+	}
+
+	private class ArrayDataReader extends AbstractDataReader {
+		private final byte[] bytes;
+		private int index = 0; //skip past object size and type
+
+		ArrayDataReader(byte[] bytes) {
+			this.bytes = bytes;
+		}
+
+		@Override
+		public int remaining() {
+			return bytes.length - index; //TODO is this implemented correctly?
+		}
+
+		@Override
+		public void skip(int bytes) {
+			checkIndex(index += bytes);
+		}
+
+		private void checkIndex(int index) {
+			if(index >= bytes.length)
+				throw new IndexOutOfBoundsException("not enough data remaining");
+		}
+
+		@Override
+		public byte readByte() {
+			return bytes[index++];
+		}
+
+		@Override
+		public byte[] readBytes(int count) {
+			if(bytes.length < index + count || count < 0)
+				throw new IndexOutOfBoundsException("not enough data remaining");
+			byte[] data = new byte[count];
+			System.arraycopy(bytes, index, data, 0, data.length);
+			index += count;
+			return data;
+		}
+
+		@Override
+		public void readBytes(byte[] dest, int offset) {
+			if(dest.length < bytes.length - index) {
+				System.arraycopy(bytes, index, dest, offset, dest.length - offset);
+			} else {
+				throw new IndexOutOfBoundsException("not enough data remaining");
+			}
 		}
 	}
 }
