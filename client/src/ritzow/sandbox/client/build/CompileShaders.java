@@ -32,7 +32,8 @@ public class CompileShaders {
 		//TODO look into -l option "link all input files together to form a single module" to validate glsl programs and create program files
 		ProcessBuilder builder = DEBUG ? new ProcessBuilder(
 			"glslangValidator",
-			"-G460",
+			"--target-env", "opengl",
+			"--client", "opengl100",
 			"-Od",
 			"-t",
 			//"-H", //print opcodes
@@ -42,7 +43,8 @@ public class CompileShaders {
 			file.toString()
 		) : new ProcessBuilder(
 			"glslangValidator",
-			"-G460",
+			"--target-env", "opengl",
+			"--client", "opengl100",
 			"--quiet",
 			"-Os",
 			"-t",
