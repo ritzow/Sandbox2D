@@ -39,8 +39,6 @@ void SetupConsole(LPWSTR args) {
 		std::wcout << "Program Arguments: \"" << args << '"' << std::endl;
 }
 
-
-
 INT WINAPI wWinMain(_In_ HMODULE mod, _In_opt_ HINSTANCE, _In_ LPWSTR lpCmdLine, _In_ INT) {
 	if constexpr (SHOW_CONSOLE) SetupConsole(lpCmdLine);
 	SetWorkingDirectory(mod);

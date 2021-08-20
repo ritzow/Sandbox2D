@@ -29,12 +29,11 @@ import static java.util.Map.entry;
 public class Build {
 
 	private static final boolean DEBUG = true;
-	private static final boolean NATIVE_DEVELOPMENT = false;
 
 	private static final String
-		CONFIGURATION_DEVELOPMENT = "Development",
-		CONFIGURATION_RELEASE = "Release",
-		CONFIGURATION_STATIC_RELEASE = "StaticRelease";
+		//CONFIGURATION_DEVELOPMENT = "Development",
+		CONFIGURATION_RELEASE = "Release";
+		//CONFIGURATION_STATIC_RELEASE = "StaticRelease";
 
 	private static final String
 		OS = "windows",
@@ -202,10 +201,10 @@ public class Build {
 	private static int msbuild() throws IOException, InterruptedException {
 		return new ProcessBuilder(List.of(
 			"msbuild",
-			"/nologo",
-			"/verbosity:minimal",
-			"/p:Configuration=" + (CONFIGURATION) + ";Platform=" + ARCH,
-			//"/p:Configuration=" + (NATIVE_DEVELOPMENT ? "Development" : "Release") + ";Platform=" + ARCH,
+			"-nologo",
+			"-verbosity:minimal",
+			"-p:Configuration=" + CONFIGURATION,
+			"-p:Platform=" + ARCH,
 			MSBUILD_FILE.toString()
 		)).inheritIO().start().waitFor();
 	}
