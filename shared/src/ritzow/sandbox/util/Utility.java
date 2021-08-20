@@ -8,9 +8,9 @@ import java.nio.file.StandardOpenOption;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
-import java.util.SplittableRandom;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.IntFunction;
+import java.util.random.RandomGenerator;
 import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.network.Protocol;
 import ritzow.sandbox.world.BlockGrid;
@@ -274,12 +274,13 @@ public final class Utility {
 			return magnitude;
 	}
 
-	private static final SplittableRandom RANDOM = new SplittableRandom();
-
-	/** Not thread safe **/
-	public static float random(double min, double max) {
-		return (float)RANDOM.nextDouble(min, max);
-	}
+//	public static float random(float min, float max) {
+//		return ThreadLocalRandom.current().nextFloat(min, max);
+//	}
+//
+//	public static float random(double min, double max) {
+//		return (float)ThreadLocalRandom.current().nextDouble();
+//	}
 
 	public static float oscillate(double radiansPerNano) {
 		return oscillate(radiansPerNano, 0, 0, 1);
@@ -298,8 +299,8 @@ public final class Utility {
 		e.setVelocityY((float)Math.sin(angle) * velocity);
 	}
 
-	public static void launchAtRandomRatio(Entity e, double minFraction, double maxFraction, float velocity) {
-		launchAtAngle(e, random(minFraction * 2 * Math.PI, maxFraction * 2 * Math.PI), velocity);
+	public static void launchAtRandomRatio(RandomGenerator rand, Entity e, double minFraction, double maxFraction, float velocity) {
+		launchAtAngle(e, (float)rand.nextDouble(minFraction * 2 * Math.PI, maxFraction * 2 * Math.PI), velocity);
 	}
 
 	public static boolean intersection(float rectangleX, float rectangleY,

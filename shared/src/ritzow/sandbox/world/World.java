@@ -3,6 +3,8 @@ package ritzow.sandbox.world;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.random.RandomGenerator;
+import java.util.random.RandomGeneratorFactory;
 import ritzow.sandbox.data.Bytes;
 import ritzow.sandbox.data.Serializer;
 import ritzow.sandbox.data.Transportable;
@@ -47,6 +49,8 @@ public class World implements Transportable, Iterable<Entity> {
 	/** For access protection during entity updates **/
 	private boolean isEntitiesUnmodifiable = false;
 
+	private final RandomGenerator randgen = RandomGeneratorFactory.of("L64X128MixRandom").create();
+
 	/**
 	 * Initializes a new World object with a foreground, background, entity storage, and gravity.
 	 * @param width the width of the foreground and background
@@ -71,6 +75,10 @@ public class World implements Transportable, Iterable<Entity> {
 			addEntity(e);
 		}
 		lastEntityID = maxEntityID;
+	}
+
+	public RandomGenerator random() {
+		return randgen;
 	}
 
 	@Override

@@ -5,7 +5,6 @@ import ritzow.sandbox.client.audio.Sound.StandardSound;
 import ritzow.sandbox.client.graphics.Camera;
 import ritzow.sandbox.client.graphics.Light;
 import ritzow.sandbox.client.graphics.Model;
-import ritzow.sandbox.util.Utility;
 import ritzow.sandbox.world.BlockGrid;
 import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.block.Block;
@@ -43,7 +42,7 @@ public interface ClientBlockProperties extends Block {
 	default void onBreak(World world, BlockGrid grid, Camera camera, float x, float y) {
 		AudioSystem.getDefault()
 		.playSound(StandardSound.BLOCK_BREAK, x, y, 0, 0,
-				camera.getZoom() * 2 * Utility.random(0.75f, 1.5f), Utility.random(0.75f, 1.5f));
+				camera.getZoom() * 2 * world.random().nextFloat(0.75f, 1.5f), world.random().nextFloat(0.75f, 1.5f));
 	}
 
 	/**
@@ -56,6 +55,6 @@ public interface ClientBlockProperties extends Block {
 	 */
 	default void onPlace(World world, BlockGrid grid, Camera camera, float x, float y) {
 		AudioSystem.getDefault()
-			.playSound(StandardSound.BLOCK_PLACE, x, y, 0, 0, camera.getZoom() * 2, Utility.random(0.9f, 1.1f));
+			.playSound(StandardSound.BLOCK_PLACE, x, y, 0, 0, camera.getZoom() * 2, world.random().nextFloat(0.9f, 1.1f));
 	}
 }

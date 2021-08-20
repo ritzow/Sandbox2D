@@ -83,6 +83,13 @@ public class NetworkUtility {
 		} else {
 			throw new IllegalArgumentException("InetAddress of unknown protocol");
 		}
+
+		/*
+		* return switch(address) {
+			case Inet4Address v4 -> StandardProtocolFamily.INET;
+			case Inet6Address v6 -> StandardProtocolFamily.INET6;
+			default -> throw new IllegalArgumentException("InetAddress of unknown protocol");
+		}; */
 	}
 
 	public static boolean isIPv6(InetAddress address) {

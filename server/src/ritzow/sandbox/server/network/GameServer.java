@@ -329,7 +329,7 @@ public class GameServer {
 				broadcastRemoveBlock(x, y);
 				if(block != null) {
 					var drop = new ItemEntity<Item>(world.nextEntityID(), new BlockItem(block), x, y);
-					float angle = Utility.random(0, Math.PI);
+					float angle = world.random().nextFloat(0, (float)Math.PI);
 					drop.setVelocityX((float)Math.cos(angle) * BLOCK_DROP_VELOCITY);
 					drop.setVelocityY((float)Math.sin(angle) * BLOCK_DROP_VELOCITY);
 					world.add(drop);

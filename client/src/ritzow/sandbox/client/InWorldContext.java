@@ -182,10 +182,11 @@ class InWorldContext implements GameTalker {
 				), Side.BOTTOM_LEFT, 0.1f, 0.1f
 			),
 			new Anchor(new VBoxDynamic(0.05f, Alignment.LEFT,
-				new AbsoluteGuiPositioner(
-					Map.entry(new HBox(0, fpsBg, fpsBg, fpsBg, fpsBg, fpsBg, fpsBg, fpsBg, fpsBg), Position.of(0, 0)),
-					Map.entry(framerateDisplay = new EditableText(RenderManager.FONT, 6, 0), Position.of(0, 0))
-				),
+//				new AbsoluteGuiPositioner(
+//					//Map.entry(new HBox(0, fpsBg, fpsBg, fpsBg, fpsBg, fpsBg, fpsBg, fpsBg, fpsBg), Position.of(0, 0)),
+//					Map.entry(framerateDisplay = new EditableText(RenderManager.FONT, 4, 0), Position.of(5, 0))
+//				),
+				framerateDisplay = new EditableText(RenderManager.FONT, 4, 0),
 				new Text(NetworkUtility.formatAddress(client.getServerAddress()), RenderManager.FONT, 6, 0)
 			), Side.TOP_LEFT, 0.05f, 0.05f)
 		);
@@ -248,7 +249,10 @@ class InWorldContext implements GameTalker {
 		worldRenderer.render(RenderManager.DISPLAY_BUFFER, width, height, computeDaylight());
 		interactionControls.updateRender(display, RenderManager.DISPLAY_BUFFER, controlsContext, GameState.modelRenderer(), cameraGrip.getCamera(), this, world, player);
 		GraphicsUtility.checkErrors();
-		framerateDisplay.setContent(Utility.frameTimeToString(GameLoop.getLastUpdateTime()));
+		framerateDisplay.setContent(Utility.frameTimeToString(GameLoop.getLastUpdateTime())
+			+ " Used: " + Utility.formatSize(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory())
+			+ " Total: " + Utility.formatSize(Runtime.getRuntime().totalMemory())
+			+ " Max: " + Utility.formatSize(Runtime.getRuntime().maxMemory()));
 		GameState.guiRenderer().render(overlayGUI, display, controlsContext, deltaTime, StandardClientOptions.GUI_SCALE);
 		GraphicsUtility.checkErrors();
 		GameState.modelRenderer().flush();

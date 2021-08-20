@@ -1,5 +1,6 @@
 package ritzow.sandbox.client.world.entity;
 
+import java.util.random.RandomGeneratorFactory;
 import ritzow.sandbox.client.graphics.Graphics;
 import ritzow.sandbox.client.graphics.ModelRenderer;
 import ritzow.sandbox.client.graphics.Renderable;
@@ -15,19 +16,8 @@ public final class ClientItemEntity<I extends Item> extends ItemEntity<I> implem
 
 	public ClientItemEntity(TransportableDataReader data) {
 		super(data);
-		this.rotationVelocity = getRotationalVelocity();
-	}
-
-	public ClientItemEntity(int entityID, I item, float x, float y) {
-		super(entityID, item);
-		this.positionX = x;
-		this.positionY = y;
-		this.rotationVelocity = getRotationalVelocity();
-		this.rotation = 0;
-	}
-
-	private static float getRotationalVelocity() {
-		return Utility.convertPerSecondToPerNano(Utility.random(-Math.PI, Math.PI));
+		this.rotationVelocity = Utility.convertPerSecondToPerNano(
+			(float)RandomGeneratorFactory.getDefault().create().nextDouble(-Math.PI, Math.PI));
 	}
 
 	@Override

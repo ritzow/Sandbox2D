@@ -18,7 +18,7 @@ import ritzow.sandbox.world.generator.SinusoidWorldGenerator;
 class StartServer {
 	private static final Path SAVE_FILE = Path.of("world.dat");
 	private static final long FRAME_TIME_LIMIT = Utility.frameRateToFrameTimeNanos(120);
-	private static final int WIDTH = 200, HEIGHT = 200;
+	private static final int WIDTH = 2000, HEIGHT = 200;
 
 	private static GameServer server;
 	private static boolean save = true;

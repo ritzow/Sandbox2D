@@ -1,6 +1,7 @@
 package ritzow.sandbox.client;
 
 import java.util.Objects;
+import java.util.concurrent.locks.LockSupport;
 import ritzow.sandbox.util.Utility;
 
 import static ritzow.sandbox.client.data.StandardClientOptions.*;
@@ -21,11 +22,13 @@ class GameLoop {
 		lastUpdate = System.nanoTime();
 		while(current != null) {
 			long frameStart = System.nanoTime();
+			//long frameStartMS = System.currentTimeMillis();
 			long delta = frameStart - lastUpdate;
 			current.run(delta);
 			lastUpdate = Math.max(frameStart, lastUpdate);
 			lastUpdateTime = delta;
 			if(LIMIT_FPS) Utility.limitFramerate(frameStart, FRAME_TIME_LIMIT);
+			//LockSupport.parkUntil(frameStartMS + FRAME_TIME_LIMIT/1_000_000);
 			if(PRINT_FPS) Utility.printFramerate(frameStart);
 		}
 	}
