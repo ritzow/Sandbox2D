@@ -13,4 +13,7 @@ module ritzow.sandbox.client {
 	requires org.lwjgl.glfw;
 	requires org.lwjgl.openal;
 	requires org.lwjgl.opengl;
+	requires org.json;
+	
+	exports ritzow.sandbox.client;
 }

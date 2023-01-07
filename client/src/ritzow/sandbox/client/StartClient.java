@@ -17,14 +17,14 @@ import static ritzow.sandbox.client.util.ClientUtility.log;
 /**
  * Entry point to Sandbox2D game client
  **/
-class StartClient {
+public class StartClient {
 
 	/**
 	 * Command line entry point.
 	 * @param args command line arguments.
 	 * @throws IOException if the program encounters an error.
 	 **/
-	public static void main(String[] args) throws IOException {
+	public static void main(String... args) throws IOException {
 		log().info("Starting game");
 		long startupStart = System.nanoTime();
 		AudioSystem.getDefault(); //load default audio system

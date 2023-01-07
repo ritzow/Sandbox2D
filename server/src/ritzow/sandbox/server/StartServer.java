@@ -15,7 +15,7 @@ import ritzow.sandbox.world.World;
 import ritzow.sandbox.world.entity.ItemEntity;
 import ritzow.sandbox.world.generator.SinusoidWorldGenerator;
 
-class StartServer {
+public class StartServer {
 	private static final Path SAVE_FILE = Path.of("world.dat");
 	private static final long FRAME_TIME_LIMIT = Utility.frameRateToFrameTimeNanos(120);
 	private static final int WIDTH = 2000, HEIGHT = 200;
@@ -23,7 +23,7 @@ class StartServer {
 	private static GameServer server;
 	private static boolean save = true;
 
-	public static void main(String[] args) throws IOException {
+	public static void main(String... args) throws IOException {
 		InetSocketAddress bind = args.length > 0 ?
 			NetworkUtility.parseSocket(args[0], Protocol.DEFAULT_SERVER_PORT) : NetworkUtility.getPublicSocket(Protocol.DEFAULT_SERVER_PORT);
 		try {

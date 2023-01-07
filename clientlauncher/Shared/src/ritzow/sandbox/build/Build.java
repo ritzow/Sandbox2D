@@ -263,6 +263,8 @@ public class Build {
 	}
 
 	private static int jlink(Iterable<Path> modules, Iterable<String> includeModules) {
+		System.out.println("Modules to bake: ");
+		modules.forEach(System.out::println);
 		return java.util.spi.ToolProvider.findFirst("jlink").orElseThrow().run(System.out, System.err,
 			"--compress", "2",
 			"--strip-debug", //breaks records in OpenJDK 14

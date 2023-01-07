@@ -1,0 +1,13 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>net.ritzow</groupId>
+		<artifactId>sandbox2d-parent</artifactId>
+		<version>${revision}</version>
+	</parent>
+
+	<artifactId>sandbox2d-clientlauncher</artifactId>
+	<packaging>pom</packaging>
+
+</project>

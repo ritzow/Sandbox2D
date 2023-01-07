@@ -72,7 +72,7 @@ public class BorderAnchor implements GuiElement {
 		abstract Position translate(float x, float y, Rectangle bounds, Rectangle border);
 	}
 
-	public static record Anchor(GuiElement element, Side side, float x, float y) {}
+	public record Anchor(GuiElement element, Side side, float x, float y) {}
 
 	private final Anchor[] anchors;
 
